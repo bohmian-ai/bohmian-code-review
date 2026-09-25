@@ -82,3 +82,29 @@ Return `SPEC_REVISION_REQUIRED` if correctness requires parser coupling in index
 ## Authority Links
 
 `changes/active/review-helper-setup/spec.md`; `AGENTS.md`; `architecture/agent-rules.md`; `architecture/bohmian-code-review-design.md`; `architecture/references/domain/symbolic-context.md`; `architecture/references/languages/spec-driven-development.md`; `architecture/references/languages/implementation-execution.md`; `architecture/references/languages/testing-workflows.md`.
+
+## Implementation Evidence
+
+### RED / GREEN
+
+| Scenario | RED (stub API compiled) | GREEN |
+|---|---|---|
+| 1 — Exact symbol hits | `mise run test:index`: `exact_lookup_returns_all_duplicates_in_canonical_order` FAILED (stub lookup empty) | ok after postings + ordered lookup |
+| 2 — Replacement/retention | `upsert_replaces_postings_and_removal_is_idempotent`, `successive_upserts_retain_facts_and_byte_lengths` FAILED | ok; Scenario 1 re-run ok |
+| 3 — Candidate matching | `mise run test:resolve`: `all_name_sources_resolve_to_every_plausible_hit` FAILED (stub resolve empty) | ok; `test:index` re-run ok |
+
+### Acceptance map
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| Exact case-sensitive simple/qualified lookup with duplicates in path/location/ID order; unknown empty | `crates/bohmian-code-review-index/src/lib.rs` (`SymbolIndex::lookup`, `Posting` order, `is_declaration`) | `tests/index.rs::exact_lookup_returns_all_duplicates_in_canonical_order` | PASS |
+| Per-file replacement/removal leaves complete postings, unrelated files intact; only facts/byte lengths retained | `SymbolIndex::upsert`/`remove` (`&mut self`, remove-before-insert), `IndexedFile { byte_len, nodes }` | `upsert_replaces_postings_and_removal_is_idempotent`, `successive_upserts_retain_facts_and_byte_lengths` | PASS |
+| Resolver keeps every plausible/ambiguous hit from reference names, extractor candidates, and declaration names; no exact-definition/completeness claim | `crates/bohmian-code-review-resolve/src/lib.rs` (`reference_names`, `declaration_names`, `resolve`) | `tests/resolve.rs::all_name_sources_resolve_to_every_plausible_hit` | PASS |
+
+### Verification
+
+`mise run test:index` (3 passed), `mise run test:resolve` (1 passed), `mise run fmt:check`, `mise run lints`, `git diff --check` — all pass. `cargo tree -e normal`: index → core only; resolve → core, index. No `std::fs`/`net`/`process` or tree-sitter use in either crate. Added `test:index` and `test:resolve` lanes to `mise.toml`.
+
+### Non-goals and limits
+
+No source retention, parser dependency in index, persistence, fuzzy match, or proven-definition claim. File, import, export, and parameter nodes are not posted as declarations. Malformed/unsupported extraction isolation through the facade closes in TASK-003 per this task's scope. `IMPLEMENTATION_PLAN.md` carries a pre-existing maintainer edit and was left out.
