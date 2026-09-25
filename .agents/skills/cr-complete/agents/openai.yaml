@@ -1,0 +1,4 @@
+interface:
+  display_name: "Code Review Complete"
+  short_description: "Record and retire a passed change packet"
+  default_prompt: "Use $cr-complete after $cr-change-review passes to write the completed record and retire the active packet."

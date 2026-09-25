@@ -1,0 +1,14 @@
+[tools]
+rust = "1.94.0"
+
+[settings]
+jobs = 1
+env_shell_expand = false
+
+[tasks."skills:sync"]
+description = "Regenerate the Claude mirror from canonical .agents skills"
+run = "bash scripts/sync-agent-skills.sh --write"
+
+[tasks."check:skills-sync"]
+description = "Verify the Claude skill mirror matches canonical .agents skills"
+run = "bash scripts/sync-agent-skills.sh --check"

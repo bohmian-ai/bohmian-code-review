@@ -1,0 +1,4 @@
+interface:
+  display_name: "Code Review Plan"
+  short_description: "Create bounded tasks from an approved spec"
+  default_prompt: "Use $cr-plan to turn this approved bohmian-code-review spec into independently verifiable implementation tasks."

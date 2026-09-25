@@ -1,0 +1,4 @@
+interface:
+  display_name: "Code Review Task Review"
+  short_description: "Independently audit one immutable task"
+  default_prompt: "Use $cr-task-review to audit this immutable review-helper task against its spec, diff, and journey evidence."
