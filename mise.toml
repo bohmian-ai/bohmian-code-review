@@ -31,3 +31,11 @@ run = [
   "cargo test --locked -p bohmian-code-review-core --all-targets",
   "cargo test --locked -p bohmian-code-review-extract --all-targets",
 ]
+
+[tasks."test:index"]
+description = "Run in-memory symbol index tests"
+run = "cargo test --locked -p bohmian-code-review-index --all-targets --all-features"
+
+[tasks."test:resolve"]
+description = "Run candidate resolver tests over the real index"
+run = "cargo test --locked -p bohmian-code-review-resolve --all-targets --all-features"
