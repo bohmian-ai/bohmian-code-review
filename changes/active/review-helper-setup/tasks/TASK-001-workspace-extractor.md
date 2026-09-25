@@ -82,3 +82,32 @@ Return `SPEC_REVISION_REQUIRED` if complete extraction requires changing approve
 ## Authority Links
 
 `changes/active/review-helper-setup/spec.md`; `AGENTS.md`; `architecture/agent-rules.md`; `architecture/bohmian-code-review-design.md`; `architecture/references/domain/symbolic-context.md`; `architecture/references/languages/spec-driven-development.md`; `architecture/references/languages/implementation-execution.md`; `architecture/references/languages/rust-core.md`; `architecture/references/languages/testing-workflows.md`.
+
+## Implementation Evidence
+
+Status: `IMPLEMENTED` on branch `review-helper-setup` (commits `0fc361e`, `d71d5eb`, `9ca27dc`, plus this record). Donor: `codegraph-rs-parity` `c757d1e776c074af58bb1131145cd3c82fa72718`.
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| Six packages, Rust 2024/1.94, lockfile, README, license, notices, downward direction, independent compile | `Cargo.toml`, `rust-toolchain.toml`, `Cargo.lock`, `crates/*/Cargo.toml`, `README.md`, `LICENSE`, `THIRD_PARTY_NOTICES.md`, `.gitignore` | `cargo check --locked -p <each of 6> --all-targets` PASS; `cargo tree -p bohmian-code-review` shows only the five lower crates; no `codegraph`/`../` path in any manifest | PASS |
+| Core validates paths and exposes extraction facts | `crates/bohmian-code-review-core/src/{relative_path,position,diagnostic,edge,language,node,reference,limits}.rs` | `cargo test --locked -p bohmian-code-review-core --lib` 25 passed | PASS |
+| Every donor route and unchanged fixture/golden passes | `crates/bohmian-code-review-extract/src/**`, `tests/`, `tools/oracle/{fixtures,goldens,inventories}` | `mise run test:extract`: extract lib 138 passed (incl. corpus/golden differentials, defer contract, route tests), `ccpp_fixture_probe` 1 passed; `diff -rq` vs donor for fixtures, goldens, inventories, provenance, grammars, `build.rs`: identical | PASS |
+| Vendored grammars, exact pins, provenance, `OUT_DIR`-only output; no checkout/network at runtime | `crates/bohmian-code-review-extract/{grammars,build.rs}`, workspace `=` pins, `tools/oracle/parity/extract/**`, `docs/grammars/`, `tools/oracle/wasm/` | grammar/enterprise manifest tests verify source, patch, output, and wasm SHA-256; runtime `src` (excluding `corpus_tests.rs`) has no `std::fs`, `std::net`, or process use | PASS |
+
+RED/GREEN record:
+
+- Scenario 1 — RED: `mise exec -- cargo test --locked -p bohmian-code-review-core --lib relative_path` against a permissive `RelativePath::new` stub failed 3 assertions (`invalid_paths_are_rejected`: `Ok(RelativePath(""))` vs `Err(Empty)`; `noncanonical_segments_are_rejected`; `deserialization_enforces_the_canonical_invariant`). GREEN: donor validation ported; core lib 25 passed.
+- Scenario 2 — no behavioral RED observed: the verbatim port matched every fixture once prerequisite harness paths were repaired (below). GREEN: `mise run test:extract` all passed.
+- Scenario 3 — `mise exec -- cargo test --locked -p bohmian-code-review-extract --lib parse_pool::tests::malformed_file_defers_alone_and_later_valid_file_parses -- --exact` passed on first run: the ported pool already isolates a `Deferred` TypeScript file between two valid files. Recorded as characterization, not RED. Donor `one_failing_file_does_not_abort_the_batch`, `bounded_workers_do_not_change_batch_results`, and `cancellation_leaves_unattempted_requests_unparsed` cover unroutable input, bounded workers, and cancellation.
+
+Verification (sequential): `mise run test:extract` PASS; `mise run fmt:check` PASS; `mise run lints` (`clippy --workspace --all-targets --all-features -D warnings`) PASS; `cargo check --locked --workspace --all-targets` PASS; `git diff --check` PASS. Features: default (no crate features exist).
+
+Execution updates:
+
+- 2026-09-25, bounded correction: corpus harness hard-coded donor `crates/codegraph-extract/grammars`, and manifests record `crates/codegraph-extract/...` committed outputs. Added `grammars_root()` and `manifest_recorded_path()` in `corpus_tests.rs` mapping that prefix to this crate; manifests unchanged. Three grammar-manifest tests went from prerequisite failure to PASS.
+- 2026-09-25, bounded correction: arkts, terraform, nix, and cfml oracle wasm hashes fall back to the donor's upstream `src/extraction/wasm/`. Copied those four files to `tools/oracle/wasm/` and repointed the fallback; hashes are still verified against the unchanged manifests.
+- 2026-09-25, local: `Cargo.lock` seeded from the donor lock so shared crates keep donor-resolved versions; rehomed crate names required `cargo fmt` line re-wrapping only.
+
+Non-goals: storage, snapshots, `SourceTree`, query facade, full resolver, search ranking, identity/config/lifecycle core modules, Node tooling (`napi-adapter`, `.mjs` scripts), and index/resolve/select/facade behavior — EXCLUDED (later crates hold only a crate doc line).
+
+Risks: the donor vendored no `LICENSE` file for the kotlin grammar (MIT, `fwcd/tree-sitter-kotlin` 0.3.8); noted in `THIRD_PARTY_NOTICES.md`, text not fabricated. Donor walkers read `CODEGRAPH_VALUE_REFS`/`COBOL_DBG` env vars (preserved donor behavior; no IO). The repository grows by ~380 MB of vendored grammar and provenance input, as accepted by the plan. `IMPLEMENTATION_PLAN.md` carries a pre-existing uncommitted edit that is not part of this task.
