@@ -1,0 +1,55 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/bohmian-code-review-core",
+    "crates/bohmian-code-review-extract",
+    "crates/bohmian-code-review-index",
+    "crates/bohmian-code-review-resolve",
+    "crates/bohmian-code-review-select",
+    "crates/bohmian-code-review",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.94"
+license = "MIT"
+repository = "https://github.com/bohmian-ai/bohmian-code-review"
+publish = false
+
+[workspace.dependencies]
+bohmian-code-review-core = { path = "crates/bohmian-code-review-core" }
+bohmian-code-review-extract = { path = "crates/bohmian-code-review-extract" }
+bohmian-code-review-index = { path = "crates/bohmian-code-review-index" }
+bohmian-code-review-resolve = { path = "crates/bohmian-code-review-resolve" }
+bohmian-code-review-select = { path = "crates/bohmian-code-review-select" }
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+regex = "1"
+sha2 = "0.10"
+
+# Grammar pins are copied exactly from the donor extractor. A bump changes
+# extracted facts and requires an approved specification revision.
+tree-sitter = "=0.25.10"
+tree-sitter-typescript = "=0.23.2"
+tree-sitter-javascript = "=0.25.0"
+tree-sitter-java = "=0.23.5"
+tree-sitter-python = "=0.23.6"
+tree-sitter-go = "=0.23.4"
+tree-sitter-c = "=0.24.2"
+tree-sitter-cpp = "=0.23.4"
+tree-sitter-rust = "=0.24.2"
+tree-sitter-c-sharp = "=0.23.5"
+tree-sitter-ruby = "=0.23.1"
+tree-sitter-php = "=0.24.2"
+tree-sitter-swift = "=0.7.3"
+tree-sitter-r = "=1.2.0"
+tree-sitter-luau = "=1.2.0"
+tree-sitter-language = "=0.1.7"
+
+cc = "1"
+
+[workspace.lints.rust]
+unsafe_code = "deny"

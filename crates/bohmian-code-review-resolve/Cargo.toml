@@ -1,0 +1,16 @@
+[package]
+name = "bohmian-code-review-resolve"
+description = "Ambiguity-preserving candidate lookup from reference names to indexed symbols"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+bohmian-code-review-core.workspace = true
+bohmian-code-review-index.workspace = true
+
+[lints]
+workspace = true
