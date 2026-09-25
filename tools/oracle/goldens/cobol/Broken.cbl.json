@@ -1,0 +1,55 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:cobol/Broken.cbl",
+      "target": "module:3455ceab8322a0f22a8cf0f13901bae4"
+    },
+    {
+      "kind": "contains",
+      "source": "module:3455ceab8322a0f22a8cf0f13901bae4",
+      "target": "function:630a4e7f098b6f2995427366cf6c45db"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 8,
+      "filePath": "cobol/Broken.cbl",
+      "id": "file:cobol/Broken.cbl",
+      "isExported": false,
+      "kind": "file",
+      "language": "cobol",
+      "name": "Broken.cbl",
+      "qualifiedName": "cobol/Broken.cbl",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 24,
+      "endLine": 5,
+      "filePath": "cobol/Broken.cbl",
+      "id": "module:3455ceab8322a0f22a8cf0f13901bae4",
+      "kind": "module",
+      "language": "cobol",
+      "name": "GOOD",
+      "qualifiedName": "GOOD",
+      "startColumn": 7,
+      "startLine": 1
+    },
+    {
+      "endColumn": 12,
+      "endLine": 5,
+      "filePath": "cobol/Broken.cbl",
+      "id": "function:630a4e7f098b6f2995427366cf6c45db",
+      "kind": "function",
+      "language": "cobol",
+      "name": "MAIN",
+      "qualifiedName": "GOOD::MAIN",
+      "startColumn": 7,
+      "startLine": 4
+    }
+  ],
+  "unresolvedReferences": []
+}

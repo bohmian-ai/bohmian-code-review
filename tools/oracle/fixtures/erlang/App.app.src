@@ -1,0 +1,6 @@
+{application, myapp,
+ [{description, "My Application"},
+  {vsn, "1.0.0"},
+  {mod, {myapp_app, []}},
+  {applications, [kernel, stdlib, sasl]},
+  {included_applications, [shared_lib]}]}.

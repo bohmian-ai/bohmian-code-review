@@ -1,0 +1,181 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:349927a954ef366c71a2f647c7f2a92a",
+      "target": "import:a72798e305ec94fa58791f5b05a7883c"
+    },
+    {
+      "kind": "contains",
+      "source": "file:349927a954ef366c71a2f647c7f2a92a",
+      "target": "component:74cee089810f9d3eb3cf6be727df07cc"
+    },
+    {
+      "kind": "contains",
+      "source": "file:349927a954ef366c71a2f647c7f2a92a",
+      "target": "import:ea8cafcd2cdb0bb2b2b908a0075a003a"
+    },
+    {
+      "kind": "contains",
+      "source": "file:349927a954ef366c71a2f647c7f2a92a",
+      "target": "component:36af699b4ba703fc86a47a0602a7497d"
+    },
+    {
+      "kind": "contains",
+      "source": "file:349927a954ef366c71a2f647c7f2a92a",
+      "target": "import:908c39220b930be75a036d4a6f44ccb8"
+    },
+    {
+      "kind": "contains",
+      "source": "file:349927a954ef366c71a2f647c7f2a92a",
+      "target": "component:8c3165e8e62a09d382904a82f6873c9c"
+    },
+    {
+      "kind": "contains",
+      "source": "file:349927a954ef366c71a2f647c7f2a92a",
+      "target": "constant:bf02bf5fe14ad57eefa41e0d3f4bbef7"
+    },
+    {
+      "kind": "contains",
+      "source": "file:349927a954ef366c71a2f647c7f2a92a",
+      "target": "variable:3d1e8fe3cde35884c518a9c073980cec"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 11,
+      "filePath": "liquid/Product.liquid",
+      "id": "file:349927a954ef366c71a2f647c7f2a92a",
+      "kind": "file",
+      "language": "liquid",
+      "name": "Product.liquid",
+      "qualifiedName": "liquid/Product.liquid",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 24,
+      "endLine": 2,
+      "filePath": "liquid/Product.liquid",
+      "id": "import:a72798e305ec94fa58791f5b05a7883c",
+      "kind": "import",
+      "language": "liquid",
+      "name": "product-card",
+      "qualifiedName": "liquid/Product.liquid::import:product-card",
+      "signature": "{% render 'product-card'",
+      "startColumn": 0,
+      "startLine": 2
+    },
+    {
+      "endColumn": 24,
+      "endLine": 2,
+      "filePath": "liquid/Product.liquid",
+      "id": "component:74cee089810f9d3eb3cf6be727df07cc",
+      "kind": "component",
+      "language": "liquid",
+      "name": "product-card",
+      "qualifiedName": "liquid/Product.liquid::render:product-card",
+      "startColumn": 0,
+      "startLine": 2
+    },
+    {
+      "endColumn": 23,
+      "endLine": 3,
+      "filePath": "liquid/Product.liquid",
+      "id": "import:ea8cafcd2cdb0bb2b2b908a0075a003a",
+      "kind": "import",
+      "language": "liquid",
+      "name": "pagination",
+      "qualifiedName": "liquid/Product.liquid::import:pagination",
+      "signature": "{% include 'pagination'",
+      "startColumn": 0,
+      "startLine": 3
+    },
+    {
+      "endColumn": 23,
+      "endLine": 3,
+      "filePath": "liquid/Product.liquid",
+      "id": "component:36af699b4ba703fc86a47a0602a7497d",
+      "kind": "component",
+      "language": "liquid",
+      "name": "pagination",
+      "qualifiedName": "liquid/Product.liquid::include:pagination",
+      "startColumn": 0,
+      "startLine": 3
+    },
+    {
+      "endColumn": 19,
+      "endLine": 1,
+      "filePath": "liquid/Product.liquid",
+      "id": "import:908c39220b930be75a036d4a6f44ccb8",
+      "kind": "import",
+      "language": "liquid",
+      "name": "header",
+      "qualifiedName": "liquid/Product.liquid::import:header",
+      "signature": "{% section 'header'",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 19,
+      "endLine": 1,
+      "filePath": "liquid/Product.liquid",
+      "id": "component:8c3165e8e62a09d382904a82f6873c9c",
+      "kind": "component",
+      "language": "liquid",
+      "name": "header",
+      "qualifiedName": "liquid/Product.liquid::section:header",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 0,
+      "endLine": 10,
+      "filePath": "liquid/Product.liquid",
+      "id": "constant:bf02bf5fe14ad57eefa41e0d3f4bbef7",
+      "kind": "constant",
+      "language": "liquid",
+      "name": "Product",
+      "qualifiedName": "liquid/Product.liquid::schema:Product",
+      "startColumn": 0,
+      "startLine": 5
+    },
+    {
+      "endColumn": 17,
+      "endLine": 4,
+      "filePath": "liquid/Product.liquid",
+      "id": "variable:3d1e8fe3cde35884c518a9c073980cec",
+      "kind": "variable",
+      "language": "liquid",
+      "name": "total",
+      "qualifiedName": "liquid/Product.liquid::total",
+      "startColumn": 0,
+      "startLine": 4
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 0,
+      "fromNodeId": "file:349927a954ef366c71a2f647c7f2a92a",
+      "line": 2,
+      "referenceKind": "references",
+      "referenceName": "snippets/product-card.liquid"
+    },
+    {
+      "column": 0,
+      "fromNodeId": "file:349927a954ef366c71a2f647c7f2a92a",
+      "line": 3,
+      "referenceKind": "references",
+      "referenceName": "snippets/pagination.liquid"
+    },
+    {
+      "column": 0,
+      "fromNodeId": "file:349927a954ef366c71a2f647c7f2a92a",
+      "line": 1,
+      "referenceKind": "references",
+      "referenceName": "sections/header.liquid"
+    }
+  ]
+}

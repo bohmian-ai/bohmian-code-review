@@ -1,0 +1,125 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:88869922fd1624498e0a930e3846e81c",
+      "target": "component:d1b2092fe642fd44443e8326393dfedd"
+    },
+    {
+      "kind": "contains",
+      "source": "component:d1b2092fe642fd44443e8326393dfedd",
+      "target": "component:78985ae813f5f974ff567d3e477c8394"
+    },
+    {
+      "kind": "contains",
+      "source": "component:78985ae813f5f974ff567d3e477c8394",
+      "target": "component:39cfa06bc2d3ea92c30c3643759cecc7"
+    },
+    {
+      "kind": "contains",
+      "source": "component:78985ae813f5f974ff567d3e477c8394",
+      "target": "component:4e2f852e2177b55e9c9dad4711a5a2e6"
+    },
+    {
+      "kind": "contains",
+      "source": "component:d1b2092fe642fd44443e8326393dfedd",
+      "target": "component:5a1501cda46e9fef8aadb26cd995a830"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 20,
+      "filePath": "pascal/Form.dfm",
+      "id": "file:88869922fd1624498e0a930e3846e81c",
+      "kind": "file",
+      "language": "pascal",
+      "name": "Form.dfm",
+      "qualifiedName": "pascal/Form.dfm",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 26,
+      "endLine": 1,
+      "filePath": "pascal/Form.dfm",
+      "id": "component:d1b2092fe642fd44443e8326393dfedd",
+      "kind": "component",
+      "language": "pascal",
+      "name": "MainForm",
+      "qualifiedName": "pascal/Form.dfm#MainForm",
+      "signature": "TMainForm",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 23,
+      "endLine": 5,
+      "filePath": "pascal/Form.dfm",
+      "id": "component:78985ae813f5f974ff567d3e477c8394",
+      "kind": "component",
+      "language": "pascal",
+      "name": "Panel1",
+      "qualifiedName": "pascal/Form.dfm#Panel1",
+      "signature": "TPanel",
+      "startColumn": 0,
+      "startLine": 5
+    },
+    {
+      "endColumn": 27,
+      "endLine": 7,
+      "filePath": "pascal/Form.dfm",
+      "id": "component:39cfa06bc2d3ea92c30c3643759cecc7",
+      "kind": "component",
+      "language": "pascal",
+      "name": "Button1",
+      "qualifiedName": "pascal/Form.dfm#Button1",
+      "signature": "TButton",
+      "startColumn": 0,
+      "startLine": 7
+    },
+    {
+      "endColumn": 27,
+      "endLine": 11,
+      "filePath": "pascal/Form.dfm",
+      "id": "component:4e2f852e2177b55e9c9dad4711a5a2e6",
+      "kind": "component",
+      "language": "pascal",
+      "name": "Button2",
+      "qualifiedName": "pascal/Form.dfm#Button2",
+      "signature": "TButton",
+      "startColumn": 0,
+      "startLine": 11
+    },
+    {
+      "endColumn": 31,
+      "endLine": 16,
+      "filePath": "pascal/Form.dfm",
+      "id": "component:5a1501cda46e9fef8aadb26cd995a830",
+      "kind": "component",
+      "language": "pascal",
+      "name": "StatusBar1",
+      "qualifiedName": "pascal/Form.dfm#StatusBar1",
+      "signature": "TStatusBar",
+      "startColumn": 0,
+      "startLine": 16
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 0,
+      "fromNodeId": "component:39cfa06bc2d3ea92c30c3643759cecc7",
+      "line": 9,
+      "referenceKind": "references",
+      "referenceName": "Button1Click"
+    },
+    {
+      "column": 0,
+      "fromNodeId": "component:4e2f852e2177b55e9c9dad4711a5a2e6",
+      "line": 13,
+      "referenceKind": "references",
+      "referenceName": "Button2Click"
+    }
+  ]
+}

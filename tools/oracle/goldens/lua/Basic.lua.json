@@ -1,0 +1,135 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:lua/Basic.lua",
+      "target": "import:2cb63bf7fa41fa96c77151993d6b3a8b"
+    },
+    {
+      "kind": "contains",
+      "source": "file:lua/Basic.lua",
+      "target": "variable:b4dea31f95987c62f0878ffecfbf19d5"
+    },
+    {
+      "kind": "contains",
+      "source": "file:lua/Basic.lua",
+      "target": "variable:ee20c63a62d354b07926d03587d38a09"
+    },
+    {
+      "kind": "contains",
+      "source": "file:lua/Basic.lua",
+      "target": "method:f1cf5cbaba54bd1b55d9d65e88c20bc9"
+    },
+    {
+      "kind": "contains",
+      "source": "file:lua/Basic.lua",
+      "target": "method:2b5857352f9e29960978f710d7369f8c"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 17,
+      "filePath": "lua/Basic.lua",
+      "id": "file:lua/Basic.lua",
+      "isExported": false,
+      "kind": "file",
+      "language": "lua",
+      "name": "Basic.lua",
+      "qualifiedName": "lua/Basic.lua",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 30,
+      "endLine": 1,
+      "filePath": "lua/Basic.lua",
+      "id": "import:2cb63bf7fa41fa96c77151993d6b3a8b",
+      "kind": "import",
+      "language": "lua",
+      "name": "util",
+      "qualifiedName": "util",
+      "signature": "require(\"util\")",
+      "startColumn": 15,
+      "startLine": 1
+    },
+    {
+      "endColumn": 12,
+      "endLine": 1,
+      "filePath": "lua/Basic.lua",
+      "id": "variable:b4dea31f95987c62f0878ffecfbf19d5",
+      "isExported": false,
+      "kind": "variable",
+      "language": "lua",
+      "name": "helper",
+      "qualifiedName": "helper",
+      "signature": "= require(\"util\")",
+      "startColumn": 6,
+      "startLine": 1
+    },
+    {
+      "endColumn": 12,
+      "endLine": 3,
+      "filePath": "lua/Basic.lua",
+      "id": "variable:ee20c63a62d354b07926d03587d38a09",
+      "isExported": false,
+      "kind": "variable",
+      "language": "lua",
+      "name": "Circle",
+      "qualifiedName": "Circle",
+      "signature": "= {}",
+      "startColumn": 6,
+      "startLine": 3
+    },
+    {
+      "endColumn": 3,
+      "endLine": 10,
+      "filePath": "lua/Basic.lua",
+      "id": "method:f1cf5cbaba54bd1b55d9d65e88c20bc9",
+      "kind": "method",
+      "language": "lua",
+      "name": "new",
+      "qualifiedName": "Circle::new",
+      "signature": "(radius)",
+      "startColumn": 0,
+      "startLine": 6
+    },
+    {
+      "endColumn": 3,
+      "endLine": 14,
+      "filePath": "lua/Basic.lua",
+      "id": "method:2b5857352f9e29960978f710d7369f8c",
+      "kind": "method",
+      "language": "lua",
+      "name": "area",
+      "qualifiedName": "Circle::area",
+      "signature": "()",
+      "startColumn": 0,
+      "startLine": 12
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 15,
+      "fromNodeId": "file:lua/Basic.lua",
+      "line": 1,
+      "referenceKind": "imports",
+      "referenceName": "util"
+    },
+    {
+      "column": 15,
+      "fromNodeId": "method:f1cf5cbaba54bd1b55d9d65e88c20bc9",
+      "line": 7,
+      "referenceKind": "calls",
+      "referenceName": "setmetatable"
+    },
+    {
+      "column": 9,
+      "fromNodeId": "method:2b5857352f9e29960978f710d7369f8c",
+      "line": 13,
+      "referenceKind": "calls",
+      "referenceName": "helper.compute"
+    }
+  ]
+}

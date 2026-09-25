@@ -1,0 +1,74 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:cfscript/Interface.cfs",
+      "target": "interface:00df9fdf4a5cc4173dfcc1beafa98ba4"
+    },
+    {
+      "kind": "contains",
+      "source": "interface:00df9fdf4a5cc4173dfcc1beafa98ba4",
+      "target": "method:fe24fe52863fc4d091f5d794e01329e1"
+    },
+    {
+      "kind": "contains",
+      "source": "interface:00df9fdf4a5cc4173dfcc1beafa98ba4",
+      "target": "method:1b757418302cd43c8f8b32f13803d886"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 6,
+      "filePath": "cfscript/Interface.cfs",
+      "id": "file:cfscript/Interface.cfs",
+      "isExported": false,
+      "kind": "file",
+      "language": "cfscript",
+      "name": "Interface.cfs",
+      "qualifiedName": "cfscript/Interface.cfs",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 1,
+      "endLine": 5,
+      "filePath": "cfscript/Interface.cfs",
+      "id": "interface:00df9fdf4a5cc4173dfcc1beafa98ba4",
+      "kind": "interface",
+      "language": "cfscript",
+      "name": "Interface",
+      "qualifiedName": "cfscript/Interface.cfs::Interface",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 25,
+      "endLine": 3,
+      "filePath": "cfscript/Interface.cfs",
+      "id": "method:fe24fe52863fc4d091f5d794e01329e1",
+      "kind": "method",
+      "language": "cfscript",
+      "name": "configure",
+      "qualifiedName": "Interface::configure",
+      "signature": "()",
+      "startColumn": 4,
+      "startLine": 3
+    },
+    {
+      "endColumn": 25,
+      "endLine": 4,
+      "filePath": "cfscript/Interface.cfs",
+      "id": "method:1b757418302cd43c8f8b32f13803d886",
+      "kind": "method",
+      "language": "cfscript",
+      "name": "onRequest",
+      "qualifiedName": "Interface::onRequest",
+      "signature": "()",
+      "startColumn": 4,
+      "startLine": 4
+    }
+  ],
+  "unresolvedReferences": []
+}

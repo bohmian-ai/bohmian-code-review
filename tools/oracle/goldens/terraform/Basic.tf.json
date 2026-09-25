@@ -1,0 +1,308 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:terraform/Basic.tf",
+      "target": "variable:4ef0c979aad564dfdecb7f9f9a335280"
+    },
+    {
+      "kind": "contains",
+      "source": "file:terraform/Basic.tf",
+      "target": "variable:3464bf707a0098f91cb186fa190a6646"
+    },
+    {
+      "kind": "contains",
+      "source": "file:terraform/Basic.tf",
+      "target": "constant:055391035f22c1d09e65f3e1f84a1314"
+    },
+    {
+      "kind": "contains",
+      "source": "file:terraform/Basic.tf",
+      "target": "constant:2702f6a970eb20a5748f43edb7950a0c"
+    },
+    {
+      "kind": "contains",
+      "source": "file:terraform/Basic.tf",
+      "target": "namespace:986c60cb272efcf94124182707cc9ec1"
+    },
+    {
+      "kind": "contains",
+      "source": "file:terraform/Basic.tf",
+      "target": "class:7c57992bc65ebf2e6d9cb9949ac5b874"
+    },
+    {
+      "kind": "contains",
+      "source": "file:terraform/Basic.tf",
+      "target": "class:d2a75e00fdf3ffe7945fd5b96475e7a6"
+    },
+    {
+      "kind": "contains",
+      "source": "file:terraform/Basic.tf",
+      "target": "class:2c5016d46237e17e79b5515dbdce39ec"
+    },
+    {
+      "kind": "contains",
+      "source": "file:terraform/Basic.tf",
+      "target": "module:3fcf2716f6580856257608156c09f95b"
+    },
+    {
+      "kind": "contains",
+      "source": "file:terraform/Basic.tf",
+      "target": "variable:1d3092c249490b1c60c057a5e4ce45c7"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 64,
+      "filePath": "terraform/Basic.tf",
+      "id": "file:terraform/Basic.tf",
+      "isExported": false,
+      "kind": "file",
+      "language": "terraform",
+      "name": "Basic.tf",
+      "qualifiedName": "terraform/Basic.tf",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 1,
+      "endLine": 14,
+      "filePath": "terraform/Basic.tf",
+      "id": "variable:4ef0c979aad564dfdecb7f9f9a335280",
+      "isExported": true,
+      "kind": "variable",
+      "language": "terraform",
+      "name": "region",
+      "qualifiedName": "var.region",
+      "signature": "variable \"region\"",
+      "startColumn": 0,
+      "startLine": 11
+    },
+    {
+      "endColumn": 1,
+      "endLine": 18,
+      "filePath": "terraform/Basic.tf",
+      "id": "variable:3464bf707a0098f91cb186fa190a6646",
+      "isExported": true,
+      "kind": "variable",
+      "language": "terraform",
+      "name": "instance_type",
+      "qualifiedName": "var.instance_type",
+      "signature": "variable \"instance_type\"",
+      "startColumn": 0,
+      "startLine": 16
+    },
+    {
+      "endColumn": 21,
+      "endLine": 21,
+      "filePath": "terraform/Basic.tf",
+      "id": "constant:055391035f22c1d09e65f3e1f84a1314",
+      "kind": "constant",
+      "language": "terraform",
+      "name": "name_prefix",
+      "qualifiedName": "local.name_prefix",
+      "signature": "local.name_prefix",
+      "startColumn": 2,
+      "startLine": 21
+    },
+    {
+      "endColumn": 3,
+      "endLine": 24,
+      "filePath": "terraform/Basic.tf",
+      "id": "constant:2702f6a970eb20a5748f43edb7950a0c",
+      "kind": "constant",
+      "language": "terraform",
+      "name": "common_tags",
+      "qualifiedName": "local.common_tags",
+      "signature": "local.common_tags",
+      "startColumn": 2,
+      "startLine": 22
+    },
+    {
+      "endColumn": 1,
+      "endLine": 30,
+      "filePath": "terraform/Basic.tf",
+      "id": "namespace:986c60cb272efcf94124182707cc9ec1",
+      "isExported": false,
+      "kind": "namespace",
+      "language": "terraform",
+      "name": "aws.west",
+      "qualifiedName": "provider.aws.west",
+      "signature": "provider \"aws\" alias=\"west\"",
+      "startColumn": 0,
+      "startLine": 27
+    },
+    {
+      "endColumn": 1,
+      "endLine": 35,
+      "filePath": "terraform/Basic.tf",
+      "id": "class:7c57992bc65ebf2e6d9cb9949ac5b874",
+      "isExported": false,
+      "kind": "class",
+      "language": "terraform",
+      "name": "aws_s3_bucket.data",
+      "qualifiedName": "aws_s3_bucket.data",
+      "signature": "resource \"aws_s3_bucket\" \"data\"",
+      "startColumn": 0,
+      "startLine": 32
+    },
+    {
+      "endColumn": 1,
+      "endLine": 41,
+      "filePath": "terraform/Basic.tf",
+      "id": "class:d2a75e00fdf3ffe7945fd5b96475e7a6",
+      "isExported": false,
+      "kind": "class",
+      "language": "terraform",
+      "name": "aws_instance.web",
+      "qualifiedName": "aws_instance.web",
+      "signature": "resource \"aws_instance\" \"web\"",
+      "startColumn": 0,
+      "startLine": 37
+    },
+    {
+      "endColumn": 1,
+      "endLine": 46,
+      "filePath": "terraform/Basic.tf",
+      "id": "class:2c5016d46237e17e79b5515dbdce39ec",
+      "isExported": false,
+      "kind": "class",
+      "language": "terraform",
+      "name": "aws_ami.ubuntu",
+      "qualifiedName": "data.aws_ami.ubuntu",
+      "signature": "data \"aws_ami\" \"ubuntu\"",
+      "startColumn": 0,
+      "startLine": 43
+    },
+    {
+      "endColumn": 1,
+      "endLine": 54,
+      "filePath": "terraform/Basic.tf",
+      "id": "module:3fcf2716f6580856257608156c09f95b",
+      "isExported": false,
+      "kind": "module",
+      "language": "terraform",
+      "name": "vpc",
+      "qualifiedName": "module.vpc",
+      "signature": "module \"vpc\"",
+      "startColumn": 0,
+      "startLine": 48
+    },
+    {
+      "endColumn": 1,
+      "endLine": 58,
+      "filePath": "terraform/Basic.tf",
+      "id": "variable:1d3092c249490b1c60c057a5e4ce45c7",
+      "isExported": true,
+      "kind": "variable",
+      "language": "terraform",
+      "name": "bucket_arn",
+      "qualifiedName": "output.bucket_arn",
+      "signature": "output \"bucket_arn\"",
+      "startColumn": 0,
+      "startLine": 56
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 18,
+      "fromNodeId": "constant:2702f6a970eb20a5748f43edb7950a0c",
+      "line": 23,
+      "referenceKind": "references",
+      "referenceName": "var.environment"
+    },
+    {
+      "column": 11,
+      "fromNodeId": "namespace:986c60cb272efcf94124182707cc9ec1",
+      "line": 28,
+      "referenceKind": "references",
+      "referenceName": "var.region"
+    },
+    {
+      "column": 14,
+      "fromNodeId": "class:7c57992bc65ebf2e6d9cb9949ac5b874",
+      "line": 33,
+      "referenceKind": "references",
+      "referenceName": "local.name_prefix"
+    },
+    {
+      "column": 11,
+      "fromNodeId": "class:7c57992bc65ebf2e6d9cb9949ac5b874",
+      "line": 34,
+      "referenceKind": "references",
+      "referenceName": "local.common_tags"
+    },
+    {
+      "column": 2,
+      "fromNodeId": "class:d2a75e00fdf3ffe7945fd5b96475e7a6",
+      "line": 38,
+      "referenceKind": "references",
+      "referenceName": "provider.aws.west"
+    },
+    {
+      "column": 18,
+      "fromNodeId": "class:d2a75e00fdf3ffe7945fd5b96475e7a6",
+      "line": 39,
+      "referenceKind": "references",
+      "referenceName": "var.instance_type"
+    },
+    {
+      "column": 18,
+      "fromNodeId": "class:d2a75e00fdf3ffe7945fd5b96475e7a6",
+      "line": 40,
+      "referenceKind": "references",
+      "referenceName": "data.aws_ami.ubuntu"
+    },
+    {
+      "column": 4,
+      "fromNodeId": "module:3fcf2716f6580856257608156c09f95b",
+      "line": 52,
+      "referenceKind": "references",
+      "referenceName": "provider.aws.west"
+    },
+    {
+      "column": 13,
+      "fromNodeId": "module:3fcf2716f6580856257608156c09f95b",
+      "line": 50,
+      "referenceKind": "references",
+      "referenceName": "var.region"
+    },
+    {
+      "column": 0,
+      "fromNodeId": "module:3fcf2716f6580856257608156c09f95b",
+      "line": 48,
+      "referenceKind": "imports",
+      "referenceName": "module.vpc:file"
+    },
+    {
+      "column": 2,
+      "fromNodeId": "module:3fcf2716f6580856257608156c09f95b",
+      "line": 50,
+      "referenceKind": "references",
+      "referenceName": "module.vpc:var.cidr"
+    },
+    {
+      "column": 10,
+      "fromNodeId": "variable:1d3092c249490b1c60c057a5e4ce45c7",
+      "line": 57,
+      "referenceKind": "references",
+      "referenceName": "aws_s3_bucket.data"
+    },
+    {
+      "column": 9,
+      "fromNodeId": "file:terraform/Basic.tf",
+      "line": 61,
+      "referenceKind": "references",
+      "referenceName": "aws_instance.old"
+    },
+    {
+      "column": 9,
+      "fromNodeId": "file:terraform/Basic.tf",
+      "line": 62,
+      "referenceKind": "references",
+      "referenceName": "aws_instance.web"
+    }
+  ]
+}

@@ -1,0 +1,116 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:ruby/Basic.rb",
+      "target": "import:eb2eae1f0bf61eb65365da74d7c7c5bc"
+    },
+    {
+      "kind": "contains",
+      "source": "file:ruby/Basic.rb",
+      "target": "class:f9c59eca987457d95bb378f64df5aafc"
+    },
+    {
+      "kind": "contains",
+      "source": "class:f9c59eca987457d95bb378f64df5aafc",
+      "target": "method:aff42e8fc2b0165160e1bc83c142436b"
+    },
+    {
+      "kind": "contains",
+      "source": "class:f9c59eca987457d95bb378f64df5aafc",
+      "target": "method:fdb4e44d25eecad6e53dcb7ecd884f34"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 14,
+      "filePath": "ruby/Basic.rb",
+      "id": "file:ruby/Basic.rb",
+      "isExported": false,
+      "kind": "file",
+      "language": "ruby",
+      "name": "Basic.rb",
+      "qualifiedName": "ruby/Basic.rb",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 16,
+      "endLine": 1,
+      "filePath": "ruby/Basic.rb",
+      "id": "import:eb2eae1f0bf61eb65365da74d7c7c5bc",
+      "kind": "import",
+      "language": "ruby",
+      "name": "helper",
+      "qualifiedName": "helper",
+      "signature": "require 'helper'",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 3,
+      "endLine": 13,
+      "filePath": "ruby/Basic.rb",
+      "id": "class:f9c59eca987457d95bb378f64df5aafc",
+      "kind": "class",
+      "language": "ruby",
+      "name": "Circle",
+      "qualifiedName": "Circle",
+      "startColumn": 0,
+      "startLine": 3,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 5,
+      "endLine": 8,
+      "filePath": "ruby/Basic.rb",
+      "id": "method:aff42e8fc2b0165160e1bc83c142436b",
+      "kind": "method",
+      "language": "ruby",
+      "name": "initialize",
+      "qualifiedName": "Circle::initialize",
+      "startColumn": 2,
+      "startLine": 6,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 5,
+      "endLine": 12,
+      "filePath": "ruby/Basic.rb",
+      "id": "method:fdb4e44d25eecad6e53dcb7ecd884f34",
+      "kind": "method",
+      "language": "ruby",
+      "name": "area",
+      "qualifiedName": "Circle::area",
+      "startColumn": 2,
+      "startLine": 10,
+      "visibility": "public"
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 0,
+      "fromNodeId": "file:ruby/Basic.rb",
+      "line": 1,
+      "referenceKind": "imports",
+      "referenceName": "helper"
+    },
+    {
+      "column": 2,
+      "filePath": "ruby/Basic.rb",
+      "fromNodeId": "class:f9c59eca987457d95bb378f64df5aafc",
+      "line": 4,
+      "referenceKind": "implements",
+      "referenceName": "Helper"
+    },
+    {
+      "column": 4,
+      "fromNodeId": "method:fdb4e44d25eecad6e53dcb7ecd884f34",
+      "line": 11,
+      "referenceKind": "calls",
+      "referenceName": "compute"
+    }
+  ]
+}

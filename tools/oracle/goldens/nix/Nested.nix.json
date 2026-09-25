@@ -1,0 +1,236 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:nix/Nested.nix",
+      "target": "function:525dae8d6608daf29c5e04ca948ab54e"
+    },
+    {
+      "kind": "contains",
+      "source": "function:525dae8d6608daf29c5e04ca948ab54e",
+      "target": "variable:4976fbe041fefcda547d4cd2c2e70bcc"
+    },
+    {
+      "kind": "contains",
+      "source": "function:525dae8d6608daf29c5e04ca948ab54e",
+      "target": "import:83dd029b8af08156dc2169a9b908cec0"
+    },
+    {
+      "kind": "contains",
+      "source": "function:525dae8d6608daf29c5e04ca948ab54e",
+      "target": "variable:91d0b0873625a398357accb910840491"
+    },
+    {
+      "kind": "contains",
+      "source": "function:525dae8d6608daf29c5e04ca948ab54e",
+      "target": "variable:1fa0174cceca334971eeb660e7272b29"
+    },
+    {
+      "kind": "contains",
+      "source": "function:525dae8d6608daf29c5e04ca948ab54e",
+      "target": "variable:06a61fee1582d617a15276a40764f9f8"
+    },
+    {
+      "kind": "contains",
+      "source": "function:525dae8d6608daf29c5e04ca948ab54e",
+      "target": "import:0855568c07a3d9fa8b1031d7db2e6239"
+    },
+    {
+      "kind": "contains",
+      "source": "function:525dae8d6608daf29c5e04ca948ab54e",
+      "target": "variable:7e7f31940697ce42f6a810150b889246"
+    },
+    {
+      "kind": "contains",
+      "source": "file:nix/Nested.nix",
+      "target": "variable:ac28c40d401fcd85d7c612f8039a0ed5"
+    },
+    {
+      "kind": "contains",
+      "source": "file:nix/Nested.nix",
+      "target": "variable:273dfc2b8abbb1eccb77432b4cb42d4c"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 15,
+      "filePath": "nix/Nested.nix",
+      "id": "file:nix/Nested.nix",
+      "isExported": false,
+      "kind": "file",
+      "language": "nix",
+      "name": "Nested.nix",
+      "qualifiedName": "nix/Nested.nix",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 6,
+      "endLine": 10,
+      "filePath": "nix/Nested.nix",
+      "id": "function:525dae8d6608daf29c5e04ca948ab54e",
+      "isExported": false,
+      "kind": "function",
+      "language": "nix",
+      "name": "inner",
+      "qualifiedName": "inner",
+      "signature": "{ pkgs }",
+      "startColumn": 2,
+      "startLine": 3
+    },
+    {
+      "endColumn": 53,
+      "endLine": 5,
+      "filePath": "nix/Nested.nix",
+      "id": "variable:4976fbe041fefcda547d4cd2c2e70bcc",
+      "isExported": false,
+      "kind": "variable",
+      "language": "nix",
+      "name": "helper",
+      "qualifiedName": "inner::helper",
+      "signature": "= import ./helper.nix { inherit pkgs; }",
+      "startColumn": 6,
+      "startLine": 5
+    },
+    {
+      "endColumn": 34,
+      "endLine": 5,
+      "filePath": "nix/Nested.nix",
+      "id": "import:83dd029b8af08156dc2169a9b908cec0",
+      "kind": "import",
+      "language": "nix",
+      "name": "./helper.nix",
+      "qualifiedName": "inner::./helper.nix",
+      "signature": "import ./helper.nix",
+      "startColumn": 15,
+      "startLine": 5
+    },
+    {
+      "endColumn": 49,
+      "endLine": 5,
+      "filePath": "nix/Nested.nix",
+      "id": "variable:91d0b0873625a398357accb910840491",
+      "isExported": false,
+      "kind": "variable",
+      "language": "nix",
+      "name": "pkgs",
+      "qualifiedName": "inner::pkgs",
+      "startColumn": 45,
+      "startLine": 5
+    },
+    {
+      "endColumn": 27,
+      "endLine": 8,
+      "filePath": "nix/Nested.nix",
+      "id": "variable:1fa0174cceca334971eeb660e7272b29",
+      "isExported": false,
+      "kind": "variable",
+      "language": "nix",
+      "name": "build",
+      "qualifiedName": "inner::build",
+      "signature": "= helper.build",
+      "startColumn": 6,
+      "startLine": 8
+    },
+    {
+      "endColumn": 55,
+      "endLine": 9,
+      "filePath": "nix/Nested.nix",
+      "id": "variable:06a61fee1582d617a15276a40764f9f8",
+      "isExported": false,
+      "kind": "variable",
+      "language": "nix",
+      "name": "callMe",
+      "qualifiedName": "inner::callMe",
+      "signature": "= pkgs.callPackage ./tools/{ pkg = \"x\"; }",
+      "startColumn": 6,
+      "startLine": 9
+    },
+    {
+      "endColumn": 54,
+      "endLine": 9,
+      "filePath": "nix/Nested.nix",
+      "id": "import:0855568c07a3d9fa8b1031d7db2e6239",
+      "kind": "import",
+      "language": "nix",
+      "name": "./tools/",
+      "qualifiedName": "inner::./tools/",
+      "signature": "pkgs.callPackage ./tools/{ pkg = \"x\"; }",
+      "startColumn": 15,
+      "startLine": 9
+    },
+    {
+      "endColumn": 52,
+      "endLine": 9,
+      "filePath": "nix/Nested.nix",
+      "id": "variable:7e7f31940697ce42f6a810150b889246",
+      "isExported": false,
+      "kind": "variable",
+      "language": "nix",
+      "name": "pkg",
+      "qualifiedName": "inner::pkg",
+      "signature": "= \"x\"",
+      "startColumn": 42,
+      "startLine": 9
+    },
+    {
+      "endColumn": 35,
+      "endLine": 13,
+      "filePath": "nix/Nested.nix",
+      "id": "variable:ac28c40d401fcd85d7c612f8039a0ed5",
+      "isExported": true,
+      "kind": "variable",
+      "language": "nix",
+      "name": "result",
+      "qualifiedName": "result",
+      "signature": "= inner { inherit pkgs; }",
+      "startColumn": 2,
+      "startLine": 13
+    },
+    {
+      "endColumn": 31,
+      "endLine": 13,
+      "filePath": "nix/Nested.nix",
+      "id": "variable:273dfc2b8abbb1eccb77432b4cb42d4c",
+      "isExported": false,
+      "kind": "variable",
+      "language": "nix",
+      "name": "pkgs",
+      "qualifiedName": "pkgs",
+      "startColumn": 27,
+      "startLine": 13
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 15,
+      "fromNodeId": "function:525dae8d6608daf29c5e04ca948ab54e",
+      "line": 5,
+      "referenceKind": "imports",
+      "referenceName": "./helper.nix"
+    },
+    {
+      "column": 15,
+      "fromNodeId": "function:525dae8d6608daf29c5e04ca948ab54e",
+      "line": 9,
+      "referenceKind": "calls",
+      "referenceName": "pkgs.callPackage"
+    },
+    {
+      "column": 15,
+      "fromNodeId": "function:525dae8d6608daf29c5e04ca948ab54e",
+      "line": 9,
+      "referenceKind": "imports",
+      "referenceName": "./tools/"
+    },
+    {
+      "column": 11,
+      "fromNodeId": "file:nix/Nested.nix",
+      "line": 13,
+      "referenceKind": "calls",
+      "referenceName": "inner"
+    }
+  ]
+}

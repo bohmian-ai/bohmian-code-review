@@ -1,0 +1,59 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:terraform/Broken2.tf",
+      "target": "class:1be5d876f509cab2d78219037056974b"
+    },
+    {
+      "kind": "contains",
+      "source": "file:terraform/Broken2.tf",
+      "target": "variable:39b9c8e5a3d36c3a30dbbc5040dd4077"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 12,
+      "filePath": "terraform/Broken2.tf",
+      "id": "file:terraform/Broken2.tf",
+      "isExported": false,
+      "kind": "file",
+      "language": "terraform",
+      "name": "Broken2.tf",
+      "qualifiedName": "terraform/Broken2.tf",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 1,
+      "endLine": 3,
+      "filePath": "terraform/Broken2.tf",
+      "id": "class:1be5d876f509cab2d78219037056974b",
+      "isExported": false,
+      "kind": "class",
+      "language": "terraform",
+      "name": "aws_s3_bucket.good",
+      "qualifiedName": "aws_s3_bucket.good",
+      "signature": "resource \"aws_s3_bucket\" \"good\"",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 0,
+      "endLine": 12,
+      "filePath": "terraform/Broken2.tf",
+      "id": "variable:39b9c8e5a3d36c3a30dbbc5040dd4077",
+      "isExported": true,
+      "kind": "variable",
+      "language": "terraform",
+      "name": "broken",
+      "qualifiedName": "var.broken",
+      "signature": "variable \"broken\"",
+      "startColumn": 0,
+      "startLine": 5
+    }
+  ],
+  "unresolvedReferences": []
+}

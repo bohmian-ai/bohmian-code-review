@@ -1,0 +1,37 @@
+tree a71118a7897d123f9d523d4efbf00979fd5e2a1e
+parent b6088ab766a7f2775475aec25d256108acd9e914
+author dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com> 1734397756 +0900
+committer GitHub <noreply@github.com> 1734397756 +0900
+gpgsig -----BEGIN PGP SIGNATURE-----
+ 
+ wsFcBAABCAAQBQJnYM88CRC1aQ7uu5UhlAAA1aAQADLotE+osId3dAouNnYCLBix
+ PKn5mi6ZGujv1FB7HlaqyTzdO3LbaJMQ0+b0H/wzbO0xFCEawXydruX9EoFaxm8z
+ WFLd9ELMl14ljqM8dzu3SjmNq9HbcrEjDT6XpR8Y0l9f+cHfkmSbAigHXFF6EAsO
+ 5ag8YIo8uJXuaEjfOdLhV4dkwvb8yO6D6z0IrDvjNEoKrCYHxCagcnVnnY4RV9vA
+ pf01KTdmx573U5Q/xXimxk3QszPRJtFAxZHenstX75qyVqHkzg56moajTOlt6Cpa
+ qeOHrTyP6acypf+gsNMiNosPl6naCFJTnw6xd8g5lFK1Q95kymB0Clo34xNRHhAv
+ w9d0kRwvd+3D0nidQ5Nj6DtbU9ecq4Q9yw6bA8+fMJiZg/YPUXYEKD3Angx/MEhg
+ xxMrXx8U7O6PubP3ooF4CUcv6AHLkS5qEWjnod0b4eQ2o604VSwQdROttFHGtyVS
+ 3mhSQrOWtI6twXGGRrOEHKBrZQQF0c9nfoOGUjON70+573iDCEtkNdTIFWHCsVsu
+ nQgnKB6oSInpY2r7mgk1e2EwB+adboasWhHSTJKAUOgY2xYHjidpSAFxum8tDXIb
+ wNaFMspLYFZAYwctkQ71Nasd8YcjfV8ywfEDWTYWJKorZ0F78BM7+zMSmpucR1xF
+ wD8OgHR8wD5ksO/VkwWh
+ =NdKo
+ -----END PGP SIGNATURE-----
+ 
+
+Bump tree-sitter-cli from 0.24.4 to 0.24.5 (#22)
+
+Bumps [tree-sitter-cli](https://github.com/tree-sitter/tree-sitter) from 0.24.4 to 0.24.5.
+- [Release notes](https://github.com/tree-sitter/tree-sitter/releases)
+- [Commits](https://github.com/tree-sitter/tree-sitter/compare/v0.24.4...v0.24.5)
+
+---
+updated-dependencies:
+- dependency-name: tree-sitter-cli
+  dependency-type: direct:development
+  update-type: version-update:semver-patch
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>

@@ -1,0 +1,75 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:cobol/Copy.cpy",
+      "target": "variable:796b9b3e6c9ba3bc44bdd50a6115f16a"
+    },
+    {
+      "kind": "contains",
+      "source": "variable:796b9b3e6c9ba3bc44bdd50a6115f16a",
+      "target": "field:b089ed7f8cce78a17f5f2886898d2965"
+    },
+    {
+      "kind": "contains",
+      "source": "variable:796b9b3e6c9ba3bc44bdd50a6115f16a",
+      "target": "field:70d3112d2565c2b64cca55a32931b38c"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 4,
+      "filePath": "cobol/Copy.cpy",
+      "id": "file:cobol/Copy.cpy",
+      "isExported": false,
+      "kind": "file",
+      "language": "cobol",
+      "name": "Copy.cpy",
+      "qualifiedName": "cobol/Copy.cpy",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 21,
+      "endLine": 3,
+      "filePath": "cobol/Copy.cpy",
+      "id": "variable:796b9b3e6c9ba3bc44bdd50a6115f16a",
+      "kind": "variable",
+      "language": "cobol",
+      "name": "WS-CUSTOMER",
+      "qualifiedName": "WS-CUSTOMER",
+      "signature": "01 WS-CUSTOMER",
+      "startColumn": 7,
+      "startLine": 1
+    },
+    {
+      "endColumn": 32,
+      "endLine": 2,
+      "filePath": "cobol/Copy.cpy",
+      "id": "field:b089ed7f8cce78a17f5f2886898d2965",
+      "kind": "field",
+      "language": "cobol",
+      "name": "WS-CUST-ID",
+      "qualifiedName": "WS-CUSTOMER::WS-CUST-ID",
+      "signature": "05 WS-CUST-ID PIC 9(9)",
+      "startColumn": 10,
+      "startLine": 2
+    },
+    {
+      "endColumn": 35,
+      "endLine": 3,
+      "filePath": "cobol/Copy.cpy",
+      "id": "field:70d3112d2565c2b64cca55a32931b38c",
+      "kind": "field",
+      "language": "cobol",
+      "name": "WS-CUST-NAME",
+      "qualifiedName": "WS-CUSTOMER::WS-CUST-NAME",
+      "signature": "05 WS-CUST-NAME PIC X(40)",
+      "startColumn": 10,
+      "startLine": 3
+    }
+  ],
+  "unresolvedReferences": []
+}

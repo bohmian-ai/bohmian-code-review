@@ -1,0 +1,91 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:terraform/Unicode.tf",
+      "target": "constant:8ef9c10868a84bbf45c2b40628c7d93d"
+    },
+    {
+      "kind": "contains",
+      "source": "file:terraform/Unicode.tf",
+      "target": "constant:144f04be560f6744265605ae027b019d"
+    },
+    {
+      "kind": "contains",
+      "source": "file:terraform/Unicode.tf",
+      "target": "class:9d2ae6af1cbde4ce48103e2aa4fff242"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 14,
+      "filePath": "terraform/Unicode.tf",
+      "id": "file:terraform/Unicode.tf",
+      "isExported": false,
+      "kind": "file",
+      "language": "terraform",
+      "name": "Unicode.tf",
+      "qualifiedName": "terraform/Unicode.tf",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 29,
+      "endLine": 2,
+      "filePath": "terraform/Unicode.tf",
+      "id": "constant:8ef9c10868a84bbf45c2b40628c7d93d",
+      "kind": "constant",
+      "language": "terraform",
+      "name": "greeting",
+      "qualifiedName": "local.greeting",
+      "signature": "local.greeting",
+      "startColumn": 2,
+      "startLine": 2
+    },
+    {
+      "endColumn": 19,
+      "endLine": 3,
+      "filePath": "terraform/Unicode.tf",
+      "id": "constant:144f04be560f6744265605ae027b019d",
+      "kind": "constant",
+      "language": "terraform",
+      "name": "name",
+      "qualifiedName": "local.name",
+      "signature": "local.name",
+      "startColumn": 2,
+      "startLine": 3
+    },
+    {
+      "endColumn": 1,
+      "endLine": 13,
+      "filePath": "terraform/Unicode.tf",
+      "id": "class:9d2ae6af1cbde4ce48103e2aa4fff242",
+      "isExported": false,
+      "kind": "class",
+      "language": "terraform",
+      "name": "aws_instance.démo",
+      "qualifiedName": "aws_instance.démo",
+      "signature": "resource \"aws_instance\" \"démo\"",
+      "startColumn": 0,
+      "startLine": 6
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 11,
+      "fromNodeId": "class:9d2ae6af1cbde4ce48103e2aa4fff242",
+      "line": 10,
+      "referenceKind": "references",
+      "referenceName": "local.name"
+    },
+    {
+      "column": 11,
+      "fromNodeId": "class:9d2ae6af1cbde4ce48103e2aa4fff242",
+      "line": 11,
+      "referenceKind": "references",
+      "referenceName": "local.greeting"
+    }
+  ]
+}

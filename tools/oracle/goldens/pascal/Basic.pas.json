@@ -1,0 +1,520 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:pascal/Basic.pas",
+      "target": "module:ab37920df3eafa55d9e9977bcb3c88ea"
+    },
+    {
+      "kind": "contains",
+      "source": "file:pascal/Basic.pas",
+      "target": "import:b6748e1c7db31a46c5207064a62d398b"
+    },
+    {
+      "kind": "contains",
+      "source": "file:pascal/Basic.pas",
+      "target": "import:e55f698f0983c3ab53dc3c9b871e4118"
+    },
+    {
+      "kind": "contains",
+      "source": "file:pascal/Basic.pas",
+      "target": "class:bb48fae521532db646dcb40150ee3e69"
+    },
+    {
+      "kind": "contains",
+      "source": "class:bb48fae521532db646dcb40150ee3e69",
+      "target": "field:e352af169b7effe599a3675271a82ea3"
+    },
+    {
+      "kind": "contains",
+      "source": "class:bb48fae521532db646dcb40150ee3e69",
+      "target": "method:b488a8620b7af79efea9a098320e6195"
+    },
+    {
+      "kind": "contains",
+      "source": "class:bb48fae521532db646dcb40150ee3e69",
+      "target": "method:5dbae31450c5f9234070a30c1316d291"
+    },
+    {
+      "kind": "contains",
+      "source": "class:bb48fae521532db646dcb40150ee3e69",
+      "target": "method:260ab6b4a33be7d9f28b7a90431b891d"
+    },
+    {
+      "kind": "contains",
+      "source": "class:bb48fae521532db646dcb40150ee3e69",
+      "target": "method:73ba6fdafc4a3450f56264e6d2a752fa"
+    },
+    {
+      "kind": "contains",
+      "source": "class:bb48fae521532db646dcb40150ee3e69",
+      "target": "property:0b96c4ee37d034745edb0a1a252cc165"
+    },
+    {
+      "kind": "contains",
+      "source": "file:pascal/Basic.pas",
+      "target": "class:572f7a4cac11f8675d24d0a9c07022c5"
+    },
+    {
+      "kind": "contains",
+      "source": "class:572f7a4cac11f8675d24d0a9c07022c5",
+      "target": "field:d5801541bfbfb9bed69a44ff58d6e15b"
+    },
+    {
+      "kind": "contains",
+      "source": "class:572f7a4cac11f8675d24d0a9c07022c5",
+      "target": "method:e52f2db7df2105f51f9f146a31e6dbc7"
+    },
+    {
+      "kind": "contains",
+      "source": "class:572f7a4cac11f8675d24d0a9c07022c5",
+      "target": "property:116cc7efbbb8504cc9b4669ff2b985d2"
+    },
+    {
+      "kind": "contains",
+      "source": "file:pascal/Basic.pas",
+      "target": "enum:0fcda56c1dc2c0185c80992072560e5a"
+    },
+    {
+      "kind": "contains",
+      "source": "enum:0fcda56c1dc2c0185c80992072560e5a",
+      "target": "enum_member:e6410869b4569866fd144ae60ca104d9"
+    },
+    {
+      "kind": "contains",
+      "source": "enum:0fcda56c1dc2c0185c80992072560e5a",
+      "target": "enum_member:c588956d2c9b78c8da1f6e58333d27e9"
+    },
+    {
+      "kind": "contains",
+      "source": "enum:0fcda56c1dc2c0185c80992072560e5a",
+      "target": "enum_member:57d74645c870b484b2eb505f3c3fb444"
+    },
+    {
+      "kind": "contains",
+      "source": "file:pascal/Basic.pas",
+      "target": "class:f74edb70188b5e6e73f0c7c319c49656"
+    },
+    {
+      "kind": "contains",
+      "source": "class:f74edb70188b5e6e73f0c7c319c49656",
+      "target": "field:5de853566695da8b2861976661f0b4eb"
+    },
+    {
+      "kind": "contains",
+      "source": "file:pascal/Basic.pas",
+      "target": "type_alias:588aaa07704ae58ea45cb540e77f5e76"
+    },
+    {
+      "kind": "contains",
+      "source": "file:pascal/Basic.pas",
+      "target": "constant:9cd608c35c33e9a2f931a94a48082882"
+    },
+    {
+      "kind": "contains",
+      "source": "file:pascal/Basic.pas",
+      "target": "constant:2157408aee5d5f120423d1245b5cd533"
+    },
+    {
+      "kind": "contains",
+      "source": "file:pascal/Basic.pas",
+      "target": "variable:2c4d605f8b3911e426b5e45f9057b804"
+    },
+    {
+      "kind": "contains",
+      "source": "file:pascal/Basic.pas",
+      "target": "function:3610e85556200d84f982e3c21558e00b"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 73,
+      "filePath": "pascal/Basic.pas",
+      "id": "file:pascal/Basic.pas",
+      "isExported": false,
+      "kind": "file",
+      "language": "pascal",
+      "name": "Basic.pas",
+      "qualifiedName": "pascal/Basic.pas",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 4,
+      "endLine": 72,
+      "filePath": "pascal/Basic.pas",
+      "id": "module:ab37920df3eafa55d9e9977bcb3c88ea",
+      "kind": "module",
+      "language": "pascal",
+      "name": "BasicUnit",
+      "qualifiedName": "BasicUnit",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 10,
+      "endLine": 6,
+      "filePath": "pascal/Basic.pas",
+      "id": "import:b6748e1c7db31a46c5207064a62d398b",
+      "kind": "import",
+      "language": "pascal",
+      "name": "SysUtils",
+      "qualifiedName": "SysUtils",
+      "signature": "uses\n  SysUtils, Classes;",
+      "startColumn": 2,
+      "startLine": 6
+    },
+    {
+      "endColumn": 19,
+      "endLine": 6,
+      "filePath": "pascal/Basic.pas",
+      "id": "import:e55f698f0983c3ab53dc3c9b871e4118",
+      "kind": "import",
+      "language": "pascal",
+      "name": "Classes",
+      "qualifiedName": "Classes",
+      "signature": "uses\n  SysUtils, Classes;",
+      "startColumn": 12,
+      "startLine": 6
+    },
+    {
+      "endColumn": 6,
+      "endLine": 19,
+      "filePath": "pascal/Basic.pas",
+      "id": "class:bb48fae521532db646dcb40150ee3e69",
+      "kind": "class",
+      "language": "pascal",
+      "name": "TShape",
+      "qualifiedName": "TShape",
+      "startColumn": 2,
+      "startLine": 9
+    },
+    {
+      "endColumn": 18,
+      "endLine": 11,
+      "filePath": "pascal/Basic.pas",
+      "id": "field:e352af169b7effe599a3675271a82ea3",
+      "kind": "field",
+      "language": "pascal",
+      "name": "FName",
+      "qualifiedName": "TShape::FName",
+      "startColumn": 4,
+      "startLine": 11,
+      "visibility": "private"
+    },
+    {
+      "endColumn": 38,
+      "endLine": 13,
+      "filePath": "pascal/Basic.pas",
+      "id": "method:b488a8620b7af79efea9a098320e6195",
+      "isStatic": false,
+      "kind": "method",
+      "language": "pascal",
+      "name": "GetArea",
+      "qualifiedName": "TShape::GetArea",
+      "returnType": "Double",
+      "signature": ": Double",
+      "startColumn": 4,
+      "startLine": 13,
+      "visibility": "protected"
+    },
+    {
+      "endColumn": 38,
+      "endLine": 15,
+      "filePath": "pascal/Basic.pas",
+      "id": "method:5dbae31450c5f9234070a30c1316d291",
+      "isStatic": false,
+      "kind": "method",
+      "language": "pascal",
+      "name": "Create",
+      "qualifiedName": "TShape::Create",
+      "signature": "(AName: string)",
+      "startColumn": 4,
+      "startLine": 15,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 47,
+      "endLine": 16,
+      "filePath": "pascal/Basic.pas",
+      "id": "method:260ab6b4a33be7d9f28b7a90431b891d",
+      "isStatic": true,
+      "kind": "method",
+      "language": "pascal",
+      "name": "Make",
+      "qualifiedName": "TShape::Make",
+      "returnType": "TShape",
+      "signature": "(AName: string): TShape",
+      "startColumn": 4,
+      "startLine": 16,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 38,
+      "endLine": 17,
+      "filePath": "pascal/Basic.pas",
+      "id": "method:73ba6fdafc4a3450f56264e6d2a752fa",
+      "isStatic": false,
+      "kind": "method",
+      "language": "pascal",
+      "name": "Draw",
+      "qualifiedName": "TShape::Draw",
+      "startColumn": 4,
+      "startLine": 17,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 49,
+      "endLine": 18,
+      "filePath": "pascal/Basic.pas",
+      "id": "property:0b96c4ee37d034745edb0a1a252cc165",
+      "kind": "property",
+      "language": "pascal",
+      "name": "Name",
+      "qualifiedName": "TShape::Name",
+      "startColumn": 4,
+      "startLine": 18,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 6,
+      "endLine": 27,
+      "filePath": "pascal/Basic.pas",
+      "id": "class:572f7a4cac11f8675d24d0a9c07022c5",
+      "kind": "class",
+      "language": "pascal",
+      "name": "TCircle",
+      "qualifiedName": "TCircle",
+      "startColumn": 2,
+      "startLine": 21
+    },
+    {
+      "endColumn": 20,
+      "endLine": 23,
+      "filePath": "pascal/Basic.pas",
+      "id": "field:d5801541bfbfb9bed69a44ff58d6e15b",
+      "kind": "field",
+      "language": "pascal",
+      "name": "FRadius",
+      "qualifiedName": "TCircle::FRadius",
+      "startColumn": 4,
+      "startLine": 23,
+      "visibility": "private"
+    },
+    {
+      "endColumn": 29,
+      "endLine": 25,
+      "filePath": "pascal/Basic.pas",
+      "id": "method:e52f2db7df2105f51f9f146a31e6dbc7",
+      "isStatic": false,
+      "kind": "method",
+      "language": "pascal",
+      "name": "Draw",
+      "qualifiedName": "TCircle::Draw",
+      "startColumn": 4,
+      "startLine": 25,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 55,
+      "endLine": 26,
+      "filePath": "pascal/Basic.pas",
+      "id": "property:116cc7efbbb8504cc9b4669ff2b985d2",
+      "kind": "property",
+      "language": "pascal",
+      "name": "Radius",
+      "qualifiedName": "TCircle::Radius",
+      "startColumn": 4,
+      "startLine": 26,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 30,
+      "endLine": 29,
+      "filePath": "pascal/Basic.pas",
+      "id": "enum:0fcda56c1dc2c0185c80992072560e5a",
+      "kind": "enum",
+      "language": "pascal",
+      "name": "TColor",
+      "qualifiedName": "TColor",
+      "startColumn": 2,
+      "startLine": 29
+    },
+    {
+      "endColumn": 15,
+      "endLine": 29,
+      "filePath": "pascal/Basic.pas",
+      "id": "enum_member:e6410869b4569866fd144ae60ca104d9",
+      "kind": "enum_member",
+      "language": "pascal",
+      "name": "Red",
+      "qualifiedName": "TColor::Red",
+      "startColumn": 12,
+      "startLine": 29
+    },
+    {
+      "endColumn": 22,
+      "endLine": 29,
+      "filePath": "pascal/Basic.pas",
+      "id": "enum_member:c588956d2c9b78c8da1f6e58333d27e9",
+      "kind": "enum_member",
+      "language": "pascal",
+      "name": "Green",
+      "qualifiedName": "TColor::Green",
+      "startColumn": 17,
+      "startLine": 29
+    },
+    {
+      "endColumn": 28,
+      "endLine": 29,
+      "filePath": "pascal/Basic.pas",
+      "id": "enum_member:57d74645c870b484b2eb505f3c3fb444",
+      "kind": "enum_member",
+      "language": "pascal",
+      "name": "Blue",
+      "qualifiedName": "TColor::Blue",
+      "startColumn": 24,
+      "startLine": 29
+    },
+    {
+      "endColumn": 6,
+      "endLine": 33,
+      "filePath": "pascal/Basic.pas",
+      "id": "class:f74edb70188b5e6e73f0c7c319c49656",
+      "kind": "class",
+      "language": "pascal",
+      "name": "TPoint",
+      "qualifiedName": "TPoint",
+      "startColumn": 2,
+      "startLine": 31
+    },
+    {
+      "endColumn": 18,
+      "endLine": 32,
+      "filePath": "pascal/Basic.pas",
+      "id": "field:5de853566695da8b2861976661f0b4eb",
+      "kind": "field",
+      "language": "pascal",
+      "name": "X",
+      "qualifiedName": "TPoint::X",
+      "startColumn": 4,
+      "startLine": 32
+    },
+    {
+      "endColumn": 31,
+      "endLine": 35,
+      "filePath": "pascal/Basic.pas",
+      "id": "type_alias:588aaa07704ae58ea45cb540e77f5e76",
+      "kind": "type_alias",
+      "language": "pascal",
+      "name": "TIntArray",
+      "qualifiedName": "TIntArray",
+      "startColumn": 2,
+      "startLine": 35
+    },
+    {
+      "endColumn": 19,
+      "endLine": 38,
+      "filePath": "pascal/Basic.pas",
+      "id": "constant:9cd608c35c33e9a2f931a94a48082882",
+      "kind": "constant",
+      "language": "pascal",
+      "name": "MAX_SHAPES",
+      "qualifiedName": "MAX_SHAPES",
+      "signature": "= 100",
+      "startColumn": 2,
+      "startLine": 38
+    },
+    {
+      "endColumn": 25,
+      "endLine": 39,
+      "filePath": "pascal/Basic.pas",
+      "id": "constant:2157408aee5d5f120423d1245b5cd533",
+      "kind": "constant",
+      "language": "pascal",
+      "name": "DEFAULT_NAME",
+      "qualifiedName": "DEFAULT_NAME",
+      "signature": "= 'shape'",
+      "startColumn": 2,
+      "startLine": 39
+    },
+    {
+      "endColumn": 23,
+      "endLine": 42,
+      "filePath": "pascal/Basic.pas",
+      "id": "variable:2c4d605f8b3911e426b5e45f9057b804",
+      "kind": "variable",
+      "language": "pascal",
+      "name": "GlobalCount",
+      "qualifiedName": "GlobalCount",
+      "startColumn": 2,
+      "startLine": 42
+    },
+    {
+      "endColumn": 45,
+      "endLine": 67,
+      "filePath": "pascal/Basic.pas",
+      "id": "function:3610e85556200d84f982e3c21558e00b",
+      "kind": "function",
+      "language": "pascal",
+      "name": "Helper",
+      "qualifiedName": "Helper",
+      "signature": "(const Value: string): string",
+      "startColumn": 0,
+      "startLine": 67
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 2,
+      "fromNodeId": "file:pascal/Basic.pas",
+      "line": 6,
+      "referenceKind": "imports",
+      "referenceName": "SysUtils"
+    },
+    {
+      "column": 12,
+      "fromNodeId": "file:pascal/Basic.pas",
+      "line": 6,
+      "referenceKind": "imports",
+      "referenceName": "Classes"
+    },
+    {
+      "column": 17,
+      "fromNodeId": "class:bb48fae521532db646dcb40150ee3e69",
+      "line": 9,
+      "referenceKind": "extends",
+      "referenceName": "TObject"
+    },
+    {
+      "column": 18,
+      "fromNodeId": "class:572f7a4cac11f8675d24d0a9c07022c5",
+      "line": 21,
+      "referenceKind": "extends",
+      "referenceName": "TShape"
+    },
+    {
+      "column": 12,
+      "fromNodeId": "method:260ab6b4a33be7d9f28b7a90431b891d",
+      "line": 54,
+      "referenceKind": "calls",
+      "referenceName": "TShape.Create"
+    },
+    {
+      "column": 2,
+      "fromNodeId": "method:e52f2db7df2105f51f9f146a31e6dbc7",
+      "line": 64,
+      "referenceKind": "calls",
+      "referenceName": "WriteLn"
+    },
+    {
+      "column": 12,
+      "fromNodeId": "function:3610e85556200d84f982e3c21558e00b",
+      "line": 69,
+      "referenceKind": "calls",
+      "referenceName": "UpperCase"
+    }
+  ]
+}

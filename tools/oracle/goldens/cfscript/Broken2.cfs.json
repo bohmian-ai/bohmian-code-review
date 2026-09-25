@@ -1,0 +1,74 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:cfscript/Broken2.cfs",
+      "target": "class:39355c5b29c99d1373a6242834f60de0"
+    },
+    {
+      "kind": "contains",
+      "source": "class:39355c5b29c99d1373a6242834f60de0",
+      "target": "method:1d5d553a282ffd3d26a9ca49abf998f9"
+    },
+    {
+      "kind": "contains",
+      "source": "class:39355c5b29c99d1373a6242834f60de0",
+      "target": "method:36c2adf7954a3aafc7bed900cdfd843d"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 11,
+      "filePath": "cfscript/Broken2.cfs",
+      "id": "file:cfscript/Broken2.cfs",
+      "isExported": false,
+      "kind": "file",
+      "language": "cfscript",
+      "name": "Broken2.cfs",
+      "qualifiedName": "cfscript/Broken2.cfs",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 1,
+      "endLine": 10,
+      "filePath": "cfscript/Broken2.cfs",
+      "id": "class:39355c5b29c99d1373a6242834f60de0",
+      "kind": "class",
+      "language": "cfscript",
+      "name": "Broken2",
+      "qualifiedName": "cfscript/Broken2.cfs::Broken2",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 5,
+      "endLine": 5,
+      "filePath": "cfscript/Broken2.cfs",
+      "id": "method:1d5d553a282ffd3d26a9ca49abf998f9",
+      "kind": "method",
+      "language": "cfscript",
+      "name": "goodFn",
+      "qualifiedName": "Broken2::goodFn",
+      "signature": "()",
+      "startColumn": 4,
+      "startLine": 3
+    },
+    {
+      "endColumn": 1,
+      "endLine": 10,
+      "filePath": "cfscript/Broken2.cfs",
+      "id": "method:36c2adf7954a3aafc7bed900cdfd843d",
+      "kind": "method",
+      "language": "cfscript",
+      "name": "badFn",
+      "qualifiedName": "Broken2::badFn",
+      "signature": "( )",
+      "startColumn": 4,
+      "startLine": 7
+    }
+  ],
+  "unresolvedReferences": []
+}

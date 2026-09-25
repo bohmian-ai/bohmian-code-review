@@ -1,0 +1,86 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:javascript/Basic.js",
+      "target": "function:b4d9d5378b96b376464f59525a7b3e6c"
+    },
+    {
+      "kind": "contains",
+      "source": "file:javascript/Basic.js",
+      "target": "class:646976a627d0ca7f42d03215c7235418"
+    },
+    {
+      "kind": "contains",
+      "source": "class:646976a627d0ca7f42d03215c7235418",
+      "target": "method:340b418a52d3cd2d6687c239a359e8fe"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 12,
+      "filePath": "javascript/Basic.js",
+      "id": "file:javascript/Basic.js",
+      "isExported": false,
+      "kind": "file",
+      "language": "javascript",
+      "name": "Basic.js",
+      "qualifiedName": "javascript/Basic.js",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 1,
+      "endLine": 5,
+      "filePath": "javascript/Basic.js",
+      "id": "function:b4d9d5378b96b376464f59525a7b3e6c",
+      "isAsync": false,
+      "isExported": false,
+      "kind": "function",
+      "language": "javascript",
+      "name": "area",
+      "qualifiedName": "area",
+      "signature": "(radius)",
+      "startColumn": 0,
+      "startLine": 3
+    },
+    {
+      "endColumn": 1,
+      "endLine": 11,
+      "filePath": "javascript/Basic.js",
+      "id": "class:646976a627d0ca7f42d03215c7235418",
+      "isExported": false,
+      "kind": "class",
+      "language": "javascript",
+      "name": "Circle",
+      "qualifiedName": "Circle",
+      "startColumn": 0,
+      "startLine": 7
+    },
+    {
+      "endColumn": 3,
+      "endLine": 10,
+      "filePath": "javascript/Basic.js",
+      "id": "method:340b418a52d3cd2d6687c239a359e8fe",
+      "isAsync": false,
+      "kind": "method",
+      "language": "javascript",
+      "name": "constructor",
+      "qualifiedName": "Circle::constructor",
+      "signature": "(radius)",
+      "startColumn": 2,
+      "startLine": 8
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 9,
+      "fromNodeId": "function:b4d9d5378b96b376464f59525a7b3e6c",
+      "line": 4,
+      "referenceKind": "calls",
+      "referenceName": "helper"
+    }
+  ]
+}

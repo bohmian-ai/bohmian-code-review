@@ -1,0 +1,512 @@
+{
+  "upstream_revision": "572d22bfbe82602080e457bec655f72e3314f9ef",
+  "grammars": {
+    "pascal": {
+      "oracle_wasm_sha256": "be3634fca99c19f5e1035a1a9c7d93d6ee82b35e6d5024f02be4883b71329c3e",
+      "abi": 15,
+      "license": "MIT",
+      "license_sha256": "2e2fcc500eacb15b76c11fd2229aebf0a5b4c8ed476f068447c6dce778a17ac9",
+      "files": {
+        "LICENSE": "2e2fcc500eacb15b76c11fd2229aebf0a5b4c8ed476f068447c6dce778a17ac9",
+        "parser.c": "2cf291fe4e35a5a282f5d414200beaf7fdb38f62d8848d8fe4a05ed44abd7d4c",
+        "tree_sitter/parser.h": "180b893c8734778fd32f372dfbc27bd6ad1cd2221f26150b31256ff6716320d2",
+        "tree_sitter/array.h": "5bdf6ed1a78e3409fd443e085ca967a64c188a5d082aaf7f819bccd53a471c94",
+        "tree_sitter/alloc.h": "b29c1c9fb7cc82f58c84b376df1297d6e2737a1d655fd356db0859e3c29c2fea"
+      },
+      "source_artifact": {
+        "artifact_dir": "src/tree-sitter-pascal-042119ec",
+        "git_object_proof": {
+          "commit": "042119eca2e18a60e56317fb06ee3ba5c32cb447",
+          "root_tree": "867870be36ee1e18023bc370199adeb6bded7d1d",
+          "objects": "git-objects/pascal-042119ec",
+          "paths": {
+            "grammar.js": "blob-grammar.js",
+            "LICENSE": "blob-LICENSE"
+          }
+        },
+        "files": {
+          "LICENSE": {
+            "sha256": "2e2fcc500eacb15b76c11fd2229aebf0a5b4c8ed476f068447c6dce778a17ac9"
+          },
+          "grammar.js": {
+            "sha256": "bfdaa71d71ebbd8984c8d2e1e9fbaa69f82a2a4a0484f58b170f94d43a3c46a3"
+          },
+          "tree-sitter.json": {
+            "sha256": "376925e424b8e7df14741aea7fbd0daa8662f3a31b36d3a8987d3c217cd9ccd3"
+          }
+        }
+      },
+      "patch": {
+        "kind": "regeneration",
+        "command": "tree-sitter generate (tree-sitter-cli 0.25.10)",
+        "inputs": [
+          "src/tree-sitter-pascal-042119ec/grammar.js",
+          "src/tree-sitter-pascal-042119ec/LICENSE",
+          "src/tree-sitter-pascal-042119ec/tree-sitter.json"
+        ],
+        "outputs": {
+          "parser.c": "2cf291fe4e35a5a282f5d414200beaf7fdb38f62d8848d8fe4a05ed44abd7d4c",
+          "grammar.json": "5d2a7ea9d14d67fadc1c32466c41b46c8d548cbd3eacbeaeb9ded1a24587e8e9",
+          "node-types.json": "467440f1fb545496d315e1f90b4d0769134fde50be1575df3cd99eb949d7c33a"
+        },
+        "committed_outputs": {
+          "parser.c": "crates/codegraph-extract/grammars/pascal/parser.c",
+          "grammar.json": "tools/oracle/parity/extract/provenance/src/tree-sitter-pascal-042119ec/generated/grammar.json",
+          "node-types.json": "tools/oracle/parity/extract/provenance/src/tree-sitter-pascal-042119ec/generated/node-types.json"
+        }
+      }
+    },
+    "cfscript": {
+      "oracle_wasm_sha256": "e381db5d2b8a7744fc7d8e51b0a14ff03f86c8ff497cdfe32d1da467f19d4096",
+      "abi": 15,
+      "license": "MIT",
+      "license_sha256": "7e17ba5e26b0438ca04ebf2d9e7931da3080509da6625e117f6feb943ecf767a",
+      "files": {
+        "LICENSE": "7e17ba5e26b0438ca04ebf2d9e7931da3080509da6625e117f6feb943ecf767a",
+        "parser.c": "5b1b2548cdfe4990b56863c5c829797e3b2a5d73e0f0b198d42ef4666d4a1c99",
+        "scanner.c": "72cb7798ad9e91d30172aec210cbaf9fa30c9de2bc2f97160722dff1677ac405",
+        "tree_sitter/parser.h": "180b893c8734778fd32f372dfbc27bd6ad1cd2221f26150b31256ff6716320d2",
+        "tree_sitter/array.h": "5bdf6ed1a78e3409fd443e085ca967a64c188a5d082aaf7f819bccd53a471c94",
+        "tree_sitter/alloc.h": "b29c1c9fb7cc82f58c84b376df1297d6e2737a1d655fd356db0859e3c29c2fea"
+      },
+      "source_artifact": {
+        "artifact_dir": "src/tree-sitter-cfml-a224ff1",
+        "git_object_proof": {
+          "commit": "a224ff10755bcd2d322dd6be2c09ec11280135fe",
+          "root_tree": "a91fb9c8dc64d4c8a12cd464769426a41410ad4f",
+          "objects": "git-objects/cfml-a224ff1",
+          "paths": {
+            "cfscript/grammar.js": "blob-cfscript-grammar.js",
+            "cfscript/src/scanner.c": "blob-cfscript-src-scanner.c",
+            "cfscript/src/parser.c": "blob-cfscript-src-parser.c",
+            "common/scanner.h": "blob-common-scanner.h",
+            "common/tag.h": "blob-common-tag.h",
+            "LICENSE": "blob-LICENSE"
+          }
+        },
+        "files": {
+          "LICENSE": {
+            "sha256": "7e17ba5e26b0438ca04ebf2d9e7931da3080509da6625e117f6feb943ecf767a"
+          },
+          "cfscript/grammar.js": {
+            "sha256": "eea1cf4a16cf3a467de2cca12dbad50641e6e4e8c093a6b96b40b2c55c442b25"
+          },
+          "cfscript/src/scanner.c": {
+            "sha256": "72cb7798ad9e91d30172aec210cbaf9fa30c9de2bc2f97160722dff1677ac405",
+            "target": "scanner.c"
+          },
+          "cfscript/src/parser.c": {
+            "sha256": "5b1b2548cdfe4990b56863c5c829797e3b2a5d73e0f0b198d42ef4666d4a1c99",
+            "target": "parser.c"
+          },
+          "common/tag.h": {
+            "sha256": "91421857a1e4039c365f42221dd5243990b668c58932a2fe31d0f99b3d547b66"
+          },
+          "common/scanner.h": {
+            "sha256": "cf6ed3b2b1f6adce2710f32ca23548a2e04f1b8adf4c3fa6ec7441828b87d69b"
+          },
+          "cfquery/grammar.js": {
+            "sha256": "f8b63e608c9a79e9889428f9195d7d2709a6a867c4d43f4131a27eaad0b6d484"
+          },
+          "cfquery/src/scanner.c": {
+            "sha256": "db5f134af3292597d2e4ce3ecfd92c754dcab0358766092bf4e1a7a341467955"
+          },
+          "cfquery/src/parser.c": {
+            "sha256": "bb550c3e1df1d9ed6819aa3850d62d748c861d00ed8a8fae122b954568570eb9"
+          }
+        }
+      },
+      "patch": "none"
+    },
+    "cfquery": {
+      "oracle_wasm_sha256": "9d4eaaec46eec7e6400d4b8d6c85fac7dfe33867ed5b4e5c218dfa7851c32558",
+      "abi": 15,
+      "license": "MIT",
+      "license_sha256": "7e17ba5e26b0438ca04ebf2d9e7931da3080509da6625e117f6feb943ecf767a",
+      "files": {
+        "LICENSE": "7e17ba5e26b0438ca04ebf2d9e7931da3080509da6625e117f6feb943ecf767a",
+        "parser.c": "bb550c3e1df1d9ed6819aa3850d62d748c861d00ed8a8fae122b954568570eb9",
+        "scanner.c": "d35fe916ff0821dd7f0fe7c9bd06f2703fe91422ad0d668cc076b44f530cf3e2",
+        "tag.h": "0312e7604357cb180cb766f9346bb8413728e6744bc3c88121eb26b1d6962bac",
+        "tree_sitter/parser.h": "180b893c8734778fd32f372dfbc27bd6ad1cd2221f26150b31256ff6716320d2",
+        "tree_sitter/array.h": "5bdf6ed1a78e3409fd443e085ca967a64c188a5d082aaf7f819bccd53a471c94",
+        "tree_sitter/alloc.h": "b29c1c9fb7cc82f58c84b376df1297d6e2737a1d655fd356db0859e3c29c2fea",
+        "cfml-common/scanner.h": "cf6ed3b2b1f6adce2710f32ca23548a2e04f1b8adf4c3fa6ec7441828b87d69b",
+        "cfml-common/tag.h": "91421857a1e4039c365f42221dd5243990b668c58932a2fe31d0f99b3d547b66"
+      },
+      "source_artifact": {
+        "artifact_dir": "src/tree-sitter-cfml-a224ff1",
+        "git_object_proof": {
+          "commit": "a224ff10755bcd2d322dd6be2c09ec11280135fe",
+          "root_tree": "a91fb9c8dc64d4c8a12cd464769426a41410ad4f",
+          "objects": "git-objects/cfml-a224ff1",
+          "paths": {
+            "cfquery/grammar.js": "blob-cfquery-grammar.js",
+            "cfquery/src/scanner.c": "blob-cfquery-src-scanner.c",
+            "cfquery/src/parser.c": "blob-cfquery-src-parser.c",
+            "cfquery/src/tag.h": "blob-cfquery-src-tag.h",
+            "common/scanner.h": "blob-common-scanner.h",
+            "common/tag.h": "blob-common-tag.h",
+            "LICENSE": "blob-LICENSE"
+          }
+        },
+        "files": {
+          "LICENSE": {
+            "sha256": "7e17ba5e26b0438ca04ebf2d9e7931da3080509da6625e117f6feb943ecf767a"
+          },
+          "cfscript/grammar.js": {
+            "sha256": "eea1cf4a16cf3a467de2cca12dbad50641e6e4e8c093a6b96b40b2c55c442b25"
+          },
+          "cfscript/src/scanner.c": {
+            "sha256": "72cb7798ad9e91d30172aec210cbaf9fa30c9de2bc2f97160722dff1677ac405"
+          },
+          "cfscript/src/parser.c": {
+            "sha256": "5b1b2548cdfe4990b56863c5c829797e3b2a5d73e0f0b198d42ef4666d4a1c99"
+          },
+          "common/tag.h": {
+            "sha256": "91421857a1e4039c365f42221dd5243990b668c58932a2fe31d0f99b3d547b66"
+          },
+          "common/scanner.h": {
+            "sha256": "cf6ed3b2b1f6adce2710f32ca23548a2e04f1b8adf4c3fa6ec7441828b87d69b"
+          },
+          "cfquery/grammar.js": {
+            "sha256": "f8b63e608c9a79e9889428f9195d7d2709a6a867c4d43f4131a27eaad0b6d484"
+          },
+          "cfquery/src/scanner.c": {
+            "sha256": "db5f134af3292597d2e4ce3ecfd92c754dcab0358766092bf4e1a7a341467955"
+          },
+          "cfquery/src/tag.h": {
+            "sha256": "5345dc1e148991d94932228c9aca6d6fa68c6ff9b816a102380440b1aeffc2f6"
+          },
+          "cfquery/src/parser.c": {
+            "sha256": "bb550c3e1df1d9ed6819aa3850d62d748c861d00ed8a8fae122b954568570eb9",
+            "target": "parser.c"
+          }
+        }
+      },
+      "patch": "none",
+      "adaptations": {
+        "vendored_include_path_fix": {
+          "comment": "The cfquery scanner.c and tag.h are the git blobs with single-line include-path fixes for the vendored layout (cfml-common/ shared headers), matching how the monorepo's relative includes resolve under crates/codegraph-extract/grammars/.",
+          "cfquery/src/scanner.c": {
+            "from": "#include \"../../common/scanner.h\"",
+            "to": "#include \"../cfml-common/scanner.h\""
+          },
+          "cfquery/src/tag.h": {
+            "from": "#include \"../../common/tag.h\"",
+            "to": "#include \"../cfml-common/tag.h\""
+          }
+        }
+      }
+    },
+    "cobol": {
+      "oracle_wasm_sha256": "65b98799f92e831d8b5ed8cd811464c71fac31c4beabf66990a545a4f65e02f1",
+      "abi": 15,
+      "license": "MIT",
+      "license_sha256": "d724405ce238a22c0d35769c5a36b386ad5958192efe8bbb304fb2896254575f",
+      "files": {
+        "LICENSE": "d724405ce238a22c0d35769c5a36b386ad5958192efe8bbb304fb2896254575f",
+        "parser.c": "7ff5538e60a21836cec4ac24ad950e9bd32ba58d4257104d6b2e8f4b4b616b13",
+        "scanner.c": "c2b134453f03096832ea12877bd0c5aac8dd2c235760a7868acb654e9c0a2f68",
+        "tree_sitter/parser.h": "180b893c8734778fd32f372dfbc27bd6ad1cd2221f26150b31256ff6716320d2",
+        "tree_sitter/array.h": "5bdf6ed1a78e3409fd443e085ca967a64c188a5d082aaf7f819bccd53a471c94",
+        "tree_sitter/alloc.h": "b29c1c9fb7cc82f58c84b376df1297d6e2737a1d655fd356db0859e3c29c2fea"
+      },
+      "source_artifact": {
+        "artifact_dir": "src/tree-sitter-cobol-e99dbdc3",
+        "git_object_proof": {
+          "commit": "e99dbdc3d800d5fa2796476efd60af91f6b43d93",
+          "root_tree": "a71118a7897d123f9d523d4efbf00979fd5e2a1e",
+          "objects": "git-objects/cobol-e99dbdc3",
+          "paths": {
+            "grammar.js": "blob-grammar.js",
+            "src/scanner.c": "blob-src-scanner.c",
+            "LICENSE": "blob-LICENSE"
+          }
+        },
+        "files": {
+          "LICENSE": {
+            "sha256": "d724405ce238a22c0d35769c5a36b386ad5958192efe8bbb304fb2896254575f"
+          },
+          "grammar.js": {
+            "sha256": "a4a83f4d0012f022900be8da247e71aec77de637011823778661475a6538a3be"
+          },
+          "src/scanner.c": {
+            "sha256": "7d9e24b1ba0c134997a58dbfaf4441bad68a3eaaec83dd5ba84bb7a13b5caa72"
+          },
+          "tree-sitter.json": {
+            "sha256": "40c0e052e327a3e4d5f9c7b2ae09b16e5dee1981defa7531d4c42139738a8257"
+          }
+        }
+      },
+      "patch": {
+        "kind": "regeneration",
+        "command": "git apply docs/grammars/tree-sitter-<lang>.patch && tree-sitter generate (tree-sitter-cli 0.25.10)",
+        "inputs": [
+          "src/tree-sitter-cobol-e99dbdc3/grammar.js",
+          "src/tree-sitter-cobol-e99dbdc3/LICENSE",
+          "src/tree-sitter-cobol-e99dbdc3/src/scanner.c",
+          "src/tree-sitter-cobol-e99dbdc3/tree-sitter.json",
+          "docs/grammars/tree-sitter-cobol.patch"
+        ],
+        "patch_sha256": "04fe11a51243ddf7d31e0b6378068c725a51463534218c43c7021761c69701e5",
+        "outputs": {
+          "parser.c": "7ff5538e60a21836cec4ac24ad950e9bd32ba58d4257104d6b2e8f4b4b616b13",
+          "scanner.c": "c2b134453f03096832ea12877bd0c5aac8dd2c235760a7868acb654e9c0a2f68",
+          "grammar.json": "3dffe3091c8065d0b3adcf14046285d75551800c3187af67d6bc4da10e8c2742",
+          "node-types.json": "949cfef9171fafa2e8489ac406b4c11a3980e140abef0d42077ce1714f303374"
+        },
+        "committed_outputs": {
+          "parser.c": "crates/codegraph-extract/grammars/cobol/parser.c",
+          "scanner.c": "crates/codegraph-extract/grammars/cobol/scanner.c",
+          "grammar.json": "tools/oracle/parity/extract/provenance/src/tree-sitter-cobol-e99dbdc3/generated/grammar.json",
+          "node-types.json": "tools/oracle/parity/extract/provenance/src/tree-sitter-cobol-e99dbdc3/generated/node-types.json"
+        }
+      }
+    },
+    "vbnet": {
+      "oracle_wasm_sha256": "e38a09e1826c7ec06340c0531a98bbb5ee79bdd710bba3d3349b79a19721e844",
+      "abi": 15,
+      "license": "MIT",
+      "license_sha256": "fa7ab39bcf92c216d429e8aa8be8a5a40db85bfbe4ff14a7bb0ecbbcca937454",
+      "files": {
+        "LICENSE": "fa7ab39bcf92c216d429e8aa8be8a5a40db85bfbe4ff14a7bb0ecbbcca937454",
+        "parser.c": "45e5aab1e6d0ded5ba04c696574f567774f5e3d8cac56aa0bc942c91d8545872",
+        "scanner.c": "51a81d6616e6499bdce1ee58aacd7798b34623a098a3d7d5a89bd1d61c7842a5",
+        "tree_sitter/parser.h": "180b893c8734778fd32f372dfbc27bd6ad1cd2221f26150b31256ff6716320d2",
+        "tree_sitter/array.h": "5bdf6ed1a78e3409fd443e085ca967a64c188a5d082aaf7f819bccd53a471c94",
+        "tree_sitter/alloc.h": "b29c1c9fb7cc82f58c84b376df1297d6e2737a1d655fd356db0859e3c29c2fea"
+      },
+      "source_artifact": {
+        "artifact_dir": "src/tree-sitter-vbnet-538b708",
+        "git_object_proof": {
+          "commit": "538b7087bf80e86004531b392fe1186379c0a2b5",
+          "root_tree": "7ef76689b7296903a6bd36a6d91b4704048172f2",
+          "objects": "git-objects/vbnet-538b708",
+          "paths": {
+            "grammar.js": "blob-grammar.js",
+            "LICENSE": "blob-LICENSE"
+          }
+        },
+        "files": {
+          "LICENSE": {
+            "sha256": "fa7ab39bcf92c216d429e8aa8be8a5a40db85bfbe4ff14a7bb0ecbbcca937454"
+          },
+          "grammar.js": {
+            "sha256": "1c36170132807918ac84aa934e857bd50a95d7e6867f0b49913e5b21d3afeb9d"
+          },
+          "tree-sitter.json": {
+            "sha256": "7736cc7b39ba2bfefcc2e7080982a7a208d93f62aa7c54c70efc51b7551cd054"
+          }
+        }
+      },
+      "patch": {
+        "kind": "regeneration",
+        "command": "git apply docs/grammars/tree-sitter-<lang>.patch && tree-sitter generate (tree-sitter-cli 0.25.10)",
+        "inputs": [
+          "src/tree-sitter-vbnet-538b708/grammar.js",
+          "src/tree-sitter-vbnet-538b708/LICENSE",
+          "docs/grammars/tree-sitter-vbnet.patch",
+          "src/tree-sitter-vbnet-538b708/tree-sitter.json",
+          "docs/grammars/tree-sitter-vbnet.patch"
+        ],
+        "patch_sha256": "33963ebe3ba60929fb58d90efd54f206f98a54ea13ae325d784732c828b7b93a",
+        "outputs": {
+          "parser.c": "45e5aab1e6d0ded5ba04c696574f567774f5e3d8cac56aa0bc942c91d8545872",
+          "scanner.c": "51a81d6616e6499bdce1ee58aacd7798b34623a098a3d7d5a89bd1d61c7842a5",
+          "grammar.json": "47834c98b2fe5a6336591554f5b076e0a6b928f5f01ed0aed3363fa3cfd53537",
+          "node-types.json": "69844c66c47ca20bddba0424e4c594cbcc705ab768b6a6922dc53c45b7ea1300"
+        },
+        "committed_outputs": {
+          "parser.c": "crates/codegraph-extract/grammars/vbnet/parser.c",
+          "scanner.c": "crates/codegraph-extract/grammars/vbnet/scanner.c",
+          "grammar.json": "tools/oracle/parity/extract/provenance/src/tree-sitter-vbnet-538b708/generated/grammar.json",
+          "node-types.json": "tools/oracle/parity/extract/provenance/src/tree-sitter-vbnet-538b708/generated/node-types.json"
+        }
+      }
+    },
+    "erlang": {
+      "oracle_wasm_sha256": "dbab33f03e07b89f4385fcdd48d87d86ba35c82a0a426788d55b8c25410bc491",
+      "abi": 15,
+      "license": "Apache-2.0",
+      "license_sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "files": {
+        "LICENSE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+        "parser.c": "ac1290d19e3a650ebf9743b0b979d6ba8bbd76a9d09341462ad518a53766b480",
+        "scanner.c": "bcb05457c981783245db637ec98a0b47f18e0acfe939efdd69a9da3e26f1b8a6",
+        "tree_sitter/parser.h": "180b893c8734778fd32f372dfbc27bd6ad1cd2221f26150b31256ff6716320d2",
+        "tree_sitter/array.h": "5bdf6ed1a78e3409fd443e085ca967a64c188a5d082aaf7f819bccd53a471c94",
+        "tree_sitter/alloc.h": "b29c1c9fb7cc82f58c84b376df1297d6e2737a1d655fd356db0859e3c29c2fea"
+      },
+      "source_artifact": {
+        "artifact_dir": "src/tree-sitter-erlang-836aa2b",
+        "git_object_proof": {
+          "commit": "836aa2b6c3af2c7cef3f84049b0ed6d44485a870",
+          "root_tree": "10bf1ed1b4c8797da4bf4e72498cde121646a43f",
+          "objects": "git-objects/erlang-836aa2b",
+          "paths": {
+            "grammar.js": "blob-grammar.js",
+            "src/scanner.c": "blob-src-scanner.c",
+            "LICENSE": "blob-LICENSE"
+          }
+        },
+        "files": {
+          "LICENSE": {
+            "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+          },
+          "grammar.js": {
+            "sha256": "a27969adf81e5875f8c37b574eccca0daaf1ae018448dfac9a0c480354204bf3"
+          },
+          "src/scanner.c": {
+            "sha256": "bcb05457c981783245db637ec98a0b47f18e0acfe939efdd69a9da3e26f1b8a6",
+            "target": "scanner.c"
+          },
+          "tree-sitter.json": {
+            "sha256": "391719b79f7b3d88e31229db43bb403db6cb036a91be555e7e11a346340cc155"
+          }
+        }
+      },
+      "patch": {
+        "kind": "regeneration",
+        "command": "tree-sitter generate (tree-sitter-cli 0.25.10)",
+        "inputs": [
+          "src/tree-sitter-erlang-836aa2b/grammar.js",
+          "src/tree-sitter-erlang-836aa2b/LICENSE",
+          "src/tree-sitter-erlang-836aa2b/src/scanner.c",
+          "src/tree-sitter-erlang-836aa2b/tree-sitter.json"
+        ],
+        "outputs": {
+          "parser.c": "ac1290d19e3a650ebf9743b0b979d6ba8bbd76a9d09341462ad518a53766b480",
+          "scanner.c": "bcb05457c981783245db637ec98a0b47f18e0acfe939efdd69a9da3e26f1b8a6",
+          "grammar.json": "b40b4e5d4e838259d2912900c22b7a81622b58af53532ce840bef6f972d987f6",
+          "node-types.json": "8fa9967f1e2d52c817a663a8848389e6265603a10bb1a02c3e16b60baa7700ce"
+        },
+        "committed_outputs": {
+          "parser.c": "crates/codegraph-extract/grammars/erlang/parser.c",
+          "scanner.c": "crates/codegraph-extract/grammars/erlang/scanner.c",
+          "grammar.json": "tools/oracle/parity/extract/provenance/src/tree-sitter-erlang-836aa2b/generated/grammar.json",
+          "node-types.json": "tools/oracle/parity/extract/provenance/src/tree-sitter-erlang-836aa2b/generated/node-types.json"
+        }
+      }
+    },
+    "cfml": {
+      "oracle_wasm_sha256": "17aeb294c58dd47045b470fc082ccceac3100c8e548b13764d4f3987a062322f",
+      "abi": 15,
+      "license": "MIT",
+      "license_sha256": "7e17ba5e26b0438ca04ebf2d9e7931da3080509da6625e117f6feb943ecf767a",
+      "files": {
+        "LICENSE": "7e17ba5e26b0438ca04ebf2d9e7931da3080509da6625e117f6feb943ecf767a",
+        "parser.c": "e8982b3ca6f8aebf96bbdb7da7cd8ebb864589bdb5848a1b41a179df1bbe300d",
+        "scanner.c": "4601895b778b7d98e8822af9f8b5e6173dfe25e66633333f022116dc9121f36d",
+        "tag.c": "0312e7604357cb180cb766f9346bb8413728e6744bc3c88121eb26b1d6962bac",
+        "tree_sitter/parser.h": "180b893c8734778fd32f372dfbc27bd6ad1cd2221f26150b31256ff6716320d2",
+        "tree_sitter/array.h": "31e60a1bff6f715afacce03b5b70efe42b58371b4f9595dd4af52a577ff9608c",
+        "tree_sitter/alloc.h": "b29c1c9fb7cc82f58c84b376df1297d6e2737a1d655fd356db0859e3c29c2fea",
+        "cfml-common/scanner.h": "cf6ed3b2b1f6adce2710f32ca23548a2e04f1b8adf4c3fa6ec7441828b87d69b",
+        "cfml-common/tag.h": "91421857a1e4039c365f42221dd5243990b668c58932a2fe31d0f99b3d547b66"
+      },
+      "source_artifact": {
+        "artifact_dir": "src/tree-sitter-cfml-a224ff1",
+        "git_object_proof": {
+          "commit": "a224ff10755bcd2d322dd6be2c09ec11280135fe",
+          "root_tree": "a91fb9c8dc64d4c8a12cd464769426a41410ad4f",
+          "objects": "git-objects/cfml-a224ff1",
+          "paths": {
+            "cfml/grammar.js": "blob-cfml-grammar.js",
+            "cfml/src/scanner.c": "blob-cfml-src-scanner.c",
+            "cfml/src/parser.c": "blob-cfml-src-parser.c",
+            "cfml/src/tag.c": "blob-cfml-src-tag.c",
+            "cfml/src/tree_sitter/alloc.h": "blob-cfml-src-tree-sitter-alloc.h",
+            "cfml/src/tree_sitter/array.h": "blob-cfml-src-tree-sitter-array.h",
+            "cfml/src/tree_sitter/parser.h": "blob-cfml-src-tree-sitter-parser.h",
+            "common/scanner.h": "blob-common-scanner.h",
+            "common/tag.h": "blob-common-tag.h",
+            "LICENSE": "blob-LICENSE"
+          }
+        },
+        "files": {
+          "LICENSE": {
+            "sha256": "7e17ba5e26b0438ca04ebf2d9e7931da3080509da6625e117f6feb943ecf767a"
+          },
+          "cfml/grammar.js": {
+            "sha256": "027e527b9708445ff704cc7d3b9cb5d58dfaac915a2a0e2ab6409bbbac9f25be"
+          },
+          "cfml/src/scanner.c": {
+            "sha256": "d908e93380b7c692fd7e7b972961e582f238cc717330f001c3d4d9b40979853e"
+          },
+          "cfml/src/tag.c": {
+            "sha256": "5345dc1e148991d94932228c9aca6d6fa68c6ff9b816a102380440b1aeffc2f6"
+          },
+          "cfml/src/parser.c": {
+            "sha256": "e8982b3ca6f8aebf96bbdb7da7cd8ebb864589bdb5848a1b41a179df1bbe300d",
+            "target": "parser.c"
+          },
+          "cfml/src/tree_sitter/alloc.h": {
+            "sha256": "b29c1c9fb7cc82f58c84b376df1297d6e2737a1d655fd356db0859e3c29c2fea"
+          },
+          "cfml/src/tree_sitter/array.h": {
+            "sha256": "31e60a1bff6f715afacce03b5b70efe42b58371b4f9595dd4af52a577ff9608c"
+          },
+          "cfml/src/tree_sitter/parser.h": {
+            "sha256": "180b893c8734778fd32f372dfbc27bd6ad1cd2221f26150b31256ff6716320d2"
+          },
+          "common/tag.h": {
+            "sha256": "91421857a1e4039c365f42221dd5243990b668c58932a2fe31d0f99b3d547b66"
+          },
+          "common/scanner.h": {
+            "sha256": "cf6ed3b2b1f6adce2710f32ca23548a2e04f1b8adf4c3fa6ec7441828b87d69b"
+          }
+        }
+      },
+      "patch": "none",
+      "adaptations": {
+        "vendored_include_path_fix": {
+          "comment": "The cfml scanner.c and tag.c are the git blobs with single-line include-path fixes for the vendored layout (cfml-common/ shared headers), matching how the monorepo's relative includes resolve under crates/codegraph-extract/grammars/.",
+          "cfml/src/scanner.c": {
+            "from": "#include \"../../common/scanner.h\"",
+            "to": "#include \"../cfml-common/scanner.h\""
+          },
+          "cfml/src/tag.c": {
+            "from": "#include \"../../common/tag.h\"",
+            "to": "#include \"../cfml-common/tag.h\""
+          }
+        }
+      }
+    }
+  },
+  "generation_tools": {
+    "tree-sitter-cli": {
+      "artifact": "tools/tree-sitter-cli-0.25.10.tgz",
+      "tarball_sha256": "351b439451769d7e883c24c852e9f2b6e219f429221ad42d7da0bf35145da261",
+      "npm_sha512": "sha512-KoebQguKMCIghisEOdA372TIbrUl0kdnfZ9YQIBRAeOvNSKe85XbU4LuFW7hduRUwJj0rAG7pX5wo9sZhbBF1g==",
+      "platform_binaries": {
+        "darwin-arm64": {
+          "artifact": "tools/tree-sitter-macos-arm64-0.25.10.gz",
+          "sha256": "a6295d469669f6e901b6029ae6c129bd094df582d278c237fada413505cb9c42",
+          "source_url": "https://github.com/tree-sitter/tree-sitter/releases/download/v0.25.10/tree-sitter-macos-arm64.gz",
+          "format": "mach-o arm64"
+        },
+        "linux-x64": {
+          "artifact": "tools/tree-sitter-linux-x64-0.25.10.gz",
+          "sha256": "8283ddba69253c698f6e987ba0e2f9285e079c8db4d36ebe1394b5bb3a0ebdfd",
+          "source_url": "https://github.com/tree-sitter/tree-sitter/releases/download/v0.25.10/tree-sitter-linux-x64.gz",
+          "format": "elf x86-64"
+        }
+      },
+      "version_commit": "da6fe9beb4f7f67beb75914ca8e0d48ae48d6406"
+    }
+  },
+  "wasm_packages": {
+    "tree-sitter-wasms-0.1.13": {
+      "artifact": "src/tree-sitter-wasms-0.1.13.tgz",
+      "tarball_sha256": "66a54a9bbb2685e8f61b458cef1474db54e72979ee2de168e8b602b562350dd0",
+      "npm_sha512": "sha512-wT+cR6DwaIz80/vho3AvSF0N4txuNx/5bcRKoXouOfClpxh/qqrF4URNLQXbbt8MaAxeksZcZd1j8gcGjc+QxQ==",
+      "extract": {
+        "package/out/tree-sitter-objc.wasm": "wasm/tree-sitter-objc.wasm",
+        "package/out/tree-sitter-solidity.wasm": "wasm/tree-sitter-solidity.wasm"
+      }
+    }
+  },
+  "provenance_root": "tools/oracle/parity/extract/provenance",
+  "$comment": "Enterprise/legacy grammar provenance for the six T6 ports. All grammars are git sources with committed raw git object proofs (commit/tree/blob), the regenerated ABI-15 parser.c is produced by the pinned tree-sitter-cli 0.25.10 (see generation_tools), and the oracle wasms are the vendored src/extraction/wasm/ artifacts committed under provenance/wasm/. cobol/vbnet additionally apply docs/grammars/tree-sitter-<lang>.patch before generation. cfscript/cfquery vendor the cfmleditor monorepo checked-in ABI-15 parser.c/scanner.c byte-identical to the git blobs."
+}

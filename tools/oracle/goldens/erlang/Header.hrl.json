@@ -1,0 +1,159 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:erlang/Header.hrl",
+      "target": "constant:72a450e88a7d9c8aa82f237c15ae20e6"
+    },
+    {
+      "kind": "contains",
+      "source": "file:erlang/Header.hrl",
+      "target": "constant:2bc570caccf3ee73bc98310299d6cd2f"
+    },
+    {
+      "kind": "contains",
+      "source": "file:erlang/Header.hrl",
+      "target": "constant:747d8aed7f997b2830913a00869d9fb5"
+    },
+    {
+      "kind": "contains",
+      "source": "file:erlang/Header.hrl",
+      "target": "struct:aff53e85e13ddb2ddf582a23e6fbe25b"
+    },
+    {
+      "kind": "contains",
+      "source": "struct:aff53e85e13ddb2ddf582a23e6fbe25b",
+      "target": "field:9e802da65228bb5b6b06293f7f787893"
+    },
+    {
+      "kind": "contains",
+      "source": "struct:aff53e85e13ddb2ddf582a23e6fbe25b",
+      "target": "field:621ad07247618af032a96bd36d0ea50c"
+    },
+    {
+      "kind": "contains",
+      "source": "struct:aff53e85e13ddb2ddf582a23e6fbe25b",
+      "target": "field:408f2bc60730aac9c6a70cc461feaf2d"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 6,
+      "filePath": "erlang/Header.hrl",
+      "id": "file:erlang/Header.hrl",
+      "isExported": false,
+      "kind": "file",
+      "language": "erlang",
+      "name": "Header.hrl",
+      "qualifiedName": "erlang/Header.hrl",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 24,
+      "endLine": 1,
+      "filePath": "erlang/Header.hrl",
+      "id": "constant:72a450e88a7d9c8aa82f237c15ae20e6",
+      "kind": "constant",
+      "language": "erlang",
+      "name": "MAX_RETRIES",
+      "qualifiedName": "MAX_RETRIES",
+      "signature": "-define(MAX_RETRIES, 3).",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 35,
+      "endLine": 2,
+      "filePath": "erlang/Header.hrl",
+      "id": "constant:2bc570caccf3ee73bc98310299d6cd2f",
+      "kind": "constant",
+      "language": "erlang",
+      "name": "DEFAULT_HOST",
+      "qualifiedName": "DEFAULT_HOST",
+      "signature": "-define(DEFAULT_HOST, \"localhost\").",
+      "startColumn": 0,
+      "startLine": 2
+    },
+    {
+      "endColumn": 46,
+      "endLine": 3,
+      "filePath": "erlang/Header.hrl",
+      "id": "constant:747d8aed7f997b2830913a00869d9fb5",
+      "kind": "constant",
+      "language": "erlang",
+      "name": "CALL",
+      "qualifiedName": "CALL",
+      "signature": "-define(CALL(M), gen_server:call(?MODULE, M)).",
+      "startColumn": 0,
+      "startLine": 3
+    },
+    {
+      "endColumn": 61,
+      "endLine": 5,
+      "filePath": "erlang/Header.hrl",
+      "id": "struct:aff53e85e13ddb2ddf582a23e6fbe25b",
+      "kind": "struct",
+      "language": "erlang",
+      "name": "config",
+      "qualifiedName": "config",
+      "signature": "-record(config, {host, port = 8080, retries = ?MAX_RETRIES}).",
+      "startColumn": 0,
+      "startLine": 5
+    },
+    {
+      "endColumn": 21,
+      "endLine": 5,
+      "filePath": "erlang/Header.hrl",
+      "id": "field:9e802da65228bb5b6b06293f7f787893",
+      "kind": "field",
+      "language": "erlang",
+      "name": "host",
+      "qualifiedName": "config::host",
+      "startColumn": 17,
+      "startLine": 5
+    },
+    {
+      "endColumn": 34,
+      "endLine": 5,
+      "filePath": "erlang/Header.hrl",
+      "id": "field:621ad07247618af032a96bd36d0ea50c",
+      "kind": "field",
+      "language": "erlang",
+      "name": "port",
+      "qualifiedName": "config::port",
+      "startColumn": 23,
+      "startLine": 5
+    },
+    {
+      "endColumn": 58,
+      "endLine": 5,
+      "filePath": "erlang/Header.hrl",
+      "id": "field:408f2bc60730aac9c6a70cc461feaf2d",
+      "kind": "field",
+      "language": "erlang",
+      "name": "retries",
+      "qualifiedName": "config::retries",
+      "startColumn": 36,
+      "startLine": 5
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 28,
+      "fromNodeId": "constant:747d8aed7f997b2830913a00869d9fb5",
+      "line": 3,
+      "referenceKind": "calls",
+      "referenceName": "gen_server::call"
+    },
+    {
+      "column": 28,
+      "fromNodeId": "constant:747d8aed7f997b2830913a00869d9fb5",
+      "line": 3,
+      "referenceKind": "calls",
+      "referenceName": "Header.hrl::handle_call"
+    }
+  ]
+}

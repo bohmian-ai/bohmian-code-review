@@ -1,0 +1,20 @@
+{
+  "edges": [],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 1,
+      "filePath": "erlang/Empty.erl",
+      "id": "file:erlang/Empty.erl",
+      "isExported": false,
+      "kind": "file",
+      "language": "erlang",
+      "name": "Empty.erl",
+      "qualifiedName": "erlang/Empty.erl",
+      "startColumn": 0,
+      "startLine": 1
+    }
+  ],
+  "unresolvedReferences": []
+}

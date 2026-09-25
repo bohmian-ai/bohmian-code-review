@@ -1,0 +1,65 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:4955dd14123929c20585506b223d5615",
+      "target": "function:785a1df39a62e343bb46da455fcdacc1"
+    },
+    {
+      "kind": "contains",
+      "source": "file:4955dd14123929c20585506b223d5615",
+      "target": "function:185f036a10d439d272ca088dbe41883d"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 13,
+      "filePath": "cfml/Template.cfm",
+      "id": "file:4955dd14123929c20585506b223d5615",
+      "kind": "file",
+      "language": "cfml",
+      "name": "Template.cfm",
+      "qualifiedName": "cfml/Template.cfm",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 13,
+      "endLine": 7,
+      "filePath": "cfml/Template.cfm",
+      "id": "function:785a1df39a62e343bb46da455fcdacc1",
+      "kind": "function",
+      "language": "cfml",
+      "name": "helper",
+      "qualifiedName": "cfml/Template.cfm::helper",
+      "startColumn": 0,
+      "startLine": 5
+    },
+    {
+      "endColumn": 3,
+      "endLine": 11,
+      "filePath": "cfml/Template.cfm",
+      "id": "function:185f036a10d439d272ca088dbe41883d",
+      "kind": "function",
+      "language": "cfml",
+      "name": "topLevel",
+      "qualifiedName": "topLevel",
+      "signature": "()",
+      "startColumn": 0,
+      "startLine": 9
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 11,
+      "filePath": "cfml/Template.cfm",
+      "fromNodeId": "function:185f036a10d439d272ca088dbe41883d",
+      "language": "cfml",
+      "line": 10,
+      "referenceKind": "calls",
+      "referenceName": "helper"
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "edges": [],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 7,
+      "filePath": "cfquery/Query.sql",
+      "id": "file:cfquery/Query.sql",
+      "isExported": false,
+      "kind": "file",
+      "language": "cfquery",
+      "name": "Query.sql",
+      "qualifiedName": "cfquery/Query.sql",
+      "startColumn": 0,
+      "startLine": 1
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 18,
+      "fromNodeId": "file:cfquery/Query.sql",
+      "line": 3,
+      "referenceKind": "calls",
+      "referenceName": "isActive"
+    },
+    {
+      "column": 22,
+      "fromNodeId": "file:cfquery/Query.sql",
+      "line": 4,
+      "referenceKind": "calls",
+      "referenceName": "getManagerId"
+    },
+    {
+      "column": 22,
+      "fromNodeId": "file:cfquery/Query.sql",
+      "line": 4,
+      "referenceKind": "calls",
+      "referenceName": "getTeam"
+    },
+    {
+      "column": 22,
+      "fromNodeId": "file:cfquery/Query.sql",
+      "line": 4,
+      "referenceKind": "calls",
+      "referenceName": "getCurrentUser"
+    }
+  ]
+}

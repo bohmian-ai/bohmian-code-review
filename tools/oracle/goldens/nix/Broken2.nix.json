@@ -1,0 +1,104 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:nix/Broken2.nix",
+      "target": "variable:a5dab842fff617efdccbf92dc800202a"
+    },
+    {
+      "kind": "contains",
+      "source": "file:nix/Broken2.nix",
+      "target": "variable:9adc6c59978d3d1e7b6a209a6c6382aa"
+    },
+    {
+      "kind": "contains",
+      "source": "file:nix/Broken2.nix",
+      "target": "variable:03640ca943aa08ff778a06812e646a25"
+    },
+    {
+      "kind": "contains",
+      "source": "file:nix/Broken2.nix",
+      "target": "variable:35cc60cee60c4a31260bd52369961923"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 14,
+      "filePath": "nix/Broken2.nix",
+      "id": "file:nix/Broken2.nix",
+      "isExported": false,
+      "kind": "file",
+      "language": "nix",
+      "name": "Broken2.nix",
+      "qualifiedName": "nix/Broken2.nix",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 4,
+      "endLine": 7,
+      "filePath": "nix/Broken2.nix",
+      "id": "variable:a5dab842fff617efdccbf92dc800202a",
+      "isExported": true,
+      "kind": "variable",
+      "language": "nix",
+      "name": "goodAttr",
+      "qualifiedName": "goodAttr",
+      "signature": "= pkgs.stdenv.mkDerivation {\n    name = \"good\";\n    src = ./src;\n  }",
+      "startColumn": 2,
+      "startLine": 4
+    },
+    {
+      "endColumn": 18,
+      "endLine": 5,
+      "filePath": "nix/Broken2.nix",
+      "id": "variable:9adc6c59978d3d1e7b6a209a6c6382aa",
+      "isExported": false,
+      "kind": "variable",
+      "language": "nix",
+      "name": "name",
+      "qualifiedName": "name",
+      "signature": "= \"good\"",
+      "startColumn": 4,
+      "startLine": 5
+    },
+    {
+      "endColumn": 16,
+      "endLine": 6,
+      "filePath": "nix/Broken2.nix",
+      "id": "variable:03640ca943aa08ff778a06812e646a25",
+      "isExported": false,
+      "kind": "variable",
+      "language": "nix",
+      "name": "src",
+      "qualifiedName": "src",
+      "signature": "= ./src",
+      "startColumn": 4,
+      "startLine": 6
+    },
+    {
+      "endColumn": 13,
+      "endLine": 13,
+      "filePath": "nix/Broken2.nix",
+      "id": "variable:35cc60cee60c4a31260bd52369961923",
+      "isExported": true,
+      "kind": "variable",
+      "language": "nix",
+      "name": "bad",
+      "qualifiedName": "bad",
+      "startColumn": 10,
+      "startLine": 13
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 13,
+      "fromNodeId": "file:nix/Broken2.nix",
+      "line": 4,
+      "referenceKind": "calls",
+      "referenceName": "pkgs.stdenv.mkDerivation"
+    }
+  ]
+}

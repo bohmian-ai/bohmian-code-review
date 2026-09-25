@@ -1,0 +1,122 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:php/Basic.php",
+      "target": "namespace:f63c76a0e62047bd7a064718cb1c8af8"
+    },
+    {
+      "kind": "contains",
+      "source": "namespace:f63c76a0e62047bd7a064718cb1c8af8",
+      "target": "class:cad6d5fdbadc94cd6d3940e734f81c40"
+    },
+    {
+      "kind": "contains",
+      "source": "class:cad6d5fdbadc94cd6d3940e734f81c40",
+      "target": "field:ba3992a64d807b8acd11d7cb59511150"
+    },
+    {
+      "kind": "contains",
+      "source": "class:cad6d5fdbadc94cd6d3940e734f81c40",
+      "target": "method:43417d42e6848b2abcc8931afbafddda"
+    },
+    {
+      "kind": "contains",
+      "source": "class:cad6d5fdbadc94cd6d3940e734f81c40",
+      "target": "method:ad969ea70c1a8dad707ccc87b9222e1b"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 19,
+      "filePath": "php/Basic.php",
+      "id": "file:php/Basic.php",
+      "isExported": false,
+      "kind": "file",
+      "language": "php",
+      "name": "Basic.php",
+      "qualifiedName": "php/Basic.php",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 15,
+      "endLine": 3,
+      "filePath": "php/Basic.php",
+      "id": "namespace:f63c76a0e62047bd7a064718cb1c8af8",
+      "kind": "namespace",
+      "language": "php",
+      "name": "Demo",
+      "qualifiedName": "Demo",
+      "startColumn": 0,
+      "startLine": 3
+    },
+    {
+      "endColumn": 1,
+      "endLine": 18,
+      "filePath": "php/Basic.php",
+      "id": "class:cad6d5fdbadc94cd6d3940e734f81c40",
+      "kind": "class",
+      "language": "php",
+      "name": "Circle",
+      "qualifiedName": "Demo::Circle",
+      "startColumn": 0,
+      "startLine": 5,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 25,
+      "endLine": 7,
+      "filePath": "php/Basic.php",
+      "id": "field:ba3992a64d807b8acd11d7cb59511150",
+      "isStatic": false,
+      "kind": "field",
+      "language": "php",
+      "name": "radius",
+      "qualifiedName": "Demo::Circle::radius",
+      "signature": "float $radius",
+      "startColumn": 18,
+      "startLine": 7,
+      "visibility": "private"
+    },
+    {
+      "endColumn": 5,
+      "endLine": 12,
+      "filePath": "php/Basic.php",
+      "id": "method:43417d42e6848b2abcc8931afbafddda",
+      "isStatic": false,
+      "kind": "method",
+      "language": "php",
+      "name": "__construct",
+      "qualifiedName": "Demo::Circle::__construct",
+      "startColumn": 4,
+      "startLine": 9,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 5,
+      "endLine": 17,
+      "filePath": "php/Basic.php",
+      "id": "method:ad969ea70c1a8dad707ccc87b9222e1b",
+      "isStatic": false,
+      "kind": "method",
+      "language": "php",
+      "name": "area",
+      "qualifiedName": "Demo::Circle::area",
+      "startColumn": 4,
+      "startLine": 14,
+      "visibility": "public"
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 24,
+      "fromNodeId": "class:cad6d5fdbadc94cd6d3940e734f81c40",
+      "line": 5,
+      "referenceKind": "implements",
+      "referenceName": "Shape"
+    }
+  ]
+}

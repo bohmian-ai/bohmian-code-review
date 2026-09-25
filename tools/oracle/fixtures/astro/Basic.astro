@@ -1,0 +1,16 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { formatDate } from '../utils/date';
+const title = 'Home';
+function renderPost(p: { date: string }) {
+  return formatDate(p.date);
+}
+---
+<Layout title={title}>
+  <h1>{title}</h1>
+  <p>{renderPost({ date: '2024-01-01' })}</p>
+  <PostCard post={post} />
+</Layout>
+<script>
+  document.title = 'x';
+</script>

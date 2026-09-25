@@ -1,0 +1,6 @@
+tree 8bc73adf471e101cebd57c64d342eba426345911
+parent 642637a57326d0e51c295266b80e164e0d2cbdf3
+author renovate[bot] <29139614+renovate[bot]@users.noreply.github.com> 1782398338 +0000
+committer mergify[bot] <37929162+mergify[bot]@users.noreply.github.com> 1782398711 +0000
+
+chore(deps): update dependency nan to v2.28.0

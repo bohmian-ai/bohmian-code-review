@@ -12,3 +12,22 @@ run = "bash scripts/sync-agent-skills.sh --write"
 [tasks."check:skills-sync"]
 description = "Verify the Claude skill mirror matches canonical .agents skills"
 run = "bash scripts/sync-agent-skills.sh --check"
+
+[tasks.fmt]
+description = "Format all Rust code"
+run = "cargo fmt --all"
+
+[tasks."fmt:check"]
+description = "Verify Rust formatting"
+run = "cargo fmt --all -- --check"
+
+[tasks.lints]
+description = "Workspace Clippy with warnings denied"
+run = "cargo clippy --locked --workspace --all-targets --all-features -- -D warnings"
+
+[tasks."test:extract"]
+description = "Run core facts and extractor tests, including the copied fixture corpus"
+run = [
+  "cargo test --locked -p bohmian-code-review-core --all-targets",
+  "cargo test --locked -p bohmian-code-review-extract --all-targets",
+]

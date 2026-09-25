@@ -1,0 +1,56 @@
+{
+  "edges": [],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 7,
+      "filePath": "erlang/App.app.src",
+      "id": "file:erlang/App.app.src",
+      "isExported": false,
+      "kind": "file",
+      "language": "erlang",
+      "name": "App.app.src",
+      "qualifiedName": "erlang/App.app.src",
+      "startColumn": 0,
+      "startLine": 1
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 9,
+      "fromNodeId": "file:erlang/App.app.src",
+      "line": 4,
+      "referenceKind": "references",
+      "referenceName": "myapp_app"
+    },
+    {
+      "column": 18,
+      "fromNodeId": "file:erlang/App.app.src",
+      "line": 5,
+      "referenceKind": "imports",
+      "referenceName": "kernel"
+    },
+    {
+      "column": 26,
+      "fromNodeId": "file:erlang/App.app.src",
+      "line": 5,
+      "referenceKind": "imports",
+      "referenceName": "stdlib"
+    },
+    {
+      "column": 34,
+      "fromNodeId": "file:erlang/App.app.src",
+      "line": 5,
+      "referenceKind": "imports",
+      "referenceName": "sasl"
+    },
+    {
+      "column": 27,
+      "fromNodeId": "file:erlang/App.app.src",
+      "line": 6,
+      "referenceKind": "imports",
+      "referenceName": "shared_lib"
+    }
+  ]
+}

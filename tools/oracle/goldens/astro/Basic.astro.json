@@ -1,0 +1,226 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "component:ea895a6d44de03d5eadb3d7efef73c96",
+      "target": "file:astro/Basic.astro"
+    },
+    {
+      "kind": "contains",
+      "source": "component:ea895a6d44de03d5eadb3d7efef73c96",
+      "target": "import:987c0b6b73de7d8dcd67107cbe3eda1e"
+    },
+    {
+      "kind": "contains",
+      "source": "component:ea895a6d44de03d5eadb3d7efef73c96",
+      "target": "import:dd8e799104ef9d7c2b2e802b42b8973a"
+    },
+    {
+      "kind": "contains",
+      "source": "component:ea895a6d44de03d5eadb3d7efef73c96",
+      "target": "constant:f486e45afd3604ffef9c8f755feca909"
+    },
+    {
+      "kind": "contains",
+      "source": "component:ea895a6d44de03d5eadb3d7efef73c96",
+      "target": "function:266eda841a53f4d25f99405c14d27ce7"
+    },
+    {
+      "kind": "contains",
+      "source": "file:astro/Basic.astro",
+      "target": "import:987c0b6b73de7d8dcd67107cbe3eda1e"
+    },
+    {
+      "kind": "contains",
+      "source": "file:astro/Basic.astro",
+      "target": "import:dd8e799104ef9d7c2b2e802b42b8973a"
+    },
+    {
+      "kind": "contains",
+      "source": "file:astro/Basic.astro",
+      "target": "constant:f486e45afd3604ffef9c8f755feca909"
+    },
+    {
+      "kind": "contains",
+      "source": "file:astro/Basic.astro",
+      "target": "function:266eda841a53f4d25f99405c14d27ce7"
+    },
+    {
+      "kind": "contains",
+      "source": "component:ea895a6d44de03d5eadb3d7efef73c96",
+      "target": "file:astro/Basic.astro"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 17,
+      "filePath": "astro/Basic.astro",
+      "id": "component:ea895a6d44de03d5eadb3d7efef73c96",
+      "isExported": true,
+      "kind": "component",
+      "language": "astro",
+      "name": "Basic",
+      "qualifiedName": "astro/Basic.astro::Basic",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 0,
+      "endLine": 7,
+      "filePath": "astro/Basic.astro",
+      "id": "file:astro/Basic.astro",
+      "isExported": false,
+      "kind": "file",
+      "language": "astro",
+      "name": "Basic.astro",
+      "qualifiedName": "astro/Basic.astro",
+      "startColumn": 0,
+      "startLine": 2
+    },
+    {
+      "endColumn": 45,
+      "endLine": 2,
+      "filePath": "astro/Basic.astro",
+      "id": "import:987c0b6b73de7d8dcd67107cbe3eda1e",
+      "kind": "import",
+      "language": "astro",
+      "name": "../layouts/Layout.astro",
+      "qualifiedName": "../layouts/Layout.astro",
+      "signature": "import Layout from '../layouts/Layout.astro';",
+      "startColumn": 0,
+      "startLine": 2
+    },
+    {
+      "endColumn": 43,
+      "endLine": 3,
+      "filePath": "astro/Basic.astro",
+      "id": "import:dd8e799104ef9d7c2b2e802b42b8973a",
+      "kind": "import",
+      "language": "astro",
+      "name": "../utils/date",
+      "qualifiedName": "../utils/date",
+      "signature": "import { formatDate } from '../utils/date';",
+      "startColumn": 0,
+      "startLine": 3
+    },
+    {
+      "endColumn": 20,
+      "endLine": 4,
+      "filePath": "astro/Basic.astro",
+      "id": "constant:f486e45afd3604ffef9c8f755feca909",
+      "isExported": false,
+      "kind": "constant",
+      "language": "astro",
+      "name": "title",
+      "qualifiedName": "title",
+      "signature": "= 'Home'",
+      "startColumn": 6,
+      "startLine": 4
+    },
+    {
+      "endColumn": 1,
+      "endLine": 7,
+      "filePath": "astro/Basic.astro",
+      "id": "function:266eda841a53f4d25f99405c14d27ce7",
+      "isAsync": false,
+      "isExported": false,
+      "isStatic": false,
+      "kind": "function",
+      "language": "astro",
+      "name": "renderPost",
+      "qualifiedName": "renderPost",
+      "signature": "(p: { date: string })",
+      "startColumn": 0,
+      "startLine": 5
+    },
+    {
+      "endColumn": 0,
+      "endLine": 16,
+      "filePath": "astro/Basic.astro",
+      "id": "file:astro/Basic.astro",
+      "isExported": false,
+      "kind": "file",
+      "language": "astro",
+      "name": "Basic.astro",
+      "qualifiedName": "astro/Basic.astro",
+      "startColumn": 0,
+      "startLine": 14
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 0,
+      "filePath": "astro/Basic.astro",
+      "fromNodeId": "file:astro/Basic.astro",
+      "language": "astro",
+      "line": 2,
+      "referenceKind": "imports",
+      "referenceName": "../layouts/Layout.astro"
+    },
+    {
+      "column": 7,
+      "filePath": "astro/Basic.astro",
+      "fromNodeId": "file:astro/Basic.astro",
+      "language": "astro",
+      "line": 2,
+      "referenceKind": "imports",
+      "referenceName": "Layout"
+    },
+    {
+      "column": 0,
+      "filePath": "astro/Basic.astro",
+      "fromNodeId": "file:astro/Basic.astro",
+      "language": "astro",
+      "line": 3,
+      "referenceKind": "imports",
+      "referenceName": "../utils/date"
+    },
+    {
+      "column": 9,
+      "filePath": "astro/Basic.astro",
+      "fromNodeId": "file:astro/Basic.astro",
+      "language": "astro",
+      "line": 3,
+      "referenceKind": "imports",
+      "referenceName": "formatDate"
+    },
+    {
+      "column": 9,
+      "filePath": "astro/Basic.astro",
+      "fromNodeId": "function:266eda841a53f4d25f99405c14d27ce7",
+      "language": "astro",
+      "line": 6,
+      "referenceKind": "calls",
+      "referenceName": "formatDate"
+    },
+    {
+      "column": 5,
+      "filePath": "astro/Basic.astro",
+      "fromNodeId": "component:ea895a6d44de03d5eadb3d7efef73c96",
+      "language": "astro",
+      "line": 11,
+      "referenceKind": "calls",
+      "referenceName": "renderPost"
+    },
+    {
+      "column": 1,
+      "filePath": "astro/Basic.astro",
+      "fromNodeId": "component:ea895a6d44de03d5eadb3d7efef73c96",
+      "language": "astro",
+      "line": 9,
+      "referenceKind": "references",
+      "referenceName": "Layout"
+    },
+    {
+      "column": 3,
+      "filePath": "astro/Basic.astro",
+      "fromNodeId": "component:ea895a6d44de03d5eadb3d7efef73c96",
+      "language": "astro",
+      "line": 12,
+      "referenceKind": "references",
+      "referenceName": "PostCard"
+    }
+  ]
+}

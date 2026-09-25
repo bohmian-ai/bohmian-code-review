@@ -1,0 +1,125 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:pascal/Broken2.pas",
+      "target": "module:f07cfc93afc9c5755a91adc434753285"
+    },
+    {
+      "kind": "contains",
+      "source": "file:pascal/Broken2.pas",
+      "target": "class:3304f7815760e12659a14d56f76fbfdd"
+    },
+    {
+      "kind": "contains",
+      "source": "class:3304f7815760e12659a14d56f76fbfdd",
+      "target": "method:78164dab4a4b5ae49462c8983373395c"
+    },
+    {
+      "kind": "contains",
+      "source": "file:pascal/Broken2.pas",
+      "target": "class:4565483ebfd0f3840c6f3dc986267c49"
+    },
+    {
+      "kind": "contains",
+      "source": "class:4565483ebfd0f3840c6f3dc986267c49",
+      "target": "method:45ba89decd5da991cf7502b36c50ac82"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 25,
+      "filePath": "pascal/Broken2.pas",
+      "id": "file:pascal/Broken2.pas",
+      "isExported": false,
+      "kind": "file",
+      "language": "pascal",
+      "name": "Broken2.pas",
+      "qualifiedName": "pascal/Broken2.pas",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 4,
+      "endLine": 24,
+      "filePath": "pascal/Broken2.pas",
+      "id": "module:f07cfc93afc9c5755a91adc434753285",
+      "kind": "module",
+      "language": "pascal",
+      "name": "PartialUnit",
+      "qualifiedName": "PartialUnit",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 6,
+      "endLine": 9,
+      "filePath": "pascal/Broken2.pas",
+      "id": "class:3304f7815760e12659a14d56f76fbfdd",
+      "kind": "class",
+      "language": "pascal",
+      "name": "TValid",
+      "qualifiedName": "TValid",
+      "startColumn": 2,
+      "startLine": 6
+    },
+    {
+      "endColumn": 19,
+      "endLine": 8,
+      "filePath": "pascal/Broken2.pas",
+      "id": "method:78164dab4a4b5ae49462c8983373395c",
+      "isStatic": false,
+      "kind": "method",
+      "language": "pascal",
+      "name": "Good",
+      "qualifiedName": "TValid::Good",
+      "startColumn": 4,
+      "startLine": 8,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 4,
+      "endLine": 22,
+      "filePath": "pascal/Broken2.pas",
+      "id": "class:4565483ebfd0f3840c6f3dc986267c49",
+      "kind": "class",
+      "language": "pascal",
+      "name": "TBroken",
+      "qualifiedName": "TBroken",
+      "startColumn": 2,
+      "startLine": 12
+    },
+    {
+      "endColumn": 22,
+      "endLine": 19,
+      "filePath": "pascal/Broken2.pas",
+      "id": "method:45ba89decd5da991cf7502b36c50ac82",
+      "isStatic": false,
+      "kind": "method",
+      "language": "pascal",
+      "name": "TValid.Good",
+      "qualifiedName": "TBroken::TValid.Good",
+      "startColumn": 0,
+      "startLine": 19,
+      "visibility": "public"
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 17,
+      "fromNodeId": "class:3304f7815760e12659a14d56f76fbfdd",
+      "line": 6,
+      "referenceKind": "extends",
+      "referenceName": "TObject"
+    },
+    {
+      "column": 18,
+      "fromNodeId": "class:4565483ebfd0f3840c6f3dc986267c49",
+      "line": 12,
+      "referenceKind": "extends",
+      "referenceName": "TObject"
+    }
+  ]
+}

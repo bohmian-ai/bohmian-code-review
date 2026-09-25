@@ -1,0 +1,7 @@
+component {
+
+    function broken( // unterminated parameters
+    function ok() {
+        return 1;
+    }
+}

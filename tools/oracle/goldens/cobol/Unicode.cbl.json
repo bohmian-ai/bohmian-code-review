@@ -1,0 +1,55 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:cobol/Unicode.cbl",
+      "target": "module:8ff3c91926f7029b256c85e07e8bd0c6"
+    },
+    {
+      "kind": "contains",
+      "source": "module:8ff3c91926f7029b256c85e07e8bd0c6",
+      "target": "function:87228131214d40f2d72956369da893c3"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 7,
+      "filePath": "cobol/Unicode.cbl",
+      "id": "file:cobol/Unicode.cbl",
+      "isExported": false,
+      "kind": "file",
+      "language": "cobol",
+      "name": "Unicode.cbl",
+      "qualifiedName": "cobol/Unicode.cbl",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 20,
+      "endLine": 6,
+      "filePath": "cobol/Unicode.cbl",
+      "id": "module:8ff3c91926f7029b256c85e07e8bd0c6",
+      "kind": "module",
+      "language": "cobol",
+      "name": "UNICODE",
+      "qualifiedName": "UNICODE",
+      "startColumn": 7,
+      "startLine": 1
+    },
+    {
+      "endColumn": 12,
+      "endLine": 6,
+      "filePath": "cobol/Unicode.cbl",
+      "id": "function:87228131214d40f2d72956369da893c3",
+      "kind": "function",
+      "language": "cobol",
+      "name": "MAIN",
+      "qualifiedName": "UNICODE::MAIN",
+      "startColumn": 7,
+      "startLine": 4
+    }
+  ],
+  "unresolvedReferences": []
+}

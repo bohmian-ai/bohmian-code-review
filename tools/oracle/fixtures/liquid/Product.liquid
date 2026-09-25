@@ -1,0 +1,10 @@
+{% section 'header' %}
+{% render 'product-card', product: product %}
+{% include 'pagination' %}
+{% assign total = 0 %}
+{% schema %}
+{
+  "name": "Product",
+  "settings": []
+}
+{% endschema %}

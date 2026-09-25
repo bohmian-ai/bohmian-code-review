@@ -1,0 +1,10 @@
+component {
+
+    function goodFn() {
+        return "ok";
+    }
+
+    function badFn( ) {
+
+    var x = ;
+}

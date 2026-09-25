@@ -1,0 +1,38 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:pascal/Empty.pas",
+      "target": "module:d45e7bb31c003849bc379571ed62143b"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 8,
+      "filePath": "pascal/Empty.pas",
+      "id": "file:pascal/Empty.pas",
+      "isExported": false,
+      "kind": "file",
+      "language": "pascal",
+      "name": "Empty.pas",
+      "qualifiedName": "pascal/Empty.pas",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 4,
+      "endLine": 7,
+      "filePath": "pascal/Empty.pas",
+      "id": "module:d45e7bb31c003849bc379571ed62143b",
+      "kind": "module",
+      "language": "pascal",
+      "name": "EmptyUnit",
+      "qualifiedName": "EmptyUnit",
+      "startColumn": 0,
+      "startLine": 1
+    }
+  ],
+  "unresolvedReferences": []
+}

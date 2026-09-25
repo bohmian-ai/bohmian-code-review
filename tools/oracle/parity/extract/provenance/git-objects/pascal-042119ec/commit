@@ -1,0 +1,6 @@
+tree 867870be36ee1e18023bc370199adeb6bded7d1d
+parent f8a2944db3e58dbb79c71cfbc5fe2fbf9cf49b59
+author Philip Zander <philip.zander@gmail.com> 1766488292 +0100
+committer Philip Zander <philip.zander@gmail.com> 1766489051 +0100
+
+Bump version to 0.10.2

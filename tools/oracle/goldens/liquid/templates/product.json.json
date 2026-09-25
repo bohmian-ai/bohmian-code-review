@@ -1,0 +1,34 @@
+{
+  "edges": [],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 9,
+      "filePath": "liquid/templates/product.json",
+      "id": "file:7c5e50caf26d87f85db72f2f4be46e5a",
+      "kind": "file",
+      "language": "liquid",
+      "name": "product.json",
+      "qualifiedName": "liquid/templates/product.json",
+      "startColumn": 0,
+      "startLine": 1
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 0,
+      "fromNodeId": "file:7c5e50caf26d87f85db72f2f4be46e5a",
+      "line": 1,
+      "referenceKind": "references",
+      "referenceName": "sections/product-main.liquid"
+    },
+    {
+      "column": 0,
+      "fromNodeId": "file:7c5e50caf26d87f85db72f2f4be46e5a",
+      "line": 1,
+      "referenceKind": "references",
+      "referenceName": "sections/product-related.liquid"
+    }
+  ]
+}

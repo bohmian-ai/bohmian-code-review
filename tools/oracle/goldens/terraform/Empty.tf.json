@@ -1,0 +1,20 @@
+{
+  "edges": [],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 1,
+      "filePath": "terraform/Empty.tf",
+      "id": "file:terraform/Empty.tf",
+      "isExported": false,
+      "kind": "file",
+      "language": "terraform",
+      "name": "Empty.tf",
+      "qualifiedName": "terraform/Empty.tf",
+      "startColumn": 0,
+      "startLine": 1
+    }
+  ],
+  "unresolvedReferences": []
+}

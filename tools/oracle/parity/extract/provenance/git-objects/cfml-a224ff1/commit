@@ -1,0 +1,26 @@
+tree a91fb9c8dc64d4c8a12cd464769426a41410ad4f
+parent 824dd8d32d7d5142c557fb23f67f6c843475f993
+parent 0266bb54eb1398469cf8324ce4ed8920bf5bd6e0
+author Gareth Edwards <ghedwards@gmail.com> 1782798187 +1000
+committer GitHub <noreply@github.com> 1782798187 +1000
+gpgsig -----BEGIN PGP SIGNATURE-----
+ 
+ wsFcBAABCAAQBQJqQ1drCRC1aQ7uu5UhlAAAVOIQAAeljm2Q5G/MArL33k2+4TI+
+ pWRdh7qzY7au4Xqm2xfXBjeoeMLBfGtxaAp9FDfhPZRjA5OJC9U+MXMR27mGplm0
+ sr57T4odl7Y6YGWgYTq47MrLLfBDsEAUIbhNa9qc8nGSokUnZ1qAOKwz6m2bOjUu
+ SJ7enp/en0xgiLx41kZXAiED9QPAMD21BNNHHFIgO7J3vEik2eJGxmjj/fGXbEr+
+ cCrVCXh+BFqQH6vLGisy0wNb1h0lvD+jPAvrKwvirHh21wxJ3Ing5DML0Z0DPaCy
+ izQKrttvzIZVR69D6OTF8VnCTyuSB14Hcc5J/9D/4n3pcQxYGEB7FWfCvPVkpfcP
+ tq66tBnz+3VPnAqHIxeZvo6Z/UMvFRwbkLlqZ6uF44s2lYgS27RvJwKC88GKHF/n
+ NWHKauEh236XwQXtmO0bYoH7rhkH+q1/K2EfC0ou8fyY/op8yZ7cgrwRiAK83VPh
+ lagnygMeX9jlQ45JTtjJBVjhpIsEk95eKWGVJ62hV9rVow1r8alOThRm5uZW1q4R
+ +Mtra+6pnY1x3wi2pkfzEWG0nWeCOV+RlV3v+C1P+jvd75EKmdy7i/jzj3kvdSvE
+ GRhD9w5gQeFRNS+vWy6kHiMH43MNBJggurIrHImL2RZKTjEfTrEjeO6TJpti43pB
+ 1viZUyekfUXWcZgJBqtG
+ =q/sn
+ -----END PGP SIGNATURE-----
+ 
+
+Merge pull request #31 from cfmleditor/claude/cfml-codegraph-support-9qf0j4
+
+Ignore downloaded tree-sitter CLI binary

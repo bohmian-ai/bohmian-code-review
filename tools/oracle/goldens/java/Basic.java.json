@@ -1,0 +1,138 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:java/Basic.java",
+      "target": "namespace:e114c858d779dfd955a16d7c46568fd5"
+    },
+    {
+      "kind": "contains",
+      "source": "namespace:e114c858d779dfd955a16d7c46568fd5",
+      "target": "class:67c2d8fea65533771c02c58de417029e"
+    },
+    {
+      "kind": "contains",
+      "source": "class:67c2d8fea65533771c02c58de417029e",
+      "target": "field:9d633bbf143d6a587c879d191904a430"
+    },
+    {
+      "kind": "contains",
+      "source": "class:67c2d8fea65533771c02c58de417029e",
+      "target": "method:9a55decf6f3043b306ea32cb2ade8e96"
+    },
+    {
+      "kind": "contains",
+      "source": "class:67c2d8fea65533771c02c58de417029e",
+      "target": "method:c5ec5f45bb65126d38592121063c1867"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 15,
+      "filePath": "java/Basic.java",
+      "id": "file:java/Basic.java",
+      "isExported": false,
+      "kind": "file",
+      "language": "java",
+      "name": "Basic.java",
+      "qualifiedName": "java/Basic.java",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 13,
+      "endLine": 1,
+      "filePath": "java/Basic.java",
+      "id": "namespace:e114c858d779dfd955a16d7c46568fd5",
+      "kind": "namespace",
+      "language": "java",
+      "name": "demo",
+      "qualifiedName": "demo",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 1,
+      "endLine": 14,
+      "filePath": "java/Basic.java",
+      "id": "class:67c2d8fea65533771c02c58de417029e",
+      "kind": "class",
+      "language": "java",
+      "name": "Circle",
+      "qualifiedName": "demo::Circle",
+      "startColumn": 0,
+      "startLine": 3,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 23,
+      "endLine": 4,
+      "filePath": "java/Basic.java",
+      "id": "field:9d633bbf143d6a587c879d191904a430",
+      "isStatic": false,
+      "kind": "field",
+      "language": "java",
+      "name": "radius",
+      "qualifiedName": "demo::Circle::radius",
+      "signature": "double radius",
+      "startColumn": 17,
+      "startLine": 4,
+      "visibility": "private"
+    },
+    {
+      "endColumn": 3,
+      "endLine": 8,
+      "filePath": "java/Basic.java",
+      "id": "method:9a55decf6f3043b306ea32cb2ade8e96",
+      "isStatic": false,
+      "kind": "method",
+      "language": "java",
+      "name": "Circle",
+      "qualifiedName": "demo::Circle::Circle",
+      "signature": "(double radius)",
+      "startColumn": 2,
+      "startLine": 6,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 3,
+      "endLine": 13,
+      "filePath": "java/Basic.java",
+      "id": "method:c5ec5f45bb65126d38592121063c1867",
+      "isStatic": false,
+      "kind": "method",
+      "language": "java",
+      "name": "area",
+      "qualifiedName": "demo::Circle::area",
+      "signature": "double ()",
+      "startColumn": 2,
+      "startLine": 10,
+      "visibility": "public"
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 31,
+      "fromNodeId": "class:67c2d8fea65533771c02c58de417029e",
+      "line": 3,
+      "referenceKind": "implements",
+      "referenceName": "Shape"
+    },
+    {
+      "column": 2,
+      "fromNodeId": "method:c5ec5f45bb65126d38592121063c1867",
+      "line": 10,
+      "referenceKind": "decorates",
+      "referenceName": "Override"
+    },
+    {
+      "column": 11,
+      "fromNodeId": "method:c5ec5f45bb65126d38592121063c1867",
+      "line": 12,
+      "referenceKind": "references",
+      "referenceName": "Math"
+    }
+  ]
+}

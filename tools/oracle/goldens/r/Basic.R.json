@@ -1,0 +1,107 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:r/Basic.R",
+      "target": "import:b12daa48fc8a4230e7aee6f91d7d5754"
+    },
+    {
+      "kind": "contains",
+      "source": "file:r/Basic.R",
+      "target": "class:85ec5aaa1f0e0d1dc6d4d65ca13e1f93"
+    },
+    {
+      "kind": "contains",
+      "source": "class:85ec5aaa1f0e0d1dc6d4d65ca13e1f93",
+      "target": "method:831330ff3fa5fd4990070a2bc93d4e6c"
+    },
+    {
+      "kind": "contains",
+      "source": "file:r/Basic.R",
+      "target": "function:192726164a580c35798f0e16d41e5258"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 15,
+      "filePath": "r/Basic.R",
+      "id": "file:r/Basic.R",
+      "isExported": false,
+      "kind": "file",
+      "language": "r",
+      "name": "Basic.R",
+      "qualifiedName": "r/Basic.R",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 14,
+      "endLine": 1,
+      "filePath": "r/Basic.R",
+      "id": "import:b12daa48fc8a4230e7aee6f91d7d5754",
+      "kind": "import",
+      "language": "r",
+      "name": "stats",
+      "qualifiedName": "stats",
+      "signature": "library(stats)",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 1,
+      "endLine": 10,
+      "filePath": "r/Basic.R",
+      "id": "class:85ec5aaa1f0e0d1dc6d4d65ca13e1f93",
+      "kind": "class",
+      "language": "r",
+      "name": "Circle",
+      "qualifiedName": "Circle",
+      "startColumn": 10,
+      "startLine": 3
+    },
+    {
+      "endColumn": 5,
+      "endLine": 8,
+      "filePath": "r/Basic.R",
+      "id": "method:831330ff3fa5fd4990070a2bc93d4e6c",
+      "kind": "method",
+      "language": "r",
+      "name": "area",
+      "qualifiedName": "Circle::area",
+      "signature": "()",
+      "startColumn": 4,
+      "startLine": 6
+    },
+    {
+      "endColumn": 1,
+      "endLine": 14,
+      "filePath": "r/Basic.R",
+      "id": "function:192726164a580c35798f0e16d41e5258",
+      "kind": "function",
+      "language": "r",
+      "name": "make",
+      "qualifiedName": "make",
+      "signature": "(radius)",
+      "startColumn": 0,
+      "startLine": 12
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 0,
+      "fromNodeId": "file:r/Basic.R",
+      "line": 1,
+      "referenceKind": "imports",
+      "referenceName": "stats"
+    },
+    {
+      "column": 2,
+      "fromNodeId": "function:192726164a580c35798f0e16d41e5258",
+      "line": 13,
+      "referenceKind": "calls",
+      "referenceName": "Circle$new"
+    }
+  ]
+}

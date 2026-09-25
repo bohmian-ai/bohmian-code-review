@@ -1,0 +1,81 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:jsx/Basic.jsx",
+      "target": "import:a8d5c940cd2fc7b9041c53304acc0da7"
+    },
+    {
+      "kind": "contains",
+      "source": "file:jsx/Basic.jsx",
+      "target": "function:89d0d3b591d440d524daf42c155eb779"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 6,
+      "filePath": "jsx/Basic.jsx",
+      "id": "file:jsx/Basic.jsx",
+      "isExported": false,
+      "kind": "file",
+      "language": "jsx",
+      "name": "Basic.jsx",
+      "qualifiedName": "jsx/Basic.jsx",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 32,
+      "endLine": 1,
+      "filePath": "jsx/Basic.jsx",
+      "id": "import:a8d5c940cd2fc7b9041c53304acc0da7",
+      "kind": "import",
+      "language": "jsx",
+      "name": "./util",
+      "qualifiedName": "./util",
+      "signature": "import { helper } from './util';",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 1,
+      "endLine": 5,
+      "filePath": "jsx/Basic.jsx",
+      "id": "function:89d0d3b591d440d524daf42c155eb779",
+      "isAsync": false,
+      "isExported": true,
+      "kind": "function",
+      "language": "jsx",
+      "name": "App",
+      "qualifiedName": "App",
+      "signature": "(props)",
+      "startColumn": 7,
+      "startLine": 3
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 0,
+      "fromNodeId": "file:jsx/Basic.jsx",
+      "line": 1,
+      "referenceKind": "imports",
+      "referenceName": "./util"
+    },
+    {
+      "column": 9,
+      "fromNodeId": "file:jsx/Basic.jsx",
+      "line": 1,
+      "referenceKind": "imports",
+      "referenceName": "helper"
+    },
+    {
+      "column": 29,
+      "fromNodeId": "function:89d0d3b591d440d524daf42c155eb779",
+      "line": 4,
+      "referenceKind": "calls",
+      "referenceName": "helper"
+    }
+  ]
+}

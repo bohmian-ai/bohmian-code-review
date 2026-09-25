@@ -1,0 +1,20 @@
+{
+  "edges": [],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 2,
+      "filePath": "cfquery/Broken.sql",
+      "id": "file:cfquery/Broken.sql",
+      "isExported": false,
+      "kind": "file",
+      "language": "cfquery",
+      "name": "Broken.sql",
+      "qualifiedName": "cfquery/Broken.sql",
+      "startColumn": 0,
+      "startLine": 1
+    }
+  ],
+  "unresolvedReferences": []
+}

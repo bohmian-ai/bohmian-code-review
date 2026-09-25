@@ -1,0 +1,20 @@
+{
+  "edges": [],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 2,
+      "filePath": "svelte/Empty.svelte",
+      "id": "component:c2da4a2ed35c52575e47db5860fe07bb",
+      "isExported": true,
+      "kind": "component",
+      "language": "svelte",
+      "name": "Empty",
+      "qualifiedName": "svelte/Empty.svelte::Empty",
+      "startColumn": 0,
+      "startLine": 1
+    }
+  ],
+  "unresolvedReferences": []
+}

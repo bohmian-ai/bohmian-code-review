@@ -1,0 +1,100 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:ff7bf87f73660e1eaa70777f4d99a5d0",
+      "target": "component:21880ff94d1c9f1e9f08635b58e7d002"
+    },
+    {
+      "kind": "contains",
+      "source": "component:21880ff94d1c9f1e9f08635b58e7d002",
+      "target": "component:bb4d762e57f749bcecd0d00d31f53b31"
+    },
+    {
+      "kind": "contains",
+      "source": "component:bb4d762e57f749bcecd0d00d31f53b31",
+      "target": "component:4d1842d5544fd555746b2d2e63eed357"
+    },
+    {
+      "kind": "contains",
+      "source": "component:21880ff94d1c9f1e9f08635b58e7d002",
+      "target": "component:24e9cd4920ca1074f0c097c7e98b2e3a"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 11,
+      "filePath": "pascal/BrokenForm.dfm",
+      "id": "file:ff7bf87f73660e1eaa70777f4d99a5d0",
+      "kind": "file",
+      "language": "pascal",
+      "name": "BrokenForm.dfm",
+      "qualifiedName": "pascal/BrokenForm.dfm",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 26,
+      "endLine": 1,
+      "filePath": "pascal/BrokenForm.dfm",
+      "id": "component:21880ff94d1c9f1e9f08635b58e7d002",
+      "kind": "component",
+      "language": "pascal",
+      "name": "MainForm",
+      "qualifiedName": "pascal/BrokenForm.dfm#MainForm",
+      "signature": "TMainForm",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 23,
+      "endLine": 2,
+      "filePath": "pascal/BrokenForm.dfm",
+      "id": "component:bb4d762e57f749bcecd0d00d31f53b31",
+      "kind": "component",
+      "language": "pascal",
+      "name": "Panel1",
+      "qualifiedName": "pascal/BrokenForm.dfm#Panel1",
+      "signature": "TPanel",
+      "startColumn": 0,
+      "startLine": 2
+    },
+    {
+      "endColumn": 27,
+      "endLine": 3,
+      "filePath": "pascal/BrokenForm.dfm",
+      "id": "component:4d1842d5544fd555746b2d2e63eed357",
+      "kind": "component",
+      "language": "pascal",
+      "name": "Button1",
+      "qualifiedName": "pascal/BrokenForm.dfm#Button1",
+      "signature": "TButton",
+      "startColumn": 0,
+      "startLine": 3
+    },
+    {
+      "endColumn": 30,
+      "endLine": 8,
+      "filePath": "pascal/BrokenForm.dfm",
+      "id": "component:24e9cd4920ca1074f0c097c7e98b2e3a",
+      "kind": "component",
+      "language": "pascal",
+      "name": "TrailingPanel",
+      "qualifiedName": "pascal/BrokenForm.dfm#TrailingPanel",
+      "signature": "TPanel",
+      "startColumn": 0,
+      "startLine": 8
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 0,
+      "fromNodeId": "component:4d1842d5544fd555746b2d2e63eed357",
+      "line": 5,
+      "referenceKind": "references",
+      "referenceName": "Button1Click"
+    }
+  ]
+}

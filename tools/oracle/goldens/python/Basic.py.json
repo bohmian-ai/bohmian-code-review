@@ -1,0 +1,131 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:python/Basic.py",
+      "target": "import:a61fe94490f5bc69eff9fe47b38aa5c2"
+    },
+    {
+      "kind": "contains",
+      "source": "file:python/Basic.py",
+      "target": "class:9e63700770470b434354059c41d2bfff"
+    },
+    {
+      "kind": "contains",
+      "source": "class:9e63700770470b434354059c41d2bfff",
+      "target": "method:4b8a98bb1229127f11e03a6bec26778c"
+    },
+    {
+      "kind": "contains",
+      "source": "class:9e63700770470b434354059c41d2bfff",
+      "target": "method:4dcf32a0ec88bef5f64fcdd5c921f5c1"
+    },
+    {
+      "kind": "contains",
+      "source": "file:python/Basic.py",
+      "target": "function:3a8e353e60cce57f2183f413df074588"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 13,
+      "filePath": "python/Basic.py",
+      "id": "file:python/Basic.py",
+      "isExported": false,
+      "kind": "file",
+      "language": "python",
+      "name": "Basic.py",
+      "qualifiedName": "python/Basic.py",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 11,
+      "endLine": 1,
+      "filePath": "python/Basic.py",
+      "id": "import:a61fe94490f5bc69eff9fe47b38aa5c2",
+      "kind": "import",
+      "language": "python",
+      "name": "math",
+      "qualifiedName": "math",
+      "signature": "import math",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 41,
+      "endLine": 8,
+      "filePath": "python/Basic.py",
+      "id": "class:9e63700770470b434354059c41d2bfff",
+      "kind": "class",
+      "language": "python",
+      "name": "Circle",
+      "qualifiedName": "Circle",
+      "startColumn": 0,
+      "startLine": 3
+    },
+    {
+      "endColumn": 28,
+      "endLine": 5,
+      "filePath": "python/Basic.py",
+      "id": "method:4b8a98bb1229127f11e03a6bec26778c",
+      "isAsync": false,
+      "isStatic": false,
+      "kind": "method",
+      "language": "python",
+      "name": "__init__",
+      "qualifiedName": "Circle::__init__",
+      "signature": "(self, radius)",
+      "startColumn": 4,
+      "startLine": 4
+    },
+    {
+      "endColumn": 41,
+      "endLine": 8,
+      "filePath": "python/Basic.py",
+      "id": "method:4dcf32a0ec88bef5f64fcdd5c921f5c1",
+      "isAsync": false,
+      "isStatic": false,
+      "kind": "method",
+      "language": "python",
+      "name": "area",
+      "qualifiedName": "Circle::area",
+      "signature": "(self)",
+      "startColumn": 4,
+      "startLine": 7
+    },
+    {
+      "endColumn": 25,
+      "endLine": 12,
+      "filePath": "python/Basic.py",
+      "id": "function:3a8e353e60cce57f2183f413df074588",
+      "isAsync": false,
+      "isStatic": false,
+      "kind": "function",
+      "language": "python",
+      "name": "make",
+      "qualifiedName": "make",
+      "signature": "(radius)",
+      "startColumn": 0,
+      "startLine": 11
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 7,
+      "fromNodeId": "file:python/Basic.py",
+      "line": 1,
+      "referenceKind": "imports",
+      "referenceName": "math"
+    },
+    {
+      "column": 11,
+      "fromNodeId": "function:3a8e353e60cce57f2183f413df074588",
+      "line": 12,
+      "referenceKind": "calls",
+      "referenceName": "Circle"
+    }
+  ]
+}

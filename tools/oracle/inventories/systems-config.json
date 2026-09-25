@@ -1,0 +1,164 @@
+{
+  "$comment": "T5 systems/configuration extraction inventory: the exact upstream-to-Rust symbol ledger, grammar provenance, routing precedence, node/reference/import/call rules, diagnostics, and fixtures for the Objective-C, Solidity, Terraform, ArkTS, and Nix native ports. Frozen upstream revision 572d22bf. Every Rust symbol maps to the upstream file/symbol it ports; parity fixtures are per-language rows in tools/oracle/fixtures/manifest.json with goldens under tools/oracle/goldens/.",
+  "upstream_revision": "572d22bfbe82602080e457bec655f72e3314f9ef",
+  "provenance": {
+    "manifest": "tools/oracle/parity/extract/systems-config-grammars.json",
+    "committed_artifacts": "tools/oracle/parity/extract/provenance/",
+    "lineage": "For every grammar the source artifact is COMMITTED with a pinned external identity: npm tarballs (tree-sitter-objc-2.1.0.tgz, tree-sitter-hcl-1.2.0.tgz, tree-sitter-arkts-0.2.0.tgz, tree-sitter-wasms-0.1.13.tgz) whose sha256 AND registry SRI sha512 are recomputed from bytes; and raw git OBJECT proofs for solidity@b239a95f and nix@3d0173d (commit, root/subtree trees, and every required blob) from which the verifier cryptographically recomputes commit → tree → path → blob ids. The network-free verifier re-extracts each npm tarball and byte-compares the pinned LICENSE member (package/LICENSE) AND the parser.c/scanner.c/common-scanner.h/WASM inputs to the vendored outputs (a wrong license member path or coordinated metadata+vendored-output edit fails), re-derives the git blob/commit/tree ids from bytes, and EXECUTES the pinned nix generation recipe (tree-sitter-cli 0.25.10) with the platform binary selected strictly by process.platform/process.arch (darwin-arm64 mach-o and linux-x64 ELF x86-64 committed with release-asset sha256; unsupported hosts fail clearly), byte-comparing parser.c + grammar.json + node-types.json + scanner.c to the committed outputs. Thirteen Node tamper self-tests (source sha256, SRI, license member path, vendored license bytes, git commit object, pinned commit id, git blob object, ABI, license, wasm, generated output — execution-first, unsupported host) and the Rust fast-lane negative test fail for the intended reason."
+  },
+  "languages": [
+    {
+      "language": "objc",
+      "rust_module": "crates/codegraph-extract/src/objc.rs",
+      "upstream_module": "src/extraction/languages/objc.ts",
+      "upstream_routing": "src/extraction/grammars.ts EXTENSION_MAP .m/.mm -> objc; detectLanguage .h content heuristic (looksLikeObjc: /@(?:interface|implementation|protocol|synthesize)\\b/ on the first 8 KiB)",
+      "grammar": {
+        "package": "tree-sitter-objc@2.1.0 (npm)",
+        "revision": "dea2b2d6a1253c2f0f58b543c10d62edd2f860f2",
+        "license": "MIT",
+        "abi": 14,
+        "oracle_wasm": "tree-sitter-wasms 0.1.13 out/tree-sitter-objc.wasm (committed provenance copy in tools/oracle/parity/extract/provenance/wasm/)",
+        "vendor": "crates/codegraph-extract/grammars/objc (parser.c only; no external scanner)",
+        "integrity_manifest": "tools/oracle/parity/extract/systems-config-grammars.json"
+      },
+      "symbol_ledger": [
+        ["extractObjcMethodName", "objc_method_name"],
+        ["extractObjcReturnType", "objc_return_type"],
+        ["extractObjcPropertyName", "objc_property_name"],
+        ["resolveBody (findCompoundStatement)", "resolve_body"],
+        ["resolveTypeAliasKind", "resolve_type_alias_kind"],
+        ["isStatic", "is_static"],
+        ["visitNode class_implementation", "visit_class_implementation"],
+        ["extractImport (preproc_include)", "extract_import"],
+        ["extractInheritance class_interface", "extract_inheritance"],
+        ["extractCall message_expression + generic", "extract_call"],
+        ["cFamilySpec + selector_expression special (fn refs)", "maybe_capture_fn_refs / normalize_fn_ref_value / flush_fn_ref_candidates"],
+        ["generic dispatch (createNode/extractFunction/extractMethod/extractClass/extractInterface/extractStruct/extractEnum/extractTypeAlias/extractProperty/extractVariable)", "create_node / extract_*"]
+      ],
+      "fixtures": [
+        "objc/Basic.m", "objc/Broken.m", "objc/Empty.m", "objc/Unicode.m", "objc/Header.h"
+      ]
+    },
+    {
+      "language": "solidity",
+      "rust_module": "crates/codegraph-extract/src/solidity.rs",
+      "upstream_module": "src/extraction/languages/solidity.ts",
+      "upstream_routing": "src/extraction/grammars.ts EXTENSION_MAP .sol -> solidity",
+      "grammar": {
+        "package": "github:JoranHonig/tree-sitter-solidity#b239a95f94cfcc6e7b3e961bc73a28d55e214f02 (tree-sitter-wasms 0.1.13 devDependency; npm 1.2.0 exists but its parser.c sha256 e77d623c DIFFERS from this git revision — the git commit is the authoritative frozen source)",
+        "revision": "b239a95f94cfcc6e7b3e961bc73a28d55e214f02",
+        "parser_c_git_blob": "cce2fb4f2dc407b495facb271492eae31d4d6298",
+        "license": "MIT",
+        "abi": 14,
+        "oracle_wasm": "tree-sitter-wasms 0.1.13 out/tree-sitter-solidity.wasm (committed provenance copy in tools/oracle/parity/extract/provenance/wasm/)",
+        "vendor": "crates/codegraph-extract/grammars/solidity (parser.c only; no external scanner)",
+        "integrity_manifest": "tools/oracle/parity/extract/systems-config-grammars.json"
+      },
+      "symbol_ledger": [
+        ["getInheritanceAncestors", "inheritance_ancestors"],
+        ["fallbackReceiveName", "fallback_receive_name"],
+        ["resolveName (constructor/fallback/receive)", "resolve_name"],
+        ["getSignature", "signature_of"],
+        ["getVisibility", "visibility_of"],
+        ["isConst", "is_const"],
+        ["visitNode (contract/library/interface, struct/enum, enum_value, event, error)", "visit_solidity_node"],
+        ["extractImport (import_directive source)", "extract_import"],
+        ["extractField (state_variable_declaration/struct_member)", "extract_field"],
+        ["extractCall (call_expression/emit_statement/revert_statement/modifier_invocation)", "extract_call"],
+        ["extractInstantiation (new_expression)", "extract_instantiation"],
+        ["extractDecoratorsFor modifier_invocation", "extract_decorators_for / consider_decorator"],
+        ["generic dispatch (createNode/extractFunction/extractMethod/extractClass/extractInterface/extractStruct/extractEnum/extractTypeAlias/extractVariable)", "create_node / extract_*"]
+      ],
+      "fixtures": [
+        "solidity/Basic.sol", "solidity/Broken.sol", "solidity/Empty.sol", "solidity/Unicode.sol"
+      ]
+    },
+    {
+      "language": "terraform",
+      "rust_module": "crates/codegraph-extract/src/terraform.rs",
+      "upstream_module": "src/extraction/languages/terraform.ts",
+      "upstream_routing": "src/extraction/grammars.ts EXTENSION_MAP .tf/.tfvars/.tofu -> terraform",
+      "grammar": {
+        "package": "@tree-sitter-grammars/tree-sitter-hcl@1.2.0",
+        "revision": "fad991865fee927dd1de5e172fb3f08ac674d914 (tag v1.2.0)",
+        "license": "Apache-2.0",
+        "abi": 15,
+        "oracle_wasm": "src/extraction/wasm/tree-sitter-terraform.wasm (byte-identical to the npm artifact)",
+        "vendor": "crates/codegraph-extract/grammars/terraform (parser.c + scanner.c)",
+        "integrity_manifest": "tools/oracle/parity/extract/systems-config-grammars.json"
+      },
+      "symbol_ledger": [
+        ["readBlockHeader", "read_block_header"],
+        ["getBlockBody", "get_block_body"],
+        ["stringLitValue", "string_lit_value"],
+        ["findStringLit", "find_string_lit"],
+        ["readStringAttr", "read_string_attr"],
+        ["describeBlock", "describe_block"],
+        ["emitLocals", "emit_locals"],
+        ["collectReferences / emitRefFromVariableExpr / qualifyReference", "collect_references / emit_ref_from_variable_expr / qualify_reference"],
+        ["emitReferencesInBody", "emit_references_in_body"],
+        ["emitProviderSelectionRef / providerSelectionFromExpr", "emit_provider_selection_ref / provider_selection_from_expr"],
+        ["emitModuleProvidersRefs", "emit_module_providers_refs"],
+        ["emitModuleWiring", "emit_module_wiring"],
+        ["visitNode (block dispatch + .tfvars)", "visit_terraform_node"]
+      ],
+      "fixtures": [
+        "terraform/Basic.tf", "terraform/Broken.tf", "terraform/Empty.tf", "terraform/Unicode.tf",
+        "terraform/Tfvars.tfvars", "terraform/Tofu.tofu"
+      ]
+    },
+    {
+      "language": "arkts",
+      "rust_module": "crates/codegraph-extract/src/arkts.rs + tsjs Arkts variant (crates/codegraph-extract/src/tsjs/mod.rs, extractors.rs)",
+      "upstream_module": "src/extraction/languages/arkts.ts (spreads typescriptExtractor)",
+      "upstream_routing": "src/extraction/grammars.ts EXTENSION_MAP .ets -> arkts",
+      "grammar": {
+        "package": "tree-sitter-arkts@0.2.0",
+        "revision": "56f7fc288715befe92c734d603f9e6bc3c65d2a8",
+        "license": "MIT",
+        "abi": 14,
+        "oracle_wasm": "src/extraction/wasm/tree-sitter-arkts.wasm (byte-identical to the npm artifact)",
+        "vendor": "crates/codegraph-extract/grammars/arkts (parser.c + scanner.c + common/scanner.h)",
+        "integrity_manifest": "tools/oracle/parity/extract/systems-config-grammars.json"
+      },
+      "symbol_ledger": [
+        ["structTypes: ['struct_declaration']", "Variant::Arkts struct branch -> extract_struct"],
+        ["callTypes: + arkui_component_expression, leading_dot_expression", "extract_arkts_call (shapes 1-3)"],
+        ["collectDecoratorNames / extractModifiers", "collect_decorator_names / create_node decorators"],
+        ["typescriptExtractor inherited paths (createNode/extractVariable/extractCall/extractTypeAlias/extractTypeAnnotations/value refs/re-export refs)", "tsjs Walker (Variant::Arkts)"],
+        ["FN_REF_SPECS absence (no function-as-value capture)", "Variant::fn_refs() false"]
+      ],
+      "fixtures": [
+        "arkts/Basic.ets", "arkts/Broken.ets", "arkts/Empty.ets", "arkts/Unicode.ets"
+      ]
+    },
+    {
+      "language": "nix",
+      "rust_module": "crates/codegraph-extract/src/nix.rs",
+      "upstream_module": "src/extraction/languages/nix.ts",
+      "upstream_routing": "src/extraction/grammars.ts EXTENSION_MAP .nix -> nix",
+      "grammar": {
+        "package": "nix-community/tree-sitter-nix (git ref; wasm built with tree-sitter-cli 0.25.10)",
+        "revision": "3d0173d903e630b6e14d17f1cf79488791379ded",
+        "license": "MIT",
+        "abi": 15,
+        "oracle_wasm": "src/extraction/wasm/tree-sitter-nix.wasm (regenerated ABI 15)",
+        "vendor": "crates/codegraph-extract/grammars/nix (regenerated parser.c + checked-in scanner.c)",
+        "integrity_manifest": "tools/oracle/parity/extract/systems-config-grammars.json"
+      },
+      "symbol_ledger": [
+        ["unwrapVariableExpression", "unwrap_variable_expression"],
+        ["getCalleeName / getDirectCalleeName", "get_callee_name / get_direct_callee_name"],
+        ["isStaticProjectPath / getStaticImportPath", "is_static_project_path / get_static_import_path"],
+        ["isReturnedAttrsetMember", "is_returned_attrset_member"],
+        ["getCurriedParamsAndBody / formatFunctionSignature", "get_curried_params_and_body / format_function_signature"],
+        ["inheritedAttrs / isCallPackageName / getFirstApplyArgument", "inherited_attrs / is_call_package_name / get_first_apply_argument"],
+        ["emitFileImport", "emit_file_import"],
+        ["visitNode (binding/function_expression/inherit/apply_expression)", "visit_nix_node"]
+      ],
+      "fixtures": [
+        "nix/Basic.nix", "nix/Broken.nix", "nix/Empty.nix", "nix/Unicode.nix", "nix/Nested.nix"
+      ]
+    }
+  ]
+}

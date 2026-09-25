@@ -1,0 +1,28 @@
+{
+  "edges": [],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 2,
+      "filePath": "cfquery/Unicode.sql",
+      "id": "file:cfquery/Unicode.sql",
+      "isExported": false,
+      "kind": "file",
+      "language": "cfquery",
+      "name": "Unicode.sql",
+      "qualifiedName": "cfquery/Unicode.sql",
+      "startColumn": 0,
+      "startLine": 1
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 39,
+      "fromNodeId": "file:cfquery/Unicode.sql",
+      "line": 1,
+      "referenceKind": "calls",
+      "referenceName": "méthode"
+    }
+  ]
+}

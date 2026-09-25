@@ -1,0 +1,81 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:c/Basic.c",
+      "target": "import:86ecdb055f993a9393d4f49b679cfffd"
+    },
+    {
+      "kind": "contains",
+      "source": "file:c/Basic.c",
+      "target": "function:25858e328ba306b601a0e91d2e874ac1"
+    },
+    {
+      "kind": "contains",
+      "source": "file:c/Basic.c",
+      "target": "struct:140a642f9f469b5bfef58c0f86174182"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 10,
+      "filePath": "c/Basic.c",
+      "id": "file:c/Basic.c",
+      "isExported": false,
+      "kind": "file",
+      "language": "c",
+      "name": "Basic.c",
+      "qualifiedName": "c/Basic.c",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 0,
+      "endLine": 2,
+      "filePath": "c/Basic.c",
+      "id": "import:86ecdb055f993a9393d4f49b679cfffd",
+      "kind": "import",
+      "language": "c",
+      "name": "math.h",
+      "qualifiedName": "math.h",
+      "signature": "#include <math.h>",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 1,
+      "endLine": 5,
+      "filePath": "c/Basic.c",
+      "id": "function:25858e328ba306b601a0e91d2e874ac1",
+      "kind": "function",
+      "language": "c",
+      "name": "area",
+      "qualifiedName": "area",
+      "startColumn": 0,
+      "startLine": 3
+    },
+    {
+      "endColumn": 1,
+      "endLine": 9,
+      "filePath": "c/Basic.c",
+      "id": "struct:140a642f9f469b5bfef58c0f86174182",
+      "kind": "struct",
+      "language": "c",
+      "name": "Circle",
+      "qualifiedName": "Circle",
+      "startColumn": 0,
+      "startLine": 7
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 0,
+      "fromNodeId": "file:c/Basic.c",
+      "line": 1,
+      "referenceKind": "imports",
+      "referenceName": "math.h"
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:e25ec19821b22fecedb7727c79b3b0cf",
+      "target": "import:b1072072f07dad7a59238530e1b011e1"
+    },
+    {
+      "kind": "contains",
+      "source": "file:e25ec19821b22fecedb7727c79b3b0cf",
+      "target": "component:3b7c8a6aca7320be307945b63c45e563"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 3,
+      "filePath": "liquid/Multibyte.liquid",
+      "id": "file:e25ec19821b22fecedb7727c79b3b0cf",
+      "kind": "file",
+      "language": "liquid",
+      "name": "Multibyte.liquid",
+      "qualifiedName": "liquid/Multibyte.liquid",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 22,
+      "endLine": 2,
+      "filePath": "liquid/Multibyte.liquid",
+      "id": "import:b1072072f07dad7a59238530e1b011e1",
+      "kind": "import",
+      "language": "liquid",
+      "name": "carte",
+      "qualifiedName": "liquid/Multibyte.liquid::import:carte",
+      "signature": "{% render 'carte'",
+      "startColumn": 5,
+      "startLine": 2
+    },
+    {
+      "endColumn": 22,
+      "endLine": 2,
+      "filePath": "liquid/Multibyte.liquid",
+      "id": "component:3b7c8a6aca7320be307945b63c45e563",
+      "kind": "component",
+      "language": "liquid",
+      "name": "carte",
+      "qualifiedName": "liquid/Multibyte.liquid::render:carte",
+      "startColumn": 5,
+      "startLine": 2
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 5,
+      "fromNodeId": "file:e25ec19821b22fecedb7727c79b3b0cf",
+      "line": 2,
+      "referenceKind": "references",
+      "referenceName": "snippets/carte.liquid"
+    }
+  ]
+}

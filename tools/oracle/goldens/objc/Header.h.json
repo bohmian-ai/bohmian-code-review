@@ -1,0 +1,107 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:objc/Header.h",
+      "target": "import:0b2932852e664a13ebd1921834010302"
+    },
+    {
+      "kind": "contains",
+      "source": "file:objc/Header.h",
+      "target": "class:e9f6dd6483a904008c49e7d1d8c3cd58"
+    },
+    {
+      "kind": "contains",
+      "source": "class:e9f6dd6483a904008c49e7d1d8c3cd58",
+      "target": "property:2f5f6eae5ddc7a13f25f48ded8de2f5c"
+    },
+    {
+      "kind": "contains",
+      "source": "file:objc/Header.h",
+      "target": "protocol:18bc0f7dc8371bd3c4af987a4f387628"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 11,
+      "filePath": "objc/Header.h",
+      "id": "file:objc/Header.h",
+      "isExported": false,
+      "kind": "file",
+      "language": "objc",
+      "name": "Header.h",
+      "qualifiedName": "objc/Header.h",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 0,
+      "endLine": 3,
+      "filePath": "objc/Header.h",
+      "id": "import:0b2932852e664a13ebd1921834010302",
+      "kind": "import",
+      "language": "objc",
+      "name": "Foundation/Foundation.h",
+      "qualifiedName": "Foundation/Foundation.h",
+      "signature": "#import <Foundation/Foundation.h>",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 4,
+      "endLine": 6,
+      "filePath": "objc/Header.h",
+      "id": "class:e9f6dd6483a904008c49e7d1d8c3cd58",
+      "kind": "class",
+      "language": "objc",
+      "name": "HeaderOnly",
+      "qualifiedName": "HeaderOnly",
+      "startColumn": 0,
+      "startLine": 3
+    },
+    {
+      "endColumn": 48,
+      "endLine": 4,
+      "filePath": "objc/Header.h",
+      "id": "property:2f5f6eae5ddc7a13f25f48ded8de2f5c",
+      "isStatic": false,
+      "kind": "property",
+      "language": "objc",
+      "name": "count",
+      "qualifiedName": "HeaderOnly::count",
+      "signature": "(nonatomic, readonly) count",
+      "startColumn": 0,
+      "startLine": 4
+    },
+    {
+      "endColumn": 4,
+      "endLine": 10,
+      "filePath": "objc/Header.h",
+      "id": "protocol:18bc0f7dc8371bd3c4af987a4f387628",
+      "kind": "protocol",
+      "language": "objc",
+      "name": "HeaderProtocol",
+      "qualifiedName": "HeaderProtocol",
+      "startColumn": 0,
+      "startLine": 8
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 0,
+      "fromNodeId": "file:objc/Header.h",
+      "line": 1,
+      "referenceKind": "imports",
+      "referenceName": "Foundation/Foundation.h"
+    },
+    {
+      "column": 24,
+      "fromNodeId": "class:e9f6dd6483a904008c49e7d1d8c3cd58",
+      "line": 3,
+      "referenceKind": "extends",
+      "referenceName": "NSObject"
+    }
+  ]
+}

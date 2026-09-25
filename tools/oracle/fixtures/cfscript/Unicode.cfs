@@ -1,0 +1,9 @@
+component {
+
+    property name="café" type="string";
+
+    function héllo() {
+        var ünïcode = "wörld";
+        return ünïcode;
+    }
+}

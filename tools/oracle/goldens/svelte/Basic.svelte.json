@@ -1,0 +1,158 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "component:eae2d1682ef15cda04dc42838c91d220",
+      "target": "file:svelte/Basic.svelte"
+    },
+    {
+      "kind": "contains",
+      "source": "component:eae2d1682ef15cda04dc42838c91d220",
+      "target": "import:c115081e16ebd67de9f8fcd5df181866"
+    },
+    {
+      "kind": "contains",
+      "source": "component:eae2d1682ef15cda04dc42838c91d220",
+      "target": "variable:c01d61aa24344a0350292becdf9636bb"
+    },
+    {
+      "kind": "contains",
+      "source": "component:eae2d1682ef15cda04dc42838c91d220",
+      "target": "function:3ea2dea0b117e05761d7bffda1d421ed"
+    },
+    {
+      "kind": "contains",
+      "source": "file:svelte/Basic.svelte",
+      "target": "import:c115081e16ebd67de9f8fcd5df181866"
+    },
+    {
+      "kind": "contains",
+      "source": "file:svelte/Basic.svelte",
+      "target": "variable:c01d61aa24344a0350292becdf9636bb"
+    },
+    {
+      "kind": "contains",
+      "source": "file:svelte/Basic.svelte",
+      "target": "function:3ea2dea0b117e05761d7bffda1d421ed"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 12,
+      "filePath": "svelte/Basic.svelte",
+      "id": "component:eae2d1682ef15cda04dc42838c91d220",
+      "isExported": true,
+      "kind": "component",
+      "language": "svelte",
+      "name": "Basic",
+      "qualifiedName": "svelte/Basic.svelte::Basic",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 0,
+      "endLine": 7,
+      "filePath": "svelte/Basic.svelte",
+      "id": "file:svelte/Basic.svelte",
+      "isExported": false,
+      "kind": "file",
+      "language": "svelte",
+      "name": "Basic.svelte",
+      "qualifiedName": "svelte/Basic.svelte",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 34,
+      "endLine": 2,
+      "filePath": "svelte/Basic.svelte",
+      "id": "import:c115081e16ebd67de9f8fcd5df181866",
+      "kind": "import",
+      "language": "svelte",
+      "name": "./util",
+      "qualifiedName": "./util",
+      "signature": "import { helper } from './util';",
+      "startColumn": 2,
+      "startLine": 2
+    },
+    {
+      "endColumn": 23,
+      "endLine": 3,
+      "filePath": "svelte/Basic.svelte",
+      "id": "variable:c01d61aa24344a0350292becdf9636bb",
+      "isExported": false,
+      "kind": "variable",
+      "language": "svelte",
+      "name": "count",
+      "qualifiedName": "count",
+      "signature": "= $state(0)",
+      "startColumn": 6,
+      "startLine": 3
+    },
+    {
+      "endColumn": 3,
+      "endLine": 6,
+      "filePath": "svelte/Basic.svelte",
+      "id": "function:3ea2dea0b117e05761d7bffda1d421ed",
+      "isAsync": false,
+      "isExported": false,
+      "isStatic": false,
+      "kind": "function",
+      "language": "svelte",
+      "name": "greet",
+      "qualifiedName": "greet",
+      "signature": "(name: string)",
+      "startColumn": 2,
+      "startLine": 4
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 2,
+      "filePath": "svelte/Basic.svelte",
+      "fromNodeId": "file:svelte/Basic.svelte",
+      "language": "svelte",
+      "line": 2,
+      "referenceKind": "imports",
+      "referenceName": "./util"
+    },
+    {
+      "column": 11,
+      "filePath": "svelte/Basic.svelte",
+      "fromNodeId": "file:svelte/Basic.svelte",
+      "language": "svelte",
+      "line": 2,
+      "referenceKind": "imports",
+      "referenceName": "helper"
+    },
+    {
+      "column": 11,
+      "filePath": "svelte/Basic.svelte",
+      "fromNodeId": "function:3ea2dea0b117e05761d7bffda1d421ed",
+      "language": "svelte",
+      "line": 5,
+      "referenceKind": "calls",
+      "referenceName": "helper"
+    },
+    {
+      "column": 12,
+      "filePath": "svelte/Basic.svelte",
+      "fromNodeId": "component:eae2d1682ef15cda04dc42838c91d220",
+      "language": "svelte",
+      "line": 9,
+      "referenceKind": "calls",
+      "referenceName": "greet"
+    },
+    {
+      "column": 1,
+      "filePath": "svelte/Basic.svelte",
+      "fromNodeId": "component:eae2d1682ef15cda04dc42838c91d220",
+      "language": "svelte",
+      "line": 10,
+      "referenceKind": "references",
+      "referenceName": "Modal"
+    }
+  ]
+}

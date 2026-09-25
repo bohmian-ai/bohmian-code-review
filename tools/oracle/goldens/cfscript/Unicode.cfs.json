@@ -1,0 +1,56 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:cfscript/Unicode.cfs",
+      "target": "class:bdbccbccbb64a4360a1a554ffd936566"
+    },
+    {
+      "kind": "contains",
+      "source": "class:bdbccbccbb64a4360a1a554ffd936566",
+      "target": "method:b7e8a5012d435871f8a57a431aed9e6b"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 10,
+      "filePath": "cfscript/Unicode.cfs",
+      "id": "file:cfscript/Unicode.cfs",
+      "isExported": false,
+      "kind": "file",
+      "language": "cfscript",
+      "name": "Unicode.cfs",
+      "qualifiedName": "cfscript/Unicode.cfs",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 1,
+      "endLine": 9,
+      "filePath": "cfscript/Unicode.cfs",
+      "id": "class:bdbccbccbb64a4360a1a554ffd936566",
+      "kind": "class",
+      "language": "cfscript",
+      "name": "Unicode",
+      "qualifiedName": "cfscript/Unicode.cfs::Unicode",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 5,
+      "endLine": 8,
+      "filePath": "cfscript/Unicode.cfs",
+      "id": "method:b7e8a5012d435871f8a57a431aed9e6b",
+      "kind": "method",
+      "language": "cfscript",
+      "name": "héllo",
+      "qualifiedName": "Unicode::héllo",
+      "signature": "()",
+      "startColumn": 4,
+      "startLine": 5
+    }
+  ],
+  "unresolvedReferences": []
+}

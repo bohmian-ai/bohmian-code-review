@@ -1,0 +1,119 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:swift/Basic.swift",
+      "target": "import:ad638831db02f11b4e821bf8e775ceed"
+    },
+    {
+      "kind": "contains",
+      "source": "file:swift/Basic.swift",
+      "target": "class:593b7476ae721a1005d1d1d58693a978"
+    },
+    {
+      "kind": "contains",
+      "source": "class:593b7476ae721a1005d1d1d58693a978",
+      "target": "field:12a6299bb407b4b7b06a9236ec85338e"
+    },
+    {
+      "kind": "contains",
+      "source": "class:593b7476ae721a1005d1d1d58693a978",
+      "target": "method:d34a5bcdbd1ef8259a379387a318618f"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 14,
+      "filePath": "swift/Basic.swift",
+      "id": "file:swift/Basic.swift",
+      "isExported": false,
+      "kind": "file",
+      "language": "swift",
+      "name": "Basic.swift",
+      "qualifiedName": "swift/Basic.swift",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 17,
+      "endLine": 1,
+      "filePath": "swift/Basic.swift",
+      "id": "import:ad638831db02f11b4e821bf8e775ceed",
+      "kind": "import",
+      "language": "swift",
+      "name": "Foundation",
+      "qualifiedName": "Foundation",
+      "signature": "import Foundation",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 1,
+      "endLine": 13,
+      "filePath": "swift/Basic.swift",
+      "id": "class:593b7476ae721a1005d1d1d58693a978",
+      "kind": "class",
+      "language": "swift",
+      "name": "Circle",
+      "qualifiedName": "Circle",
+      "startColumn": 0,
+      "startLine": 3,
+      "visibility": "internal"
+    },
+    {
+      "endColumn": 22,
+      "endLine": 4,
+      "filePath": "swift/Basic.swift",
+      "id": "field:12a6299bb407b4b7b06a9236ec85338e",
+      "isStatic": false,
+      "kind": "field",
+      "language": "swift",
+      "name": "radius",
+      "qualifiedName": "Circle::radius",
+      "startColumn": 4,
+      "startLine": 4,
+      "visibility": "internal"
+    },
+    {
+      "endColumn": 5,
+      "endLine": 12,
+      "filePath": "swift/Basic.swift",
+      "id": "method:d34a5bcdbd1ef8259a379387a318618f",
+      "isAsync": false,
+      "isStatic": false,
+      "kind": "method",
+      "language": "swift",
+      "name": "area",
+      "qualifiedName": "Circle::area",
+      "returnType": "Double",
+      "startColumn": 4,
+      "startLine": 10,
+      "visibility": "internal"
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 0,
+      "fromNodeId": "file:swift/Basic.swift",
+      "line": 1,
+      "referenceKind": "imports",
+      "referenceName": "Foundation"
+    },
+    {
+      "column": 14,
+      "fromNodeId": "class:593b7476ae721a1005d1d1d58693a978",
+      "line": 3,
+      "referenceKind": "extends",
+      "referenceName": "Shape"
+    },
+    {
+      "column": 15,
+      "fromNodeId": "method:d34a5bcdbd1ef8259a379387a318618f",
+      "line": 11,
+      "referenceKind": "references",
+      "referenceName": "Double"
+    }
+  ]
+}

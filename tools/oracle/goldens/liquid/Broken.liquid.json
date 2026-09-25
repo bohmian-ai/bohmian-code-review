@@ -1,0 +1,63 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:29c247c401872e26786571e089171b03",
+      "target": "import:7dc9fe6fb7f458f50d25bce50bcba4da"
+    },
+    {
+      "kind": "contains",
+      "source": "file:29c247c401872e26786571e089171b03",
+      "target": "component:4c615ca0e943431f302654b75691713b"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 4,
+      "filePath": "liquid/Broken.liquid",
+      "id": "file:29c247c401872e26786571e089171b03",
+      "kind": "file",
+      "language": "liquid",
+      "name": "Broken.liquid",
+      "qualifiedName": "liquid/Broken.liquid",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 16,
+      "endLine": 1,
+      "filePath": "liquid/Broken.liquid",
+      "id": "import:7dc9fe6fb7f458f50d25bce50bcba4da",
+      "kind": "import",
+      "language": "liquid",
+      "name": "card",
+      "qualifiedName": "liquid/Broken.liquid::import:card",
+      "signature": "{% render 'card'",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 16,
+      "endLine": 1,
+      "filePath": "liquid/Broken.liquid",
+      "id": "component:4c615ca0e943431f302654b75691713b",
+      "kind": "component",
+      "language": "liquid",
+      "name": "card",
+      "qualifiedName": "liquid/Broken.liquid::render:card",
+      "startColumn": 0,
+      "startLine": 1
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 0,
+      "fromNodeId": "file:29c247c401872e26786571e089171b03",
+      "line": 1,
+      "referenceKind": "references",
+      "referenceName": "snippets/card.liquid"
+    }
+  ]
+}

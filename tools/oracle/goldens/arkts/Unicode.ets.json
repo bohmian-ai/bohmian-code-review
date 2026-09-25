@@ -1,0 +1,156 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:arkts/Unicode.ets",
+      "target": "struct:92596ae8feffb6419a2273eb22d2ccc0"
+    },
+    {
+      "kind": "contains",
+      "source": "struct:92596ae8feffb6419a2273eb22d2ccc0",
+      "target": "property:db6a5228a5df2b3e00d86ca6ce42d09c"
+    },
+    {
+      "kind": "contains",
+      "source": "struct:92596ae8feffb6419a2273eb22d2ccc0",
+      "target": "property:91915cc2281369076eefe5719eddec72"
+    },
+    {
+      "kind": "contains",
+      "source": "struct:92596ae8feffb6419a2273eb22d2ccc0",
+      "target": "method:42d5ed24ce01ac88d4e14b6d14760627"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 14,
+      "filePath": "arkts/Unicode.ets",
+      "id": "file:arkts/Unicode.ets",
+      "isExported": false,
+      "kind": "file",
+      "language": "arkts",
+      "name": "Unicode.ets",
+      "qualifiedName": "arkts/Unicode.ets",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "decorators": [
+        "Component"
+      ],
+      "endColumn": 1,
+      "endLine": 13,
+      "filePath": "arkts/Unicode.ets",
+      "id": "struct:92596ae8feffb6419a2273eb22d2ccc0",
+      "isExported": false,
+      "kind": "struct",
+      "language": "arkts",
+      "name": "Ünïcode",
+      "qualifiedName": "Ünïcode",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "decorators": [
+        "State"
+      ],
+      "endColumn": 43,
+      "endLine": 3,
+      "filePath": "arkts/Unicode.ets",
+      "id": "property:db6a5228a5df2b3e00d86ca6ce42d09c",
+      "isStatic": false,
+      "kind": "property",
+      "language": "arkts",
+      "name": "message",
+      "qualifiedName": "Ünïcode::message",
+      "signature": "string message",
+      "startColumn": 2,
+      "startLine": 3
+    },
+    {
+      "decorators": [
+        "State"
+      ],
+      "endColumn": 23,
+      "endLine": 4,
+      "filePath": "arkts/Unicode.ets",
+      "id": "property:91915cc2281369076eefe5719eddec72",
+      "isStatic": false,
+      "kind": "property",
+      "language": "arkts",
+      "name": "値",
+      "qualifiedName": "Ünïcode::値",
+      "signature": "number 値",
+      "startColumn": 2,
+      "startLine": 4
+    },
+    {
+      "endColumn": 3,
+      "endLine": 12,
+      "filePath": "arkts/Unicode.ets",
+      "id": "method:42d5ed24ce01ac88d4e14b6d14760627",
+      "isAsync": false,
+      "isStatic": false,
+      "kind": "method",
+      "language": "arkts",
+      "name": "build",
+      "qualifiedName": "Ünïcode::build",
+      "signature": "()",
+      "startColumn": 2,
+      "startLine": 6
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 2,
+      "fromNodeId": "property:db6a5228a5df2b3e00d86ca6ce42d09c",
+      "line": 3,
+      "referenceKind": "decorates",
+      "referenceName": "State"
+    },
+    {
+      "column": 2,
+      "fromNodeId": "property:91915cc2281369076eefe5719eddec72",
+      "line": 4,
+      "referenceKind": "decorates",
+      "referenceName": "State"
+    },
+    {
+      "column": 4,
+      "fromNodeId": "method:42d5ed24ce01ac88d4e14b6d14760627",
+      "line": 7,
+      "referenceKind": "calls",
+      "referenceName": "Column"
+    },
+    {
+      "column": 6,
+      "fromNodeId": "method:42d5ed24ce01ac88d4e14b6d14760627",
+      "line": 8,
+      "referenceKind": "calls",
+      "referenceName": "Text"
+    },
+    {
+      "column": 9,
+      "fromNodeId": "method:42d5ed24ce01ac88d4e14b6d14760627",
+      "line": 9,
+      "referenceKind": "calls",
+      "referenceName": ".fontSize"
+    },
+    {
+      "column": 6,
+      "fromNodeId": "method:42d5ed24ce01ac88d4e14b6d14760627",
+      "line": 10,
+      "referenceKind": "calls",
+      "referenceName": "Text"
+    },
+    {
+      "column": 11,
+      "fromNodeId": "method:42d5ed24ce01ac88d4e14b6d14760627",
+      "line": 10,
+      "referenceKind": "calls",
+      "referenceName": "toString"
+    }
+  ]
+}

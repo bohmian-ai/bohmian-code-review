@@ -1,0 +1,132 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:pascal/Unicode.pas",
+      "target": "module:cfbfa26b736d306e6362ef1e85ea11d7"
+    },
+    {
+      "kind": "contains",
+      "source": "file:pascal/Unicode.pas",
+      "target": "import:a1704ce028e8455cf70313f6798a58d0"
+    },
+    {
+      "kind": "contains",
+      "source": "file:pascal/Unicode.pas",
+      "target": "class:efbe0800760d46f6732610e80ccece48"
+    },
+    {
+      "kind": "contains",
+      "source": "class:efbe0800760d46f6732610e80ccece48",
+      "target": "field:5ab07ea3c6a802b7874728e54fd9a820"
+    },
+    {
+      "kind": "contains",
+      "source": "class:efbe0800760d46f6732610e80ccece48",
+      "target": "method:b0ebe24d0a4292cf388f1ec39b498463"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 25,
+      "filePath": "pascal/Unicode.pas",
+      "id": "file:pascal/Unicode.pas",
+      "isExported": false,
+      "kind": "file",
+      "language": "pascal",
+      "name": "Unicode.pas",
+      "qualifiedName": "pascal/Unicode.pas",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 4,
+      "endLine": 24,
+      "filePath": "pascal/Unicode.pas",
+      "id": "module:cfbfa26b736d306e6362ef1e85ea11d7",
+      "kind": "module",
+      "language": "pascal",
+      "name": "UnicodeUnit",
+      "qualifiedName": "UnicodeUnit",
+      "startColumn": 0,
+      "startLine": 2
+    },
+    {
+      "endColumn": 10,
+      "endLine": 7,
+      "filePath": "pascal/Unicode.pas",
+      "id": "import:a1704ce028e8455cf70313f6798a58d0",
+      "kind": "import",
+      "language": "pascal",
+      "name": "SysUtils",
+      "qualifiedName": "SysUtils",
+      "signature": "uses\n  SysUtils;",
+      "startColumn": 2,
+      "startLine": 7
+    },
+    {
+      "endColumn": 6,
+      "endLine": 15,
+      "filePath": "pascal/Unicode.pas",
+      "id": "class:efbe0800760d46f6732610e80ccece48",
+      "kind": "class",
+      "language": "pascal",
+      "name": "TShape",
+      "qualifiedName": "TShape",
+      "startColumn": 2,
+      "startLine": 10
+    },
+    {
+      "endColumn": 18,
+      "endLine": 12,
+      "filePath": "pascal/Unicode.pas",
+      "id": "field:5ab07ea3c6a802b7874728e54fd9a820",
+      "kind": "field",
+      "language": "pascal",
+      "name": "FName",
+      "qualifiedName": "TShape::FName",
+      "startColumn": 4,
+      "startLine": 12,
+      "visibility": "private"
+    },
+    {
+      "endColumn": 19,
+      "endLine": 14,
+      "filePath": "pascal/Unicode.pas",
+      "id": "method:b0ebe24d0a4292cf388f1ec39b498463",
+      "isStatic": false,
+      "kind": "method",
+      "language": "pascal",
+      "name": "Draw",
+      "qualifiedName": "TShape::Draw",
+      "startColumn": 4,
+      "startLine": 14,
+      "visibility": "public"
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 2,
+      "fromNodeId": "file:pascal/Unicode.pas",
+      "line": 7,
+      "referenceKind": "imports",
+      "referenceName": "SysUtils"
+    },
+    {
+      "column": 17,
+      "fromNodeId": "class:efbe0800760d46f6732610e80ccece48",
+      "line": 10,
+      "referenceKind": "extends",
+      "referenceName": "TObject"
+    },
+    {
+      "column": 2,
+      "fromNodeId": "method:b0ebe24d0a4292cf388f1ec39b498463",
+      "line": 21,
+      "referenceKind": "calls",
+      "referenceName": "WriteLn"
+    }
+  ]
+}

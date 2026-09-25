@@ -1,0 +1,624 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:solidity/Basic.sol",
+      "target": "import:c5f3b0de84e7b5374d41c1b8be4c3eae"
+    },
+    {
+      "kind": "contains",
+      "source": "file:solidity/Basic.sol",
+      "target": "import:4303c3324544a83075f5b4025388ca90"
+    },
+    {
+      "kind": "contains",
+      "source": "file:solidity/Basic.sol",
+      "target": "interface:304cc4bbc776ab7838bcba4433344759"
+    },
+    {
+      "kind": "contains",
+      "source": "interface:304cc4bbc776ab7838bcba4433344759",
+      "target": "method:47cabd99056d5dc04c5c304907dde9ef"
+    },
+    {
+      "kind": "contains",
+      "source": "file:solidity/Basic.sol",
+      "target": "class:1e622133262176e2464663d21e316ba3"
+    },
+    {
+      "kind": "contains",
+      "source": "class:1e622133262176e2464663d21e316ba3",
+      "target": "field:0d38905d75acb720ab0d5d828094116d"
+    },
+    {
+      "kind": "contains",
+      "source": "class:1e622133262176e2464663d21e316ba3",
+      "target": "field:7a37313bfbb02b3580b9828035c1c98a"
+    },
+    {
+      "kind": "contains",
+      "source": "class:1e622133262176e2464663d21e316ba3",
+      "target": "field:08e829d954b91b63a5b19f5c3ec205bd"
+    },
+    {
+      "kind": "contains",
+      "source": "class:1e622133262176e2464663d21e316ba3",
+      "target": "field:d339ab052453f739d706b55ab84daf44"
+    },
+    {
+      "kind": "contains",
+      "source": "class:1e622133262176e2464663d21e316ba3",
+      "target": "method:102179da50a17734f50d14efb73fe6c2"
+    },
+    {
+      "kind": "contains",
+      "source": "class:1e622133262176e2464663d21e316ba3",
+      "target": "method:f7b11a03f6757bb0b670dde51528585b"
+    },
+    {
+      "kind": "contains",
+      "source": "class:1e622133262176e2464663d21e316ba3",
+      "target": "method:7a3dc1c140764318382a2eb221274bf3"
+    },
+    {
+      "kind": "contains",
+      "source": "class:1e622133262176e2464663d21e316ba3",
+      "target": "method:3dc407a4b709d9911c12cff4de670ffb"
+    },
+    {
+      "kind": "contains",
+      "source": "class:1e622133262176e2464663d21e316ba3",
+      "target": "method:5b1958c7afa935f9e2b6db86c8bbd08d"
+    },
+    {
+      "kind": "contains",
+      "source": "class:1e622133262176e2464663d21e316ba3",
+      "target": "method:f1dc90ce53eec27630297ce1242bd273"
+    },
+    {
+      "kind": "contains",
+      "source": "class:1e622133262176e2464663d21e316ba3",
+      "target": "method:03f9aeb8e192840a6aa5098beec7aaca"
+    },
+    {
+      "kind": "contains",
+      "source": "file:solidity/Basic.sol",
+      "target": "class:9e233abcb29c9739893eca8a03348fb8"
+    },
+    {
+      "kind": "contains",
+      "source": "class:9e233abcb29c9739893eca8a03348fb8",
+      "target": "method:44c39b63db62a504edcca2c1ef2361bd"
+    },
+    {
+      "kind": "contains",
+      "source": "file:solidity/Basic.sol",
+      "target": "struct:eb84603ce6dda963bf385dfdc66c534a"
+    },
+    {
+      "kind": "contains",
+      "source": "struct:eb84603ce6dda963bf385dfdc66c534a",
+      "target": "field:20ec4fd264d24ecbc2097c937db414c1"
+    },
+    {
+      "kind": "contains",
+      "source": "struct:eb84603ce6dda963bf385dfdc66c534a",
+      "target": "field:565dacc1358431f987beaa93c63881c3"
+    },
+    {
+      "kind": "contains",
+      "source": "file:solidity/Basic.sol",
+      "target": "enum:ca9c0c5e26221270f448db3941573181"
+    },
+    {
+      "kind": "contains",
+      "source": "enum:ca9c0c5e26221270f448db3941573181",
+      "target": "enum_member:ecaa458a927812d383bfa773b7284180"
+    },
+    {
+      "kind": "contains",
+      "source": "enum:ca9c0c5e26221270f448db3941573181",
+      "target": "enum_member:335736534e31b8934490a3b2df6b7038"
+    },
+    {
+      "kind": "contains",
+      "source": "enum:ca9c0c5e26221270f448db3941573181",
+      "target": "enum_member:74d69158916013f3cefde83f7f3e7607"
+    },
+    {
+      "kind": "contains",
+      "source": "file:solidity/Basic.sol",
+      "target": "class:682285913d2595cf1b4d8165a0aa3f14"
+    },
+    {
+      "kind": "contains",
+      "source": "class:682285913d2595cf1b4d8165a0aa3f14",
+      "target": "field:92063fac524d5ce9e7b6b2a64147732c"
+    },
+    {
+      "kind": "contains",
+      "source": "class:682285913d2595cf1b4d8165a0aa3f14",
+      "target": "field:cadcf0f3b0cf7027e67d015716f278c7"
+    },
+    {
+      "kind": "contains",
+      "source": "class:682285913d2595cf1b4d8165a0aa3f14",
+      "target": "method:f405b90e9d9d326799cdd8b3a663b144"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 74,
+      "filePath": "solidity/Basic.sol",
+      "id": "file:solidity/Basic.sol",
+      "isExported": false,
+      "kind": "file",
+      "language": "solidity",
+      "name": "Basic.sol",
+      "qualifiedName": "solidity/Basic.sol",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 33,
+      "endLine": 4,
+      "filePath": "solidity/Basic.sol",
+      "id": "import:c5f3b0de84e7b5374d41c1b8be4c3eae",
+      "kind": "import",
+      "language": "solidity",
+      "name": "./interfaces/IERC20.sol",
+      "qualifiedName": "./interfaces/IERC20.sol",
+      "signature": "import \"./interfaces/IERC20.sol\";",
+      "startColumn": 0,
+      "startLine": 4
+    },
+    {
+      "endColumn": 38,
+      "endLine": 5,
+      "filePath": "solidity/Basic.sol",
+      "id": "import:4303c3324544a83075f5b4025388ca90",
+      "kind": "import",
+      "language": "solidity",
+      "name": "./Ownable.sol",
+      "qualifiedName": "./Ownable.sol",
+      "signature": "import {Ownable} from \"./Ownable.sol\";",
+      "startColumn": 0,
+      "startLine": 5
+    },
+    {
+      "endColumn": 1,
+      "endLine": 9,
+      "filePath": "solidity/Basic.sol",
+      "id": "interface:304cc4bbc776ab7838bcba4433344759",
+      "kind": "interface",
+      "language": "solidity",
+      "name": "IERC721",
+      "qualifiedName": "IERC721",
+      "startColumn": 0,
+      "startLine": 7
+    },
+    {
+      "endColumn": 70,
+      "endLine": 8,
+      "filePath": "solidity/Basic.sol",
+      "id": "method:47cabd99056d5dc04c5c304907dde9ef",
+      "kind": "method",
+      "language": "solidity",
+      "name": "ownerOf",
+      "qualifiedName": "IERC721::ownerOf",
+      "signature": "(uint256 tokenId) external view returns (address)",
+      "startColumn": 4,
+      "startLine": 8,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 1,
+      "endLine": 50,
+      "filePath": "solidity/Basic.sol",
+      "id": "class:1e622133262176e2464663d21e316ba3",
+      "kind": "class",
+      "language": "solidity",
+      "name": "Token",
+      "qualifiedName": "Token",
+      "startColumn": 0,
+      "startLine": 11
+    },
+    {
+      "endColumn": 50,
+      "endLine": 12,
+      "filePath": "solidity/Basic.sol",
+      "id": "field:0d38905d75acb720ab0d5d828094116d",
+      "isStatic": false,
+      "kind": "field",
+      "language": "solidity",
+      "name": "_balances",
+      "qualifiedName": "Token::_balances",
+      "startColumn": 4,
+      "startLine": 12,
+      "visibility": "private"
+    },
+    {
+      "endColumn": 31,
+      "endLine": 13,
+      "filePath": "solidity/Basic.sol",
+      "id": "field:7a37313bfbb02b3580b9828035c1c98a",
+      "isStatic": false,
+      "kind": "field",
+      "language": "solidity",
+      "name": "totalSupply",
+      "qualifiedName": "Token::totalSupply",
+      "startColumn": 4,
+      "startLine": 13,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 76,
+      "endLine": 15,
+      "filePath": "solidity/Basic.sol",
+      "id": "field:08e829d954b91b63a5b19f5c3ec205bd",
+      "kind": "field",
+      "language": "solidity",
+      "name": "Transfer",
+      "qualifiedName": "Token::Transfer",
+      "signature": "event Transfer(address indexed from, address indexed to, uint256 value);",
+      "startColumn": 4,
+      "startLine": 15
+    },
+    {
+      "endColumn": 67,
+      "endLine": 16,
+      "filePath": "solidity/Basic.sol",
+      "id": "field:d339ab052453f739d706b55ab84daf44",
+      "kind": "field",
+      "language": "solidity",
+      "name": "InsufficientBalance",
+      "qualifiedName": "Token::InsufficientBalance",
+      "signature": "error InsufficientBalance(uint256 available, uint256 required);",
+      "startColumn": 4,
+      "startLine": 16
+    },
+    {
+      "endColumn": 5,
+      "endLine": 21,
+      "filePath": "solidity/Basic.sol",
+      "id": "method:102179da50a17734f50d14efb73fe6c2",
+      "kind": "method",
+      "language": "solidity",
+      "name": "onlyAdmin",
+      "qualifiedName": "Token::onlyAdmin",
+      "signature": "()",
+      "startColumn": 4,
+      "startLine": 18
+    },
+    {
+      "endColumn": 5,
+      "endLine": 25,
+      "filePath": "solidity/Basic.sol",
+      "id": "method:f7b11a03f6757bb0b670dde51528585b",
+      "kind": "method",
+      "language": "solidity",
+      "name": "constructor",
+      "qualifiedName": "Token::constructor",
+      "signature": "(uint256 initialSupply)",
+      "startColumn": 4,
+      "startLine": 23
+    },
+    {
+      "endColumn": 34,
+      "endLine": 27,
+      "filePath": "solidity/Basic.sol",
+      "id": "method:7a3dc1c140764318382a2eb221274bf3",
+      "kind": "method",
+      "language": "solidity",
+      "name": "fallback",
+      "qualifiedName": "Token::fallback",
+      "signature": "() external payable",
+      "startColumn": 4,
+      "startLine": 27,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 33,
+      "endLine": 29,
+      "filePath": "solidity/Basic.sol",
+      "id": "method:3dc407a4b709d9911c12cff4de670ffb",
+      "kind": "method",
+      "language": "solidity",
+      "name": "receive",
+      "qualifiedName": "Token::receive",
+      "signature": "() external payable",
+      "startColumn": 4,
+      "startLine": 29,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 5,
+      "endLine": 33,
+      "filePath": "solidity/Basic.sol",
+      "id": "method:5b1958c7afa935f9e2b6db86c8bbd08d",
+      "kind": "method",
+      "language": "solidity",
+      "name": "balanceOf",
+      "qualifiedName": "Token::balanceOf",
+      "signature": "(address account) public view returns (uint256)",
+      "startColumn": 4,
+      "startLine": 31,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 5,
+      "endLine": 39,
+      "filePath": "solidity/Basic.sol",
+      "id": "method:f1dc90ce53eec27630297ce1242bd273",
+      "kind": "method",
+      "language": "solidity",
+      "name": "mint",
+      "qualifiedName": "Token::mint",
+      "signature": "(address to, uint256 amount) public",
+      "startColumn": 4,
+      "startLine": 35,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 5,
+      "endLine": 49,
+      "filePath": "solidity/Basic.sol",
+      "id": "method:03f9aeb8e192840a6aa5098beec7aaca",
+      "kind": "method",
+      "language": "solidity",
+      "name": "burn",
+      "qualifiedName": "Token::burn",
+      "signature": "(uint256 amount) public",
+      "startColumn": 4,
+      "startLine": 41,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 1,
+      "endLine": 56,
+      "filePath": "solidity/Basic.sol",
+      "id": "class:9e233abcb29c9739893eca8a03348fb8",
+      "kind": "class",
+      "language": "solidity",
+      "name": "MathLib",
+      "qualifiedName": "MathLib",
+      "startColumn": 0,
+      "startLine": 52
+    },
+    {
+      "endColumn": 5,
+      "endLine": 55,
+      "filePath": "solidity/Basic.sol",
+      "id": "method:44c39b63db62a504edcca2c1ef2361bd",
+      "kind": "method",
+      "language": "solidity",
+      "name": "max",
+      "qualifiedName": "MathLib::max",
+      "signature": "(uint256 a, uint256 b) internal pure returns (uint256)",
+      "startColumn": 4,
+      "startLine": 53,
+      "visibility": "internal"
+    },
+    {
+      "endColumn": 1,
+      "endLine": 61,
+      "filePath": "solidity/Basic.sol",
+      "id": "struct:eb84603ce6dda963bf385dfdc66c534a",
+      "kind": "struct",
+      "language": "solidity",
+      "name": "Point",
+      "qualifiedName": "Point",
+      "startColumn": 0,
+      "startLine": 58
+    },
+    {
+      "endColumn": 14,
+      "endLine": 59,
+      "filePath": "solidity/Basic.sol",
+      "id": "field:20ec4fd264d24ecbc2097c937db414c1",
+      "isStatic": false,
+      "kind": "field",
+      "language": "solidity",
+      "name": "x",
+      "qualifiedName": "Point::x",
+      "startColumn": 4,
+      "startLine": 59
+    },
+    {
+      "endColumn": 14,
+      "endLine": 60,
+      "filePath": "solidity/Basic.sol",
+      "id": "field:565dacc1358431f987beaa93c63881c3",
+      "isStatic": false,
+      "kind": "field",
+      "language": "solidity",
+      "name": "y",
+      "qualifiedName": "Point::y",
+      "startColumn": 4,
+      "startLine": 60
+    },
+    {
+      "endColumn": 31,
+      "endLine": 63,
+      "filePath": "solidity/Basic.sol",
+      "id": "enum:ca9c0c5e26221270f448db3941573181",
+      "kind": "enum",
+      "language": "solidity",
+      "name": "Color",
+      "qualifiedName": "Color",
+      "startColumn": 0,
+      "startLine": 63
+    },
+    {
+      "endColumn": 16,
+      "endLine": 63,
+      "filePath": "solidity/Basic.sol",
+      "id": "enum_member:ecaa458a927812d383bfa773b7284180",
+      "kind": "enum_member",
+      "language": "solidity",
+      "name": "RED",
+      "qualifiedName": "Color::RED",
+      "startColumn": 13,
+      "startLine": 63
+    },
+    {
+      "endColumn": 23,
+      "endLine": 63,
+      "filePath": "solidity/Basic.sol",
+      "id": "enum_member:335736534e31b8934490a3b2df6b7038",
+      "kind": "enum_member",
+      "language": "solidity",
+      "name": "GREEN",
+      "qualifiedName": "Color::GREEN",
+      "startColumn": 18,
+      "startLine": 63
+    },
+    {
+      "endColumn": 29,
+      "endLine": 63,
+      "filePath": "solidity/Basic.sol",
+      "id": "enum_member:74d69158916013f3cefde83f7f3e7607",
+      "kind": "enum_member",
+      "language": "solidity",
+      "name": "BLUE",
+      "qualifiedName": "Color::BLUE",
+      "startColumn": 25,
+      "startLine": 63
+    },
+    {
+      "endColumn": 1,
+      "endLine": 73,
+      "filePath": "solidity/Basic.sol",
+      "id": "class:682285913d2595cf1b4d8165a0aa3f14",
+      "kind": "class",
+      "language": "solidity",
+      "name": "Factory",
+      "qualifiedName": "Factory",
+      "startColumn": 0,
+      "startLine": 65
+    },
+    {
+      "endColumn": 25,
+      "endLine": 66,
+      "filePath": "solidity/Basic.sol",
+      "id": "field:92063fac524d5ce9e7b6b2a64147732c",
+      "isStatic": false,
+      "kind": "field",
+      "language": "solidity",
+      "name": "_token",
+      "qualifiedName": "Factory::_token",
+      "startColumn": 4,
+      "startLine": 66,
+      "visibility": "private"
+    },
+    {
+      "endColumn": 38,
+      "endLine": 67,
+      "filePath": "solidity/Basic.sol",
+      "id": "field:cadcf0f3b0cf7027e67d015716f278c7",
+      "isStatic": false,
+      "kind": "field",
+      "language": "solidity",
+      "name": "admin",
+      "qualifiedName": "Factory::admin",
+      "startColumn": 4,
+      "startLine": 67,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 5,
+      "endLine": 72,
+      "filePath": "solidity/Basic.sol",
+      "id": "method:f405b90e9d9d326799cdd8b3a663b144",
+      "kind": "method",
+      "language": "solidity",
+      "name": "deploy",
+      "qualifiedName": "Factory::deploy",
+      "signature": "() public returns (Token)",
+      "startColumn": 4,
+      "startLine": 69,
+      "visibility": "public"
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 0,
+      "fromNodeId": "file:solidity/Basic.sol",
+      "line": 4,
+      "referenceKind": "imports",
+      "referenceName": "./interfaces/IERC20.sol"
+    },
+    {
+      "column": 0,
+      "fromNodeId": "file:solidity/Basic.sol",
+      "line": 5,
+      "referenceKind": "imports",
+      "referenceName": "./Ownable.sol"
+    },
+    {
+      "column": 0,
+      "fromNodeId": "class:1e622133262176e2464663d21e316ba3",
+      "line": 11,
+      "referenceKind": "extends",
+      "referenceName": "IERC20"
+    },
+    {
+      "column": 0,
+      "fromNodeId": "class:1e622133262176e2464663d21e316ba3",
+      "line": 11,
+      "referenceKind": "extends",
+      "referenceName": "Ownable"
+    },
+    {
+      "column": 8,
+      "fromNodeId": "method:102179da50a17734f50d14efb73fe6c2",
+      "line": 19,
+      "referenceKind": "calls",
+      "referenceName": "require"
+    },
+    {
+      "column": 53,
+      "fromNodeId": "method:f1dc90ce53eec27630297ce1242bd273",
+      "line": 35,
+      "referenceKind": "calls",
+      "referenceName": "onlyAdmin"
+    },
+    {
+      "column": 8,
+      "fromNodeId": "method:f1dc90ce53eec27630297ce1242bd273",
+      "line": 38,
+      "referenceKind": "calls",
+      "referenceName": "Transfer"
+    },
+    {
+      "column": 12,
+      "fromNodeId": "method:03f9aeb8e192840a6aa5098beec7aaca",
+      "line": 44,
+      "referenceKind": "calls",
+      "referenceName": "InsufficientBalance"
+    },
+    {
+      "column": 8,
+      "fromNodeId": "method:03f9aeb8e192840a6aa5098beec7aaca",
+      "line": 48,
+      "referenceKind": "calls",
+      "referenceName": "Transfer"
+    },
+    {
+      "column": 17,
+      "fromNodeId": "method:f405b90e9d9d326799cdd8b3a663b144",
+      "line": 70,
+      "referenceKind": "calls",
+      "referenceName": "new Token"
+    },
+    {
+      "column": 17,
+      "fromNodeId": "method:f405b90e9d9d326799cdd8b3a663b144",
+      "line": 70,
+      "referenceKind": "instantiates",
+      "referenceName": "Token"
+    }
+  ]
+}

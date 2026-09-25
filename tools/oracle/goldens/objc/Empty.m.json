@@ -1,0 +1,20 @@
+{
+  "edges": [],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 1,
+      "filePath": "objc/Empty.m",
+      "id": "file:objc/Empty.m",
+      "isExported": false,
+      "kind": "file",
+      "language": "objc",
+      "name": "Empty.m",
+      "qualifiedName": "objc/Empty.m",
+      "startColumn": 0,
+      "startLine": 1
+    }
+  ],
+  "unresolvedReferences": []
+}

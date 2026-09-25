@@ -1,0 +1,156 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:csharp/Basic.cs",
+      "target": "namespace:b1a01d58f35ad46f5e1ebe6d69030265"
+    },
+    {
+      "kind": "contains",
+      "source": "namespace:b1a01d58f35ad46f5e1ebe6d69030265",
+      "target": "import:af37ac048f8d0ef28a7b8a2a87da4352"
+    },
+    {
+      "kind": "contains",
+      "source": "namespace:b1a01d58f35ad46f5e1ebe6d69030265",
+      "target": "class:d58f052a31bd619ea0dc090cd06b442e"
+    },
+    {
+      "kind": "contains",
+      "source": "class:d58f052a31bd619ea0dc090cd06b442e",
+      "target": "field:694fb4741299b9993a34381fe4d7aa44"
+    },
+    {
+      "kind": "contains",
+      "source": "class:d58f052a31bd619ea0dc090cd06b442e",
+      "target": "method:afe4bff1c8c322e1fa7c5aef4bd41df0"
+    },
+    {
+      "kind": "contains",
+      "source": "class:d58f052a31bd619ea0dc090cd06b442e",
+      "target": "method:8569ef0c4ecfe599d2b22dfe4f2414ef"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 20,
+      "filePath": "csharp/Basic.cs",
+      "id": "file:csharp/Basic.cs",
+      "isExported": false,
+      "kind": "file",
+      "language": "csharp",
+      "name": "Basic.cs",
+      "qualifiedName": "csharp/Basic.cs",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 1,
+      "endLine": 19,
+      "filePath": "csharp/Basic.cs",
+      "id": "namespace:b1a01d58f35ad46f5e1ebe6d69030265",
+      "kind": "namespace",
+      "language": "csharp",
+      "name": "Demo",
+      "qualifiedName": "Demo",
+      "startColumn": 0,
+      "startLine": 3
+    },
+    {
+      "endColumn": 13,
+      "endLine": 1,
+      "filePath": "csharp/Basic.cs",
+      "id": "import:af37ac048f8d0ef28a7b8a2a87da4352",
+      "kind": "import",
+      "language": "csharp",
+      "name": "System",
+      "qualifiedName": "Demo::System",
+      "signature": "using System;",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 5,
+      "endLine": 18,
+      "filePath": "csharp/Basic.cs",
+      "id": "class:d58f052a31bd619ea0dc090cd06b442e",
+      "kind": "class",
+      "language": "csharp",
+      "name": "Circle",
+      "qualifiedName": "Demo::Circle",
+      "startColumn": 4,
+      "startLine": 5,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 39,
+      "endLine": 7,
+      "filePath": "csharp/Basic.cs",
+      "id": "field:694fb4741299b9993a34381fe4d7aa44",
+      "isStatic": false,
+      "kind": "field",
+      "language": "csharp",
+      "name": "_radius",
+      "qualifiedName": "Demo::Circle::_radius",
+      "signature": "double _radius",
+      "startColumn": 32,
+      "startLine": 7,
+      "visibility": "private"
+    },
+    {
+      "endColumn": 9,
+      "endLine": 12,
+      "filePath": "csharp/Basic.cs",
+      "id": "method:afe4bff1c8c322e1fa7c5aef4bd41df0",
+      "isAsync": false,
+      "isStatic": false,
+      "kind": "method",
+      "language": "csharp",
+      "name": "Circle",
+      "qualifiedName": "Demo::Circle::Circle",
+      "startColumn": 8,
+      "startLine": 9,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 9,
+      "endLine": 17,
+      "filePath": "csharp/Basic.cs",
+      "id": "method:8569ef0c4ecfe599d2b22dfe4f2414ef",
+      "isAsync": false,
+      "isStatic": false,
+      "kind": "method",
+      "language": "csharp",
+      "name": "Area",
+      "qualifiedName": "Demo::Circle::Area",
+      "startColumn": 8,
+      "startLine": 14,
+      "visibility": "public"
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 0,
+      "fromNodeId": "namespace:b1a01d58f35ad46f5e1ebe6d69030265",
+      "line": 1,
+      "referenceKind": "imports",
+      "referenceName": "System"
+    },
+    {
+      "column": 26,
+      "fromNodeId": "class:d58f052a31bd619ea0dc090cd06b442e",
+      "line": 5,
+      "referenceKind": "extends",
+      "referenceName": "IShape"
+    },
+    {
+      "column": 19,
+      "fromNodeId": "method:8569ef0c4ecfe599d2b22dfe4f2414ef",
+      "line": 16,
+      "referenceKind": "references",
+      "referenceName": "Math"
+    }
+  ]
+}

@@ -1,0 +1,123 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:go/Basic.go",
+      "target": "import:9c54dd0e25682708685c3ccebe5bab37"
+    },
+    {
+      "kind": "contains",
+      "source": "file:go/Basic.go",
+      "target": "struct:c28fa2c23a4bce575f3890ef8b1a96d0"
+    },
+    {
+      "kind": "contains",
+      "source": "file:go/Basic.go",
+      "target": "method:0bc5e7c488e8a0c2a6f8a4995cae75db"
+    },
+    {
+      "kind": "contains",
+      "source": "struct:c28fa2c23a4bce575f3890ef8b1a96d0",
+      "target": "method:0bc5e7c488e8a0c2a6f8a4995cae75db"
+    },
+    {
+      "kind": "contains",
+      "source": "file:go/Basic.go",
+      "target": "function:92edb15bc5933042b38c2d3d7fd0994a"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 16,
+      "filePath": "go/Basic.go",
+      "id": "file:go/Basic.go",
+      "isExported": false,
+      "kind": "file",
+      "language": "go",
+      "name": "Basic.go",
+      "qualifiedName": "go/Basic.go",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 13,
+      "endLine": 3,
+      "filePath": "go/Basic.go",
+      "id": "import:9c54dd0e25682708685c3ccebe5bab37",
+      "kind": "import",
+      "language": "go",
+      "name": "math",
+      "qualifiedName": "math",
+      "signature": "\"math\"",
+      "startColumn": 7,
+      "startLine": 3
+    },
+    {
+      "endColumn": 1,
+      "endLine": 7,
+      "filePath": "go/Basic.go",
+      "id": "struct:c28fa2c23a4bce575f3890ef8b1a96d0",
+      "isExported": true,
+      "kind": "struct",
+      "language": "go",
+      "name": "Circle",
+      "qualifiedName": "Circle",
+      "startColumn": 5,
+      "startLine": 5
+    },
+    {
+      "endColumn": 1,
+      "endLine": 11,
+      "filePath": "go/Basic.go",
+      "id": "method:0bc5e7c488e8a0c2a6f8a4995cae75db",
+      "kind": "method",
+      "language": "go",
+      "name": "Area",
+      "qualifiedName": "Circle::Area",
+      "returnType": "float64",
+      "signature": "() float64",
+      "startColumn": 0,
+      "startLine": 9
+    },
+    {
+      "endColumn": 1,
+      "endLine": 15,
+      "filePath": "go/Basic.go",
+      "id": "function:92edb15bc5933042b38c2d3d7fd0994a",
+      "isExported": true,
+      "kind": "function",
+      "language": "go",
+      "name": "Make",
+      "qualifiedName": "Make",
+      "returnType": "Circle",
+      "signature": "(radius float64) Circle",
+      "startColumn": 0,
+      "startLine": 13
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 7,
+      "fromNodeId": "file:go/Basic.go",
+      "line": 3,
+      "referenceKind": "imports",
+      "referenceName": "math"
+    },
+    {
+      "column": 26,
+      "fromNodeId": "function:92edb15bc5933042b38c2d3d7fd0994a",
+      "line": 13,
+      "referenceKind": "references",
+      "referenceName": "Circle"
+    },
+    {
+      "column": 8,
+      "fromNodeId": "function:92edb15bc5933042b38c2d3d7fd0994a",
+      "line": 14,
+      "referenceKind": "instantiates",
+      "referenceName": "Circle"
+    }
+  ]
+}

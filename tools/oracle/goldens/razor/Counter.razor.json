@@ -1,0 +1,57 @@
+{
+  "edges": [],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 12,
+      "filePath": "razor/Counter.razor",
+      "id": "component:b771587e4ec4e2672b819bd6c836b602",
+      "isExported": true,
+      "kind": "component",
+      "language": "razor",
+      "name": "Counter",
+      "qualifiedName": "razor/Counter.razor::Counter",
+      "startColumn": 0,
+      "startLine": 1
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 1,
+      "filePath": "razor/Counter.razor",
+      "fromNodeId": "component:b771587e4ec4e2672b819bd6c836b602",
+      "language": "razor",
+      "line": 10,
+      "referenceKind": "references",
+      "referenceName": "Grid"
+    },
+    {
+      "column": 0,
+      "filePath": "razor/Counter.razor",
+      "fromNodeId": "component:b771587e4ec4e2672b819bd6c836b602",
+      "language": "razor",
+      "line": 10,
+      "referenceKind": "references",
+      "referenceName": "CatalogItem"
+    },
+    {
+      "column": 14,
+      "filePath": "razor/Counter.razor",
+      "fromNodeId": "component:b771587e4ec4e2672b819bd6c836b602",
+      "language": "razor",
+      "line": 5,
+      "referenceKind": "instantiates",
+      "referenceName": "OrderService"
+    },
+    {
+      "column": 4,
+      "filePath": "razor/Counter.razor",
+      "fromNodeId": "component:b771587e4ec4e2672b819bd6c836b602",
+      "language": "razor",
+      "line": 6,
+      "referenceKind": "calls",
+      "referenceName": "svc.Submit"
+    }
+  ]
+}
