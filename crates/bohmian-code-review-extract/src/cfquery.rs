@@ -327,7 +327,9 @@ mod tests {
             .iter()
             .filter(|r| {
                 r.reference_kind
-                    == bohmian_code_review_core::ReferenceKind::Edge(bohmian_code_review_core::EdgeKind::Calls)
+                    == bohmian_code_review_core::ReferenceKind::Edge(
+                        bohmian_code_review_core::EdgeKind::Calls,
+                    )
             })
             .map(|r| r.reference_name.as_str())
             .collect();
@@ -354,7 +356,9 @@ mod tests {
             .iter()
             .filter(|r| {
                 r.reference_kind
-                    == bohmian_code_review_core::ReferenceKind::Edge(bohmian_code_review_core::EdgeKind::Calls)
+                    == bohmian_code_review_core::ReferenceKind::Edge(
+                        bohmian_code_review_core::EdgeKind::Calls,
+                    )
             })
             .map(|r| r.reference_name.as_str())
             .collect();

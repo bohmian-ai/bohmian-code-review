@@ -1259,7 +1259,9 @@ mod tests {
             r.from_node_id == bar.id
                 && r.reference_name == "Baz"
                 && r.reference_kind
-                    == bohmian_code_review_core::ReferenceKind::Edge(bohmian_code_review_core::EdgeKind::Calls)
+                    == bohmian_code_review_core::ReferenceKind::Edge(
+                        bohmian_code_review_core::EdgeKind::Calls,
+                    )
         }));
     }
 

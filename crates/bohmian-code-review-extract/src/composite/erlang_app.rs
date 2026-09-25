@@ -53,7 +53,10 @@ mod tests {
         let source = "{application, demo,\n [{description, \"Demo\"},\n  {applications, [kernel, stdlib]},\n  {mod, {demo_app, []}}]}.\n";
         let path = RelativePath::new("src/demo.app.src").expect("valid path");
         let result = extract(&native(), &path, source).expect("erlang app extraction succeeds");
-        assert_eq!(result.nodes[0].kind, bohmian_code_review_core::NodeKind::File);
+        assert_eq!(
+            result.nodes[0].kind,
+            bohmian_code_review_core::NodeKind::File
+        );
         let names: Vec<&str> = result
             .references
             .iter()

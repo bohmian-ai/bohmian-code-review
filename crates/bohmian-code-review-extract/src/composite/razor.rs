@@ -16,7 +16,9 @@ use crate::error::ExtractionError;
 use crate::extractor::Extractor;
 use crate::result::ExtractionResult;
 use crate::source_file::SourceFile;
-use bohmian_code_review_core::{Language, Node, NodeKind, RawReference, ReferenceKind, RelativePath};
+use bohmian_code_review_core::{
+    Language, Node, NodeKind, RawReference, ReferenceKind, RelativePath,
+};
 use regex::Regex;
 use std::sync::OnceLock;
 

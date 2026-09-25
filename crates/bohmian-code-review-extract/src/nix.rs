@@ -800,7 +800,9 @@ mod tests {
             .iter()
             .filter(|r| {
                 r.reference_kind
-                    == bohmian_code_review_core::ReferenceKind::Edge(bohmian_code_review_core::EdgeKind::Calls)
+                    == bohmian_code_review_core::ReferenceKind::Edge(
+                        bohmian_code_review_core::EdgeKind::Calls,
+                    )
             })
             .map(|r| r.reference_name.as_str())
             .collect();
@@ -816,11 +818,14 @@ mod tests {
             result
                 .nodes
                 .iter()
-                .any(|n| n.kind == bohmian_code_review_core::NodeKind::Import && n.name == "./foo.nix")
+                .any(|n| n.kind == bohmian_code_review_core::NodeKind::Import
+                    && n.name == "./foo.nix")
         );
         assert!(result.references.iter().any(|r| {
             r.reference_kind
-                == bohmian_code_review_core::ReferenceKind::Edge(bohmian_code_review_core::EdgeKind::Imports)
+                == bohmian_code_review_core::ReferenceKind::Edge(
+                    bohmian_code_review_core::EdgeKind::Imports,
+                )
                 && r.reference_name == "./foo.nix"
         }));
     }

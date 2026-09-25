@@ -96,7 +96,9 @@ mod tests {
         let f = result
             .nodes
             .iter()
-            .find(|n| n.kind == bohmian_code_review_core::NodeKind::Function && n.name == "helloBuilder")
+            .find(|n| {
+                n.kind == bohmian_code_review_core::NodeKind::Function && n.name == "helloBuilder"
+            })
             .expect("helloBuilder node");
         assert_eq!(f.decorators.as_deref(), Some(&["Builder".to_string()][..]));
     }
@@ -112,7 +114,9 @@ mod tests {
             .iter()
             .filter(|r| {
                 r.reference_kind
-                    == bohmian_code_review_core::ReferenceKind::Edge(bohmian_code_review_core::EdgeKind::Calls)
+                    == bohmian_code_review_core::ReferenceKind::Edge(
+                        bohmian_code_review_core::EdgeKind::Calls,
+                    )
             })
             .map(|r| r.reference_name.as_str())
             .collect();

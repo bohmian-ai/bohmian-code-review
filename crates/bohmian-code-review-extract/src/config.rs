@@ -28,7 +28,10 @@ impl ExtractionConfig {
     /// The configuration that enables every native language compiled into this kernel.
     pub fn all_native() -> Self {
         ExtractionConfig {
-            enabled_languages: bohmian_code_review_core::NATIVE_LANGUAGES.iter().copied().collect(),
+            enabled_languages: bohmian_code_review_core::NATIVE_LANGUAGES
+                .iter()
+                .copied()
+                .collect(),
         }
     }
 

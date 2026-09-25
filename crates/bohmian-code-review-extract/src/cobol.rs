@@ -1028,12 +1028,16 @@ mod tests {
             r.from_node_id == main.id
                 && r.reference_name == "SUB-PARA"
                 && r.reference_kind
-                    == bohmian_code_review_core::ReferenceKind::Edge(bohmian_code_review_core::EdgeKind::Calls)
+                    == bohmian_code_review_core::ReferenceKind::Edge(
+                        bohmian_code_review_core::EdgeKind::Calls,
+                    )
         }));
         assert!(result.references.iter().any(|r| {
             r.reference_name == "LOGGER"
                 && r.reference_kind
-                    == bohmian_code_review_core::ReferenceKind::Edge(bohmian_code_review_core::EdgeKind::Calls)
+                    == bohmian_code_review_core::ReferenceKind::Edge(
+                        bohmian_code_review_core::EdgeKind::Calls,
+                    )
         }));
     }
 
@@ -1059,7 +1063,8 @@ mod tests {
             result
                 .nodes
                 .iter()
-                .any(|n| n.kind == bohmian_code_review_core::NodeKind::Variable && n.name == "WS-REC")
+                .any(|n| n.kind == bohmian_code_review_core::NodeKind::Variable
+                    && n.name == "WS-REC")
         );
         assert!(
             result
@@ -1067,12 +1072,9 @@ mod tests {
                 .iter()
                 .any(|n| n.kind == bohmian_code_review_core::NodeKind::Field && n.name == "WS-NAME")
         );
-        assert!(
-            result
-                .nodes
-                .iter()
-                .any(|n| n.kind == bohmian_code_review_core::NodeKind::Constant && n.name == "WS-EMPTY")
-        );
+        assert!(result.nodes.iter().any(|n| n.kind
+            == bohmian_code_review_core::NodeKind::Constant
+            && n.name == "WS-EMPTY"));
     }
 
     #[test]

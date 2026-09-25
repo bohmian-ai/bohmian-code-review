@@ -1778,7 +1778,8 @@ mod tests {
             result
                 .nodes
                 .iter()
-                .any(|n| n.kind == bohmian_code_review_core::NodeKind::Import && n.name == "SysUtils")
+                .any(|n| n.kind == bohmian_code_review_core::NodeKind::Import
+                    && n.name == "SysUtils")
         );
         // The implementation body's WriteLn call attributes to the method.
         let doit = result
@@ -1790,7 +1791,9 @@ mod tests {
             r.from_node_id == doit.id
                 && r.reference_name == "WriteLn"
                 && r.reference_kind
-                    == bohmian_code_review_core::ReferenceKind::Edge(bohmian_code_review_core::EdgeKind::Calls)
+                    == bohmian_code_review_core::ReferenceKind::Edge(
+                        bohmian_code_review_core::EdgeKind::Calls,
+                    )
         }));
     }
 
@@ -1803,7 +1806,8 @@ mod tests {
             result
                 .nodes
                 .iter()
-                .any(|n| n.kind == bohmian_code_review_core::NodeKind::Function && n.name == "Helper")
+                .any(|n| n.kind == bohmian_code_review_core::NodeKind::Function
+                    && n.name == "Helper")
         );
     }
 
@@ -1823,7 +1827,9 @@ mod tests {
         assert!(result.references.iter().any(|r| {
             r.reference_name == "Button1Click"
                 && r.reference_kind
-                    == bohmian_code_review_core::ReferenceKind::Edge(bohmian_code_review_core::EdgeKind::References)
+                    == bohmian_code_review_core::ReferenceKind::Edge(
+                        bohmian_code_review_core::EdgeKind::References,
+                    )
         }));
         // Containment: Panel1 contains Button1.
         let panel = result

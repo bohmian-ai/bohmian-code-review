@@ -2096,7 +2096,10 @@ fn composite_special_route_negatives() {
         )
         .expect("shopify template json extracts");
     assert_eq!(shopify.nodes.len(), 1);
-    assert_eq!(shopify.nodes[0].kind, bohmian_code_review_core::NodeKind::File);
+    assert_eq!(
+        shopify.nodes[0].kind,
+        bohmian_code_review_core::NodeKind::File
+    );
     assert_eq!(shopify.nodes[0].language, Language::Liquid);
     // config/ and locales/ JSON are not Shopify and have no registered
     // extension → Unknown → typed rejection.

@@ -1287,7 +1287,9 @@ mod tests {
             .iter()
             .filter(|r| {
                 r.reference_kind
-                    == bohmian_code_review_core::ReferenceKind::Edge(bohmian_code_review_core::EdgeKind::Calls)
+                    == bohmian_code_review_core::ReferenceKind::Edge(
+                        bohmian_code_review_core::EdgeKind::Calls,
+                    )
             })
             .map(|r| r.reference_name.as_str())
             .collect();
@@ -1325,16 +1327,16 @@ mod tests {
         let src = "-module(foo).\n-include(\"bar.hrl\").\n-define(TIMEOUT, 5000).\n";
         let result = extract_source("foo.erl", src);
         assert!(
-            result
-                .nodes
-                .iter()
-                .any(|n| n.kind == bohmian_code_review_core::NodeKind::Import && n.name == "bar.hrl")
+            result.nodes.iter().any(
+                |n| n.kind == bohmian_code_review_core::NodeKind::Import && n.name == "bar.hrl"
+            )
         );
         assert!(
             result
                 .nodes
                 .iter()
-                .any(|n| n.kind == bohmian_code_review_core::NodeKind::Constant && n.name == "TIMEOUT")
+                .any(|n| n.kind == bohmian_code_review_core::NodeKind::Constant
+                    && n.name == "TIMEOUT")
         );
     }
 
