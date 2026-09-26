@@ -109,3 +109,22 @@ Every snapshot object the library writes is tracked before it exists; a cancelle
 `snapshot.rs`, `persistence.rs` (rustdoc), `lib.rs` (re-exports), `testing.rs` if a failure-injection hook is needed, and the TASK-003 task file's implementation evidence.
 
 Route to `$cr-implement`.
+
+## Implementation evidence
+
+Candidate: `4bafce8` on `review-helper-setup`. Paths under `crates/bohmian-code-review-pipeline/src/`.
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| FIND-1: create, read-back, pointer-publish failure each leave a tracked key | `ColdBuild::publish` calls `record_snapshot` before `storage.create`; `MemoryStorage::fail_next_read` (testing.rs) | `every_interrupted_publication_leaves_a_tracked_key` (collect past expiry empties storage; `remove_repository` returns the key, per failure) | PASS |
+| FIND-1: persistence.rs rustdoc | `SnapshotStore::record_snapshot` doc states record-before-write | review of diff | PASS |
+| FIND-2: cancel during a complete archive | `Ingest::stream_entries` checks `Execution` before each entry and keeps the interruption; `fallback` starts from it; `run` takes a final `execution.check()` before the completeness decision | `interruption_during_a_complete_archive_never_publishes` (Cancelled, no object, prior pointer kept) | PASS |
+| FIND-2: expired deadline during archive | same | same test (DeadlineExceeded, no object, prior pointer kept) | PASS |
+| FIND-2: owner-test assertion | `interruption_is_explicit_and_deadlines_are_caller_owned` now asserts `archive_entries == 0` and all six eligible files `NotFetched` | `mise run test:pipeline` | PASS |
+| FIND-3: rejected entries counted | `ExclusionReason::InvalidEntry` (eligibility.rs); `Ingest::new` takes `listing.rejected.len()`, `finish` counts it | `rejected_tree_entries_are_counted_as_invalid_exclusions` (backslash path + mode `100600` → `InvalidEntry: 2`, eligible 1, `Published`) | PASS |
+| FIND-4: storage workflows on a concrete owner | `Snapshots { storage, store }` with `read` and `collect`; free functions deleted; `lib.rs` re-exports `Snapshots` | existing read/collect tests route through `Snapshots` and pass | PASS |
+| FIND-5: no path-qualified signature types | `stream_entries<R: Read>(&mut self, expanded: R, execution: &Execution)` builds the tar archive in its body | diff review, `mise run lints` | PASS |
+
+Commands run this session, all exit 0: `cargo test --locked -p bohmian-code-review-pipeline --all-features --lib snapshot`, `mise run fmt:check`, `mise run lints`, `mise run test:pipeline`, `mise run test:symbolic-context:journey`, `mise run gate`, `git diff --check`.
+
+Non-goals held: no store-side lease (the `ponytail:` marker moved with `Snapshots::collect`), `max_file_bytes` unchanged, no TASK-004/005 work, no new dependency, no format-version bump. Files changed: `eligibility.rs`, `lib.rs`, `persistence.rs`, `snapshot.rs`, `testing.rs`, and this record.
