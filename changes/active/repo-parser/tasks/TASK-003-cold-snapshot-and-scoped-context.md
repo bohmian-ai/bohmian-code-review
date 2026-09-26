@@ -1,7 +1,7 @@
 ---
 id: TASK-003
 kind: implementation
-status: proposed
+status: review
 spec: SPEC-repo-parser@11
 depends_on: [TASK-001, TASK-002]
 maps: [REQ-005, REQ-006, REQ-015, REQ-016, INV-002, INV-003, INV-005, INV-007, AC-005, AC-009]
@@ -72,3 +72,28 @@ Stop if the chosen storage operation cannot make incomplete objects invisible or
 ## Authority Links
 
 [Revision 11 spec](../spec.md), [pipeline plan](../symbolic-context-service-plan.md).
+
+## Implementation Evidence
+
+Starting point `741c049` (unverified draft) was kept where correct and fixed at the root: `read_snapshot` rebuilds `ObjectKey::snapshot` for the caller identity and pointer tree and refuses any other key (`ColdBuildError::ForeignKey`) before storage is read; per-attempt counters moved from the persisted `Coverage` to `ColdBuildResult::ingest` (`IngestStats`); the facade error is imported (`SymbolicError`); `glob_matches` is a segment reachability pass plus an iterative single-segment matcher; the archive closure is `Ingest::stream_entries`. Also removed: the draft's `MAX_COLD_BUILD_DEADLINE`/`DeadlineTooLong` (the task forbids a library deadline maximum) and the draft's benign `Oversize` skip for an oversized archive entry (now left pending for verified blob fallback, so an archive cannot turn an eligible file into a benign skip). Publication now compares the read-back object byte for byte with the built snapshot before adopting it. Eligibility internals (`classify`, `RootAttributes`, `EligibleTree`, `Exclusion`, `MAX_ELIGIBLE_FILE_BYTES`) are crate-private; only `ExclusionReason` is public because `Coverage` carries it.
+
+Local decision: snapshot cleanup needs persisted snapshot rows, not only pointers, so `SnapshotStore` gained `record_snapshot`, `unreferenced_snapshots`, and `delete_snapshot`, and `remove_repository` returns every recorded key. The build records an object after it validates and before the pointer moves, so an object orphaned by an interrupted publication is collectable. `collect_snapshots` deletes object before record and refuses a returned key outside its identity's snapshot namespace. LFS pointers and verified oversize blobs are benign skips that keep their path/blob identity in the snapshot; they do not block completeness (spec "reasoned exclusion", S11).
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| S1 cold build: complete source-free snapshot, verified archive and fallback blobs, reload without source fetches, separate review clock | `snapshot.rs` `ColdBuild::run`, `Ingest::{stream_entries, fallback, ingest}`, `read_snapshot`, `Snapshot::into_context` | `complete_cold_snapshot_is_verified_source_free_and_reloadable` (stored object inspected for absent source fragments; blob call counts unchanged on reload; reuse makes no archive/tree call) | PASS |
+| Immutable object: same tree serializes to identical bytes | `Coverage` holds only tree facts; `IngestStats` on `ColdBuildResult` | `same_tree_serializes_identically_across_ingest_paths` (archive-fed vs all-fallback bytes equal; no ingest counters or timestamps in the object) | PASS |
+| S10–S11 incomplete attempts: truncated tree, archive mismatch past fallback bound, LFS, parse failure, exhausted bounds, cancellation keep the prior pointer and report exact coverage and reason | `IncompleteReason`, `Coverage::{is_complete, unindexed}`, `SkipReason` | `incomplete_attempts_report_coverage_and_keep_the_prior_pointer`, `interruption_is_explicit_and_deadlines_are_caller_owned` | PASS |
+| Safe publication: object created/adopted, byte-compared, recorded, then conditional pointer; crash before/after object write retries by whole build | `ColdBuild::publish` | `publication_is_crash_safe_and_retry_converges`, `collection_removes_only_expired_unreferenced_snapshots` (missing pointed-to object is rebuilt) | PASS |
+| S14 / AC-005 / AC-009 snapshot-store isolation: another tenant or installation sees no pointer, cannot read via a foreign pointer, cannot advance the owner's pointer | `read_snapshot` exact-key check, `SnapshotStore` scoping, `testing.rs` `MemorySnapshotStore` | `identities_cannot_read_or_advance_each_others_snapshots` | PASS |
+| REQ-006 cleanup: expired unreferenced snapshots collected, pointed-to never; namespace removal returns its keys only | `collect_snapshots`, `ObjectKey::is_snapshot_of`, `SnapshotStore::{record_snapshot, unreferenced_snapshots, delete_snapshot, remove_repository}` | `collection_removes_only_expired_unreferenced_snapshots` (cutoff before/after record time, forged foreign record refused) | PASS |
+| Caller-owned deadline, no library maximum | `ColdBuild::run` uses only `Execution` | `interruption_is_explicit_and_deadlines_are_caller_owned` (24 h deadline publishes) | PASS |
+| Eligibility by reason; linear glob matching | `eligibility.rs` `classify`, `glob_matches`, `segment_matches` | `classification_reports_each_reason`, `attributes_resolve_like_git`, `glob_segments_and_many_stars_match_without_backtracking` (41-star pattern over 4000-byte near-miss) | PASS |
+
+Paused-clock note: collection is driven by a caller-supplied cutoff; tests use `UNIX_EPOCH` (nothing expired) and now + 1 h (orphan expired) rather than sleeping. Deadline and cancellation use `Execution`, tripped by a transport hook.
+
+Verification (this session, all exit 0): `mise run test:pipeline` (27 unit tests, doc tests), `mise run test:symbolic-context:journey` (6), `mise run fmt:check`, `mise run lints`, `git diff --check`, `mise run gate`.
+
+Non-goals held: no storage backend, no scoped PR fallback indexing (TASK-005 consumes `Coverage`/`IncompleteReason`), no incremental update, no source/archive/blob persistence, no new dependency. Changed files: `crates/bohmian-code-review-pipeline/src/{eligibility,lib,persistence,snapshot,storage,testing}.rs` and this task file.
+
+Known limit: a build adopting an existing object between `unreferenced_snapshots` and deletion can publish a pointer to a just-deleted object; the next cold build sees `NotFound` and rebuilds (marked `ponytail:` in `collect_snapshots`).
