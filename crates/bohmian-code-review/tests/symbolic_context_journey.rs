@@ -374,10 +374,11 @@ fn journey_reports_budget_missing_blob_and_deletion_only_errors() {
     );
 }
 
-/// Changed second file; line 3 calls `formatUser` and `unrelated`.
+/// Changed second file; line 3 calls `lookupUser` again, `formatUser`, and
+/// `unrelated`.
 const REPORT: &str = "import { formatUser } from \"./format\";
 
-export const report = (user: User) => formatUser(user) + unrelated();
+export const report = (id: string) => formatUser(lookupUser(id)) + unrelated();
 ";
 
 #[test]
@@ -509,7 +510,7 @@ fn path_language_identifies_eligible_paths_before_download() {
 
 #[test]
 /// Two changed files union their changed-line names, both changed paths are
-/// excluded, `formatUser` scores once although both files reference it,
+/// excluded, `lookupUser` scores once although both files reference it,
 /// ties break by path, and candidate-only packing counts only selected
 /// candidates while reporting file and token omissions.
 fn multi_file_pr_ranks_union_of_changed_names_and_packs_candidates_only() {
@@ -557,10 +558,10 @@ fn multi_file_pr_ranks_union_of_changed_names_and_packs_candidates_only() {
     assert_eq!(single.files[0], ranked[0]);
 
     let limits = ContextLimits {
-        max_files: 2,
-        max_tokens: 20,
+        max_files: 1,
+        max_tokens: 15,
     };
-    let candidates = blobs(&["src/user.ts", "src/format.ts"]);
+    let candidates = blobs(&["src/user.ts"]);
     let packed = build_candidate_context(&ranked, &candidates, limits, words).expect("packs");
     let spans: Vec<(&str, u32, u32, usize)> = packed
         .spans
@@ -574,17 +575,14 @@ fn multi_file_pr_ranks_union_of_changed_names_and_packs_candidates_only() {
             )
         })
         .collect();
-    assert_eq!(
-        spans,
-        [("src/user.ts", 5, 7, 11), ("src/format.ts", 3, 5, 9)]
-    );
+    assert_eq!(spans, [("src/user.ts", 5, 7, 11)]);
     assert!(
         packed
             .spans
             .iter()
             .all(|span| matches!(span.kind, SpanKind::Candidate { .. }))
     );
-    assert_eq!((packed.files, packed.tokens), (2, 20));
+    assert_eq!((packed.files, packed.tokens), (1, 11));
     let omissions: Vec<(&str, u32, OmissionReason)> = packed
         .omissions
         .iter()
@@ -600,6 +598,7 @@ fn multi_file_pr_ranks_union_of_changed_names_and_packs_candidates_only() {
         omissions,
         [
             ("src/user.ts", 9, OmissionReason::TokenLimit { tokens: 8 }),
+            ("src/format.ts", 3, OmissionReason::FileLimit),
             ("src/unrelated.ts", 1, OmissionReason::FileLimit),
         ]
     );
