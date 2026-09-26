@@ -1,7 +1,7 @@
 ---
 id: TASK-001-R1
 kind: remediation
-status: proposed
+status: review
 spec: SPEC-repo-parser@10
 remediates: TASK-001
 findings: [FIND-TASK-001-1]
@@ -52,3 +52,17 @@ Change line 4 of `changes/active/repo-parser/tasks/TASK-001-symbolic-library-con
 - Broader: `mise run gate` exit 0 and `mise run check:skills-sync` exit 0 (docs-only change must not disturb either).
 
 Route to `$cr-implement`. The next task review reassesses the cumulative candidate against the original task.
+
+## Implementation Evidence
+
+Commit `932f6a5` on `review-helper-setup` changes only line 4 of the task file (`status: implemented` → `status: review`).
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| AC-R1-1 task frontmatter in-set status | `changes/active/repo-parser/tasks/TASK-001-symbolic-library-contract.md:4` | `sed -n 4p …` prints `status: review` | PASS |
+| AC-R1-2 sibling sweep | no other task frontmatter carries `implemented` | `rg -n '^status: implemented' changes/` exits 1; the unanchored form matches only prose in `review/TASK-001-r1/*` quoting the finding | PASS |
+| AC-R1-3 no collateral change | `git diff --stat 3e71501..932f6a5` lists only the task file, 1 insertion, 1 deletion; `3e71501..` is the review-record commit after the reviewed candidate | PASS |
+
+Commands run in this session, each exit 0: `mise run test:extract`, `mise run test:index`, `mise run test:select`, `mise run test:symbolic-context:journey`, `mise run fmt:check`, `mise run lints`, `mise run check:skills-sync`, `git diff --check`, `mise run gate`.
+
+Non-goals stayed excluded: no crate, test, manifest, lockfile, grammar pin, or fixture changed; the review notes and `spec.md` status were not touched.
