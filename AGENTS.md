@@ -18,7 +18,9 @@ This repository owns reusable Rust helpers for in-memory symbolic code-review co
 - `bohmian-code-review-select` owns distinct-symbol overlap scoring, deterministic ranking, and bounded context packing.
 - `bohmian-code-review` owns the public two-pass facade and no duplicate stage logic.
 
-Runtime helpers accept caller-supplied repository-relative paths, source bytes, changed-line ranges, and token counts. They do not clone, discover Git roots, read source from disk, make network calls, persist indexes or source, invoke models, or publish review comments. The future service owns Git provider credentials, commit/blob verification, fetching, shared storage, review agents, and cross-repository search. Never report a partial caller-supplied index as complete repository coverage.
+These six symbolic crates accept caller-supplied repository-relative paths, source bytes, changed-line ranges, and token counts. They do not clone, discover Git roots, read source from disk, make network calls, persist indexes or source, invoke models, or publish review comments. They may export and reload source-free declaration facts, expose the extraction version those facts were produced under, and answer path-only eligibility queries, but never retain or persist source text themselves.
+
+The approved outer pipeline library crate (`changes/active/repo-parser/spec.md`) is the only crate permitted Git provider and storage IO. It owns GitHub/GHES source access, Git identity and blob verification, repository eligibility, bounded ingest, snapshot build/update, PR overlays, context publication and read-back, and the narrow storage/persistence traits a consumer implements. It depends on the public `bohmian-code-review` facade only and must not duplicate extraction, indexing, resolution, scoring, or packing. A consuming service owns credentials, webhooks, scheduling, review agents, models, comment publication, and cross-repository search. Never report a partial caller-supplied index as complete repository coverage.
 
 ## Rust and design rules
 
