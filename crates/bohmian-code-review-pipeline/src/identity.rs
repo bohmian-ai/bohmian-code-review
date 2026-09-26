@@ -18,9 +18,9 @@ const MAX_NAME_BYTES: usize = 100;
 /// Why an identity value was rejected.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum InvalidIdentity {
-    /// A tenant identifier was empty, over-long, or used characters outside
-    /// `[A-Za-z0-9._-]`.
-    #[error("tenant id must be 1..={MAX_TENANT_BYTES} bytes of [A-Za-z0-9._-]")]
+    /// A tenant identifier was empty, over-long, dot-only, or used characters
+    /// outside `[A-Za-z0-9._-]`.
+    #[error("tenant id must be 1..={MAX_TENANT_BYTES} bytes of [A-Za-z0-9._-] and not `.`/`..`")]
     Tenant,
     /// An installation id was zero.
     #[error("installation id must be nonzero")]
@@ -49,10 +49,19 @@ pub enum InvalidIdentity {
     Token,
 }
 
-/// True when every byte is in `[A-Za-z0-9._-]`.
-fn is_key_safe(raw: &str) -> bool {
-    raw.bytes()
-        .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'-'))
+/// True when `raw` is usable verbatim as one storage-key segment.
+///
+/// The one segment rule shared by tenant ids, owner and repository names, and
+/// context ids: 1..=`max_bytes` bytes of `[A-Za-z0-9._-]`, and never `.` or
+/// `..`, so a segment can neither be empty nor traverse out of its scope.
+fn is_key_segment(raw: &str, max_bytes: usize) -> bool {
+    !raw.is_empty()
+        && raw.len() <= max_bytes
+        && raw != "."
+        && raw != ".."
+        && raw
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'-'))
 }
 
 /// Caller-owned tenant identifier, distinct from any GitHub id.
@@ -69,9 +78,9 @@ impl TenantId {
     /// # Errors
     ///
     /// Returns [`InvalidIdentity::Tenant`] when empty, longer than 128 bytes,
-    /// or outside `[A-Za-z0-9._-]`.
+    /// exactly `.` or `..`, or outside `[A-Za-z0-9._-]`.
     pub fn new(raw: &str) -> Result<TenantId, InvalidIdentity> {
-        if raw.is_empty() || raw.len() > MAX_TENANT_BYTES || !is_key_safe(raw) {
+        if !is_key_segment(raw, MAX_TENANT_BYTES) {
             return Err(InvalidIdentity::Tenant);
         }
         Ok(TenantId(raw.to_owned()))
@@ -139,12 +148,7 @@ impl<'de> Deserialize<'de> for InstallationId {
 /// Returns [`InvalidIdentity::Name`] carrying `what` when `raw` is empty,
 /// longer than 100 bytes, exactly `.` or `..`, or outside `[A-Za-z0-9._-]`.
 pub(crate) fn validate_name(raw: &str, what: &'static str) -> Result<String, InvalidIdentity> {
-    if raw.is_empty()
-        || raw.len() > MAX_NAME_BYTES
-        || raw == "."
-        || raw == ".."
-        || !is_key_safe(raw)
-    {
+    if !is_key_segment(raw, MAX_NAME_BYTES) {
         return Err(InvalidIdentity::Name(what));
     }
     Ok(raw.to_owned())
@@ -402,6 +406,10 @@ mod tests {
         assert!(TenantId::new("tenant-1").is_ok());
         assert_eq!(TenantId::new(""), Err(InvalidIdentity::Tenant));
         assert_eq!(TenantId::new("a/b"), Err(InvalidIdentity::Tenant));
+        for dots in [".", ".."] {
+            assert_eq!(TenantId::new(dots), Err(InvalidIdentity::Tenant));
+            assert!(serde_json::from_str::<TenantId>(&format!("\"{dots}\"")).is_err());
+        }
         assert_eq!(InstallationId::new(0), Err(InvalidIdentity::Installation));
         assert_eq!(
             RepositoryIdentity::new(0, "o", "r"),

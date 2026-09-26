@@ -251,6 +251,8 @@ pub(crate) mod tests {
             "tenants/a/installations/1/repositories/7/contexts/c/extra".to_owned(),
             "tenants/b/installations/9/repositories/3/contexts/../x".to_owned(),
             "tenants/b/installations/9/repositories/3/contexts/./x".to_owned(),
+            "tenants/./installations/1/repositories/7/contexts/c".to_owned(),
+            "tenants/../installations/1/repositories/7/contexts/c".to_owned(),
             "tenants/b//contexts/x".to_owned(),
             "/tenants/b".to_owned(),
             "tenants/b/".to_owned(),
