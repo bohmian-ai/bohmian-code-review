@@ -1,7 +1,7 @@
 ---
 id: TASK-001-R2
 kind: remediation
-status: proposed
+status: review
 spec: SPEC-repo-parser@10
 remediates: TASK-001
 findings: [FIND-TASK-001-2]
@@ -68,3 +68,17 @@ Rejected alternatives: replacing the named tests with lane names only would remo
 - Broader: `mise run gate` exit 0 and `mise run check:skills-sync` exit 0 (a docs-only change must not disturb either); `git diff --check` clean.
 
 Route to `$cr-implement`. The next task review reassesses the cumulative candidate against the original task.
+
+## Implementation Evidence
+
+Commit `cbf517a` on `review-helper-setup` inserts a "Focused commands" table (14 lines) after the "Commands run in this session" line of the task's Implementation Evidence; no other line changed.
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| AC-R2-1 every named test has a focused-command row | `changes/active/repo-parser/tasks/TASK-001-symbolic-library-contract.md`, Implementation Evidence, "Focused commands" table (nine rows covering all eight named tests plus both `facts::tests` tests) | `rg -c 'mise exec -- cargo test --locked' <task file>` prints `9` | PASS |
+| AC-R2-2 each command exits 0 with `1 passed` | the nine rows as recorded | each `mise exec -- cargo test --locked … -- --exact` run sequentially in this session before recording: `1 passed; 0 failed`, exit 0 | PASS |
+| AC-R2-3 no collateral change | frontmatter, acceptance rows, RED/GREEN narrative untouched | `git diff --stat 1108731..cbf517a -- . ':!changes/active/repo-parser/review'` lists only the task file, 14 insertions, 0 deletions | PASS |
+
+Commands run in this session, each exit 0: the nine focused commands above, `mise run gate`, `mise run check:skills-sync`, `git diff --check`.
+
+Non-goals stayed excluded: no crate, test, manifest, lockfile, grammar pin, or fixture changed; the review notes and `spec.md` status were not touched.
