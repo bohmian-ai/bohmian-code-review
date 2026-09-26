@@ -144,6 +144,16 @@ impl ObjectKey {
         }
     }
 
+    /// Whether this is a snapshot key of `identity` under any extraction
+    /// version, format version, or tree.
+    ///
+    /// Keys only exist in the two validated layouts, so a prefix check is
+    /// exact.
+    pub(crate) fn is_snapshot_of(&self, identity: &Identity) -> bool {
+        self.0
+            .starts_with(&format!("{}/snapshots/", ObjectKey::prefix(identity)))
+    }
+
     /// Slash-separated key text.
     pub fn as_str(&self) -> &str {
         &self.0

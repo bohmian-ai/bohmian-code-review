@@ -261,6 +261,9 @@ pub fn read_snapshot(
 ///
 /// Each object is deleted before its record, so a failure part-way leaves a
 /// record the next call retries rather than an untracked object.
+/// Every returned key must be a snapshot key of the identity it was
+/// returned with, so a faulty store cannot steer deletion into another
+/// tenant, installation, or repository.
 ///
 /// ponytail: a build adopting an object between the store's listing and the
 /// delete can publish a pointer to a just-deleted object; the next cold
@@ -269,8 +272,9 @@ pub fn read_snapshot(
 ///
 /// # Errors
 ///
-/// Returns the first persistence or storage failure; keys deleted before it
-/// stay deleted.
+/// Returns [`ColdBuildError::ForeignKey`] for a key outside its identity's
+/// snapshot namespace, otherwise the first persistence or storage failure;
+/// keys deleted before it stay deleted.
 pub fn collect_snapshots(
     store: &dyn SnapshotStore,
     storage: &dyn ObjectStorage,
@@ -279,6 +283,9 @@ pub fn collect_snapshots(
 ) -> Result<Vec<ObjectKey>, ColdBuildError> {
     let mut deleted = Vec::new();
     for (identity, key) in store.unreferenced_snapshots(before, limit)? {
+        if !key.is_snapshot_of(&identity) {
+            return Err(ColdBuildError::ForeignKey { key });
+        }
         storage.delete(&key)?;
         store.delete_snapshot(&identity, &key)?;
         deleted.push(key);
@@ -1458,6 +1465,198 @@ mod tests {
                 .snapshot_pointer(&scope)
                 .expect("pointer"),
             None
+        );
+    }
+
+    /// The scope of `identity` under the current versions.
+    fn scope(identity: &Identity) -> SnapshotScope {
+        SnapshotScope {
+            identity: identity.clone(),
+            extraction_version: EXTRACTION_VERSION.to_owned(),
+            format_version: SNAPSHOT_FORMAT_VERSION,
+        }
+    }
+
+    /// A snapshot is a pure function of identity, versions, and tree: an
+    /// archive-fed build and an all-fallback build of the same tree write
+    /// identical bytes even though their ingest stats differ, and an archive
+    /// entry larger than the file bound is refetched as a verified blob
+    /// instead of becoming a benign oversize skip.
+    #[test]
+    fn same_tree_serializes_identically_across_ingest_paths() {
+        let big: &'static [u8] =
+            Box::leak(vec![b'x'; MAX_ELIGIBLE_FILE_BYTES as usize + 1].into_boxed_slice());
+        let mut archive = standard_archive();
+        archive.retain(|(path, _)| *path != "src/format.ts");
+        archive.push(("src/format.ts", big));
+        let repo = FakeRepo::new(&standard_files(), &archive);
+        let client = repo.client();
+        let identity = identity();
+        let publish = |limits: ColdBuildLimits| {
+            let storage = MemoryStorage::default();
+            let store = MemorySnapshotStore::default();
+            let result = ColdBuild::new(&client, &storage, &store, limits)
+                .run(&execution(), &identity)
+                .expect("build");
+            let ColdBuildOutcome::Published(pointer) = &result.outcome else {
+                panic!("expected publication, got {:?}", result.outcome);
+            };
+            (result.ingest, storage.read(&pointer.key).expect("object"))
+        };
+
+        let (streamed, streamed_bytes) = publish(ColdBuildLimits::default());
+        assert_eq!((streamed.archive_entries, streamed.fallback_blobs), (3, 3));
+        let (fallback, fallback_bytes) = publish(ColdBuildLimits {
+            max_expanded_archive_bytes: 64,
+            ..ColdBuildLimits::default()
+        });
+        assert_eq!((fallback.archive_entries, fallback.fallback_blobs), (0, 6));
+        assert_eq!(streamed_bytes, fallback_bytes);
+        let text = String::from_utf8(streamed_bytes).expect("json");
+        for field in [
+            "archive_entries",
+            "fallback_blobs",
+            "archive_error",
+            "published_at",
+        ] {
+            assert!(!text.contains(field), "{field} persisted in the snapshot");
+        }
+    }
+
+    /// S14 snapshot-store isolation: an identity with no rows sees no
+    /// pointer even when another tenant or installation of the same
+    /// repository has one; a pointer naming another identity's key is
+    /// refused before storage is read; each identity's build publishes its
+    /// own key without advancing the other's pointer.
+    #[test]
+    fn identities_cannot_read_or_advance_each_others_snapshots() {
+        let repo = FakeRepo::new(&standard_files(), &standard_archive());
+        let client = repo.client();
+        let storage = MemoryStorage::default();
+        let store = MemorySnapshotStore::default();
+        let build = ColdBuild::new(&client, &storage, &store, ColdBuildLimits::default());
+        let owner = identity();
+        let other_tenant = Identity {
+            tenant: TenantId::new("other").expect("tenant"),
+            ..owner.clone()
+        };
+        let other_installation = Identity {
+            installation: InstallationId::new(43).expect("installation"),
+            ..owner.clone()
+        };
+
+        let result = build.run(&execution(), &owner).expect("owner build");
+        let ColdBuildOutcome::Published(pointer) = result.outcome else {
+            panic!("owner must publish");
+        };
+        for intruder in [&other_tenant, &other_installation] {
+            assert_eq!(
+                store.snapshot_pointer(&scope(intruder)).expect("read"),
+                None
+            );
+            assert_eq!(
+                read_snapshot(&storage, intruder, &pointer),
+                Err(ColdBuildError::ForeignKey {
+                    key: pointer.key.clone()
+                })
+            );
+
+            let own = build.run(&execution(), intruder).expect("intruder build");
+            let ColdBuildOutcome::Published(own) = own.outcome else {
+                panic!("intruder builds its own snapshot");
+            };
+            assert_ne!(own.key, pointer.key);
+            assert_eq!(
+                store.snapshot_pointer(&scope(&owner)).expect("read"),
+                Some(pointer.clone())
+            );
+        }
+        assert_eq!(storage.keys().len(), 3);
+        assert!(read_snapshot(&storage, &owner, &pointer).is_ok());
+    }
+
+    /// REQ-006 cleanup and retry: an object left without a pointer by an
+    /// interrupted publication is recorded, so collection removes it once
+    /// expired and never touches a pointed-to snapshot; a pointer whose
+    /// object went missing is rebuilt; namespace removal returns every
+    /// recorded key of that identity only.
+    #[test]
+    fn collection_removes_only_expired_unreferenced_snapshots() {
+        let repo = FakeRepo::new(&standard_files(), &standard_archive());
+        let client = repo.client();
+        let storage = MemoryStorage::default();
+        let store = MemorySnapshotStore::default();
+        let build = ColdBuild::new(&client, &storage, &store, ColdBuildLimits::default());
+        let owner = identity();
+        let orphaned = Identity {
+            tenant: TenantId::new("orphaned").expect("tenant"),
+            ..owner.clone()
+        };
+        let ColdBuildOutcome::Published(pointer) =
+            build.run(&execution(), &owner).expect("owner").outcome
+        else {
+            panic!("owner must publish");
+        };
+        store.fail_next_publish();
+        assert!(build.run(&execution(), &orphaned).is_err());
+        let orphan = ObjectKey::snapshot(
+            &orphaned,
+            EXTRACTION_VERSION,
+            SNAPSHOT_FORMAT_VERSION,
+            &repo.tree,
+        );
+        assert_eq!(storage.keys().len(), 2);
+
+        assert_eq!(
+            collect_snapshots(&store, &storage, UNIX_EPOCH, 10).expect("nothing expired"),
+            []
+        );
+        let later = SystemTime::now() + Duration::from_secs(3600);
+        assert_eq!(
+            collect_snapshots(&store, &storage, later, 10).expect("collect"),
+            [orphan]
+        );
+        assert_eq!(storage.keys(), std::slice::from_ref(&pointer.key));
+        assert_eq!(
+            collect_snapshots(&store, &storage, later, 10).expect("idempotent"),
+            []
+        );
+        assert!(read_snapshot(&storage, &owner, &pointer).is_ok());
+
+        let faulty = MemorySnapshotStore::default();
+        faulty
+            .record_snapshot(&orphaned, &pointer.key, UNIX_EPOCH)
+            .expect("forge record");
+        assert_eq!(
+            collect_snapshots(&faulty, &storage, later, 10),
+            Err(ColdBuildError::ForeignKey {
+                key: pointer.key.clone()
+            })
+        );
+        assert!(read_snapshot(&storage, &owner, &pointer).is_ok());
+
+        storage.delete(&pointer.key).expect("lose object");
+        let rebuilt = build.run(&execution(), &owner).expect("rebuild");
+        let ColdBuildOutcome::Published(rebuilt) = rebuilt.outcome else {
+            panic!("a missing pointed-to object is rebuilt");
+        };
+        assert_eq!(rebuilt.key, pointer.key);
+        assert!(read_snapshot(&storage, &owner, &rebuilt).is_ok());
+
+        assert!(matches!(
+            build.run(&execution(), &orphaned).expect("retry").outcome,
+            ColdBuildOutcome::Published(_)
+        ));
+        assert_eq!(
+            store.remove_repository(&owner).expect("remove"),
+            [pointer.key]
+        );
+        assert_eq!(store.snapshot_pointer(&scope(&owner)).expect("read"), None);
+        assert!(
+            store
+                .snapshot_pointer(&scope(&orphaned))
+                .expect("read")
+                .is_some()
         );
     }
 }
