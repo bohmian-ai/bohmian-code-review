@@ -103,7 +103,7 @@ impl ObjectKey {
 }
 
 impl<'de> Deserialize<'de> for ObjectKey {
-    /// Deserializes through [`ObjectKey::parse`] so serde cannot mint a key
+    /// Deserializes through segment re-validation so serde cannot mint a key
     /// the constructors would never produce.
     ///
     /// The wire shape stays a transparent string, so every constructor-built

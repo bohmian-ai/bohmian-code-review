@@ -129,6 +129,12 @@ impl Default for UreqTransport {
 
 impl HttpTransport for UreqTransport {
     /// Sends the request with its own global timeout and streams the body.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TransportError::Timeout`] when `request.timeout` elapses
+    /// before the response headers arrive and [`TransportError::Failed`] for
+    /// any other connection, TLS, or protocol failure.
     fn get(&self, request: HttpRequest) -> Result<HttpResponse, TransportError> {
         let mut builder = self.agent.get(&request.url);
         for (name, value) in &request.headers {
@@ -1072,6 +1078,14 @@ impl GitHubClient {
     }
 
     /// GET `resource` from the API host, require 200, and parse bounded JSON.
+    ///
+    /// # Errors
+    ///
+    /// Propagates every [`GitHubError`] of [`GitHubClient::request`], then
+    /// the status errors of [`expect_status`] for a non-200 reply,
+    /// [`GitHubError::ResponseTooLarge`] or [`GitHubError::Transport`] from
+    /// [`read_bounded`], and [`GitHubError::MalformedResponse`] from
+    /// [`parse_json`].
     fn get_json<T: for<'de> Deserialize<'de>>(
         &self,
         execution: &Execution,
@@ -1086,6 +1100,10 @@ impl GitHubClient {
     }
 
     /// Send `resource` against the API base under the retry policy.
+    ///
+    /// # Errors
+    ///
+    /// Returns exactly the errors of [`GitHubClient::send_with_policy`].
     fn request(
         &self,
         execution: &Execution,
@@ -1124,6 +1142,18 @@ impl GitHubClient {
     /// The single request policy: check the execution bound, send, and
     /// retry rate limits, server errors, and transport failures within
     /// `max_attempts` and the remaining deadline.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`GitHubError::Interrupted`] when [`Execution::check`] reports
+    /// cancellation or an expired deadline before an attempt or during a
+    /// retry sleep; [`GitHubError::Forbidden`] for a 403 without rate-limit
+    /// headers; [`GitHubError::RateLimited`] for a 403/429 whose wait exceeds
+    /// `max_retry_wait`, the remaining deadline, or the attempt budget;
+    /// [`GitHubError::Unavailable`] for a 5xx and [`GitHubError::Transport`]
+    /// for a transport failure once `max_attempts` or the deadline is
+    /// exhausted. Any other status is returned as a successful response for
+    /// the caller to classify.
     fn send_with_policy(
         &self,
         execution: &Execution,
@@ -1174,6 +1204,11 @@ impl GitHubClient {
 }
 
 /// Sleep for `wait` in slices, stopping early on cancellation.
+///
+/// # Errors
+///
+/// Returns the [`Interrupted`] reported by [`Execution::check`] when the
+/// execution is cancelled or its deadline passes before `wait` elapses.
 fn sleep_bounded(execution: &Execution, wait: Duration) -> Result<(), Interrupted> {
     let mut left = wait;
     while !left.is_zero() {
@@ -1201,6 +1236,13 @@ fn status_error(response: &HttpResponse, resource: &str) -> GitHubError {
 }
 
 /// Require `expected` status.
+///
+/// # Errors
+///
+/// Returns [`GitHubError::Unauthorized`] for 401, [`GitHubError::Forbidden`]
+/// for 403, [`GitHubError::NotFound`] for 404, and
+/// [`GitHubError::UnexpectedStatus`] for any other status that is not
+/// `expected`.
 fn expect_status(
     response: &HttpResponse,
     expected: u16,
@@ -1214,6 +1256,12 @@ fn expect_status(
 }
 
 /// Read a body of at most `limit` bytes.
+///
+/// # Errors
+///
+/// Returns [`GitHubError::Transport`] wrapping [`TransportError::Failed`]
+/// when the body stream fails and [`GitHubError::ResponseTooLarge`] when
+/// more than `limit` bytes are available.
 fn read_bounded(body: &mut dyn Read, limit: usize, resource: &str) -> Result<Vec<u8>, GitHubError> {
     let mut bytes = Vec::new();
     body.take(limit as u64 + 1)
@@ -1229,6 +1277,12 @@ fn read_bounded(body: &mut dyn Read, limit: usize, resource: &str) -> Result<Vec
 }
 
 /// Parse JSON without echoing the body into the error.
+///
+/// # Errors
+///
+/// Returns [`GitHubError::MalformedResponse`] whose `detail` names only the
+/// serde error category and position when `bytes` is not valid JSON of the
+/// requested shape.
 fn parse_json<T: for<'de> Deserialize<'de>>(
     bytes: &[u8],
     resource: &str,
@@ -1255,6 +1309,12 @@ fn json_error_category(error: &serde_json::Error) -> &'static str {
 }
 
 /// Validate a raw tree entry.
+///
+/// # Errors
+///
+/// Returns the rejection reason as text when the path is not a canonical
+/// [`RelativePath`], the mode is unknown, or the sha is not a valid
+/// [`ObjectSha`]; the caller records it in [`TreeListing::rejected`].
 fn validate_tree_entry(entry: &TreeEntryWire) -> Result<TreeEntry, String> {
     let path =
         RelativePath::new(&entry.path).map_err(|error: InvalidRelativePath| error.to_string())?;
@@ -1270,6 +1330,13 @@ fn validate_tree_entry(entry: &TreeEntryWire) -> Result<TreeEntry, String> {
 }
 
 /// Validate a raw PR file.
+///
+/// # Errors
+///
+/// Returns the rejection reason as text when the filename or previous
+/// filename is not a canonical [`RelativePath`], the status is unknown, or
+/// the sha is not a valid [`ObjectSha`]; the caller records it in
+/// [`PullRequestFilesPage::rejected`].
 fn validate_pull_request_file(file: &PullRequestFileWire) -> Result<PullRequestFile, String> {
     let path = RelativePath::new(&file.filename).map_err(|error| error.to_string())?;
     let status =
@@ -1358,6 +1425,10 @@ mod tests {
 
     impl HttpTransport for FakeTransport {
         /// Pops the next scripted response; an exhausted script is a test bug.
+        ///
+        /// # Errors
+        ///
+        /// Returns the scripted [`TransportError`] when the next entry is one.
         fn get(&self, request: HttpRequest) -> Result<HttpResponse, TransportError> {
             self.seen.lock().expect("seen lock").push(SeenRequest {
                 url: request.url.clone(),
@@ -1394,6 +1465,10 @@ mod tests {
 
     impl HttpTransport for FakeRef {
         /// Delegates to the shared fake.
+        ///
+        /// # Errors
+        ///
+        /// Returns whatever [`FakeTransport::get`] returns.
         fn get(&self, request: HttpRequest) -> Result<HttpResponse, TransportError> {
             self.0.get(request)
         }

@@ -82,6 +82,11 @@ impl TenantId {
 
 impl<'de> Deserialize<'de> for TenantId {
     /// Deserializes through [`TenantId::new`] so persisted values are re-validated.
+    ///
+    /// # Errors
+    ///
+    /// Returns a serde error carrying the [`InvalidIdentity::Tenant`] reason
+    /// when the serialized string is not a key-safe tenant id.
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<TenantId, D::Error> {
         let raw = String::deserialize(deserializer)?;
         TenantId::new(&raw).map_err(serde::de::Error::custom)
@@ -114,6 +119,11 @@ impl InstallationId {
 
 impl<'de> Deserialize<'de> for InstallationId {
     /// Deserializes through [`InstallationId::new`] so persisted values are re-validated.
+    ///
+    /// # Errors
+    ///
+    /// Returns a serde error carrying the [`InvalidIdentity::Installation`]
+    /// reason when the serialized id is zero.
     fn deserialize<D: serde::Deserializer<'de>>(
         deserializer: D,
     ) -> Result<InstallationId, D::Error> {
@@ -164,6 +174,12 @@ impl TryFrom<RawRepository> for RepositoryIdentity {
     type Error = InvalidIdentity;
 
     /// Re-validates persisted repository identity fields.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`InvalidIdentity::RepositoryId`] for a zero id and
+    /// [`InvalidIdentity::Name`] for an owner or name outside the key-safe
+    /// alphabet, exactly as [`RepositoryIdentity::new`] does.
     fn try_from(raw: RawRepository) -> Result<RepositoryIdentity, InvalidIdentity> {
         RepositoryIdentity::new(raw.id, &raw.owner, &raw.name)
     }
@@ -258,6 +274,11 @@ impl fmt::Display for ObjectSha {
 
 impl<'de> Deserialize<'de> for ObjectSha {
     /// Deserializes through [`ObjectSha::new`] so provider and persisted ids are validated.
+    ///
+    /// # Errors
+    ///
+    /// Returns a serde error carrying the [`InvalidIdentity::ObjectSha`]
+    /// reason when the serialized string is not 40 lowercase hex characters.
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<ObjectSha, D::Error> {
         let raw = String::deserialize(deserializer)?;
         ObjectSha::new(&raw).map_err(serde::de::Error::custom)
