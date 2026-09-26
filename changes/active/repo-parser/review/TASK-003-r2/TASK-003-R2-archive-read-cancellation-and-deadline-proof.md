@@ -54,3 +54,19 @@ findings: [FIND-TASK-003-2, FIND-TASK-003-6]
 Run the exact focused selectors for the added/modified tests using `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --lib <test-name> -- --exact`, recording that each selects and passes one test. Then run `mise run test:pipeline`, `mise run test:symbolic-context:journey`, `mise run fmt:check`, `mise run lints`, `git diff --check`, and inspect tracked/untracked changes. The implementation must record RED/GREEN and final verification per the task workflow.
 
 Expected write set: `crates/bohmian-code-review-pipeline/src/snapshot.rs` and, only if the controlled streaming body needs a shared fake capability, `crates/bohmian-code-review-pipeline/src/testing.rs`. Do not edit the reviewed r2 verdict. Route this task directly to `$cr-implement`.
+
+## Implementation evidence
+
+Candidate: `95562b6` plus format commit on `review-helper-setup`. Path: `crates/bohmian-code-review-pipeline/src/snapshot.rs`.
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| FIND-2: `entry.read_to_end` stops after cancellation mid-entry | `Interruptible` reader (`snapshot.rs:612-630`) checks `Execution` before every read; `Ingest::consume_archive` wraps both the compressed body and the expanded stream; a failed read maps to `self.interrupted` via the sticky `execution.check()`. Per-entry check in `stream_entries` removed (subsumed) | `cancellation_mid_archive_entry_stops_reading_the_body`, eligible layout: 96 KiB entry streamed in 256-byte chunks, cancel after 4 KiB; RED 112 body reads after cancel, GREEN 0; `Incomplete(Interrupted(Cancelled))`, `NotFetched`, no object, prior pointer kept | PASS |
+| FIND-2: tar iterator drain of an unselected entry | same reader covers iterator advancement | same test, unselected layout (`vendor/big.ts` before `src/user.ts`): 0 reads after cancel, same outcome assertions | PASS |
+| FIND-2: deadline at the read boundary | same reader | `expired_deadline_stops_archive_ingest`: `Execution::new(Instant::now(), ..)` → `interrupted == DeadlineExceeded`, no archive error or entry, fallback returns `DeadlineExceeded` with 0 blobs, all pending `NotFetched` | PASS |
+| FIND-2: sibling behavior | byte ceilings, blob verification, fallback reasons, final pre-publication check unchanged | all 12 snapshot owner tests; `mise run test:pipeline` (32 passed) | PASS |
+| FIND-6: no sleep in deadline proof | deadline half of `interruption_during_a_complete_archive_never_publishes` removed; cancellation half and its prior-pointer/no-object assertions kept | exact selector passes in 0.00 s; `grep sleep snapshot.rs` empty | PASS |
+
+Exact selectors, each `1 passed; 31 filtered out`: `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --lib snapshot::tests::{cancellation_mid_archive_entry_stops_reading_the_body,expired_deadline_stops_archive_ingest,interruption_during_a_complete_archive_never_publishes} -- --exact`. Also exit 0 this session: `mise run test:pipeline`, `mise run test:symbolic-context:journey`, `mise run fmt:check`, `mise run lints`, `git diff --check`, `mise run gate`.
+
+Limit: a transport read already blocked when cancellation arrives still ends at the transport timeout; no further archive read starts afterwards. Non-goals held: no new trait, dependency, fake-clock, library deadline maximum, or TASK-004/005 work; `testing.rs` unchanged (streaming fake is test-local in `snapshot.rs`). R1 FIND-1/3/4/5 closures unchanged.
