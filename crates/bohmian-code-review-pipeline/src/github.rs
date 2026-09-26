@@ -563,6 +563,12 @@ struct BoundedReader<R> {
 
 impl<R: Read> Read for BoundedReader<R> {
     /// Reads at most the remaining budget; a further byte is an error.
+    ///
+    /// # Errors
+    ///
+    /// Propagates any error from the inner reader. Once the budget is
+    /// exhausted, returns [`io::Error::other`] naming the resource if the
+    /// inner reader yields another byte instead of EOF.
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         if self.remaining == 0 {
             let mut probe = [0u8; 1];

@@ -303,11 +303,19 @@ impl<'de> Deserialize<'de> for ObjectSha {
 }
 
 /// Which GitHub deployment serves the API.
+///
+/// [`GitHubHost::enterprise`] is the only way to obtain an `Enterprise`
+/// host, so every API base a client sees is validated:
+///
+/// ```compile_fail
+/// let _ = bohmian_code_review_pipeline::GitHubHost::Enterprise { api_base: "http://x".to_owned() };
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GitHubHost {
     /// `api.github.com`, whose archives redirect to `codeload.github.com`.
     Public,
     /// A GitHub Enterprise Server API base such as `https://ghe.example.com/api/v3`.
+    #[non_exhaustive]
     Enterprise {
         /// Validated `https://host[/path]` base without trailing slash.
         api_base: String,
@@ -353,9 +361,10 @@ impl GitHubHost {
     pub fn archive_host(&self) -> &str {
         match self {
             GitHubHost::Public => "codeload.github.com",
-            GitHubHost::Enterprise { api_base } => {
-                api_base["https://".len()..].split('/').next().unwrap_or("")
-            }
+            GitHubHost::Enterprise { api_base } => api_base
+                .strip_prefix("https://")
+                .and_then(|rest| rest.split('/').next())
+                .unwrap_or(""),
         }
     }
 }
