@@ -6,10 +6,10 @@
 //! bounded verified blob calls for anything the archive omitted or
 //! substituted, and indexes through the public [`SymbolicContext`]. Source
 //! bytes live only while one entry is being parsed. A [`Snapshot`] is
-//! written at its immutable key, compared byte for byte on read-back, and
-//! recorded before the pointer moves; an incomplete attempt writes nothing
-//! and returns exact coverage. [`collect_snapshots`] deletes recorded
-//! snapshots no pointer names.
+//! recorded, then written at its immutable key and compared byte for byte on
+//! read-back before the pointer moves; an incomplete or interrupted attempt
+//! writes nothing and returns exact coverage. [`Snapshots`] reads published
+//! snapshots and deletes recorded snapshots no pointer names.
 
 use crate::eligibility::{
     Exclusion, ExclusionReason, MAX_ELIGIBLE_FILE_BYTES, RootAttributes, classify,
@@ -222,75 +222,90 @@ impl Snapshot {
     }
 }
 
-/// Read and validate the snapshot a pointer names for `identity`.
-///
-/// The pointer's key must equal the key this library builds for `identity`,
-/// the current versions, and the pointer's tree before storage is touched,
-/// so a pointer row leaked or copied from another tenant or installation
-/// can never read that identity's object.
-///
-/// # Errors
-///
-/// Returns [`ColdBuildError::ForeignKey`] when the pointer names any other
-/// key, [`ColdBuildError::Storage`] when the object is missing or the
-/// backend fails, and [`ColdBuildError::Corrupt`] when its bytes do not
-/// match the pointer's digest or do not decode as a complete snapshot of
-/// that identity and tree.
-pub fn read_snapshot(
-    storage: &dyn ObjectStorage,
-    identity: &Identity,
-    pointer: &SnapshotPointer,
-) -> Result<Snapshot, ColdBuildError> {
-    let expected = snapshot_key(identity, &pointer.tree);
-    if pointer.key != expected {
-        return Err(ColdBuildError::ForeignKey {
-            key: pointer.key.clone(),
-        });
-    }
-    let bytes = storage.read(&expected)?;
-    if ObjectDigest::of(&bytes) != pointer.digest {
-        return Err(ColdBuildError::Corrupt {
-            detail: "digest mismatch".to_owned(),
-        });
-    }
-    Snapshot::decode(&bytes, identity, &pointer.tree)
+/// Read-back and collection of recorded snapshots over the caller's object
+/// storage and snapshot store.
+pub struct Snapshots<'a> {
+    storage: &'a dyn ObjectStorage,
+    store: &'a dyn SnapshotStore,
 }
 
-/// Delete up to `limit` recorded snapshots older than `before` that no
-/// pointer names, returning the deleted keys.
-///
-/// Each object is deleted before its record, so a failure part-way leaves a
-/// record the next call retries rather than an untracked object.
-/// Every returned key must be a snapshot key of the identity it was
-/// returned with, so a faulty store cannot steer deletion into another
-/// tenant, installation, or repository.
-///
-/// ponytail: a build adopting an object between the store's listing and the
-/// delete can publish a pointer to a just-deleted object; the next cold
-/// build sees the object missing and rebuilds it. A store-side lease closes
-/// the window if that ever matters.
-///
-/// # Errors
-///
-/// Returns [`ColdBuildError::ForeignKey`] for a key outside its identity's
-/// snapshot namespace, otherwise the first persistence or storage failure;
-/// keys deleted before it stay deleted.
-pub fn collect_snapshots(
-    store: &dyn SnapshotStore,
-    storage: &dyn ObjectStorage,
-    before: SystemTime,
-    limit: usize,
-) -> Result<Vec<ObjectKey>, ColdBuildError> {
-    let mut deleted = Vec::new();
-    for (identity, key) in store.unreferenced_snapshots(before, limit)? {
-        if !key.is_snapshot_of(&identity) {
-            return Err(ColdBuildError::ForeignKey { key });
-        }
-        storage.delete(&key)?;
-        store.delete_snapshot(&identity, &key)?;
-        deleted.push(key);
+impl<'a> Snapshots<'a> {
+    /// Snapshot access over the caller's storage and snapshot store.
+    pub fn new(storage: &'a dyn ObjectStorage, store: &'a dyn SnapshotStore) -> Snapshots<'a> {
+        Snapshots { storage, store }
     }
-    Ok(deleted)
+
+    /// Read and validate the snapshot a pointer names for `identity`.
+    ///
+    /// The pointer's key must equal the key this library builds for
+    /// `identity`, the current versions, and the pointer's tree before
+    /// storage is touched, so a pointer row leaked or copied from another
+    /// tenant or installation can never read that identity's object.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ColdBuildError::ForeignKey`] when the pointer names any other
+    /// key, [`ColdBuildError::Storage`] when the object is missing or the
+    /// backend fails, and [`ColdBuildError::Corrupt`] when its bytes do not
+    /// match the pointer's digest or do not decode as a complete snapshot of
+    /// that identity and tree.
+    pub fn read(
+        &self,
+        identity: &Identity,
+        pointer: &SnapshotPointer,
+    ) -> Result<Snapshot, ColdBuildError> {
+        let expected = snapshot_key(identity, &pointer.tree);
+        if pointer.key != expected {
+            return Err(ColdBuildError::ForeignKey {
+                key: pointer.key.clone(),
+            });
+        }
+        let bytes = self.storage.read(&expected)?;
+        if ObjectDigest::of(&bytes) != pointer.digest {
+            return Err(ColdBuildError::Corrupt {
+                detail: "digest mismatch".to_owned(),
+            });
+        }
+        Snapshot::decode(&bytes, identity, &pointer.tree)
+    }
+
+    /// Delete up to `limit` recorded snapshots older than `before` that no
+    /// pointer names, returning the deleted keys.
+    ///
+    /// Each object is deleted before its record, so a failure part-way
+    /// leaves a record the next call retries rather than an untracked
+    /// object. A record whose object was never written deletes cleanly
+    /// because deleting an absent object succeeds. Every returned key must
+    /// be a snapshot key of the identity it was returned with, so a faulty
+    /// store cannot steer deletion into another tenant, installation, or
+    /// repository.
+    ///
+    /// ponytail: a build adopting an object between the store's listing and
+    /// the delete can publish a pointer to a just-deleted object; the next
+    /// cold build sees the object missing and rebuilds it. A store-side lease
+    /// closes the window if that ever matters.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ColdBuildError::ForeignKey`] for a key outside its
+    /// identity's snapshot namespace, otherwise the first persistence or
+    /// storage failure; keys deleted before it stay deleted.
+    pub fn collect(
+        &self,
+        before: SystemTime,
+        limit: usize,
+    ) -> Result<Vec<ObjectKey>, ColdBuildError> {
+        let mut deleted = Vec::new();
+        for (identity, key) in self.store.unreferenced_snapshots(before, limit)? {
+            if !key.is_snapshot_of(&identity) {
+                return Err(ColdBuildError::ForeignKey { key });
+            }
+            self.storage.delete(&key)?;
+            self.store.delete_snapshot(&identity, &key)?;
+            deleted.push(key);
+        }
+        Ok(deleted)
+    }
 }
 
 /// The only key a snapshot of `tree` for `identity` may live at under the
@@ -408,10 +423,14 @@ impl<'a> ColdBuild<'a> {
     /// The caller's `execution` bounds every provider call; the library
     /// imposes no maximum of its own. A current pointer at the branch tree
     /// is validated and reused; if its object has gone missing the snapshot
-    /// is rebuilt. Publication order is fixed: the object is created (or an
-    /// existing one adopted), read back and compared byte for byte, recorded,
-    /// and only then is the pointer published conditionally on the pointer
-    /// observed at the start. A retry after any interruption converges.
+    /// is rebuilt. Cancellation and the deadline are checked before every
+    /// archive entry and fallback blob and once more before publication, so
+    /// an interrupted build never writes. Publication order is fixed: the
+    /// key is recorded, the object is created (or an existing one adopted),
+    /// read back and compared byte for byte, and only then is the pointer
+    /// published conditionally on the pointer observed at the start. A retry
+    /// after any interruption converges, and every object written is
+    /// tracked for collection and namespace removal.
     ///
     /// # Errors
     ///
@@ -444,7 +463,7 @@ impl<'a> ColdBuild<'a> {
             outcome,
         };
         if let Some(pointer) = current.as_ref().filter(|pointer| pointer.tree == head.tree) {
-            match read_snapshot(self.storage, identity, pointer) {
+            match Snapshots::new(self.storage, self.store).read(identity, pointer) {
                 Ok(snapshot) => {
                     return Ok(result(
                         snapshot.coverage,
@@ -481,20 +500,29 @@ impl<'a> ColdBuild<'a> {
             )?),
             None => RootAttributes::default(),
         };
-        let mut ingest = Ingest::new(&listing.entries, &attributes, self.limits.max_file_bytes);
+        let mut ingest = Ingest::new(
+            &listing.entries,
+            listing.rejected.len(),
+            &attributes,
+            self.limits.max_file_bytes,
+        );
         match self
             .client
             .archive(execution, &identity.repository, &head.commit)
         {
-            Ok(archive) => ingest.consume_archive(archive, self.limits.max_expanded_archive_bytes),
+            Ok(archive) => {
+                ingest.consume_archive(archive, execution, self.limits.max_expanded_archive_bytes)
+            }
             Err(error) => ingest.stats.archive_error = Some(error.to_string()),
         }
-        let interrupted = ingest.fallback(
-            self.client,
-            execution,
-            identity,
-            self.limits.max_fallback_blobs,
-        );
+        let interrupted = ingest
+            .fallback(
+                self.client,
+                execution,
+                identity,
+                self.limits.max_fallback_blobs,
+            )
+            .or_else(|| execution.check().err());
         let (coverage, stats, files, context) = ingest.finish();
         if let Some(interrupted) = interrupted {
             return Ok(result(
@@ -529,8 +557,11 @@ impl<'a> ColdBuild<'a> {
         ))
     }
 
-    /// Write `snapshot` at its key or adopt the object already there when
-    /// its bytes are identical, record it, then move the pointer.
+    /// Record `snapshot`'s key, write it there or adopt the object already
+    /// there when its bytes are identical, then move the pointer.
+    ///
+    /// Recording first means a failure at any later step leaves a tracked
+    /// key that collection or namespace removal deletes.
     ///
     /// # Errors
     ///
@@ -547,6 +578,8 @@ impl<'a> ColdBuild<'a> {
         let bytes = serde_json::to_vec(snapshot).map_err(|error| ColdBuildError::Corrupt {
             detail: error.to_string(),
         })?;
+        let now = SystemTime::now();
+        self.store.record_snapshot(identity, &key, now)?;
         match self.storage.create(&key, &bytes) {
             Ok(()) | Err(StorageError::AlreadyExists { .. }) => {}
             Err(error) => return Err(error.into()),
@@ -556,8 +589,6 @@ impl<'a> ColdBuild<'a> {
                 detail: "stored object differs from the built snapshot".to_owned(),
             });
         }
-        let now = SystemTime::now();
-        self.store.record_snapshot(identity, &key, now)?;
         let pointer = SnapshotPointer {
             tree: snapshot.tree.clone(),
             commit: commit.clone(),
@@ -577,7 +608,7 @@ impl<'a> ColdBuild<'a> {
 }
 
 /// In-memory ingest state for one attempt: eligible entries still wanted,
-/// what was indexed, and what was skipped.
+/// what was indexed and skipped, and the interruption that stopped it.
 struct Ingest {
     context: SymbolicContext,
     max_file_bytes: u64,
@@ -585,13 +616,22 @@ struct Ingest {
     pending: BTreeMap<RelativePath, ObjectSha>,
     skipped: Vec<SkippedFile>,
     excluded: Vec<Exclusion>,
+    rejected: usize,
     indexed: usize,
     stats: IngestStats,
+    interrupted: Option<Interrupted>,
 }
 
 impl Ingest {
-    /// Classify `entries` and start with every eligible file pending.
-    fn new(entries: &[TreeEntry], attributes: &RootAttributes, max_file_bytes: u64) -> Ingest {
+    /// Classify `entries` and start with every eligible file pending;
+    /// `rejected` listing entries failed validation and are counted as
+    /// [`ExclusionReason::InvalidEntry`].
+    fn new(
+        entries: &[TreeEntry],
+        rejected: usize,
+        attributes: &RootAttributes,
+        max_file_bytes: u64,
+    ) -> Ingest {
         let context = SymbolicContext::new();
         let tree = classify(entries, attributes, &context, max_file_bytes);
         let mut files: Vec<SnapshotFile> = tree
@@ -614,20 +654,28 @@ impl Ingest {
             pending,
             skipped: Vec::new(),
             excluded: tree.excluded,
+            rejected,
             indexed: 0,
             stats: IngestStats::default(),
+            interrupted: None,
         }
     }
 
     /// Stream the tarball through bounded decompression; a stream error
-    /// stops the archive and is recorded, leaving the rest pending.
-    fn consume_archive(&mut self, archive: Archive, max_expanded_bytes: u64) {
+    /// stops the archive and is recorded, and an interruption stops it and
+    /// is kept for [`Ingest::fallback`], leaving the rest pending.
+    fn consume_archive(
+        &mut self,
+        archive: Archive,
+        execution: &Execution,
+        max_expanded_bytes: u64,
+    ) {
         let expanded = BoundedReader::new(
             GzDecoder::new(archive.reader),
             max_expanded_bytes,
             "archive expansion",
         );
-        if let Err(error) = self.stream_entries(&mut tar::Archive::new(expanded)) {
+        if let Err(error) = self.stream_entries(expanded, execution) {
             self.stats.archive_error = Some(error.to_string());
         }
     }
@@ -638,13 +686,20 @@ impl Ingest {
     /// pending, entries larger than the file bound, and mismatched bytes are
     /// left pending for verified blob fallback, so an archive can never
     /// substitute content or turn an eligible file into a benign skip.
+    /// Cancellation and the deadline are checked before each entry; an
+    /// interruption stops reading and is kept on the ingest.
     ///
     /// # Errors
     ///
     /// Returns the first tar or decompression error, including the
     /// expansion bound; entries indexed before it stay indexed.
-    fn stream_entries<R: Read>(&mut self, tar: &mut tar::Archive<R>) -> io::Result<()> {
+    fn stream_entries<R: Read>(&mut self, expanded: R, execution: &Execution) -> io::Result<()> {
+        let mut tar = tar::Archive::new(expanded);
         for entry in tar.entries()? {
+            if let Err(interrupted) = execution.check() {
+                self.interrupted = Some(interrupted);
+                return Ok(());
+            }
             let mut entry = entry?;
             if !matches!(
                 entry.header().entry_type(),
@@ -679,8 +734,9 @@ impl Ingest {
     }
 
     /// Fetch every still-pending blob individually, up to `max_blobs`, and
-    /// index it. Returns the interruption that stopped the loop, if any;
-    /// everything still pending afterwards is skipped as not fetched.
+    /// index it. Returns the interruption that stopped the archive or this
+    /// loop, if any; everything still pending afterwards is skipped as not
+    /// fetched.
     fn fallback(
         &mut self,
         client: &GitHubClient,
@@ -688,7 +744,7 @@ impl Ingest {
         identity: &Identity,
         max_blobs: usize,
     ) -> Option<Interrupted> {
-        let mut interrupted = None;
+        let mut interrupted = self.interrupted;
         while let Some((path, blob)) = self.pending.pop_first() {
             if interrupted.is_none() && self.stats.fallback_blobs < max_blobs {
                 interrupted = execution.check().err();
@@ -753,6 +809,9 @@ impl Ingest {
         let mut excluded = BTreeMap::new();
         for exclusion in &self.excluded {
             *excluded.entry(exclusion.reason).or_insert(0) += 1;
+        }
+        if self.rejected > 0 {
+            excluded.insert(ExclusionReason::InvalidEntry, self.rejected);
         }
         let coverage = Coverage {
             truncated_tree: false,
@@ -1152,7 +1211,8 @@ mod tests {
             Some(pointer)
         );
 
-        let loaded = read_snapshot(&storage, &identity, pointer)
+        let loaded = Snapshots::new(&storage, &persistence)
+            .read(&identity, pointer)
             .expect("read")
             .into_context()
             .expect("load");
@@ -1333,10 +1393,10 @@ mod tests {
         assert_eq!(pointer.as_ref(), Some(&prior));
     }
 
-    /// Cancellation during fallback stops fetching, marks the remaining
-    /// eligible files as not fetched, and reports the interruption; the
-    /// library imposes no deadline maximum, so a day-long caller deadline
-    /// then publishes.
+    /// Cancellation once the archive request starts stops ingest before any
+    /// archive entry or fallback blob, marks every eligible file as not
+    /// fetched, and reports the interruption; the library imposes no
+    /// deadline maximum, so a day-long caller deadline then publishes.
     #[test]
     fn interruption_is_explicit_and_deadlines_are_caller_owned() {
         let repo = FakeRepo::new(&standard_files(), &standard_archive());
@@ -1359,21 +1419,16 @@ mod tests {
             result.outcome,
             ColdBuildOutcome::Incomplete(IncompleteReason::Interrupted(Interrupted::Cancelled))
         );
-        assert_eq!(result.ingest.archive_entries, 4);
+        assert_eq!(result.ingest.archive_entries, 0);
         assert_eq!(result.ingest.fallback_blobs, 0);
-        let reasons: Vec<(&str, &SkipReason)> = result
-            .coverage
-            .skipped
-            .iter()
-            .map(|f| (f.path.as_str(), &f.reason))
-            .collect();
-        assert_eq!(
-            reasons,
-            [
-                ("src/lfs.ts", &SkipReason::LfsPointer),
-                ("src/omitted.ts", &SkipReason::NotFetched),
-                ("src/substituted.ts", &SkipReason::NotFetched),
-            ]
+        assert_eq!(result.coverage.indexed, 0);
+        assert_eq!(result.coverage.skipped.len(), 6);
+        assert!(
+            result
+                .coverage
+                .skipped
+                .iter()
+                .all(|f| f.reason == SkipReason::NotFetched)
         );
         assert!(storage.keys().is_empty());
 
@@ -1441,7 +1496,7 @@ mod tests {
         let mut tampered = pointer.clone();
         tampered.digest = ObjectDigest::of(b"other");
         assert!(matches!(
-            read_snapshot(&storage, &identity, &tampered),
+            Snapshots::new(&storage, &persistence).read(&identity, &tampered),
             Err(ColdBuildError::Corrupt { detail }) if detail == "digest mismatch"
         ));
 
@@ -1555,7 +1610,7 @@ mod tests {
                 None
             );
             assert_eq!(
-                read_snapshot(&storage, intruder, &pointer),
+                Snapshots::new(&storage, &store).read(intruder, &pointer),
                 Err(ColdBuildError::ForeignKey {
                     key: pointer.key.clone()
                 })
@@ -1572,7 +1627,11 @@ mod tests {
             );
         }
         assert_eq!(storage.keys().len(), 3);
-        assert!(read_snapshot(&storage, &owner, &pointer).is_ok());
+        assert!(
+            Snapshots::new(&storage, &store)
+                .read(&owner, &pointer)
+                .is_ok()
+        );
     }
 
     /// REQ-006 cleanup and retry: an object left without a pointer by an
@@ -1608,32 +1667,46 @@ mod tests {
         assert_eq!(storage.keys().len(), 2);
 
         assert_eq!(
-            collect_snapshots(&store, &storage, UNIX_EPOCH, 10).expect("nothing expired"),
+            Snapshots::new(&storage, &store)
+                .collect(UNIX_EPOCH, 10)
+                .expect("nothing expired"),
             []
         );
         let later = SystemTime::now() + Duration::from_secs(3600);
         assert_eq!(
-            collect_snapshots(&store, &storage, later, 10).expect("collect"),
+            Snapshots::new(&storage, &store)
+                .collect(later, 10)
+                .expect("collect"),
             [orphan]
         );
         assert_eq!(storage.keys(), std::slice::from_ref(&pointer.key));
         assert_eq!(
-            collect_snapshots(&store, &storage, later, 10).expect("idempotent"),
+            Snapshots::new(&storage, &store)
+                .collect(later, 10)
+                .expect("idempotent"),
             []
         );
-        assert!(read_snapshot(&storage, &owner, &pointer).is_ok());
+        assert!(
+            Snapshots::new(&storage, &store)
+                .read(&owner, &pointer)
+                .is_ok()
+        );
 
         let faulty = MemorySnapshotStore::default();
         faulty
             .record_snapshot(&orphaned, &pointer.key, UNIX_EPOCH)
             .expect("forge record");
         assert_eq!(
-            collect_snapshots(&faulty, &storage, later, 10),
+            Snapshots::new(&storage, &faulty).collect(later, 10),
             Err(ColdBuildError::ForeignKey {
                 key: pointer.key.clone()
             })
         );
-        assert!(read_snapshot(&storage, &owner, &pointer).is_ok());
+        assert!(
+            Snapshots::new(&storage, &store)
+                .read(&owner, &pointer)
+                .is_ok()
+        );
 
         storage.delete(&pointer.key).expect("lose object");
         let rebuilt = build.run(&execution(), &owner).expect("rebuild");
@@ -1641,7 +1714,11 @@ mod tests {
             panic!("a missing pointed-to object is rebuilt");
         };
         assert_eq!(rebuilt.key, pointer.key);
-        assert!(read_snapshot(&storage, &owner, &rebuilt).is_ok());
+        assert!(
+            Snapshots::new(&storage, &store)
+                .read(&owner, &rebuilt)
+                .is_ok()
+        );
 
         assert!(matches!(
             build.run(&execution(), &orphaned).expect("retry").outcome,
@@ -1657,6 +1734,153 @@ mod tests {
                 .snapshot_pointer(&scope(&orphaned))
                 .expect("read")
                 .is_some()
+        );
+    }
+
+    /// FIND-2: when the archive supplies every eligible file, a cancellation
+    /// or a deadline that passes once the archive request starts still
+    /// stops the build before publication: the outcome reports the
+    /// interruption, nothing is written, and the prior pointer stays.
+    #[test]
+    fn interruption_during_a_complete_archive_never_publishes() {
+        let files = [file("src/user.ts", USER), file("src/format.ts", FORMAT)];
+        let archive = [("src/user.ts", USER), ("src/format.ts", FORMAT)];
+        let identity = identity();
+        let prior = SnapshotPointer {
+            tree: sha('0'),
+            commit: sha('1'),
+            key: snapshot_key(&identity, &sha('0')),
+            digest: ObjectDigest::of(b""),
+            published_at: UNIX_EPOCH,
+        };
+        let run = |execution: &Execution, hook: Box<dyn Fn() + Send + Sync>| {
+            let repo = FakeRepo::new(&files, &archive);
+            repo.transport.on_request(move |url| {
+                if url.contains("/tarball/") {
+                    hook();
+                }
+            });
+            let client = repo.client();
+            let storage = MemoryStorage::default();
+            let store = MemorySnapshotStore::default();
+            assert!(
+                store
+                    .publish_snapshot_pointer(&scope(&identity), None, &prior)
+                    .expect("seed")
+            );
+            let result = ColdBuild::new(&client, &storage, &store, ColdBuildLimits::default())
+                .run(execution, &identity)
+                .expect("result");
+            assert!(storage.keys().is_empty(), "no object written");
+            assert_eq!(
+                store.snapshot_pointer(&scope(&identity)).expect("pointer"),
+                Some(prior.clone())
+            );
+            result
+        };
+
+        let cancel = CancelToken::new();
+        let cancelled = Execution::new(Instant::now() + Duration::from_secs(60), cancel.clone());
+        let result = run(&cancelled, Box::new(move || cancel.cancel()));
+        assert_eq!(
+            result.outcome,
+            ColdBuildOutcome::Incomplete(IncompleteReason::Interrupted(Interrupted::Cancelled))
+        );
+        assert_eq!(result.ingest.archive_entries, 0);
+
+        let deadline = Instant::now() + Duration::from_secs(1);
+        let expiring = Execution::new(deadline, CancelToken::new());
+        let result = run(
+            &expiring,
+            Box::new(move || {
+                while Instant::now() <= deadline {
+                    std::thread::sleep(Duration::from_millis(5));
+                }
+            }),
+        );
+        assert_eq!(
+            result.outcome,
+            ColdBuildOutcome::Incomplete(IncompleteReason::Interrupted(
+                Interrupted::DeadlineExceeded
+            ))
+        );
+        assert_eq!(result.ingest.archive_entries, 0);
+    }
+
+    /// FIND-1: the key is recorded before the object is written, so after an
+    /// injected create, read-back, or pointer-publish failure the snapshot
+    /// is tracked: expired collection leaves storage empty, and namespace
+    /// removal returns the key for deletion.
+    #[test]
+    fn every_interrupted_publication_leaves_a_tracked_key() {
+        let repo = FakeRepo::new(&standard_files(), &standard_archive());
+        let client = repo.client();
+        let identity = identity();
+        let key = snapshot_key(&identity, &repo.tree);
+        let failures: [fn(&MemoryStorage, &MemorySnapshotStore); 3] = [
+            |storage, _| storage.fail_next_create(),
+            |storage, _| storage.fail_next_read(),
+            |_, store| store.fail_next_publish(),
+        ];
+        let later = SystemTime::now() + Duration::from_secs(3600);
+        for inject in failures {
+            let interrupted = || {
+                let storage = MemoryStorage::default();
+                let store = MemorySnapshotStore::default();
+                inject(&storage, &store);
+                assert!(
+                    ColdBuild::new(&client, &storage, &store, ColdBuildLimits::default())
+                        .run(&execution(), &identity)
+                        .is_err()
+                );
+                assert_eq!(
+                    store.snapshot_pointer(&scope(&identity)).expect("read"),
+                    None
+                );
+                (storage, store)
+            };
+
+            let (storage, store) = interrupted();
+            Snapshots::new(&storage, &store)
+                .collect(later, 10)
+                .expect("collect");
+            assert!(storage.keys().is_empty());
+
+            let (_storage, store) = interrupted();
+            assert_eq!(
+                store.remove_repository(&identity).expect("remove"),
+                std::slice::from_ref(&key)
+            );
+        }
+    }
+
+    /// FIND-3: tree entries the listing rejected for an invalid path or an
+    /// unknown mode are counted under their own exclusion reason instead of
+    /// vanishing, and do not change eligibility or completeness.
+    #[test]
+    fn rejected_tree_entries_are_counted_as_invalid_exclusions() {
+        let files = [
+            file("src/user.ts", USER),
+            file("src/a\\\\b.ts", FORMAT),
+            File {
+                path: "src/odd.ts",
+                mode: "100600",
+                content: HANDLER,
+                size: None,
+            },
+        ];
+        let repo = FakeRepo::new(&files, &[("src/user.ts", USER)]);
+        let client = repo.client();
+        let storage = MemoryStorage::default();
+        let store = MemorySnapshotStore::default();
+        let result = ColdBuild::new(&client, &storage, &store, ColdBuildLimits::default())
+            .run(&execution(), &identity())
+            .expect("build");
+        assert!(matches!(result.outcome, ColdBuildOutcome::Published(_)));
+        assert_eq!((result.coverage.eligible, result.coverage.indexed), (1, 1));
+        assert_eq!(
+            result.coverage.excluded,
+            BTreeMap::from([(ExclusionReason::InvalidEntry, 2)])
         );
     }
 }

@@ -158,12 +158,13 @@ pub trait SnapshotStore: Send + Sync {
         pointer: &SnapshotPointer,
     ) -> Result<bool, PersistenceError>;
 
-    /// Record that a validated snapshot object exists at `key`, refreshing
+    /// Record that a snapshot object is about to exist at `key`, refreshing
     /// `recorded_at` when the row already exists.
     ///
-    /// The library records an object after it validates and before any
-    /// pointer names it, so an object orphaned by an interrupted build is
-    /// still collectable.
+    /// The library records a key before it writes the object and before any
+    /// pointer names it, so every object an interrupted build leaves behind
+    /// is tracked and collectable; a record whose object was never written
+    /// collects cleanly because deleting an absent object succeeds.
     ///
     /// # Errors
     ///

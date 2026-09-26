@@ -7,8 +7,8 @@
 //! narrow [`ObjectStorage`], [`SnapshotStore`], and [`ContextStore`] traits
 //! the stage facades publish through. [`ColdBuild`] is the first facade: it
 //! streams a pinned default-branch archive into a complete, source-free
-//! [`Snapshot`], and [`collect_snapshots`] removes snapshots no pointer
-//! names. It never clones, checks out, or persists source; it depends on the
+//! [`Snapshot`], and [`Snapshots`] reads snapshots back and removes those no
+//! pointer names. It never clones, checks out, or persists source; it depends on the
 //! public `bohmian-code-review` facade alone and imports no consumer type.
 
 pub mod eligibility;
@@ -40,6 +40,6 @@ pub use persistence::{
 pub use snapshot::{
     ColdBuild, ColdBuildError, ColdBuildLimits, ColdBuildOutcome, ColdBuildResult, Coverage,
     IncompleteReason, IngestStats, SNAPSHOT_FORMAT_VERSION, SkipReason, SkippedFile, Snapshot,
-    SnapshotFile, collect_snapshots, read_snapshot,
+    SnapshotFile, Snapshots,
 };
 pub use storage::{ObjectDigest, ObjectKey, ObjectStorage, StorageError};

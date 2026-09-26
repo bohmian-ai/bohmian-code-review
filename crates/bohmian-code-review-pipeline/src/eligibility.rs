@@ -43,6 +43,8 @@ pub enum ExclusionReason {
     VendoredAttribute,
     /// Reported size exceeds the file bound.
     Oversize,
+    /// The listing entry failed path, mode, or id validation.
+    InvalidEntry,
 }
 
 /// One tree entry excluded from ingest, with its reason.

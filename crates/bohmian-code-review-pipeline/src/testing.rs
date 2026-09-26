@@ -80,17 +80,24 @@ impl HttpTransport for RoutedTransport {
     }
 }
 
-/// Create-only in-memory storage with a one-shot create failure switch.
+/// Create-only in-memory storage with one-shot create and read failure
+/// switches.
 #[derive(Default)]
 pub(crate) struct MemoryStorage {
     objects: Mutex<BTreeMap<ObjectKey, Vec<u8>>>,
     fail_next_create: AtomicBool,
+    fail_next_read: AtomicBool,
 }
 
 impl MemoryStorage {
     /// Make the next `create` fail after nothing was written.
     pub(crate) fn fail_next_create(&self) {
         self.fail_next_create.store(true, Ordering::SeqCst);
+    }
+
+    /// Make the next `read` fail with a backend error; stored objects stay.
+    pub(crate) fn fail_next_read(&self) {
+        self.fail_next_read.store(true, Ordering::SeqCst);
     }
 
     /// Every stored key in order.
@@ -124,12 +131,17 @@ impl ObjectStorage for MemoryStorage {
         Ok(())
     }
 
-    /// Exact-key read.
+    /// Exact-key read that honours the read failure switch.
     ///
     /// # Errors
     ///
-    /// `NotFound` when absent.
+    /// `Backend` when the switch was set, `NotFound` when absent.
     fn read(&self, key: &ObjectKey) -> Result<Vec<u8>, StorageError> {
+        if self.fail_next_read.swap(false, Ordering::SeqCst) {
+            return Err(StorageError::Backend {
+                detail: "injected read failure".to_owned(),
+            });
+        }
         self.objects
             .lock()
             .expect("objects lock")
