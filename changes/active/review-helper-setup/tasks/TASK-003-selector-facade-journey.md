@@ -92,3 +92,43 @@ Return `SPEC_REVISION_REQUIRED` if correctness requires changing no-clone trust,
 ## Authority Links
 
 `changes/active/review-helper-setup/spec.md`; `AGENTS.md`; `architecture/agent-rules.md`; `architecture/bohmian-code-review-design.md`; `architecture/references/domain/symbolic-context.md`; `architecture/references/languages/spec-driven-development.md`; `architecture/references/languages/implementation-execution.md`; `architecture/references/languages/testing-workflows.md`.
+
+## Implementation Evidence
+
+Commits: `f14308e` (lanes + ranking), `7e01fc9` (packing), `bbceda6` (facade + journey).
+
+### RED / GREEN
+
+| Scenario | RED | GREEN |
+|---|---|---|
+| 1 — Changed-line ranking | `mise run test:select`: compile failure, `rank`/`ChangedLines`/`SelectError`/`LineRange` not found | `ranking_counts_distinct_changed_names_and_breaks_ties_by_path`, `changed_lines_reject_invalid_and_deletion_only_input` ok |
+| 2 — Budgeted context | `mise run test:select`: compile failure, `pack`/`Context`/`ContextLimits`/`SpanKind`/`OmissionReason` and five `SelectError` variants not found | `packing_selects_changed_hunks_then_ranked_spans_within_limits`, `packing_rejects_unfittable_hunks_and_bad_candidate_blobs` ok; Scenario 1 re-run ok (4 passed) |
+| 3 — Transactional upsert | `mise run test:symbolic-context:journey`: unresolved imports `SymbolicContext`, `build_context`, `Error`, … | `upsert_is_transactional_and_remove_is_idempotent` ok |
+| 4 — Public journey | same RED as 3 (one external target) | `changed_handler_ranks_and_packs_user_context_deterministically`, `journey_reports_budget_missing_blob_and_deletion_only_errors` ok |
+
+### Public journey outputs
+
+- Ranking for `src/handler.ts` lines 5..=8: `[("src/user.ts", 2), ("src/format.ts", 1)]`; `src/unrelated.ts` absent. User reasons `[("lookupUser", 5, 7), ("saveUser", 9, 11)]`.
+- `max_files = 2`, `max_tokens = 19`, word-count tokenizer: spans = changed hunk 5..=8 (8 tokens) then `src/user.ts` 5..=7 `lookupUser` (11 tokens, score 2); `files = 2`, `tokens = 19`. Omissions: `src/user.ts` 9..=11 `TokenLimit { tokens: 8 }`, `src/format.ts` 3..=5 `FileLimit`. Repeated rank and context are equal.
+- `max_tokens = 7` → `Select(ChangedHunkOverBudget { lines: 5..=8, tokens: 8, remaining_tokens: 7 })`; `max_files = 3` without `src/format.ts` blob → `Select(MissingBlob { path: "src/format.ts" })`; empty ranges → `Select(DeletionOnly)`.
+- Upsert: malformed replacement → `Extraction { Deferred }`, non-UTF-8 → `NotUtf8`, `../user.ts` → `InvalidPath`, `docs/blob.bin` → `Extraction { UnsupportedLanguage }`; prior `src/user.ts` facts and byte length stay; remove returns `Ok(true)` then `Ok(false)`.
+
+### Acceptance map
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| Changed-line filtering, distinct scores, canonical ties, reasons, limits, omissions, typed negatives | `crates/bohmian-code-review-select/src/lib.rs` (`ChangedLines::new`, `rank`, `pack`, `candidate_spans`, `SelectError`) | `test:select` 4 owner tests over real `SymbolIndex` and `resolve` | PASS |
+| Facade upsert/remove/lookup/rank/context; no source retention or hidden IO; failed extraction preserves state | `crates/bohmian-code-review/src/lib.rs` (`SymbolicContext`, `build_context`, `Error`); extraction precedes `SymbolIndex::upsert` | `upsert_is_transactional_and_remove_is_idempotent`; no `std::fs`/`net`/`process` in select or facade | PASS |
+| External public-API four-file TypeScript journey: ranking, content/tokens, determinism, budget/missing-blob errors, no mocks | `crates/bohmian-code-review/tests/symbolic_context_journey.rs` imports only `bohmian_code_review` | `mise run test:symbolic-context:journey` 3 passed | PASS |
+
+### Verification
+
+`mise run test:extract` (138 + 25 + 1 passed), `test:index` (3), `test:resolve` (1), `test:select` (4), `test:symbolic-context:journey` (3), `fmt:check`, `lints`, `git diff --check` — all exit 0. `cargo tree -e normal --depth 1`: select → core, index, resolve, thiserror; facade → the five stage crates, thiserror. `Cargo.lock` gains only the two `thiserror` edges.
+
+### Decisions, non-goals, and limits
+
+- Lower-owner change: `bohmian_code_review_index::is_declaration` became `pub` so changed-declaration filtering reuses the index's declaration rule instead of duplicating it.
+- One candidate span per matched declaration (reasons grouped by node ID). Nested matched declarations pack as separate overlapping spans (`ponytail:` note in `candidate_spans`).
+- A file-limited candidate's blob is never required; every other visited candidate needs its blob, so a caller supplies blobs for at least the top `max_files - 1` ranked files.
+- `ChangedLines` validation includes the head line count, so out-of-source ranges fail before ranking.
+- No Git adapter, store, fetch, fuzzy match, or definition claim. `IMPLEMENTATION_PLAN.md` carries a pre-existing maintainer edit and was left out.
