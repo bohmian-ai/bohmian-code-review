@@ -1270,7 +1270,7 @@ fn expect_status(
 /// more than `limit` bytes are available.
 fn read_bounded(body: &mut dyn Read, limit: usize, resource: &str) -> Result<Vec<u8>, GitHubError> {
     let mut bytes = Vec::new();
-    body.take(limit as u64 + 1)
+    body.take((limit as u64).saturating_add(1))
         .read_to_end(&mut bytes)
         .map_err(|error| GitHubError::Transport(TransportError::Failed(error.to_string())))?;
     if bytes.len() > limit {
@@ -1364,6 +1364,7 @@ fn validate_pull_request_file(file: &PullRequestFileWire) -> Result<PullRequestF
 }
 
 #[cfg(test)]
+/// Owner tests for the request policy, identity verification, and archive trust rules, driven through a scripted transport.
 mod tests {
     use super::*;
     use crate::execution::CancelToken;
@@ -1931,5 +1932,13 @@ mod tests {
             "https://codeload.github.com.evil/x",
             "codeload.github.com"
         ));
+    }
+
+    /// A limit of `usize::MAX` reads the whole body instead of overflowing.
+    #[test]
+    fn read_bounded_accepts_the_maximum_limit() {
+        let mut body = Cursor::new(b"hello".to_vec());
+        let bytes = read_bounded(&mut body, std::hint::black_box(usize::MAX), "blob");
+        assert_eq!(bytes.as_deref(), Ok(&b"hello"[..]));
     }
 }

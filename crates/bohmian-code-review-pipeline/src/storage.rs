@@ -181,6 +181,7 @@ pub trait ObjectStorage: Send + Sync {
 }
 
 #[cfg(test)]
+/// Owner tests for identity-scoped object keys and digests.
 mod tests {
     use super::*;
     use crate::identity::{InstallationId, RepositoryIdentity, TenantId};

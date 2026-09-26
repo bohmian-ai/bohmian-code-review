@@ -55,6 +55,11 @@ impl Execution {
     }
 
     /// Bound an invocation by `timeout` from now with a fresh token.
+    ///
+    /// # Panics
+    ///
+    /// Panics when `Instant::now() + timeout` is not representable, for
+    /// example with `Duration::MAX`; there is no "no deadline" `Instant`.
     pub fn with_timeout(timeout: Duration) -> Execution {
         Execution::new(Instant::now() + timeout, CancelToken::new())
     }
@@ -84,6 +89,7 @@ impl Execution {
 }
 
 #[cfg(test)]
+/// Owner tests for deadline and cancellation checks.
 mod tests {
     use super::*;
 

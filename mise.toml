@@ -53,7 +53,10 @@ run = "cargo test --locked -p bohmian-code-review --test symbolic_context_journe
 
 [tasks."test:pipeline"]
 description = "Run outer pipeline crate tests: verified GitHub identities, bounded provider policy, and injected contracts"
-run = "cargo test --locked -p bohmian-code-review-pipeline --all-targets --all-features"
+run = [
+  "cargo test --locked -p bohmian-code-review-pipeline --all-targets --all-features",
+  "cargo test --locked -p bohmian-code-review-pipeline --doc --all-features",
+]
 
 [tasks."test:rust"]
 description = "Run every component lane and the public journey"

@@ -9,6 +9,7 @@
 use crate::identity::{Identity, InvalidIdentity, ObjectSha, validate_name};
 use crate::storage::{ObjectDigest, ObjectKey};
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::time::SystemTime;
 use thiserror::Error;
 
@@ -94,9 +95,9 @@ impl<'de> Deserialize<'de> for ContextId {
     }
 }
 
-impl std::fmt::Display for ContextId {
+impl fmt::Display for ContextId {
     /// Writes the identifier text.
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str(&self.0)
     }
 }
@@ -206,6 +207,7 @@ pub trait Persistence: Send + Sync {
 }
 
 #[cfg(test)]
+/// Owner tests for validated context ids and re-validated persisted records.
 mod tests {
     use super::*;
     use crate::identity::{InstallationId, RepositoryIdentity, TenantId};

@@ -310,6 +310,16 @@ impl<'de> Deserialize<'de> for ObjectSha {
 /// ```compile_fail
 /// let _ = bohmian_code_review_pipeline::GitHubHost::Enterprise { api_base: "http://x".to_owned() };
 /// ```
+///
+/// The payload is an [`ApiBase`] with no public constructor, so a validated
+/// host cannot be rewritten through `&mut` either:
+///
+/// ```compile_fail
+/// let mut h = bohmian_code_review_pipeline::GitHubHost::enterprise("https://ghe.example.com/api/v3").unwrap();
+/// if let bohmian_code_review_pipeline::GitHubHost::Enterprise { api_base, .. } = &mut h {
+///     *api_base = "http://evil".to_owned();
+/// }
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GitHubHost {
     /// `api.github.com`, whose archives redirect to `codeload.github.com`.
@@ -318,9 +328,16 @@ pub enum GitHubHost {
     #[non_exhaustive]
     Enterprise {
         /// Validated `https://host[/path]` base without trailing slash.
-        api_base: String,
+        api_base: ApiBase,
     },
 }
+
+/// A validated GHES API base, obtainable only through [`GitHubHost::enterprise`].
+///
+/// The field is private and there is no constructor or `From<String>`, so
+/// the text can neither be built nor overwritten outside this crate.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ApiBase(String);
 
 impl GitHubHost {
     /// Validate a GHES API base URL.
@@ -345,7 +362,7 @@ impl GitHubHost {
             return Err(InvalidIdentity::ApiBase);
         }
         Ok(GitHubHost::Enterprise {
-            api_base: api_base.to_owned(),
+            api_base: ApiBase(api_base.to_owned()),
         })
     }
 
@@ -353,7 +370,7 @@ impl GitHubHost {
     pub fn api_base(&self) -> &str {
         match self {
             GitHubHost::Public => "https://api.github.com",
-            GitHubHost::Enterprise { api_base } => api_base,
+            GitHubHost::Enterprise { api_base } => &api_base.0,
         }
     }
 
@@ -362,6 +379,7 @@ impl GitHubHost {
         match self {
             GitHubHost::Public => "codeload.github.com",
             GitHubHost::Enterprise { api_base } => api_base
+                .0
                 .strip_prefix("https://")
                 .and_then(|rest| rest.split('/').next())
                 .unwrap_or(""),
@@ -409,6 +427,7 @@ impl fmt::Debug for InstallationToken {
 }
 
 #[cfg(test)]
+/// Owner tests for identity validation, host configuration, and token redaction.
 mod tests {
     use super::*;
 
