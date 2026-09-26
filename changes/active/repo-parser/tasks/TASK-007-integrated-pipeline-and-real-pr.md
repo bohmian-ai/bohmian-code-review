@@ -2,8 +2,8 @@
 id: TASK-007
 kind: implementation
 status: proposed
-spec: SPEC-repo-parser@10
-depends_on: [TASK-001, TASK-002, TASK-003, TASK-004, TASK-005, TASK-006]
+spec: SPEC-repo-parser@11
+depends_on: [TASK-001, TASK-002, TASK-003, TASK-004, TASK-005]
 maps: [REQ-004, REQ-008, REQ-009, REQ-010, REQ-011, REQ-012, REQ-013, REQ-017, REQ-018, INV-001, INV-002, INV-003, INV-004, INV-005, INV-006, INV-007, AC-002, AC-003, AC-004, AC-006, AC-007, AC-008, AC-010, AC-011]
 ---
 
@@ -19,7 +19,7 @@ All code, test commands and evidence for this task live in this repository. Norm
 
 1. Call each public facade separately, then compose a cold PR, update, warm PR and read-back with the same injected capabilities.
 2. Complete S1–S19 and from-scratch/property oracles, including negative coverage, rate, identity and crash cases.
-3. Add a dedicated configurable S20 command, defaulting to the existing `bohmian-ai/wyrd` PR #91, that calls this library directly with real GitHub and injected test storage/persistence.
+3. Add a dedicated configurable S20 command, defaulting to the existing `bohmian-ai/wyrd` PR #91, that calls this library directly with real GitHub and injected in-memory object storage, snapshot store and context store.
 4. Run the controlled provider contract check and fixed-commit 1k/10k/50k benchmarks; record results and any needed remediation.
 
 ## Ordered Implementation Scenarios
@@ -40,7 +40,7 @@ All code, test commands and evidence for this task live in this repository. Norm
 
 **RED.** Add the explicitly invoked S20 integration test; it initially cannot produce a verified context ID and read-back through real GitHub.
 
-**GREEN.** Use the same production facades with injected local/test storage and persistence, recording PR URL/base/head, coverage, omissions, spans, object/metadata identity, calls, elapsed time and memory.
+**GREEN.** Use the same production facades with injected in-memory object storage, snapshot store and context store, recording PR URL/base/head, coverage, omissions, spans, object/metadata identity, calls, elapsed time and memory.
 
 **REFACTOR.** Keep the command a thin configurable entrypoint to existing facades, not a second implementation of the pipeline.
 
@@ -62,8 +62,8 @@ Run `mise run gate`, the new focused pipeline journey, and the explicitly invoke
 
 ## Material Stop Conditions
 
-Stop if the four public facades cannot compose under the approved injected contracts, if real GitHub invalidates a pinned-source assumption, or if large-repository bounds require a material change to coverage or deadlines.
+Stop if the four public facades cannot compose under the approved injected contracts, if real GitHub invalidates a pinned-source assumption, or if large-repository bounds require a material change to coverage or bounds.
 
 ## Authority Links
 
-[Revision 10 spec](../spec.md), [pipeline plan](../symbolic-context-service-plan.md), [library design](../../../../architecture/bohmian-code-review-design.md).
+[Revision 11 spec](../spec.md), [pipeline plan](../symbolic-context-service-plan.md), [library design](../../../../architecture/bohmian-code-review-design.md).

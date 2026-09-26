@@ -2,9 +2,9 @@
 id: TASK-005
 kind: implementation
 status: proposed
-spec: SPEC-repo-parser@10
+spec: SPEC-repo-parser@11
 depends_on: [TASK-001, TASK-002, TASK-003]
-maps: [REQ-008, REQ-009, REQ-010, REQ-011, REQ-013, REQ-014, REQ-018, INV-002, INV-004, INV-005, INV-006]
+maps: [REQ-008, REQ-009, REQ-010, REQ-011, REQ-013, REQ-014, REQ-015, REQ-016, REQ-018, INV-002, INV-004, INV-005, INV-006, INV-007, AC-005, AC-009]
 ---
 
 ## Outcome and Value
@@ -13,7 +13,7 @@ One PR invocation overlays its pinned head on a private index, ranks related fil
 
 ## Owners, Scope, Consumers, and Prohibited Changes
 
-The outer library owns PR source/diff reconciliation, ranking orchestration, budgeted packing, immutable context publication, and read-time integrity/expiry checks. The six symbolic crates own extraction and scoring. Callers supply verified identity and implementations of the storage/persistence traits; the library does not invoke a model or publish comments.
+The outer library owns PR source/diff reconciliation, ranking orchestration, budgeted packing, immutable context publication, and read-time integrity/expiry checks. The six symbolic crates own extraction and scoring. Callers supply verified identity, a deadline, and implementations of the traits each facade uses: the PR-context facade takes the snapshot store, the context store, and object storage for snapshots and contexts; the read facade takes only the context store and context object storage. This task first consumes the context store, so it proves that trait's contract with an in-memory implementation. The library does not invoke a model or publish comments.
 
 ## Approach
 
@@ -45,17 +45,17 @@ The outer library owns PR source/diff reconciliation, ranking orchestration, bud
 
 ### Scenario 3 — Shared read and expiry
 
-**Behavior.** Repeated reads by ID return the same selected spans without GitHub calls before expiry; reads at expiry or for another tenant/installation fail, as do corrupt/missing objects.
+**Behavior.** Repeated reads by ID return the same selected spans without GitHub calls before expiry; reads at expiry or for another tenant/installation fail, as do corrupt/missing objects and a missing identity. A context ID is visible only after its object validates; interruption after object write is retry-safe. Cleanup deletes expired contexts and reports and retries deletion failures.
 
-**RED.** Add paused-clock and injected-storage reads for S15; absent expiry/integrity checks fail.
+**RED.** Add paused-clock reads for S14–S15 over the in-memory context store with two identities, interruption after write, and a failing delete; absent expiry, integrity, isolation, or cleanup checks fail.
 
-**GREEN.** Read exact published metadata/object under supplied identity, check expiry and integrity, and never rebuild from current branch.
+**GREEN.** Read exact published metadata/object under supplied identity, check expiry and integrity, never rebuild from current branch, and expose expired-context cleanup.
 
 **REFACTOR.** Keep source-bearing storage confined to the context object and drop transient source after use.
 
 ## Acceptance Criteria
 
-S5–S7, S10, S15 and S18–S19 pass with injected test capabilities: pinned identity, private/scoped indexing, selected text, coverage, omissions, expiry and budget. The diff remains separate. The read facade enforces identity and expiry; a downstream model caller counts its complete request separately.
+S5–S7, S10, S14–S15 and S18–S19 pass with injected test capabilities, the context store exercised separately from the snapshot store (AC-009): pinned identity, private/scoped indexing, selected text, coverage, omissions, expiry and budget. The diff remains separate. The read facade enforces identity and expiry; a downstream model caller counts its complete request separately.
 
 ## Expected Write Set and Consumer Closure
 
@@ -71,4 +71,4 @@ Stop if provider data cannot be tied to one recorded base/head pair, or if conte
 
 ## Authority Links
 
-[Revision 10 spec](../spec.md), [pipeline plan](../symbolic-context-service-plan.md).
+[Revision 11 spec](../spec.md), [pipeline plan](../symbolic-context-service-plan.md).

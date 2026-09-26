@@ -19,7 +19,7 @@ The first required user journey is CodePal's two-pass file picker. Pass one pars
 
 Dependencies point only downward: core → extract/index → resolve → select → facade. `index` consumes core facts rather than depending on a parser. `resolve` returns candidates, not a semantically proven target. Score and top-file picking share one owner because their ordering and budget decisions form one contract. The facade composes owners and must not recreate their algorithms.
 
-The outer pipeline library crate sits above the facade and is the only crate with Git provider or storage IO. It owns GitHub/GHES access, identity and blob verification, eligibility, bounded ingest, source-free snapshots, PR overlays, ranked context publication, read-back by context ID, and the narrow storage/persistence traits a consumer implements. It depends on `bohmian-code-review` alone, never on a consuming crate, and starts no server or worker loop. The six symbolic crates gain no IO from it.
+The outer pipeline library crate sits above the facade and is the only crate with Git provider or storage IO. It owns GitHub/GHES access, identity and blob verification, eligibility, bounded ingest, source-free snapshots, PR overlays, ranked context publication, read-back by context ID, and the narrow object-storage, snapshot-store and context-store traits a consumer implements; it ships no storage backend, and deadlines are caller-supplied. It depends on `bohmian-code-review` alone, never on a consuming crate, and starts no server or worker loop. The six symbolic crates gain no IO from it.
 
 ## Public behavior
 

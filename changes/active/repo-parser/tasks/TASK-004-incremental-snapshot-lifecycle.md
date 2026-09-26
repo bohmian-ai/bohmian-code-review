@@ -2,7 +2,7 @@
 id: TASK-004
 kind: implementation
 status: proposed
-spec: SPEC-repo-parser@10
+spec: SPEC-repo-parser@11
 depends_on: [TASK-003]
 maps: [REQ-007, REQ-013, INV-002, INV-003, INV-004]
 ---
@@ -13,7 +13,7 @@ The update facade advances a repository pointer from one complete immutable snap
 
 ## Owners, Scope, Consumers, and Prohibited Changes
 
-The outer library compares tree path/blob identities, replaces changed facts, removes deleted facts, and publishes validated results. Callers decide when to invoke it; no queue or worker is part of this crate. No stale facts may survive a failed replacement; incomplete updates cannot move the pointer.
+The outer library compares tree path/blob identities, replaces changed facts, removes deleted facts, and publishes validated results. Callers decide when to invoke it and supply its deadline; it accepts only an object storage and the snapshot store. No queue or worker is part of this crate. No stale facts may survive a failed replacement; incomplete updates cannot move the pointer.
 
 ## Approach
 
@@ -39,7 +39,7 @@ The outer library compares tree path/blob identities, replaces changed facts, re
 
 **RED.** Add paused/racing branch responses and changed-blob failure to the update journey; assert pointer identity and explicit coverage.
 
-**GREEN.** Use conditional pointer publication and return a retry state when another invocation has advanced the pointer; do not hold a persistence transaction across provider or storage IO.
+**GREEN.** Use conditional pointer publication and return a retry state when another invocation has advanced the pointer; do not hold a snapshot-store transaction across provider or storage IO.
 
 **REFACTOR.** Keep version and pointer checks at the publication boundary rather than duplicating them in callers.
 
@@ -61,4 +61,4 @@ Stop if update publication can overwrite an immutable snapshot or expose a point
 
 ## Authority Links
 
-[Revision 10 spec](../spec.md), [pipeline plan](../symbolic-context-service-plan.md).
+[Revision 11 spec](../spec.md), [pipeline plan](../symbolic-context-service-plan.md).

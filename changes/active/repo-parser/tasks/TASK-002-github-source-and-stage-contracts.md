@@ -2,7 +2,7 @@
 id: TASK-002
 kind: implementation
 status: review
-spec: SPEC-repo-parser@10
+spec: SPEC-repo-parser@11
 depends_on: [TASK-001]
 maps: [REQ-004, REQ-013, REQ-015, REQ-016, INV-001, INV-003, INV-006]
 ---
@@ -62,6 +62,22 @@ Stop if GitHub/GHES cannot provide the required pinned identity or if the depend
 ## Authority Links
 
 [Revision 10 spec](../spec.md), [pipeline plan](../symbolic-context-service-plan.md), [library design](../../../../architecture/bohmian-code-review-design.md).
+
+## Revision 11 delta
+
+Revision 11 (REQ-015, AC-009) replaces the single `Persistence` trait with two narrow traits, because snapshots and PR contexts have separate lifecycles and may live in separate stores. Implement this alongside the pending remediation `../review/TASK-002-r5/TASK-002-R4-key-layout-rate-limits-and-host-shape.md`; the completed obligations and evidence below are unchanged.
+
+- **Snapshot store:** the current snapshot-pointer lookup, conditional pointer publication, and repository namespace removal of its own records.
+- **Context store:** context publication, exact identity-bound lookup, expired-context listing, deletion, and repository namespace removal of its own records.
+- Each trait keeps the existing identity, object-before-row, no-transaction-across-IO, and exact-key rules and the existing error type; `PersistenceError` may be shared. No method is added beyond this split, and neither trait accepts a pool or consumer type.
+- `ObjectStorage` is unchanged; a facade may receive separate instances for snapshot and context objects.
+- No OpenDAL adapter or storage backend is shipped (REQ-016); caller-supplied deadlines already satisfy REQ-013.
+
+Consumer closure: the in-memory test implementation and the partial cold-build code on this branch (`testing.rs`, `snapshot.rs`) move to the snapshot store; the persistence module and `lib.rs` re-exports follow the new names.
+
+Proof strategy: a signature split with no behavior change, so no manufactured RED. Existing persistence tests, the partial cold-build tests, `mise run test:pipeline`, `mise run fmt:check`, `mise run lints`, and `mise run gate` pass; `rg -n 'trait Persistence\b' crates` returns nothing, and no test implementation implements both traits on one type.
+
+Stop if a facade needs one store's records from the other store to meet an approved obligation.
 
 ## Implementation Evidence
 
