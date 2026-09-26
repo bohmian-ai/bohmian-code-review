@@ -236,7 +236,7 @@ mod tests {
     #[test]
     fn records_revalidate_their_keys_on_deserialization() {
         let identity = Identity {
-            tenant: TenantId::new("a").expect("tenant"),
+            tenant: TenantId::new(&"t".repeat(128)).expect("tenant"),
             installation: InstallationId::new(1).expect("installation"),
             repository: RepositoryIdentity::new(7, "o", "r").expect("repo"),
         };
@@ -260,7 +260,12 @@ mod tests {
         let pointer = SnapshotPointer {
             tree: sha.clone(),
             commit: sha,
-            key: ObjectKey::snapshot(&identity, "v1", 1, &record.base),
+            key: ObjectKey::snapshot(
+                &identity,
+                bohmian_code_review::EXTRACTION_VERSION,
+                1,
+                &record.base,
+            ),
             digest: ObjectDigest::of(b""),
             published_at: UNIX_EPOCH,
         };

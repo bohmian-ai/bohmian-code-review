@@ -32,6 +32,10 @@ pub enum InvalidIdentity {
     /// characters outside `[A-Za-z0-9._-]`.
     #[error("{0} must be 1..={MAX_NAME_BYTES} bytes of [A-Za-z0-9._-] and not `.`/`..`")]
     Name(&'static str),
+    /// A persisted storage-key segment was empty, dot-only, or used
+    /// characters outside `[A-Za-z0-9._-]`.
+    #[error("object key segment must be nonempty [A-Za-z0-9._-] and not `.`/`..`")]
+    KeySegment,
     /// A Git object id was not 40 lowercase hexadecimal characters.
     #[error("git object id must be 40 lowercase hex characters")]
     ObjectSha,
@@ -131,19 +135,32 @@ impl<'de> Deserialize<'de> for InstallationId {
     }
 }
 
-/// Validate a GitHub owner or repository name, or any other single storage-key segment.
+/// Validate one `/`-separated storage-key segment without a length cap.
+///
+/// This is the single alphabet rule shared by names, context ids, and
+/// persisted keys; constructor-built segments such as a hex-encoded
+/// extraction version or a 128-byte tenant are longer than a GitHub name
+/// and must still pass.
 ///
 /// # Errors
 ///
-/// Returns [`InvalidIdentity::Name`] carrying `what` when `raw` is empty,
-/// longer than 100 bytes, exactly `.` or `..`, or outside `[A-Za-z0-9._-]`.
+/// Returns [`InvalidIdentity::KeySegment`] when `raw` is empty, exactly `.`
+/// or `..`, or outside `[A-Za-z0-9._-]`.
+pub(crate) fn validate_key_segment(raw: &str) -> Result<(), InvalidIdentity> {
+    if raw.is_empty() || raw == "." || raw == ".." || !is_key_safe(raw) {
+        return Err(InvalidIdentity::KeySegment);
+    }
+    Ok(())
+}
+
+/// Validate a GitHub owner or repository name, or a context id.
+///
+/// # Errors
+///
+/// Returns [`InvalidIdentity::Name`] carrying `what` when `raw` is longer
+/// than 100 bytes or fails [`validate_key_segment`].
 pub(crate) fn validate_name(raw: &str, what: &'static str) -> Result<String, InvalidIdentity> {
-    if raw.is_empty()
-        || raw.len() > MAX_NAME_BYTES
-        || raw == "."
-        || raw == ".."
-        || !is_key_safe(raw)
-    {
+    if raw.len() > MAX_NAME_BYTES || validate_key_segment(raw).is_err() {
         return Err(InvalidIdentity::Name(what));
     }
     Ok(raw.to_owned())

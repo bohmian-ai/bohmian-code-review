@@ -6,7 +6,7 @@
 //! Objects are create-only; integrity is checked by the library through
 //! [`ObjectDigest`], not by the backend.
 
-use crate::identity::{Identity, InvalidIdentity, ObjectSha, validate_name};
+use crate::identity::{Identity, InvalidIdentity, ObjectSha, validate_key_segment};
 use crate::persistence::ContextId;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -82,16 +82,18 @@ impl ObjectKey {
         ))
     }
 
-    /// Re-validate persisted key text: every `/`-separated segment must be a
-    /// key-safe name, which refuses empty, `.`, `..`, and foreign characters.
+    /// Re-validate persisted key text: every `/`-separated segment must be
+    /// key-safe, which refuses empty, `.`, `..`, and foreign characters. No
+    /// length cap applies because constructors emit hex versions and tenant
+    /// ids longer than a GitHub name.
     ///
     /// # Errors
     ///
-    /// Returns [`InvalidIdentity::Name`] for the first segment that fails
-    /// [`validate_name`].
+    /// Returns [`InvalidIdentity::KeySegment`] for the first segment that
+    /// fails [`validate_key_segment`].
     fn parse(raw: &str) -> Result<ObjectKey, InvalidIdentity> {
         for segment in raw.split('/') {
-            validate_name(segment, "object key segment")?;
+            validate_key_segment(segment)?;
         }
         Ok(ObjectKey(raw.to_owned()))
     }
@@ -238,6 +240,26 @@ mod tests {
                 "{hostile:?} must be refused"
             );
         }
+    }
+
+    /// Keys built from the real extraction version and a maximal tenant
+    /// carry segments longer than a GitHub name yet still round-trip.
+    #[test]
+    fn long_constructor_segments_round_trip() {
+        let tree = ObjectSha::new(&"b".repeat(40)).expect("sha");
+        let identity = identity(&"t".repeat(128));
+        let key = ObjectKey::snapshot(&identity, bohmian_code_review::EXTRACTION_VERSION, 1, &tree);
+        let json = serde_json::to_string(&key).expect("serialize");
+        assert_eq!(
+            serde_json::from_str::<ObjectKey>(&json).expect("round trip"),
+            key
+        );
+        let context = ObjectKey::context(&identity, &ContextId::new("ctx1").expect("id"));
+        let json = serde_json::to_string(&context).expect("serialize");
+        assert_eq!(
+            serde_json::from_str::<ObjectKey>(&json).expect("round trip"),
+            context
+        );
     }
 
     /// Digests are deterministic and distinguish different bytes.
