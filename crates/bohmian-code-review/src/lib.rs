@@ -2,9 +2,10 @@
 //!
 //! [`SymbolicContext`] composes the real stage owners over caller-supplied
 //! paths and bytes: pass one upserts one blob at a time into an in-memory
-//! symbol index; pass two ranks other indexed files against a changed
-//! head-side blob, and [`build_context`] packs changed hunks and ranked
-//! spans under caller limits. Nothing here reads disk, fetches source, or
+//! symbol index; [`parse_unified_diff`] turns PR diff text into each changed
+//! file's head-side lines; pass two ranks other indexed files against a
+//! changed head-side blob, and [`build_context`] packs changed hunks and
+//! ranked spans under caller limits. Nothing here reads disk, fetches source, or
 //! retains blobs; the index covers only files the caller supplied.
 
 use bohmian_code_review_extract::{ExtractionConfig, Extractor};
@@ -18,8 +19,9 @@ pub use bohmian_code_review_core::{
 pub use bohmian_code_review_extract::ExtractionError;
 pub use bohmian_code_review_index::SymbolHit;
 pub use bohmian_code_review_select::{
-    ChangedLines, Context, ContextLimits, ContextSpan, LineRange, MatchReason, Omission,
-    OmissionReason, RankedFile, Ranking, SelectError, SpanKind,
+    ChangedLines, Context, ContextLimits, ContextSpan, DiffError, FileDiff, LineRange, MatchReason,
+    Omission, OmissionReason, RankedFile, Ranking, SelectError, SpanKind, parse_hunks,
+    parse_unified_diff,
 };
 
 /// Facts extracted from one upserted file.
@@ -60,6 +62,9 @@ pub enum Error {
         /// The extractor's typed failure.
         source: ExtractionError,
     },
+    /// Diff text could not be analyzed into changed lines.
+    #[error(transparent)]
+    Diff(#[from] DiffError),
     /// Changed-line validation or context packing failed.
     #[error(transparent)]
     Select(#[from] SelectError),

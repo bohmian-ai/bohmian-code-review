@@ -1,12 +1,14 @@
 //! Public-API symbolic-context journey over in-memory TypeScript.
 //!
-//! Drives only `bohmian-code-review`'s facade through the real extractor,
-//! index, resolver, and selector: upsert supplied blobs, rank a changed
-//! handler, and pack context under an exact caller-counted token budget.
+//! Follows CodePal's "Building Code Context" flow through only
+//! `bohmian-code-review`'s facade and the real extractor, index, resolver,
+//! and selector: parse source code into the symbol-to-file index (pass one),
+//! analyze the PR diff, then look up symbols, score files by overlap, and
+//! pick context within an exact caller-counted token budget (pass two).
 
 use bohmian_code_review::{
-    ContextLimits, Error, ExtractionError, LineRange, OmissionReason, RelativePath, SelectError,
-    SpanKind, SymbolicContext, build_context,
+    ContextLimits, DiffError, Error, ExtractionError, FileDiff, LineRange, OmissionReason,
+    RelativePath, SelectError, SpanKind, SymbolicContext, build_context, parse_unified_diff,
 };
 use std::collections::BTreeMap;
 
@@ -51,7 +53,35 @@ const UNRELATED: &str = "export function unrelated(): number {
 }
 ";
 
-/// All four journey files.
+/// The PR diff: rewrites the handler body to call the user and format
+/// helpers, and deletes a legacy file that no longer exists at head.
+const PR_DIFF: &str = concat!(
+    "diff --git a/src/handler.ts b/src/handler.ts\n",
+    "index 1111111..2222222 100644\n",
+    "--- a/src/handler.ts\n",
+    "+++ b/src/handler.ts\n",
+    "@@ -2,5 +2,8 @@ import { lookupUser, saveUser } from \"./user\";\n",
+    " import { formatUser } from \"./format\";\n",
+    " \n",
+    " export function handleRequest(id: string): string {\n",
+    "-  return id;\n",
+    "+  const user = lookupUser(id);\n",
+    "+  saveUser(user);\n",
+    "+  saveUser(user);\n",
+    "+  return formatUser(user);\n",
+    " }\n",
+    "diff --git a/src/legacy.ts b/src/legacy.ts\n",
+    "deleted file mode 100644\n",
+    "index 3333333..0000000\n",
+    "--- a/src/legacy.ts\n",
+    "+++ /dev/null\n",
+    "@@ -1,3 +0,0 @@\n",
+    "-export function legacy(): void {\n",
+    "-  return;\n",
+    "-}\n",
+);
+
+/// All four head-side journey files.
 const FILES: [(&str, &str); 4] = [
     ("src/handler.ts", HANDLER),
     ("src/user.ts", USER),
@@ -150,14 +180,53 @@ fn upsert_is_transactional_and_remove_is_idempotent() {
     assert_eq!(context.file_count(), 1);
 }
 
+/// Analyzes the PR diff and returns the head path and added lines of every
+/// file with head-side changes to rank.
+///
+/// # Panics
+///
+/// Panics if the diff is malformed or names a non-canonical path.
+fn changed_files(diff: &str) -> Vec<(String, Vec<LineRange>)> {
+    parse_unified_diff(diff)
+        .expect("valid diff")
+        .into_iter()
+        .filter_map(|file| Some((file.new_path?.as_str().to_owned(), file.added)))
+        .filter(|(_, added)| !added.is_empty())
+        .collect()
+}
+
 #[test]
-/// The two-pass journey ranks user above format, excludes unrelated, packs
-/// one secondary span under an exact budget, and repeats identically.
-fn changed_handler_ranks_and_packs_user_context_deterministically() {
+/// The diagram's full flow: the PR diff yields the handler's changed lines,
+/// ranking scores user above format and excludes unrelated, packing picks
+/// one secondary span under an exact budget, and a rerun is identical.
+fn pr_diff_selects_user_context_deterministically() {
     let context = indexed();
-    let changed = [LineRange { start: 5, end: 8 }];
+    assert_eq!(
+        parse_unified_diff(PR_DIFF),
+        Ok(vec![
+            FileDiff {
+                old_path: Some(path("src/handler.ts")),
+                new_path: Some(path("src/handler.ts")),
+                added: vec![LineRange { start: 5, end: 8 }],
+            },
+            FileDiff {
+                old_path: Some(path("src/legacy.ts")),
+                new_path: None,
+                added: Vec::new(),
+            },
+        ])
+    );
+    let changed = changed_files(PR_DIFF);
+    assert_eq!(
+        changed,
+        [(
+            "src/handler.ts".to_owned(),
+            vec![LineRange { start: 5, end: 8 }]
+        )]
+    );
+    let (changed_path, changed_lines) = &changed[0];
     let ranking = context
-        .rank("src/handler.ts", HANDLER.as_bytes(), changed.to_vec())
+        .rank(changed_path, HANDLER.as_bytes(), changed_lines.clone())
         .expect("valid change");
 
     let scores: Vec<(&str, usize)> = ranking
@@ -239,8 +308,9 @@ fn changed_handler_ranks_and_packs_user_context_deterministically() {
         ]
     );
 
+    let (again_path, again_lines) = &changed_files(PR_DIFF)[0];
     let again = context
-        .rank("src/handler.ts", HANDLER.as_bytes(), changed.to_vec())
+        .rank(again_path, HANDLER.as_bytes(), again_lines.clone())
         .expect("valid change");
     assert_eq!(again, ranking);
     assert_eq!(
@@ -250,9 +320,17 @@ fn changed_handler_ranks_and_packs_user_context_deterministically() {
 }
 
 #[test]
-/// An unfittable changed hunk, a missing candidate blob, and deletion-only
-/// input fail explicitly through the public error.
+/// A truncated PR diff, an unfittable changed hunk, a missing candidate blob,
+/// and deletion-only input fail explicitly through the public error.
 fn journey_reports_budget_missing_blob_and_deletion_only_errors() {
+    let truncated = PR_DIFF
+        .strip_suffix("-}\n")
+        .expect("diff ends with the deleted brace");
+    assert_eq!(
+        parse_unified_diff(truncated).map_err(Error::from),
+        Err(Error::Diff(DiffError::HunkLengthMismatch { line: 20 }))
+    );
+
     let context = indexed();
     let ranking = context
         .rank(
