@@ -5,7 +5,7 @@
 //! only be named in one validated spelling. Construction rejects anything the
 //! library would otherwise have to sanitize later.
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt;
 use thiserror::Error;
 
@@ -32,10 +32,9 @@ pub enum InvalidIdentity {
     /// characters outside `[A-Za-z0-9._-]`.
     #[error("{0} must be 1..={MAX_NAME_BYTES} bytes of [A-Za-z0-9._-] and not `.`/`..`")]
     Name(&'static str),
-    /// A persisted storage-key segment was empty, dot-only, or used
-    /// characters outside `[A-Za-z0-9._-]`.
-    #[error("object key segment must be nonempty [A-Za-z0-9._-] and not `.`/`..`")]
-    KeySegment,
+    /// A persisted storage key did not match the snapshot or context layout.
+    #[error("object key must match the snapshot or context key layout")]
+    ObjectKey,
     /// A Git object id was not 40 lowercase hexadecimal characters.
     #[error("git object id must be 40 lowercase hex characters")]
     ObjectSha,
@@ -91,7 +90,7 @@ impl<'de> Deserialize<'de> for TenantId {
     ///
     /// Returns a serde error carrying the [`InvalidIdentity::Tenant`] reason
     /// when the serialized string is not a key-safe tenant id.
-    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<TenantId, D::Error> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<TenantId, D::Error> {
         let raw = String::deserialize(deserializer)?;
         TenantId::new(&raw).map_err(serde::de::Error::custom)
     }
@@ -128,39 +127,24 @@ impl<'de> Deserialize<'de> for InstallationId {
     ///
     /// Returns a serde error carrying the [`InvalidIdentity::Installation`]
     /// reason when the serialized id is zero.
-    fn deserialize<D: serde::Deserializer<'de>>(
-        deserializer: D,
-    ) -> Result<InstallationId, D::Error> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<InstallationId, D::Error> {
         InstallationId::new(u64::deserialize(deserializer)?).map_err(serde::de::Error::custom)
     }
-}
-
-/// Validate one `/`-separated storage-key segment without a length cap.
-///
-/// This is the single alphabet rule shared by names, context ids, and
-/// persisted keys; constructor-built segments such as a hex-encoded
-/// extraction version or a 128-byte tenant are longer than a GitHub name
-/// and must still pass.
-///
-/// # Errors
-///
-/// Returns [`InvalidIdentity::KeySegment`] when `raw` is empty, exactly `.`
-/// or `..`, or outside `[A-Za-z0-9._-]`.
-pub(crate) fn validate_key_segment(raw: &str) -> Result<(), InvalidIdentity> {
-    if raw.is_empty() || raw == "." || raw == ".." || !is_key_safe(raw) {
-        return Err(InvalidIdentity::KeySegment);
-    }
-    Ok(())
 }
 
 /// Validate a GitHub owner or repository name, or a context id.
 ///
 /// # Errors
 ///
-/// Returns [`InvalidIdentity::Name`] carrying `what` when `raw` is longer
-/// than 100 bytes or fails [`validate_key_segment`].
+/// Returns [`InvalidIdentity::Name`] carrying `what` when `raw` is empty,
+/// longer than 100 bytes, exactly `.` or `..`, or outside `[A-Za-z0-9._-]`.
 pub(crate) fn validate_name(raw: &str, what: &'static str) -> Result<String, InvalidIdentity> {
-    if raw.len() > MAX_NAME_BYTES || validate_key_segment(raw).is_err() {
+    if raw.is_empty()
+        || raw.len() > MAX_NAME_BYTES
+        || raw == "."
+        || raw == ".."
+        || !is_key_safe(raw)
+    {
         return Err(InvalidIdentity::Name(what));
     }
     Ok(raw.to_owned())
@@ -296,51 +280,38 @@ impl<'de> Deserialize<'de> for ObjectSha {
     ///
     /// Returns a serde error carrying the [`InvalidIdentity::ObjectSha`]
     /// reason when the serialized string is not 40 lowercase hex characters.
-    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<ObjectSha, D::Error> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<ObjectSha, D::Error> {
         let raw = String::deserialize(deserializer)?;
         ObjectSha::new(&raw).map_err(serde::de::Error::custom)
     }
 }
 
-/// Which GitHub deployment serves the API.
+/// Which GitHub deployment serves the API, and which hosts may serve its
+/// archives.
 ///
-/// [`GitHubHost::enterprise`] is the only way to obtain an `Enterprise`
-/// host, so every API base a client sees is validated:
-///
-/// ```compile_fail
-/// let _ = bohmian_code_review_pipeline::GitHubHost::Enterprise { api_base: "http://x".to_owned() };
-/// ```
-///
-/// The payload is an [`ApiBase`] with no public constructor, so a validated
-/// host cannot be rewritten through `&mut` either:
-///
-/// ```compile_fail
-/// let mut h = bohmian_code_review_pipeline::GitHubHost::enterprise("https://ghe.example.com/api/v3").unwrap();
-/// if let bohmian_code_review_pipeline::GitHubHost::Enterprise { api_base, .. } = &mut h {
-///     *api_base = "http://evil".to_owned();
-/// }
-/// ```
+/// The fields are private and computed once by [`GitHubHost::public`] or
+/// [`GitHubHost::enterprise`], so every host a client sees is validated.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum GitHubHost {
-    /// `api.github.com`, whose archives redirect to `codeload.github.com`.
-    Public,
-    /// A GitHub Enterprise Server API base such as `https://ghe.example.com/api/v3`.
-    #[non_exhaustive]
-    Enterprise {
-        /// Validated `https://host[/path]` base without trailing slash.
-        api_base: ApiBase,
-    },
+pub struct GitHubHost {
+    /// `https://host[/path]` API base without trailing slash.
+    api_base: String,
+    /// Hosts an archive redirect may point at.
+    archive_hosts: Vec<String>,
 }
 
-/// A validated GHES API base, obtainable only through [`GitHubHost::enterprise`].
-///
-/// The field is private and there is no constructor or `From<String>`, so
-/// the text can neither be built nor overwritten outside this crate.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ApiBase(String);
-
 impl GitHubHost {
-    /// Validate a GHES API base URL.
+    /// `api.github.com`, whose archives redirect to `codeload.github.com`.
+    pub fn public() -> GitHubHost {
+        GitHubHost {
+            api_base: "https://api.github.com".to_owned(),
+            archive_hosts: vec!["codeload.github.com".to_owned()],
+        }
+    }
+
+    /// Validate a GHES API base URL such as `https://ghe.example.com/api/v3`.
+    ///
+    /// Archives are trusted on the API host itself (`/_codeload/`) and on
+    /// `codeload.<host>`, which subdomain isolation uses.
     ///
     /// # Errors
     ///
@@ -351,7 +322,7 @@ impl GitHubHost {
         let rest = api_base
             .strip_prefix("https://")
             .ok_or(InvalidIdentity::ApiBase)?;
-        let host = rest.split('/').next().unwrap_or("");
+        let host = rest.split_once('/').map_or(rest, |(host, _)| host);
         if host.is_empty()
             || host.contains('@')
             || rest.ends_with('/')
@@ -361,29 +332,23 @@ impl GitHubHost {
         {
             return Err(InvalidIdentity::ApiBase);
         }
-        Ok(GitHubHost::Enterprise {
-            api_base: ApiBase(api_base.to_owned()),
+        Ok(GitHubHost {
+            api_base: api_base.to_owned(),
+            archive_hosts: vec![host.to_owned(), format!("codeload.{host}")],
         })
     }
 
     /// API base URL without trailing slash.
     pub fn api_base(&self) -> &str {
-        match self {
-            GitHubHost::Public => "https://api.github.com",
-            GitHubHost::Enterprise { api_base } => &api_base.0,
-        }
+        &self.api_base
     }
 
-    /// The only host an archive redirect may point at.
-    pub fn archive_host(&self) -> &str {
-        match self {
-            GitHubHost::Public => "codeload.github.com",
-            GitHubHost::Enterprise { api_base } => api_base
-                .0
-                .strip_prefix("https://")
-                .and_then(|rest| rest.split('/').next())
-                .unwrap_or(""),
-        }
+    /// Whether an archive redirect may point at `host`, compared ASCII
+    /// case-insensitively.
+    pub fn trusts_archive_host(&self, host: &str) -> bool {
+        self.archive_hosts
+            .iter()
+            .any(|trusted| trusted.eq_ignore_ascii_case(host))
     }
 }
 
@@ -479,13 +444,25 @@ mod tests {
         assert!(serde_json::from_str::<ObjectSha>("\"zz\"").is_err());
     }
 
-    /// GHES bases are validated and yield the same host for archive redirects.
+    /// Public and GHES hosts expose their API base and trust only their own
+    /// archive hosts; GHES bases are validated.
     #[test]
     fn hosts_expose_api_base_and_archive_host() {
-        assert_eq!(GitHubHost::Public.archive_host(), "codeload.github.com");
+        let public = GitHubHost::public();
+        assert_eq!(public.api_base(), "https://api.github.com");
+        assert!(public.trusts_archive_host("codeload.github.com"));
+        assert!(!public.trusts_archive_host("api.github.com"));
         let ghes = GitHubHost::enterprise("https://ghe.example.com/api/v3").expect("valid");
         assert_eq!(ghes.api_base(), "https://ghe.example.com/api/v3");
-        assert_eq!(ghes.archive_host(), "ghe.example.com");
+        assert!(ghes.trusts_archive_host("ghe.example.com"));
+        assert!(ghes.trusts_archive_host("CODELOAD.ghe.example.com"));
+        for untrusted in [
+            "codeload.ghe.example.com.evil",
+            "evil.example.com",
+            "codeload.github.com",
+        ] {
+            assert!(!ghes.trusts_archive_host(untrusted), "{untrusted}");
+        }
         for bad in [
             "http://ghe.example.com",
             "https://user@ghe.example.com",

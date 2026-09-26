@@ -841,7 +841,7 @@ mod tests {
         /// A client over this fake.
         fn client(&self) -> GitHubClient {
             GitHubClient::with_transport(
-                GitHubHost::Public,
+                GitHubHost::public(),
                 InstallationToken::new("ghs_token").expect("token"),
                 RequestLimits::default(),
                 Box::new(Shared(Arc::clone(&self.transport))),

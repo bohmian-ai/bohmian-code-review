@@ -13,6 +13,7 @@ use crate::identity::{GitHubHost, InstallationToken, ObjectSha, RepositoryIdenti
 use crate::storage::hex;
 use bohmian_code_review::{InvalidRelativePath, RelativePath};
 use serde::Deserialize;
+use serde_json::Error as JsonError;
 use sha1::{Digest, Sha1};
 use std::collections::BTreeMap;
 use std::io::{self, Read};
@@ -281,7 +282,9 @@ pub enum GitHubError {
     /// A rate limit could not be waited out inside the deadline or the retry cap.
     #[error("rate limited; retry after {retry_after:?}")]
     RateLimited {
-        /// Wait the provider requested.
+        /// Wait the provider requested through `retry-after` or the reset
+        /// time, or GitHub's documented one-minute minimum for a secondary
+        /// limit that carried neither header.
         retry_after: Duration,
     },
     /// Credentials were rejected.
@@ -337,12 +340,10 @@ pub enum GitHubError {
         /// What the response carried.
         actual: String,
     },
-    /// An archive redirect pointed outside the trusted archive host.
-    #[error("untrusted archive redirect to {location}")]
-    UntrustedRedirect {
-        /// Redirect target.
-        location: String,
-    },
+    /// An archive redirect pointed outside the trusted archive hosts. The
+    /// target is not kept because archive URLs carry a signed token.
+    #[error("untrusted archive redirect")]
+    UntrustedRedirect,
 }
 
 impl GitHubError {
@@ -724,6 +725,10 @@ fn now_epoch_seconds() -> u64 {
         .unwrap_or(0)
 }
 
+/// GitHub's documented minimum wait after a secondary rate limit that
+/// carries no `retry-after` or reset header.
+const SECONDARY_RATE_LIMIT_WAIT: Duration = Duration::from_secs(60);
+
 /// Wait the provider requested for a 403/429, if it signalled a rate limit.
 fn rate_limit_wait(response: &HttpResponse) -> Option<Duration> {
     if let Some(seconds) = response
@@ -748,12 +753,30 @@ fn rate_limit_wait(response: &HttpResponse) -> Option<Duration> {
     ))
 }
 
-/// Whether a `Location` is `https://<archive_host>/...`.
-fn is_trusted_redirect(location: &str, archive_host: &str) -> bool {
+/// Longest 403 body prefix read to recognise a header-less secondary limit.
+const RATE_LIMIT_BODY_BYTES: u64 = 4096;
+
+/// Whether a 403 body names a rate limit, as GitHub's secondary-limit
+/// responses do when they carry no rate headers.
+///
+/// At most [`RATE_LIMIT_BODY_BYTES`] are read; a read error counts as no
+/// signal, and the text never leaves this function.
+fn names_rate_limit(response: &mut HttpResponse) -> bool {
+    let mut body = Vec::new();
+    let _ = (&mut response.body)
+        .take(RATE_LIMIT_BODY_BYTES)
+        .read_to_end(&mut body);
+    String::from_utf8_lossy(&body)
+        .to_ascii_lowercase()
+        .contains("rate limit")
+}
+
+/// Whether a `Location` is `https://<trusted archive host>/...`.
+fn is_trusted_redirect(location: &str, host: &GitHubHost) -> bool {
     location
         .strip_prefix("https://")
         .and_then(|rest| rest.split('/').next())
-        .is_some_and(|host| host.eq_ignore_ascii_case(archive_host))
+        .is_some_and(|authority| host.trusts_archive_host(authority))
 }
 
 /// Authenticated, bounded client for one GitHub host and installation.
@@ -956,7 +979,7 @@ impl GitHubClient {
     /// Open the commit-pinned tarball stream for `commit`.
     ///
     /// The API request carries credentials; a redirect is followed once,
-    /// without credentials, and only to the host's archive host.
+    /// without credentials, and only to one of the host's archive hosts.
     ///
     /// # Errors
     ///
@@ -976,8 +999,8 @@ impl GitHubClient {
             200 => first,
             301..=303 | 307 | 308 => {
                 let location = first.header("location").unwrap_or("").to_owned();
-                if !is_trusted_redirect(&location, self.host.archive_host()) {
-                    return Err(GitHubError::UntrustedRedirect { location });
+                if !is_trusted_redirect(&location, &self.host) {
+                    return Err(GitHubError::UntrustedRedirect);
                 }
                 let hop = self.send_with_policy(
                     execution,
@@ -1164,8 +1187,10 @@ impl GitHubClient {
     ///
     /// Returns [`GitHubError::Interrupted`] when [`Execution::check`] reports
     /// cancellation or an expired deadline before an attempt or during a
-    /// retry sleep; [`GitHubError::Forbidden`] for a 403 without rate-limit
-    /// headers; [`GitHubError::RateLimited`] for a 403/429 whose wait exceeds
+    /// retry sleep; [`GitHubError::Forbidden`] for a 403 with neither
+    /// rate-limit headers nor a body naming a rate limit;
+    /// [`GitHubError::RateLimited`] for a 403/429 whose wait (from headers,
+    /// or [`SECONDARY_RATE_LIMIT_WAIT`] without them) exceeds
     /// `max_retry_wait`, the remaining deadline, or the attempt budget;
     /// [`GitHubError::Unavailable`] for a 5xx and [`GitHubError::Transport`]
     /// for a transport failure once `max_attempts` or the deadline is
@@ -1190,16 +1215,15 @@ impl GitHubClient {
                 .get(self.build(url, accept, authenticated, timeout));
             let backoff = Duration::from_secs(attempt.into()).min(self.limits.max_retry_wait);
             let (wait, failure) = match outcome {
-                Ok(response) if matches!(response.status, 403 | 429) => {
-                    match rate_limit_wait(&response) {
-                        Some(wait) => (wait, GitHubError::RateLimited { retry_after: wait }),
-                        None if response.status == 403 => return Err(GitHubError::Forbidden),
-                        None => {
-                            return Err(GitHubError::RateLimited {
-                                retry_after: self.limits.max_retry_wait,
-                            });
+                Ok(mut response) if matches!(response.status, 403 | 429) => {
+                    let wait = match rate_limit_wait(&response) {
+                        Some(wait) => wait,
+                        None if response.status == 429 || names_rate_limit(&mut response) => {
+                            SECONDARY_RATE_LIMIT_WAIT
                         }
-                    }
+                        None => return Err(GitHubError::Forbidden),
+                    };
+                    (wait, GitHubError::RateLimited { retry_after: wait })
                 }
                 Ok(response) if response.status >= 500 => (
                     backoff,
@@ -1316,7 +1340,7 @@ fn parse_json<T: for<'de> Deserialize<'de>>(
 }
 
 /// Serde error category as a fixed label, never payload text.
-fn json_error_category(error: &serde_json::Error) -> &'static str {
+fn json_error_category(error: &JsonError) -> &'static str {
     match error.classify() {
         serde_json::error::Category::Io => "io error",
         serde_json::error::Category::Syntax => "invalid json",
@@ -1494,7 +1518,7 @@ mod tests {
 
     /// Public-host client with default limits.
     fn client() -> (GitHubClient, &'static FakeTransport) {
-        client_on(GitHubHost::Public, RequestLimits::default())
+        client_on(GitHubHost::public(), RequestLimits::default())
     }
 
     /// A one-minute execution bound.
@@ -1670,7 +1694,7 @@ mod tests {
     #[test]
     fn archive_redirect_is_trusted_only_on_archive_host_and_never_forwards_credentials() {
         let (client, fake) = client_on(
-            GitHubHost::Public,
+            GitHubHost::public(),
             RequestLimits {
                 max_archive_bytes: 4,
                 ..RequestLimits::default()
@@ -1705,16 +1729,17 @@ mod tests {
         assert!(seen[1].0.starts_with("https://codeload.github.com/"));
         assert!(!seen[1].1, "redirect hop must not forward credentials");
 
-        fake.push(
-            302,
-            &[("location", "https://evil.example.com/archive.tar.gz")],
-            Vec::new(),
-        );
-        assert_eq!(
-            client.archive(&execution, &repo, &commit).err(),
-            Some(GitHubError::UntrustedRedirect {
-                location: "https://evil.example.com/archive.tar.gz".into()
-            })
+        let evil = "https://evil.example.com/archive.tar.gz?token=secret";
+        fake.push(302, &[("location", evil)], Vec::new());
+        let untrusted = client
+            .archive(&execution, &repo, &commit)
+            .err()
+            .expect("untrusted redirect");
+        assert_eq!(untrusted, GitHubError::UntrustedRedirect);
+        let message = untrusted.to_string();
+        assert!(
+            !message.contains("secret") && !message.contains(evil),
+            "{message}"
         );
         assert_eq!(fake.seen().len(), 3, "untrusted redirect is never followed");
 
@@ -1746,22 +1771,33 @@ mod tests {
         );
         fake.push(
             302,
+            &[("location", "https://codeload.ghe.example.com/x")],
+            Vec::new(),
+        );
+        fake.push(200, &[], b"gz".to_vec());
+        assert!(client.archive(&execution, &repo, &commit).is_ok());
+        let seen = fake.seen();
+        assert_eq!(seen[3].0, "https://codeload.ghe.example.com/x");
+        assert!(!seen[3].1, "codeload hop must not forward credentials");
+        fake.push(
+            302,
             &[("location", "https://codeload.github.com/x")],
             Vec::new(),
         );
         assert!(matches!(
             client.archive(&execution, &repo, &commit),
-            Err(GitHubError::UntrustedRedirect { .. })
+            Err(GitHubError::UntrustedRedirect)
         ));
-        assert_eq!(client.calls().get(Operation::Archive), 3);
+        assert_eq!(client.calls().get(Operation::Archive), 5);
     }
 
     /// Scenario 2: rate limits with a short wait are retried once under one
-    /// policy; long waits, exhausted attempts, and plain 403s are typed.
+    /// policy; long waits, exhausted attempts, header-less secondary limits,
+    /// and plain 403s are typed.
     #[test]
     fn rate_limits_retry_within_bounds_or_report_typed_outcomes() {
         let (client, fake) = client_on(
-            GitHubHost::Public,
+            GitHubHost::public(),
             RequestLimits {
                 max_attempts: 2,
                 max_retry_wait: Duration::from_secs(5),
@@ -1816,6 +1852,27 @@ mod tests {
             })
         );
 
+        fake.push(
+            403,
+            &[("x-ratelimit-remaining", "4990")],
+            b"You have exceeded a secondary rate limit".to_vec(),
+        );
+        let secondary = client
+            .repository(&execution, &repo)
+            .expect_err("secondary limit");
+        assert_eq!(
+            secondary,
+            GitHubError::RateLimited {
+                retry_after: SECONDARY_RATE_LIMIT_WAIT
+            }
+        );
+        assert_eq!(
+            secondary.disposition(),
+            Disposition::Retry {
+                after: Some(SECONDARY_RATE_LIMIT_WAIT)
+            }
+        );
+
         fake.push(403, &[], Vec::new());
         let forbidden = client.repository(&execution, &repo).expect_err("forbidden");
         assert_eq!(forbidden, GitHubError::Forbidden);
@@ -1835,9 +1892,9 @@ mod tests {
         assert_eq!(
             client.repository(&execution, &repo).err(),
             Some(GitHubError::RateLimited {
-                retry_after: Duration::from_secs(5)
+                retry_after: SECONDARY_RATE_LIMIT_WAIT
             }),
-            "429 without rate headers is reported with the maximum wait, not slept"
+            "429 without rate headers waits GitHub's documented minute, not slept"
         );
     }
 
@@ -1847,7 +1904,7 @@ mod tests {
     #[test]
     fn malformed_payloads_and_interruptions_are_explicit() {
         let (client, fake) = client_on(
-            GitHubHost::Public,
+            GitHubHost::public(),
             RequestLimits {
                 max_attempts: 2,
                 max_json_bytes: 64,
@@ -1931,17 +1988,18 @@ mod tests {
             git_blob_sha(b"hello\n"),
             "ce013625030ba8dba906f756967f9e9ca394464a"
         );
+        let public = GitHubHost::public();
         assert!(is_trusted_redirect(
             "https://CodeLoad.github.com/x",
-            "codeload.github.com"
+            &public
         ));
         assert!(!is_trusted_redirect(
             "http://codeload.github.com/x",
-            "codeload.github.com"
+            &public
         ));
         assert!(!is_trusted_redirect(
             "https://codeload.github.com.evil/x",
-            "codeload.github.com"
+            &public
         ));
     }
 

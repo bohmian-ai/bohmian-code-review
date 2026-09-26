@@ -9,7 +9,7 @@
 
 use crate::identity::{Identity, InvalidIdentity, ObjectSha, validate_name};
 use crate::storage::{ObjectDigest, ObjectKey};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt;
 use std::time::SystemTime;
 use thiserror::Error;
@@ -90,7 +90,7 @@ impl<'de> Deserialize<'de> for ContextId {
     ///
     /// Returns a serde error carrying the [`InvalidIdentity`] reason when the
     /// serialized string is not a single key-safe segment.
-    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<ContextId, D::Error> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<ContextId, D::Error> {
         let raw = String::deserialize(deserializer)?;
         ContextId::new(&raw).map_err(serde::de::Error::custom)
     }
@@ -231,6 +231,7 @@ pub trait ContextStore: Send + Sync {
 mod tests {
     use super::*;
     use crate::identity::{InstallationId, RepositoryIdentity, TenantId};
+    use crate::storage::tests::hostile_keys;
     use std::time::UNIX_EPOCH;
 
     /// Context ids are single key-safe segments on construction and reload.
@@ -253,8 +254,8 @@ mod tests {
         );
     }
 
-    /// Persisted rows carrying a traversing key are refused on reload; a
-    /// library-built row round-trips.
+    /// Persisted rows carrying a key outside the constructor layouts are
+    /// refused on reload; a library-built row round-trips.
     #[test]
     fn records_revalidate_their_keys_on_deserialization() {
         let identity = Identity {
@@ -296,14 +297,17 @@ mod tests {
             serde_json::from_str::<SnapshotPointer>(&pointer_json).expect("round trip"),
             pointer
         );
-        let hostile = "tenants/b/installations/9/repositories/3/contexts/../x";
-        let good_key = record.key.as_str();
-        assert!(serde_json::from_str::<ContextRecord>(&json.replace(good_key, hostile)).is_err());
-        assert!(
-            serde_json::from_str::<SnapshotPointer>(
-                &pointer_json.replace(pointer.key.as_str(), hostile)
-            )
-            .is_err()
-        );
+        for hostile in hostile_keys() {
+            let record_json = json.replace(record.key.as_str(), &hostile);
+            assert!(
+                serde_json::from_str::<ContextRecord>(&record_json).is_err(),
+                "{hostile:?}"
+            );
+            let hostile_pointer = pointer_json.replace(pointer.key.as_str(), &hostile);
+            assert!(
+                serde_json::from_str::<SnapshotPointer>(&hostile_pointer).is_err(),
+                "{hostile:?}"
+            );
+        }
     }
 }

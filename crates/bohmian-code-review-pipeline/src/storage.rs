@@ -6,11 +6,12 @@
 //! Objects are create-only; integrity is checked by the library through
 //! [`ObjectDigest`], not by the backend.
 
-use crate::identity::{Identity, InvalidIdentity, ObjectSha, validate_key_segment};
+use crate::identity::{Identity, InstallationId, InvalidIdentity, ObjectSha, TenantId};
 use crate::persistence::ContextId;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use sha2::{Digest, Sha256};
 use std::fmt;
+use std::num::NonZeroU64;
 use thiserror::Error;
 
 /// Why a storage operation failed.
@@ -40,9 +41,9 @@ pub enum StorageError {
 ///
 /// Keys are only produced by [`ObjectKey::snapshot`] and
 /// [`ObjectKey::context`], both of which embed the caller identity, so two
-/// tenants can never share an object even for identical source. Every
-/// `/`-separated segment is key-safe, so a persisted key is re-validated on
-/// reload and can never traverse out of its scope.
+/// tenants can never share an object even for identical source. A persisted
+/// key is re-parsed against those two layouts on reload, so it can never be
+/// unscoped or traverse out of its scope.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize)]
 #[serde(transparent)]
 pub struct ObjectKey(String);
@@ -82,20 +83,65 @@ impl ObjectKey {
         ))
     }
 
-    /// Re-validate persisted key text: every `/`-separated segment must be
-    /// key-safe, which refuses empty, `.`, `..`, and foreign characters. No
-    /// length cap applies because constructors emit hex versions and tenant
-    /// ids longer than a GitHub name.
+    /// Re-validate persisted key text against the two constructor layouts.
+    ///
+    /// Every variable part is parsed with the same validator its constructor
+    /// input went through, then the key is re-formatted; only text that
+    /// reproduces byte for byte is accepted, so unscoped keys, traversal,
+    /// extra segments, and non-canonical numbers such as `01` are refused.
     ///
     /// # Errors
     ///
-    /// Returns [`InvalidIdentity::KeySegment`] for the first segment that
-    /// fails [`validate_key_segment`].
+    /// Returns [`InvalidIdentity::ObjectKey`] when `raw` is not exactly a
+    /// snapshot or context key.
     fn parse(raw: &str) -> Result<ObjectKey, InvalidIdentity> {
-        for segment in raw.split('/') {
-            validate_key_segment(segment)?;
+        ObjectKey::canonical(raw)
+            .filter(|canonical| canonical == raw)
+            .map(ObjectKey)
+            .ok_or(InvalidIdentity::ObjectKey)
+    }
+
+    /// Re-format `raw` from its validated parts, or `None` when a part is
+    /// invalid or the segments match neither layout.
+    fn canonical(raw: &str) -> Option<String> {
+        let segments: Vec<&str> = raw.split('/').collect();
+        let [
+            "tenants",
+            tenant,
+            "installations",
+            installation,
+            "repositories",
+            repository,
+            rest @ ..,
+        ] = segments.as_slice()
+        else {
+            return None;
+        };
+        let prefix = format!(
+            "tenants/{}/installations/{}/repositories/{}",
+            TenantId::new(tenant).ok()?.as_str(),
+            InstallationId::new(installation.parse().ok()?).ok()?.get(),
+            repository.parse::<NonZeroU64>().ok()?
+        );
+        match rest {
+            ["snapshots", version, format_version, tree] => {
+                let version_is_hex = !version.is_empty()
+                    && version.len() % 2 == 0
+                    && version
+                        .bytes()
+                        .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte));
+                if !version_is_hex {
+                    return None;
+                }
+                Some(format!(
+                    "{prefix}/snapshots/{version}/{}/{}",
+                    format_version.parse::<u32>().ok()?,
+                    ObjectSha::new(tree).ok()?
+                ))
+            }
+            ["contexts", id] => Some(format!("{prefix}/contexts/{}", ContextId::new(id).ok()?)),
+            _ => None,
         }
-        Ok(ObjectKey(raw.to_owned()))
     }
 
     /// Slash-separated key text.
@@ -105,17 +151,17 @@ impl ObjectKey {
 }
 
 impl<'de> Deserialize<'de> for ObjectKey {
-    /// Deserializes through segment re-validation so serde cannot mint a key
-    /// the constructors would never produce.
+    /// Deserializes through layout parsing so serde cannot mint a key the
+    /// constructors would never produce.
     ///
     /// The wire shape stays a transparent string, so every constructor-built
     /// key round-trips byte-for-byte; only the invariant is added.
     ///
     /// # Errors
     ///
-    /// Returns a serde error carrying the [`InvalidIdentity`] reason when any
-    /// segment of the serialized string is not key-safe.
-    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<ObjectKey, D::Error> {
+    /// Returns a serde error carrying [`InvalidIdentity::ObjectKey`] when the
+    /// serialized string is not exactly a snapshot or context key.
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<ObjectKey, D::Error> {
         let raw = String::deserialize(deserializer)?;
         ObjectKey::parse(&raw).map_err(serde::de::Error::custom)
     }
@@ -182,9 +228,36 @@ pub trait ObjectStorage: Send + Sync {
 
 #[cfg(test)]
 /// Owner tests for identity-scoped object keys and digests.
-mod tests {
+pub(crate) mod tests {
     use super::*;
-    use crate::identity::{InstallationId, RepositoryIdentity, TenantId};
+    use crate::identity::RepositoryIdentity;
+
+    /// Key texts no constructor produces: unscoped, zero or non-canonical
+    /// ids, malformed versions or trees, extra segments, and traversal.
+    pub(crate) fn hostile_keys() -> Vec<String> {
+        let tree = "b".repeat(40);
+        let snapshots = "tenants/a/installations/1/repositories/7/snapshots";
+        vec![
+            "x".to_owned(),
+            "a/b/c".to_owned(),
+            "foo/bar".to_owned(),
+            "tenants/a/installations/0/repositories/7/contexts/c".to_owned(),
+            "tenants/a/installations/1/repositories/0/contexts/c".to_owned(),
+            "tenants/a/installations/01/repositories/7/contexts/c".to_owned(),
+            format!("{snapshots}/zz/1/{tree}"),
+            format!("{snapshots}/763/1/{tree}"),
+            format!("{snapshots}/7631/1/nothex"),
+            format!("{snapshots}/7631/1/{tree}/extra"),
+            "tenants/a/installations/1/repositories/7/contexts/c/extra".to_owned(),
+            "tenants/b/installations/9/repositories/3/contexts/../x".to_owned(),
+            "tenants/b/installations/9/repositories/3/contexts/./x".to_owned(),
+            "tenants/b//contexts/x".to_owned(),
+            "/tenants/b".to_owned(),
+            "tenants/b/".to_owned(),
+            "tenants/b/contexts/x y".to_owned(),
+            String::new(),
+        ]
+    }
 
     /// Builds an identity for one tenant.
     fn identity(tenant: &str) -> Identity {
@@ -215,8 +288,8 @@ mod tests {
         );
     }
 
-    /// Constructor-built keys round-trip through serde; a traversing, empty,
-    /// dot, or non-key-safe segment is refused on reload.
+    /// Constructor-built keys round-trip through serde; anything outside the
+    /// two constructor layouts is refused on reload.
     #[test]
     fn keys_are_revalidated_on_deserialization() {
         let tree = ObjectSha::new(&"b".repeat(40)).expect("sha");
@@ -227,15 +300,7 @@ mod tests {
             serde_json::from_str::<ObjectKey>(&json).expect("round trip"),
             key
         );
-        for hostile in [
-            "tenants/b/installations/9/repositories/3/contexts/../x",
-            "tenants/b/installations/9/repositories/3/contexts/./x",
-            "tenants/b//contexts/x",
-            "/tenants/b",
-            "tenants/b/",
-            "tenants/b/contexts/x y",
-            "",
-        ] {
+        for hostile in hostile_keys() {
             assert!(
                 serde_json::from_str::<ObjectKey>(&format!("\"{hostile}\"")).is_err(),
                 "{hostile:?} must be refused"
