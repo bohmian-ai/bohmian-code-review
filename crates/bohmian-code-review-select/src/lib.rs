@@ -12,6 +12,10 @@ use bohmian_code_review_resolve::{declaration_names, reference_names, resolve};
 use std::collections::{BTreeMap, BTreeSet};
 use thiserror::Error;
 
+mod diff;
+
+pub use diff::{DiffError, FileDiff, parse_hunks, parse_unified_diff};
+
 /// A one-based, inclusive source line range.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct LineRange {
