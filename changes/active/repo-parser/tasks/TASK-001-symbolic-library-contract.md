@@ -1,7 +1,7 @@
 ---
 id: TASK-001
 kind: implementation
-status: implemented
+status: review
 spec: SPEC-repo-parser@10
 depends_on: []
 maps: [REQ-001, REQ-002, REQ-003, INV-001, INV-002, INV-004, AC-001]
