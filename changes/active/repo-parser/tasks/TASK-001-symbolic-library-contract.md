@@ -1,7 +1,7 @@
 ---
 id: TASK-001
 kind: implementation
-status: proposed
+status: implemented
 spec: SPEC-repo-parser@10
 depends_on: []
 maps: [REQ-001, REQ-002, REQ-003, INV-001, INV-002, INV-004, AC-001]
@@ -62,3 +62,19 @@ Stop if source-free facts cannot reproduce required selection without persisting
 ## Authority Links
 
 [Revision 10 spec](../spec.md), [library design](../../../../architecture/bohmian-code-review-design.md), [agent rules](../../../../architecture/agent-rules.md).
+
+## Implementation Evidence
+
+Commits `a59e51d..HEAD` on `review-helper-setup`. RED: the extended journey failed to compile (missing `export`, `load`, `path_language`, `rank_files`, `build_candidate_context`, `EXTRACTION_VERSION`, `IndexedFileFacts`, `Error::InvalidFacts`, `Error::ExtractionVersionMismatch`). GREEN: every lane below exited 0.
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| Authorities distinguish six IO-free crates from the outer pipeline crate | `AGENTS.md`, `architecture/agent-rules.md`, `architecture/bohmian-code-review-design.md` | `mise run gate` (`check:skills-sync`, docs unchanged elsewhere) | PASS |
+| REQ-001 source-free facts export/load, invalid facts fail without corrupting others | `core::facts` (`DeclarationFact`, `IndexedFileFacts`, `InvalidFact`), `SymbolIndex::export`/`load`, `SymbolicContext::export`/`load` | `exported_facts_reload_without_source_and_reject_invalid_records` (journey), `export_round_trips_through_load_and_rejects_invalid_records` (index), core `facts::tests` | PASS |
+| REQ-002 extraction version invalidates old facts; path-only eligibility | `extract::EXTRACTION_VERSION`, `Extractor::path_language`, `SymbolicContext::path_language`, `Error::ExtractionVersionMismatch` | `path_language_identifies_eligible_paths_before_download` (journey), `path_language_reports_eligibility_without_source` (extract), version mismatch assertion in the facts journey | PASS |
+| REQ-003 multi-file ranking, all changed paths excluded, distinct-name scoring, deterministic ties, candidate-only packing with omissions | `select::ChangedFile`, `rank_files`, `pack_candidates` (shared by `rank`/`pack`), `SymbolicContext::rank_files`, `build_candidate_context` | `multi_file_pr_ranks_union_of_changed_names_and_packs_candidates_only` (journey), `multi_file_ranking_unions_names_and_excludes_every_changed_path`, `candidate_packing_counts_only_selected_candidates` (select) | PASS |
+| AC-001 existing single-file journey and APIs unchanged | `rank`/`pack` delegate to the shared functions; no public signature changed | Pre-existing journey and owner tests pass unchanged | PASS |
+
+Commands run in this session, each exit 0: `mise run test:extract`, `mise run test:index`, `mise run test:select`, `mise run test:resolve`, `mise run test:symbolic-context:journey`, `mise run fmt:check`, `mise run lints`, `git diff --check`, `mise run gate`.
+
+Non-goals stayed excluded: no GitHub, storage, database, or model code entered the six crates; no grammar pin, golden, or fixture changed. `Cargo.lock` changed only to add the facade's `serde_json` dev-dependency. Limit: `EXTRACTION_VERSION` is a maintained constant; the grammar-parity fixtures are the evidence a bump is due, not an automatic check.
