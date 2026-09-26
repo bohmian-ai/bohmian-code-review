@@ -3,8 +3,10 @@
 //! [`rank`] turns a changed head-side file into query names — declarations
 //! overlapping [`ChangedLines`] and references located on them — resolves
 //! them through the real index, and scores every other file by its count of
-//! distinct matched names. Ranks describe only indexed files and name-based
-//! candidates, never proven definitions.
+//! distinct matched names. [`rank_files`] does the same for every changed
+//! file of a pull request at once, and [`pack_candidates`] packs the result
+//! without a changed head blob. Ranks describe only indexed files and
+//! name-based candidates, never proven definitions.
 
 use bohmian_code_review_core::{Node, RawReference, RelativePath};
 use bohmian_code_review_index::{SymbolIndex, is_declaration};
@@ -134,6 +136,41 @@ pub struct Ranking {
     pub files: Vec<RankedFile>,
 }
 
+/// One changed head-side file's extracted facts and validated changed lines.
+#[derive(Debug, Clone, Copy)]
+pub struct ChangedFile<'a> {
+    /// Canonical path of the changed file; never a secondary candidate.
+    pub path: &'a RelativePath,
+    /// The full head blob's extracted nodes.
+    pub nodes: &'a [Node],
+    /// The full head blob's extracted references.
+    pub references: &'a [RawReference],
+    /// Validated changed lines of the head blob.
+    pub changed_lines: &'a ChangedLines,
+}
+
+impl ChangedFile<'_> {
+    /// The query names this file contributes: names of declarations
+    /// overlapping its changed lines and reference/candidate names of
+    /// references on them.
+    fn query_names(&self) -> impl Iterator<Item = &str> {
+        let declared = self
+            .nodes
+            .iter()
+            .filter(|node| {
+                is_declaration(node.kind)
+                    && self.changed_lines.overlaps(node.start_line, node.end_line)
+            })
+            .flat_map(declaration_names);
+        let referenced = self
+            .references
+            .iter()
+            .filter(|reference| self.changed_lines.contains(reference.line))
+            .flat_map(reference_names);
+        declared.chain(referenced)
+    }
+}
+
 /// Ranks indexed files against the changed lines of one head-side file.
 ///
 /// `nodes` and `references` are the full head blob's extracted facts.
@@ -149,21 +186,34 @@ pub fn rank(
     references: &[RawReference],
     changed_lines: &ChangedLines,
 ) -> Ranking {
-    let declared = nodes
-        .iter()
-        .filter(|node| {
-            is_declaration(node.kind) && changed_lines.overlaps(node.start_line, node.end_line)
-        })
-        .flat_map(declaration_names);
-    let referenced = references
-        .iter()
-        .filter(|reference| changed_lines.contains(reference.line))
-        .flat_map(reference_names);
+    let changed = ChangedFile {
+        path: changed_path,
+        nodes,
+        references,
+        changed_lines,
+    };
+    Ranking {
+        changed_path: changed_path.clone(),
+        changed_lines: changed_lines.clone(),
+        files: rank_files(index, &[changed]),
+    }
+}
+
+/// Ranks indexed files against every changed file of one pull request.
+///
+/// The query names of all `changed` files are unioned, so a name changed
+/// in two files still scores one point per candidate file. Every changed
+/// path is excluded from the candidates. Files sort by descending score,
+/// then ascending canonical path.
+#[must_use]
+pub fn rank_files(index: &SymbolIndex, changed: &[ChangedFile<'_>]) -> Vec<RankedFile> {
+    let excluded: BTreeSet<&RelativePath> = changed.iter().map(|file| file.path).collect();
+    let names = changed.iter().flat_map(ChangedFile::query_names);
 
     let mut matched: BTreeMap<&RelativePath, (BTreeSet<String>, Vec<MatchReason>)> =
         BTreeMap::new();
-    for found in resolve(index, declared.chain(referenced)) {
-        for hit in found.hits.iter().filter(|hit| hit.path != changed_path) {
+    for found in resolve(index, names) {
+        for hit in found.hits.iter().filter(|hit| !excluded.contains(hit.path)) {
             let (names, reasons) = matched.entry(hit.path).or_default();
             names.insert(found.name.clone());
             reasons.push(MatchReason {
@@ -191,17 +241,14 @@ pub fn rank(
             .cmp(&left.score)
             .then_with(|| left.path.cmp(&right.path))
     });
-    Ranking {
-        changed_path: changed_path.clone(),
-        changed_lines: changed_lines.clone(),
-        files,
-    }
+    files
 }
 
 /// Caller-supplied context ceilings.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ContextLimits {
-    /// Maximum distinct files selected, including the changed file.
+    /// Maximum distinct files selected; [`pack`] counts the changed file,
+    /// [`pack_candidates`] counts only selected candidate files.
     pub max_files: usize,
     /// Maximum caller-counted tokens across all selected text.
     pub max_tokens: usize,
@@ -268,7 +315,7 @@ pub struct Context {
     pub spans: Vec<ContextSpan>,
     /// Candidate spans excluded by a ceiling, in packing order.
     pub omissions: Vec<Omission>,
-    /// Distinct files selected, including the changed file.
+    /// Distinct files selected, counted as `max_files` counts them.
     pub files: usize,
     /// Sum of selected span tokens.
     pub tokens: usize,
@@ -329,7 +376,54 @@ pub fn pack(
         });
     }
 
-    for file in &ranking.files {
+    pack_candidates_into(&mut context, &ranking.files, blobs, limits, &count_tokens)?;
+    Ok(context)
+}
+
+/// Packs only ranked candidate spans under `limits`; the changed hunks are
+/// delivered separately, so none is counted here.
+///
+/// `files` is a ranking from [`rank_files`] or [`Ranking::files`]. Packing
+/// follows [`pack`]'s candidate rules, except that `max_files` and the
+/// returned file count cover selected candidate files alone. A zero
+/// `max_files` omits every candidate with a file-limit reason rather than
+/// failing.
+///
+/// # Errors
+///
+/// Returns [`SelectError::MissingBlob`] or [`SelectError::BlobNotUtf8`]
+/// for an unusable candidate blob, and [`SelectError::SpanBeyondSource`]
+/// when a candidate blob is shorter than its indexed declaration.
+pub fn pack_candidates(
+    files: &[RankedFile],
+    blobs: &BTreeMap<RelativePath, &[u8]>,
+    limits: ContextLimits,
+    count_tokens: impl Fn(&str) -> usize,
+) -> Result<Context, SelectError> {
+    let mut context = Context::default();
+    pack_candidates_into(&mut context, files, blobs, limits, &count_tokens)?;
+    Ok(context)
+}
+
+/// Appends ranked candidate spans to `context` under `limits`.
+///
+/// Candidates are visited in rank order and, within a file, by declaration
+/// location; each declaration is one whole span. A span that does not fit
+/// is omitted with its reason and packing continues. A file-limited
+/// candidate's blob is never read; every other candidate must be in
+/// `blobs`.
+///
+/// # Errors
+///
+/// Returns the candidate blob and span errors documented on [`pack`].
+fn pack_candidates_into(
+    context: &mut Context,
+    files: &[RankedFile],
+    blobs: &BTreeMap<RelativePath, &[u8]>,
+    limits: ContextLimits,
+    count_tokens: &impl Fn(&str) -> usize,
+) -> Result<(), SelectError> {
+    for file in files {
         let spans = candidate_spans(file);
         if context.files >= limits.max_files {
             for (lines, names) in spans {
@@ -375,7 +469,7 @@ pub fn pack(
         }
         context.files += usize::from(selected);
     }
-    Ok(context)
+    Ok(())
 }
 
 /// One span per matched declaration in location order, with every query
@@ -669,6 +763,52 @@ mod tests {
     }
 
     #[test]
+    /// Two changed files union their names, a name changed in both scores
+    /// once per candidate, every changed path is excluded, and the single
+    /// file ranking equals the one-element multi-file ranking.
+    fn multi_file_ranking_unions_names_and_excludes_every_changed_path() {
+        let index = fixture_index();
+        let head = source(12);
+        let handler_nodes = vec![function("src/changed.ts", "Changed", 4, 9)];
+        let handler_references = vec![call("load", 5), call("save", 7)];
+        let handler_lines = changed(&[(5, 5), (7, 8)], &head).expect("valid ranges");
+        let handler = ChangedFile {
+            path: &path("src/changed.ts"),
+            nodes: &handler_nodes,
+            references: &handler_references,
+            changed_lines: &handler_lines,
+        };
+        assert_eq!(
+            rank_files(&index, &[handler]),
+            rank(
+                &index,
+                &path("src/changed.ts"),
+                &handler_nodes,
+                &handler_references,
+                &handler_lines
+            )
+            .files
+        );
+
+        let other_references = vec![call("load", 1), call("offRange", 1)];
+        let other_lines = changed(&[(1, 1)], &head).expect("valid ranges");
+        let other = ChangedFile {
+            path: &path("src/d.ts"),
+            nodes: &[],
+            references: &other_references,
+            changed_lines: &other_lines,
+        };
+        let ranked = rank_files(&index, &[handler, other]);
+        let scores: Vec<(&str, usize)> = ranked
+            .iter()
+            .map(|file| (file.path.as_str(), file.score))
+            .collect();
+        assert_eq!(scores, [("src/a.ts", 2), ("src/b.ts", 2), ("src/c.ts", 1)]);
+        assert_eq!(rank_files(&index, &[other, handler]), ranked);
+        assert!(rank_files(&index, &[]).is_empty());
+    }
+
+    #[test]
     /// Changed lines must be nonempty, one-based, ordered, disjoint, and
     /// inside the head source.
     fn changed_lines_reject_invalid_and_deletion_only_input() {
@@ -812,6 +952,87 @@ mod tests {
         assert_eq!(
             context,
             pack_fixture(&[("src/a.ts", a.as_bytes())], 2, 6).expect("fits")
+        );
+    }
+
+    #[test]
+    /// Candidate-only packing emits no changed hunk, counts only selected
+    /// candidate files against `max_files`, reports omissions, and treats a
+    /// zero file limit as all-omitted rather than an error.
+    fn candidate_packing_counts_only_selected_candidates() {
+        let head = source(12);
+        let ranking = fixture_ranking(&head);
+        let a = source(6);
+        let b = source(7);
+        let blobs = BTreeMap::from([
+            (path("src/a.ts"), a.as_bytes()),
+            (path("src/b.ts"), b.as_bytes()),
+        ]);
+        let limits = ContextLimits {
+            max_files: 2,
+            max_tokens: 7,
+        };
+        let context = pack_candidates(&ranking.files, &blobs, limits, words).expect("packs");
+        let spans: Vec<(&str, u32, u32, usize)> = context
+            .spans
+            .iter()
+            .map(|span| {
+                (
+                    span.path.as_str(),
+                    span.lines.start,
+                    span.lines.end,
+                    span.tokens,
+                )
+            })
+            .collect();
+        assert_eq!(
+            spans,
+            [
+                ("src/a.ts", 2, 4, 3),
+                ("src/a.ts", 6, 6, 1),
+                ("src/b.ts", 1, 3, 3)
+            ]
+        );
+        assert!(
+            context
+                .spans
+                .iter()
+                .all(|span| matches!(span.kind, SpanKind::Candidate { .. }))
+        );
+        assert_eq!((context.files, context.tokens), (2, 7));
+        let omissions: Vec<(&str, u32, OmissionReason)> = context
+            .omissions
+            .iter()
+            .map(|omission| {
+                (
+                    omission.path.as_str(),
+                    omission.lines.start,
+                    omission.reason,
+                )
+            })
+            .collect();
+        assert_eq!(
+            omissions,
+            [
+                ("src/b.ts", 5, OmissionReason::TokenLimit { tokens: 3 }),
+                ("src/c.ts", 1, OmissionReason::FileLimit),
+            ]
+        );
+
+        let none = ContextLimits {
+            max_files: 0,
+            max_tokens: 100,
+        };
+        let starved = pack_candidates(&ranking.files, &BTreeMap::new(), none, words)
+            .expect("nothing is read");
+        assert!(starved.spans.is_empty());
+        assert_eq!((starved.files, starved.tokens), (0, 0));
+        assert_eq!(starved.omissions.len(), 5);
+        assert_eq!(
+            pack_candidates(&ranking.files, &BTreeMap::new(), limits, words),
+            Err(SelectError::MissingBlob {
+                path: path("src/a.ts")
+            })
         );
     }
 
