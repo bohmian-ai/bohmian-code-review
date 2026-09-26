@@ -1,7 +1,7 @@
 ---
 id: TASK-002-R1
 kind: remediation
-status: review
+status: implemented
 spec: SPEC-repo-parser@10
 remediates: TASK-002
 findings: [FIND-TASK-002-1, FIND-TASK-002-2, FIND-TASK-002-3]
@@ -91,3 +91,7 @@ Why this closes the class: the three admission points (constructor argument, `Ob
 - Record observed results in the task document's evidence section per `architecture/references/languages/implementation-execution.md`.
 
 Route to `$cr-implement`. A later review reassesses the complete cumulative candidate against the original TASK-002.
+
+## Implementation evidence
+
+Implemented in commits `30b5191` and `5a8cf76`; the AC-R1-1..6 evidence table, excluded non-goals, and the full command list are recorded under "TASK-002-R1 remediation evidence" in `changes/active/repo-parser/tasks/TASK-002-github-source-and-stage-contracts.md`. All verification commands exited 0; `mise run gate` passed.

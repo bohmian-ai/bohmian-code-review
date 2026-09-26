@@ -103,3 +103,20 @@ Focused commands (current GREEN closure, `mise exec -- ` prefix):
 | `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --lib execution::tests::check_reports_cancellation_then_deadline -- --exact` | 1 passed, exit 0 |
 | `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --lib storage::tests::keys_are_scoped_by_identity_and_version -- --exact` | 1 passed, exit 0 |
 | `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --lib storage::tests::digest_is_sha256_hex -- --exact` | 1 passed, exit 0 |
+
+### TASK-002-R1 remediation evidence
+
+Remediation task: `changes/active/repo-parser/review/TASK-002-r1/TASK-002-R1-validated-seam-values.md`. Commits `30b5191` (FIND-TASK-002-1, -3) and `5a8cf76` (FIND-TASK-002-2) on top of `dafe20b`.
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| AC-R1-1 `ObjectKey::context` takes `&ContextId` | `storage.rs` `ObjectKey::context(identity: &Identity, context_id: &ContextId)` | `storage::tests::keys_are_scoped_by_identity_and_version` (unchanged expected string) | PASS |
+| AC-R1-2 `ObjectKey` re-validated on deserialization; constructor keys round-trip | `storage.rs` manual `Deserialize for ObjectKey` via private `ObjectKey::parse`, every `/` segment through `identity::validate_name` | `storage::tests::keys_are_revalidated_on_deserialization` (7 hostile strings incl. `../x`, `./x`, empty segment, leading/trailing `/`, space, empty); `persistence::tests::records_revalidate_their_keys_on_deserialization` (`SnapshotPointer` and `ContextRecord` refuse a traversing key, round-trip otherwise) | PASS |
+| AC-R1-3 `ContextId` validated, private field, re-validating `Deserialize` | `persistence.rs` `ContextId(String)`, `ContextId::new` → `validate_name(raw, "context id")`, manual `Deserialize` | `persistence::tests::context_ids_are_validated_on_construction_and_deserialization` (`../x`, `""`, `.` → `Err(InvalidIdentity::Name("context id"))`; `"a/b"` refused by serde) | PASS |
+| AC-R1-4 `# Errors` on all 17 sites + new fallible items (`validate_name`, `ObjectKey::parse`, `Deserialize for ObjectKey`, `ContextId::new`, `Deserialize for ContextId`) | `identity.rs`, `github.rs`, `storage.rs`, `persistence.rs` | sweep from `findings-validation.md` → no `MISS`; multi-line signatures (`get_json`, `request`, `send_with_policy`, `expect_status`, `parse_json`, `Deserialize for InstallationId`) checked with a 14-line lookback → none missing; `cargo doc --no-deps -p bohmian-code-review-pipeline` → 0 warnings | PASS |
+| AC-R1-5 `ObjectKind` / `kind()` removed | deleted from `storage.rs` and `lib.rs` re-export | `rg -n 'ObjectKind|fn kind' crates` → no matches, exit 1 | PASS |
+| AC-R1-6 write set bounded | — | `git diff --stat dafe20b..HEAD` → `github.rs`, `identity.rs`, `lib.rs`, `persistence.rs`, `storage.rs`, plus this document and the remediation task | PASS |
+
+Non-goals confirmed excluded: key string layout and `Serialize` output unchanged; no trait method, request policy, or provider behavior changed; no new dependency, validator, helper struct, or trait; no facade, OpenDAL adapter, conformance implementation, or limiter; symbolic crates untouched. `validate_name` widened to `pub(crate)` only.
+
+Commands run in this session (all exit 0): the four focused `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --lib <test> -- --exact` runs above (1 passed each), `mise run test:pipeline` (15 passed), `mise run fmt:check`, `mise run lints`, `git diff --check`, `mise run gate`.
