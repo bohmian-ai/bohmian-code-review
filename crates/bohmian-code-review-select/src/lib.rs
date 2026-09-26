@@ -194,6 +194,236 @@ pub fn rank(
     }
 }
 
+/// Caller-supplied context ceilings.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ContextLimits {
+    /// Maximum distinct files selected, including the changed file.
+    pub max_files: usize,
+    /// Maximum caller-counted tokens across all selected text.
+    pub max_tokens: usize,
+}
+
+/// Why a span was selected.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SpanKind {
+    /// A changed head-side hunk.
+    ChangedHunk,
+    /// A ranked candidate declaration.
+    Candidate {
+        /// The candidate file's score.
+        score: usize,
+        /// Query names that matched this declaration.
+        names: Vec<String>,
+    },
+}
+
+/// One whole span of selected source text.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ContextSpan {
+    /// Canonical path of the span's file.
+    pub path: RelativePath,
+    /// One-based inclusive lines of `text`.
+    pub lines: LineRange,
+    /// Why the span was selected.
+    pub kind: SpanKind,
+    /// The exact source lines, including line terminators.
+    pub text: String,
+    /// Tokens counted by the caller's tokenizer for `text`.
+    pub tokens: usize,
+}
+
+/// Which ceiling excluded a candidate span.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OmissionReason {
+    /// Selecting the span's file would exceed `max_files`.
+    FileLimit,
+    /// The span's `tokens` would exceed the remaining token budget.
+    TokenLimit {
+        /// Caller-counted tokens of the omitted span.
+        tokens: usize,
+    },
+}
+
+/// A ranked candidate span left out of the context.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Omission {
+    /// Canonical path of the omitted span's file.
+    pub path: RelativePath,
+    /// The omitted declaration's lines.
+    pub lines: LineRange,
+    /// Query names that matched the omitted declaration.
+    pub names: Vec<String>,
+    /// The ceiling that excluded it.
+    pub reason: OmissionReason,
+}
+
+/// Bounded review context: changed hunks, then ranked candidate spans.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Context {
+    /// Selected spans in packing order.
+    pub spans: Vec<ContextSpan>,
+    /// Candidate spans excluded by a ceiling, in packing order.
+    pub omissions: Vec<Omission>,
+    /// Distinct files selected, including the changed file.
+    pub files: usize,
+    /// Sum of selected span tokens.
+    pub tokens: usize,
+}
+
+/// Packs changed hunks and then ranked candidate spans under `limits`.
+///
+/// Every changed hunk must fit. Candidates are visited in rank order and,
+/// within a file, by declaration location; each declaration is one whole
+/// span. A span that does not fit is omitted with its reason and packing
+/// continues, so a later smaller span may still fit. A file-limited
+/// candidate's blob is never read; every other candidate must be in
+/// `blobs`. Text is only counted by `count_tokens`, never cut.
+///
+/// # Errors
+///
+/// Returns [`SelectError::NoFileBudget`] when `max_files` is zero,
+/// [`SelectError::RangeBeyondSource`] when `head` is shorter than the
+/// changed lines, [`SelectError::ChangedHunkOverBudget`] when a hunk does
+/// not fit, [`SelectError::MissingBlob`] or [`SelectError::BlobNotUtf8`]
+/// for an unusable candidate blob, and [`SelectError::SpanBeyondSource`]
+/// when a candidate blob is shorter than its indexed declaration.
+pub fn pack(
+    ranking: &Ranking,
+    head: &str,
+    blobs: &BTreeMap<RelativePath, &[u8]>,
+    limits: ContextLimits,
+    count_tokens: impl Fn(&str) -> usize,
+) -> Result<Context, SelectError> {
+    if limits.max_files == 0 {
+        return Err(SelectError::NoFileBudget);
+    }
+    let mut context = Context {
+        files: 1,
+        ..Context::default()
+    };
+    for &lines in ranking.changed_lines.ranges() {
+        let text = slice_lines(head, lines).ok_or(SelectError::RangeBeyondSource {
+            lines,
+            source_lines: line_count(head),
+        })?;
+        let tokens = count_tokens(text);
+        let remaining_tokens = limits.max_tokens - context.tokens;
+        if tokens > remaining_tokens {
+            return Err(SelectError::ChangedHunkOverBudget {
+                lines,
+                tokens,
+                remaining_tokens,
+            });
+        }
+        context.tokens += tokens;
+        context.spans.push(ContextSpan {
+            path: ranking.changed_path.clone(),
+            lines,
+            kind: SpanKind::ChangedHunk,
+            text: text.to_owned(),
+            tokens,
+        });
+    }
+
+    for file in &ranking.files {
+        let spans = candidate_spans(file);
+        if context.files >= limits.max_files {
+            for (lines, names) in spans {
+                context.omissions.push(Omission {
+                    path: file.path.clone(),
+                    lines,
+                    names,
+                    reason: OmissionReason::FileLimit,
+                });
+            }
+            continue;
+        }
+        let source = blob_text(blobs, &file.path)?;
+        let mut selected = false;
+        for (lines, names) in spans {
+            let text = slice_lines(source, lines).ok_or_else(|| SelectError::SpanBeyondSource {
+                path: file.path.clone(),
+                lines,
+                source_lines: line_count(source),
+            })?;
+            let tokens = count_tokens(text);
+            if tokens > limits.max_tokens - context.tokens {
+                context.omissions.push(Omission {
+                    path: file.path.clone(),
+                    lines,
+                    names,
+                    reason: OmissionReason::TokenLimit { tokens },
+                });
+                continue;
+            }
+            selected = true;
+            context.tokens += tokens;
+            context.spans.push(ContextSpan {
+                path: file.path.clone(),
+                lines,
+                kind: SpanKind::Candidate {
+                    score: file.score,
+                    names,
+                },
+                text: text.to_owned(),
+                tokens,
+            });
+        }
+        context.files += usize::from(selected);
+    }
+    Ok(context)
+}
+
+/// One span per matched declaration in location order, with every query
+/// name that matched it.
+// ponytail: nested matches (a method inside a matched class) pack as
+// separate overlapping spans; merge containment if duplicate text matters.
+fn candidate_spans(file: &RankedFile) -> Vec<(LineRange, Vec<String>)> {
+    let mut spans: BTreeMap<(LineRange, &str), Vec<String>> = BTreeMap::new();
+    for reason in &file.reasons {
+        spans
+            .entry((reason.lines, reason.node_id.as_str()))
+            .or_default()
+            .push(reason.name.clone());
+    }
+    spans
+        .into_iter()
+        .map(|((lines, _), names)| (lines, names))
+        .collect()
+}
+
+/// The UTF-8 text of `path`'s caller-supplied blob.
+///
+/// # Errors
+///
+/// Returns [`SelectError::MissingBlob`] when `blobs` lacks `path` and
+/// [`SelectError::BlobNotUtf8`] when its bytes are not UTF-8.
+fn blob_text<'b>(
+    blobs: &BTreeMap<RelativePath, &'b [u8]>,
+    path: &RelativePath,
+) -> Result<&'b str, SelectError> {
+    let bytes = blobs
+        .get(path)
+        .ok_or_else(|| SelectError::MissingBlob { path: path.clone() })?;
+    std::str::from_utf8(bytes).map_err(|_| SelectError::BlobNotUtf8 { path: path.clone() })
+}
+
+/// The exact text of `lines` in `source`, or `None` past its last line.
+fn slice_lines(source: &str, lines: LineRange) -> Option<&str> {
+    let mut start = None;
+    let mut offset = 0;
+    for (number, line) in (1u32..).zip(source.split_inclusive('\n')) {
+        if number == lines.start {
+            start = Some(offset);
+        }
+        offset += line.len();
+        if number == lines.end {
+            return start.map(|start| &source[start..offset]);
+        }
+    }
+    None
+}
+
 /// Typed ranking and packing failures.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum SelectError {
@@ -222,6 +452,42 @@ pub enum SelectError {
         /// The offending range.
         lines: LineRange,
         /// Line count of the head source.
+        source_lines: usize,
+    },
+    /// `max_files` is zero, so not even the changed file fits.
+    #[error("max_files is 0: the changed file cannot be selected")]
+    NoFileBudget,
+    /// A changed hunk does not fit the remaining token budget.
+    #[error("changed hunk {lines:?} needs {tokens} tokens but only {remaining_tokens} remain")]
+    ChangedHunkOverBudget {
+        /// The unfittable hunk.
+        lines: LineRange,
+        /// Caller-counted tokens of the hunk.
+        tokens: usize,
+        /// Tokens left when the hunk was reached.
+        remaining_tokens: usize,
+    },
+    /// A candidate that must be read has no caller-supplied blob.
+    #[error("no candidate blob supplied for `{path}`")]
+    MissingBlob {
+        /// The candidate's path.
+        path: RelativePath,
+    },
+    /// A candidate blob is not UTF-8.
+    #[error("candidate blob for `{path}` is not valid UTF-8")]
+    BlobNotUtf8 {
+        /// The candidate's path.
+        path: RelativePath,
+    },
+    /// A candidate blob ends before an indexed declaration does, so it does
+    /// not match the indexed facts.
+    #[error("candidate `{path}` span {lines:?} exceeds the blob's {source_lines} lines")]
+    SpanBeyondSource {
+        /// The candidate's path.
+        path: RelativePath,
+        /// The declaration's lines.
+        lines: LineRange,
+        /// Line count of the supplied blob.
         source_lines: usize,
     },
 }
@@ -427,5 +693,157 @@ mod tests {
             })
         );
         assert!(changed(&[(1, 1), (3, 5)], &head).is_ok());
+    }
+
+    /// Counts whitespace-separated words, standing in for a model tokenizer.
+    fn words(text: &str) -> usize {
+        text.split_whitespace().count()
+    }
+
+    /// Ranks the fixture with changed lines 5 and 7..=8 of a 12-line head.
+    fn fixture_ranking(head: &str) -> Ranking {
+        let references = vec![call("load", 5), call("save", 7)];
+        let nodes = vec![function("src/changed.ts", "Changed", 4, 9)];
+        let changed = changed(&[(5, 5), (7, 8)], head).expect("valid ranges");
+        rank(
+            &fixture_index(),
+            &path("src/changed.ts"),
+            &nodes,
+            &references,
+            &changed,
+        )
+    }
+
+    /// Packs the fixture ranking with `blobs` under `max_files`/`max_tokens`.
+    ///
+    /// # Errors
+    ///
+    /// Returns the selector's packing error.
+    fn pack_fixture(
+        blobs: &[(&str, &[u8])],
+        max_files: usize,
+        max_tokens: usize,
+    ) -> Result<Context, SelectError> {
+        let head = source(12);
+        let blobs = blobs
+            .iter()
+            .map(|&(file, bytes)| (path(file), bytes))
+            .collect();
+        let limits = ContextLimits {
+            max_files,
+            max_tokens,
+        };
+        pack(&fixture_ranking(&head), &head, &blobs, limits, words)
+    }
+
+    #[test]
+    /// Changed hunks take budget first; one secondary span fits, the rest are
+    /// reported as token or file omissions, and file-limited blobs are never
+    /// required.
+    fn packing_selects_changed_hunks_then_ranked_spans_within_limits() {
+        let a = source(6);
+        let context = pack_fixture(&[("src/a.ts", a.as_bytes())], 2, 6).expect("fits");
+
+        let spans: Vec<(&str, u32, u32, &str, usize, &SpanKind)> = context
+            .spans
+            .iter()
+            .map(|span| {
+                (
+                    span.path.as_str(),
+                    span.lines.start,
+                    span.lines.end,
+                    span.text.as_str(),
+                    span.tokens,
+                    &span.kind,
+                )
+            })
+            .collect();
+        let load = SpanKind::Candidate {
+            score: 2,
+            names: vec!["load".to_owned()],
+        };
+        assert_eq!(
+            spans,
+            [
+                ("src/changed.ts", 5, 5, "line5\n", 1, &SpanKind::ChangedHunk),
+                (
+                    "src/changed.ts",
+                    7,
+                    8,
+                    "line7\nline8\n",
+                    2,
+                    &SpanKind::ChangedHunk
+                ),
+                ("src/a.ts", 2, 4, "line2\nline3\nline4\n", 3, &load),
+            ]
+        );
+        assert_eq!((context.files, context.tokens), (2, 6));
+
+        let omissions: Vec<(&str, u32, &str, OmissionReason)> = context
+            .omissions
+            .iter()
+            .map(|omission| {
+                (
+                    omission.path.as_str(),
+                    omission.lines.start,
+                    omission.names[0].as_str(),
+                    omission.reason,
+                )
+            })
+            .collect();
+        assert_eq!(
+            omissions,
+            [
+                (
+                    "src/a.ts",
+                    6,
+                    "Changed",
+                    OmissionReason::TokenLimit { tokens: 1 }
+                ),
+                ("src/b.ts", 1, "load", OmissionReason::FileLimit),
+                ("src/b.ts", 5, "save", OmissionReason::FileLimit),
+                ("src/c.ts", 1, "save", OmissionReason::FileLimit),
+            ]
+        );
+        assert_eq!(
+            context,
+            pack_fixture(&[("src/a.ts", a.as_bytes())], 2, 6).expect("fits")
+        );
+    }
+
+    #[test]
+    /// Unfittable changed hunks, missing or undecodable selected blobs, and
+    /// spans past a blob's end fail explicitly instead of shrinking context.
+    fn packing_rejects_unfittable_hunks_and_bad_candidate_blobs() {
+        let a = source(6);
+        assert_eq!(
+            pack_fixture(&[], 2, 2),
+            Err(SelectError::ChangedHunkOverBudget {
+                lines: LineRange { start: 7, end: 8 },
+                tokens: 2,
+                remaining_tokens: 1,
+            })
+        );
+        assert_eq!(pack_fixture(&[], 0, 100), Err(SelectError::NoFileBudget));
+        assert_eq!(
+            pack_fixture(&[("src/a.ts", a.as_bytes())], 3, 100),
+            Err(SelectError::MissingBlob {
+                path: path("src/b.ts")
+            })
+        );
+        assert_eq!(
+            pack_fixture(&[("src/a.ts", b"\xff")], 2, 100),
+            Err(SelectError::BlobNotUtf8 {
+                path: path("src/a.ts")
+            })
+        );
+        assert_eq!(
+            pack_fixture(&[("src/a.ts", source(3).as_bytes())], 2, 100),
+            Err(SelectError::SpanBeyondSource {
+                path: path("src/a.ts"),
+                lines: LineRange { start: 2, end: 4 },
+                source_lines: 3,
+            })
+        );
     }
 }
