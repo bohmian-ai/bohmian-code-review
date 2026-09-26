@@ -77,4 +77,18 @@ Commits `a59e51d..HEAD` on `review-helper-setup`. RED: the extended journey fail
 
 Commands run in this session, each exit 0: `mise run test:extract`, `mise run test:index`, `mise run test:select`, `mise run test:resolve`, `mise run test:symbolic-context:journey`, `mise run fmt:check`, `mise run lints`, `git diff --check`, `mise run gate`.
 
+Focused commands (current GREEN closure, TASK-001-R2; each run sequentially in this session):
+
+| Command | Observed |
+|---|---|
+| `mise exec -- cargo test --locked -p bohmian-code-review --test symbolic_context_journey exported_facts_reload_without_source_and_reject_invalid_records -- --exact` | 1 passed, exit 0 |
+| `mise exec -- cargo test --locked -p bohmian-code-review --test symbolic_context_journey path_language_identifies_eligible_paths_before_download -- --exact` | 1 passed, exit 0 |
+| `mise exec -- cargo test --locked -p bohmian-code-review --test symbolic_context_journey multi_file_pr_ranks_union_of_changed_names_and_packs_candidates_only -- --exact` | 1 passed, exit 0 |
+| `mise exec -- cargo test --locked -p bohmian-code-review-index --lib tests::export_round_trips_through_load_and_rejects_invalid_records -- --exact` | 1 passed, exit 0 |
+| `mise exec -- cargo test --locked -p bohmian-code-review-extract --lib extractor::tests::path_language_reports_eligibility_without_source -- --exact` | 1 passed, exit 0 |
+| `mise exec -- cargo test --locked -p bohmian-code-review-select --lib tests::multi_file_ranking_unions_names_and_excludes_every_changed_path -- --exact` | 1 passed, exit 0 |
+| `mise exec -- cargo test --locked -p bohmian-code-review-select --lib tests::candidate_packing_counts_only_selected_candidates -- --exact` | 1 passed, exit 0 |
+| `mise exec -- cargo test --locked -p bohmian-code-review-core --lib facts::tests::projection_is_source_free_and_rebuilds_a_node -- --exact` | 1 passed, exit 0 |
+| `mise exec -- cargo test --locked -p bohmian-code-review-core --lib facts::tests::validation_rejects_empty_identity_and_bad_spans -- --exact` | 1 passed, exit 0 |
+
 Non-goals stayed excluded: no GitHub, storage, database, or model code entered the six crates; no grammar pin, golden, or fixture changed. `Cargo.lock` changed only to add the facade's `serde_json` dev-dependency. Limit: `EXTRACTION_VERSION` is a maintained constant; the grammar-parity fixtures are the evidence a bump is due, not an automatic check.
