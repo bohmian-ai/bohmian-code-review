@@ -22,8 +22,11 @@ description = "Verify Rust formatting"
 run = "cargo fmt --all -- --check"
 
 [tasks.lints]
-description = "Workspace Clippy with warnings denied"
-run = "cargo clippy --locked --workspace --all-targets --all-features -- -D warnings"
+description = "Workspace Clippy with warnings denied and inline owner-test placement"
+run = [
+  "cargo clippy --locked --workspace --all-targets --all-features -- -D warnings",
+  "bash scripts/check-test-placement.sh",
+]
 
 [tasks."test:extract"]
 description = "Run core facts and extractor tests, including the copied fixture corpus"
@@ -58,11 +61,19 @@ depends = [
   "test:symbolic-context:journey",
 ]
 
+[tasks."review:verify-citations"]
+description = "Drop review findings whose citations do not match the candidate: <review-dir> <candidate-commit>"
+run = "python3 scripts/verify_review_citations.py"
+
+[tasks."test:review-scripts"]
+description = "Self-check the review citation verifier"
+run = "python3 scripts/test_verify_review_citations.py"
+
 [tasks."check:default"]
 description = "Formatting, Clippy, and workspace type-check"
 depends = ["fmt:check", "lints"]
 run = "cargo check --locked --workspace --all-targets --all-features"
 
 [tasks.gate]
-description = "Full repository gate: default checks, all Rust tests, and skill sync"
-depends = ["check:default", "test:rust", "check:skills-sync"]
+description = "Full repository gate: default checks, all Rust tests, review scripts, and skill sync"
+depends = ["check:default", "test:rust", "test:review-scripts", "check:skills-sync"]

@@ -1,0 +1,21 @@
+# TASK-003 implementation review
+
+**Result: PASS**
+
+**Immutable subject:** base `be64610028dc896936d6ce18f285a8e73bb40346`; candidate `fa62d9740a3824213c19318e3f8de27547a42fb4`. The working HEAD matched the candidate at review. The unrelated working-tree edit to `IMPLEMENTATION_PLAN.md` is outside this commit range.
+
+Authorities: approved `changes/active/review-helper-setup/spec.md` revision 2; original `tasks/TASK-003-selector-facade-journey.md`; `AGENTS.md`; `architecture/agent-rules.md`; `architecture/bohmian-code-review-design.md`; routed symbolic-context, Rust-core, testing, and spec-driven references. The complete base-to-candidate diff, including manifests, lockfile, task evidence, tests, and mise lanes, was inspected.
+
+| Obligation | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| REQ-003, REQ-010, AC-003: one-blob facade upsert returns facts and size; failed extraction preserves old postings; removal is idempotent | `bohmian-code-review/src/lib.rs` `SymbolicContext::upsert` extracts before `SymbolIndex::upsert`; `FileFacts` borrows retained nodes and owns transient references/diagnostics; `remove`, `lookup`, `byte_len` compose index methods | Public `upsert_is_transactional_and_remove_is_idempotent`; existing index/resolve owner tests; journey lane passed | PASS |
+| REQ-004, INV-002: exact candidates remain ambiguous and coverage is limited to supplied files | `select/src/lib.rs` `rank` calls existing resolver, excludes changed path, and preserves all index hits as reasons; facade makes no completeness claim | Selector ranking test and public four-file journey; source trace through `resolve` and `SymbolIndex::lookup` | PASS |
+| REQ-005, INV-004: validated changed-line names, distinct-name scoring, canonical tie order, deterministic reasons | `ChangedLines::new` validates nonempty, ascending, nonoverlapping, bounded lines; `rank` filters overlapping declarations and on-line references, resolves distinct names, scores by name set and sorts score/path | Selector range and ranking tests; journey repeated ranking equality and scores 2/1 | PASS |
+| REQ-006, INV-003, AC-004: changed hunks first, whole candidate spans, exact callback accounting, file/token ceilings, omissions and typed failures | `select/src/lib.rs` `pack`, `candidate_spans`, `slice_lines`, `blob_text`, `SelectError`; `build_context` decodes head then delegates | Selector packing and negative tests; public journey selects 8+11 tokens under 2 files/19 tokens and checks budget, missing blob and deletion-only failures | PASS |
+| REQ-007, AC-005: real external public API journey over four TypeScript files without mocks | `bohmian-code-review/tests/symbolic_context_journey.rs` uses only facade exports and all four supplied byte slices | `mise run test:symbolic-context:journey`: 3 passed; exact text, ranges, reasons, omissions and repeat equality asserted | PASS |
+| INV-001, INV-005: no hidden IO/source retention; stage ownership and downward dependencies | Facade and selector use caller bytes and in-memory owners; manifests add only existing `thiserror`; index declaration predicate is reused rather than copied | Diff and dependency/source inspection; `mise run lints` passed | PASS |
+| TASK-003 verification and scope: owner/journey lanes, formatting, lints, clean diff; no service or storage additions | `mise.toml` adds the two requested targeted lanes; diff contains no adapter, storage, or model code | Independently ran `test:select` (4 passed), journey (3 passed), `fmt:check`, `lints`, and `git diff --check`, all exit 0; upstream owner lane results are recorded in task evidence | PASS |
+
+**Proposed findings:** none. The overlapping nested candidate spans noted in source are permitted whole declaration spans under the approved task; no deduplication outcome is required. `test:rust`, `gate`, and CI wiring belong to TASK-004, so their absence in this cumulative candidate is not a TASK-003 finding.
+
+**Verification limit:** This review reran the selector, journey, formatting and lint checks. It inspected, but did not independently rerun, the recorded upstream extractor/index/resolver results. The available public test directly exercises their production paths. No source files were edited during review.
