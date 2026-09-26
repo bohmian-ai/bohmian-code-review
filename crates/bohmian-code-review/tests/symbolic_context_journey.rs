@@ -7,8 +7,9 @@
 //! pick context within an exact caller-counted token budget (pass two).
 
 use bohmian_code_review::{
-    ContextLimits, DiffError, Error, ExtractionError, FileDiff, LineRange, OmissionReason,
-    RelativePath, SelectError, SpanKind, SymbolicContext, build_context, parse_unified_diff,
+    ChangedBlob, ContextLimits, DiffError, EXTRACTION_VERSION, Error, ExtractionError, FileDiff,
+    IndexedFileFacts, Language, LineRange, OmissionReason, RelativePath, SelectError, SpanKind,
+    SymbolicContext, build_candidate_context, build_context, parse_unified_diff,
 };
 use std::collections::BTreeMap;
 
@@ -371,4 +372,264 @@ fn journey_reports_budget_missing_blob_and_deletion_only_errors() {
         context.rank("src/handler.ts", HANDLER.as_bytes(), Vec::new()),
         Err(Error::Select(SelectError::DeletionOnly))
     );
+}
+
+/// Changed second file; line 3 calls `formatUser` and `unrelated`.
+const REPORT: &str = "import { formatUser } from \"./format\";
+
+export const report = (user: User) => formatUser(user) + unrelated();
+";
+
+#[test]
+/// Exported facts are source-free and version-stamped; loading them into a
+/// fresh context reproduces lookup, ranking, and packed candidate spans,
+/// while malformed or foreign-version facts fail without touching other
+/// loaded files.
+fn exported_facts_reload_without_source_and_reject_invalid_records() {
+    let context = indexed();
+    let exported = context.export();
+    let paths: Vec<&str> = exported.iter().map(|facts| facts.path.as_str()).collect();
+    assert_eq!(
+        paths,
+        [
+            "src/format.ts",
+            "src/handler.ts",
+            "src/unrelated.ts",
+            "src/user.ts"
+        ]
+    );
+    let user = &exported[3];
+    assert_eq!(user.byte_len, USER.len());
+    assert_eq!(user.extraction_version, EXTRACTION_VERSION);
+    let declared: Vec<(&str, u32, u32)> = user
+        .declarations
+        .iter()
+        .map(|fact| (fact.name.as_str(), fact.start_line, fact.end_line))
+        .collect();
+    assert_eq!(
+        declared,
+        [("User", 1, 3), ("lookupUser", 5, 7), ("saveUser", 9, 11)]
+    );
+    let json = serde_json::to_string(&exported).expect("facts serialize");
+    for fragment in [
+        "console.log",
+        "return { id }",
+        "(id: string)",
+        "docstring",
+        "signature",
+    ] {
+        assert!(
+            !json.contains(fragment),
+            "source fragment leaked: {fragment}"
+        );
+    }
+
+    let mut loaded = SymbolicContext::new();
+    for facts in serde_json::from_str::<Vec<IndexedFileFacts>>(&json).expect("facts parse") {
+        loaded.load(facts).expect("valid facts");
+    }
+    assert_eq!(loaded.file_count(), 4);
+    assert_eq!(loaded.byte_len(&path("src/user.ts")), Some(USER.len()));
+    assert_eq!(loaded.lookup("lookupUser")[0].path.as_str(), "src/user.ts");
+    assert!(loaded.lookup("console.log").is_empty());
+    let changed = vec![LineRange { start: 5, end: 8 }];
+    let fresh = context
+        .rank("src/handler.ts", HANDLER.as_bytes(), changed.clone())
+        .expect("valid change");
+    let reloaded = loaded
+        .rank("src/handler.ts", HANDLER.as_bytes(), changed)
+        .expect("valid change");
+    assert_eq!(reloaded, fresh);
+    let limits = ContextLimits {
+        max_files: 2,
+        max_tokens: 19,
+    };
+    let candidates = blobs(&["src/user.ts"]);
+    assert_eq!(
+        build_context(&reloaded, HANDLER.as_bytes(), &candidates, limits, words),
+        build_context(&fresh, HANDLER.as_bytes(), &candidates, limits, words)
+    );
+
+    let mut stale = user.clone();
+    stale.extraction_version = "other-extractor".to_owned();
+    assert!(matches!(
+        loaded.load(stale),
+        Err(Error::ExtractionVersionMismatch { ref path, ref found, .. })
+            if path.as_str() == "src/user.ts" && found == "other-extractor"
+    ));
+    let mut malformed = user.clone();
+    malformed.declarations[1].start_line = 0;
+    assert!(matches!(
+        loaded.load(malformed),
+        Err(Error::InvalidFacts { ref path, .. }) if path.as_str() == "src/user.ts"
+    ));
+    let mut renamed = user.clone();
+    renamed.path = path("src/other.ts");
+    renamed.declarations[0].name = String::new();
+    assert!(matches!(
+        loaded.load(renamed),
+        Err(Error::InvalidFacts { ref path, .. }) if path.as_str() == "src/other.ts"
+    ));
+    assert_eq!(loaded.file_count(), 4);
+    assert_eq!(loaded.lookup("lookupUser")[0].path.as_str(), "src/user.ts");
+    assert!(
+        serde_json::from_str::<IndexedFileFacts>(
+            &json.replace("\"src/user.ts\"", "\"../user.ts\"")[1..json.len() - 1]
+        )
+        .is_err()
+    );
+}
+
+#[test]
+/// Path-only routing answers eligibility before download: native and
+/// composite paths report their language, unregistered paths report none,
+/// and non-canonical paths fail.
+fn path_language_identifies_eligible_paths_before_download() {
+    let context = SymbolicContext::new();
+    assert_eq!(
+        context.path_language("src/user.ts"),
+        Ok(Some(Language::Typescript))
+    );
+    assert_eq!(
+        context.path_language("lib/View.svelte"),
+        Ok(Some(Language::Svelte))
+    );
+    assert_eq!(
+        context.path_language("include/api.h"),
+        Ok(Some(Language::C))
+    );
+    assert_eq!(context.path_language("README.md"), Ok(None));
+    assert_eq!(context.path_language("Makefile"), Ok(None));
+    assert!(matches!(
+        context.path_language("/etc/passwd"),
+        Err(Error::InvalidPath { .. })
+    ));
+    assert!(!EXTRACTION_VERSION.is_empty());
+}
+
+#[test]
+/// Two changed files union their changed-line names, both changed paths are
+/// excluded, `formatUser` scores once although both files reference it,
+/// ties break by path, and candidate-only packing counts only selected
+/// candidates while reporting file and token omissions.
+fn multi_file_pr_ranks_union_of_changed_names_and_packs_candidates_only() {
+    let mut context = indexed();
+    context
+        .upsert("src/report.ts", REPORT.as_bytes())
+        .expect("extracts");
+    let changed = [
+        ChangedBlob {
+            path: "src/handler.ts",
+            head: HANDLER.as_bytes(),
+            changed: vec![LineRange { start: 5, end: 8 }],
+        },
+        ChangedBlob {
+            path: "src/report.ts",
+            head: REPORT.as_bytes(),
+            changed: vec![LineRange { start: 3, end: 3 }],
+        },
+    ];
+    let ranked = context.rank_files(&changed).expect("valid changes");
+    let scores: Vec<(&str, usize)> = ranked
+        .iter()
+        .map(|file| (file.path.as_str(), file.score))
+        .collect();
+    assert_eq!(
+        scores,
+        [
+            ("src/user.ts", 2),
+            ("src/format.ts", 1),
+            ("src/unrelated.ts", 1)
+        ]
+    );
+    assert!(
+        ranked
+            .iter()
+            .all(|file| file.path.as_str() != "src/report.ts")
+    );
+    let single = context
+        .rank(
+            "src/handler.ts",
+            HANDLER.as_bytes(),
+            vec![LineRange { start: 5, end: 8 }],
+        )
+        .expect("valid change");
+    assert_eq!(single.files[0], ranked[0]);
+
+    let limits = ContextLimits {
+        max_files: 2,
+        max_tokens: 20,
+    };
+    let candidates = blobs(&["src/user.ts", "src/format.ts"]);
+    let packed = build_candidate_context(&ranked, &candidates, limits, words).expect("packs");
+    let spans: Vec<(&str, u32, u32, usize)> = packed
+        .spans
+        .iter()
+        .map(|span| {
+            (
+                span.path.as_str(),
+                span.lines.start,
+                span.lines.end,
+                span.tokens,
+            )
+        })
+        .collect();
+    assert_eq!(
+        spans,
+        [("src/user.ts", 5, 7, 11), ("src/format.ts", 3, 5, 9)]
+    );
+    assert!(
+        packed
+            .spans
+            .iter()
+            .all(|span| matches!(span.kind, SpanKind::Candidate { .. }))
+    );
+    assert_eq!((packed.files, packed.tokens), (2, 20));
+    let omissions: Vec<(&str, u32, OmissionReason)> = packed
+        .omissions
+        .iter()
+        .map(|omission| {
+            (
+                omission.path.as_str(),
+                omission.lines.start,
+                omission.reason,
+            )
+        })
+        .collect();
+    assert_eq!(
+        omissions,
+        [
+            ("src/user.ts", 9, OmissionReason::TokenLimit { tokens: 8 }),
+            ("src/unrelated.ts", 1, OmissionReason::FileLimit),
+        ]
+    );
+    assert_eq!(
+        build_candidate_context(&ranked, &candidates, limits, words),
+        Ok(packed)
+    );
+
+    let none = ContextLimits {
+        max_files: 3,
+        max_tokens: 5,
+    };
+    let starved =
+        build_candidate_context(&ranked, &blobs(&FILES.map(|(file, _)| file)), none, words)
+            .expect("packs");
+    assert!(starved.spans.is_empty());
+    assert_eq!((starved.files, starved.tokens), (0, 0));
+    assert_eq!(starved.omissions.len(), 4);
+    assert!(
+        starved
+            .omissions
+            .iter()
+            .all(|omission| matches!(omission.reason, OmissionReason::TokenLimit { .. }))
+    );
+    assert!(matches!(
+        context.rank_files(&[ChangedBlob {
+            path: "src/report.ts",
+            head: REPORT.as_bytes(),
+            changed: Vec::new(),
+        }]),
+        Err(Error::Select(SelectError::DeletionOnly))
+    ));
 }

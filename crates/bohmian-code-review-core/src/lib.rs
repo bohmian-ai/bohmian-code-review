@@ -11,6 +11,8 @@
 pub mod diagnostic;
 /// Contains extracted edge facts and reference kinds.
 pub mod edge;
+/// Contains source-free persistable declaration facts.
+pub mod facts;
 /// Contains the closed language contract.
 pub mod language;
 /// Contains the path byte limit enforced by [`RelativePath`].
@@ -26,6 +28,7 @@ pub mod relative_path;
 
 pub use diagnostic::{ExtractionDiagnostic, Severity};
 pub use edge::{Edge, EdgeKind, Provenance, ReferenceKind};
+pub use facts::{DeclarationFact, IndexedFileFacts, InvalidFact};
 pub use language::{LANGUAGE_NAMES, Language, NATIVE_LANGUAGES};
 pub use node::{Node, NodeKind, Visibility};
 pub use position::{SourcePosition, SourceRange};

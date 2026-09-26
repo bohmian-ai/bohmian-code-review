@@ -29,6 +29,7 @@ dependencies = [
  "bohmian-code-review-index",
  "bohmian-code-review-resolve",
  "bohmian-code-review-select",
+ "serde_json",
  "thiserror",
 ]
 

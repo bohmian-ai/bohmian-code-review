@@ -6,7 +6,9 @@
 //! case-sensitive over simple and qualified names and returns every hit, so
 //! ambiguity stays visible to later stages.
 
-use bohmian_code_review_core::{Node, NodeKind, RelativePath};
+use bohmian_code_review_core::{
+    DeclarationFact, IndexedFileFacts, InvalidFact, Node, NodeKind, RelativePath,
+};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 /// One declaration matching an exact lookup name.
@@ -113,6 +115,53 @@ impl SymbolIndex {
                 })
             })
             .collect()
+    }
+
+    /// Exports every file's source-free declaration facts in canonical path
+    /// order, stamped with `extraction_version`.
+    ///
+    /// Only declarations are exported; file, import, export, and parameter
+    /// facts never post and are dropped. Loading the result with
+    /// [`SymbolIndex::load`] reproduces lookup exactly.
+    #[must_use]
+    pub fn export(&self, extraction_version: &str) -> Vec<IndexedFileFacts> {
+        self.files
+            .iter()
+            .map(|(path, file)| IndexedFileFacts {
+                path: path.clone(),
+                extraction_version: extraction_version.to_owned(),
+                byte_len: file.byte_len,
+                declarations: file
+                    .nodes
+                    .iter()
+                    .filter(|node| is_declaration(node.kind))
+                    .map(DeclarationFact::from_node)
+                    .collect(),
+            })
+            .collect()
+    }
+
+    /// Validates `facts` and then replaces `facts.path`'s indexed facts with
+    /// them, exactly like [`SymbolIndex::upsert`].
+    ///
+    /// Validation completes before the index is touched, so a rejected
+    /// record leaves every file, including `facts.path`, unchanged. The
+    /// extraction version is not checked here; the caller that knows its
+    /// extractor compares it first.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`InvalidFact`] for an empty identity or a span that is not
+    /// one-based and ascending.
+    pub fn load(&mut self, facts: IndexedFileFacts) -> Result<(), InvalidFact> {
+        facts.validate()?;
+        let nodes = facts
+            .declarations
+            .into_iter()
+            .map(|fact| fact.into_node(&facts.path))
+            .collect();
+        self.upsert(facts.path, facts.byte_len, nodes);
+        Ok(())
     }
 
     /// Byte length retained for `path`, if indexed.
@@ -351,6 +400,75 @@ mod tests {
         assert_eq!(index.byte_len(&user), None);
         assert_eq!(index.byte_len(&other), Some(40));
         assert_eq!(index.file_count(), 1);
+    }
+
+    #[test]
+    /// Export drops non-declaration facts and orders files by path; loading
+    /// the export into a fresh index reproduces lookup and byte lengths, and
+    /// an invalid record is rejected before any postings change.
+    fn export_round_trips_through_load_and_rejects_invalid_records() {
+        let mut index = SymbolIndex::new();
+        index.upsert(
+            path("src/z.ts"),
+            10,
+            vec![
+                node("src/z.ts", NodeKind::File, "z.ts", "src/z.ts", 1, "file:z"),
+                node(
+                    "src/z.ts",
+                    NodeKind::Function,
+                    "load",
+                    "load",
+                    1,
+                    "function:z",
+                ),
+            ],
+        );
+        index.upsert(
+            path("src/a.ts"),
+            20,
+            vec![node(
+                "src/a.ts",
+                NodeKind::Method,
+                "load",
+                "Repo::load",
+                9,
+                "method:a",
+            )],
+        );
+        let exported = index.export("v1");
+        let summary: Vec<(&str, &str, usize, usize)> = exported
+            .iter()
+            .map(|facts| {
+                (
+                    facts.path.as_str(),
+                    facts.extraction_version.as_str(),
+                    facts.byte_len,
+                    facts.declarations.len(),
+                )
+            })
+            .collect();
+        assert_eq!(
+            summary,
+            [("src/a.ts", "v1", 20, 1), ("src/z.ts", "v1", 10, 1)]
+        );
+
+        let mut loaded = SymbolIndex::new();
+        for facts in exported.clone() {
+            loaded.load(facts).expect("valid facts");
+        }
+        assert_eq!(keys(&loaded, "load"), keys(&index, "load"));
+        assert_eq!(keys(&loaded, "Repo::load"), keys(&index, "Repo::load"));
+        assert_eq!(loaded.byte_len(&path("src/z.ts")), Some(10));
+        assert_eq!(loaded.export("v1"), exported);
+
+        let mut invalid = exported[1].clone();
+        invalid.declarations[0].end_line = 0;
+        assert!(matches!(
+            loaded.load(invalid),
+            Err(InvalidFact::InvalidSpan { .. })
+        ));
+        assert_eq!(keys(&loaded, "load"), keys(&index, "load"));
+        assert_eq!(loaded.file_count(), 2);
     }
 
     #[test]
