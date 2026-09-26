@@ -1,7 +1,7 @@
 ---
 id: TASK-002
 kind: implementation
-status: proposed
+status: review
 spec: SPEC-repo-parser@10
 depends_on: [TASK-001]
 maps: [REQ-004, REQ-013, REQ-015, REQ-016, INV-001, INV-003, INV-006]
@@ -62,3 +62,44 @@ Stop if GitHub/GHES cannot provide the required pinned identity or if the depend
 ## Authority Links
 
 [Revision 10 spec](../spec.md), [pipeline plan](../symbolic-context-service-plan.md), [library design](../../../../architecture/bohmian-code-review-design.md).
+
+## Implementation Evidence
+
+Candidate: commit `1696545` on `review-helper-setup` (base `1842eaf`). New crate `crates/bohmian-code-review-pipeline` (`identity`, `execution`, `github`, `storage`, `persistence` modules), workspace manifest and lockfile (`ureq`, `sha1`), and the `test:pipeline` lane in `mise.toml`. Tests are inline per `architecture/agent-rules.md`; the scripted `FakeTransport` drives the real request policy, parsing, and identity verification through the public `GitHubClient`.
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| Both GitHub hosts supported through configuration (REQ-004) | `identity::GitHubHost::{Public, enterprise}` with `api_base`/`archive_host`; `GitHubClient::request` builds every URL from the host | `identity::tests::hosts_expose_api_base_and_archive_host`; GHES half of `github::tests::archive_redirect_is_trusted_only_on_archive_host_and_never_forwards_credentials` | PASS |
+| Verified identities cross the trust boundary (REQ-004, INV-003, S1 of this task) | `TenantId`, `InstallationId`, `RepositoryIdentity`, `Identity`, `ObjectSha` validate on construction and deserialization; `GitHubClient::{repository, branch_head, commit, tree, pull_request}` compare provider ids/names/shas to the request and fail with `IdentityMismatch`; tree and PR-file paths go through `RelativePath`, invalid entries land in `rejected` | `github::tests::verified_provider_identities_cross_and_mismatches_are_rejected`; `identity::tests::identities_validate_key_safe_spellings`; `identity::tests::object_sha_accepts_only_lowercase_hex` | PASS |
+| Verified blob bytes (REQ-004, INV-003) | `GitHubClient::blob` fetches raw bytes under `max_blob_bytes` and checks `git_blob_sha` against the requested id | blob half of `verified_provider_identities_cross_and_mismatches_are_rejected`; `github::tests::helpers_encode_paths_and_hash_blobs_like_git` | PASS |
+| Untrusted archive redirect rejected; credentials never forwarded (REQ-014) | `GitHubClient::archive` follows one redirect only to `GitHubHost::archive_host`, sends the hop unauthenticated, bounds the stream with `BoundedReader` | `github::tests::archive_redirect_is_trusted_only_on_archive_host_and_never_forwards_credentials` (asserts no `Authorization` on the hop, no request to the untrusted host, GHES same-host rule, stream limit error) | PASS |
+| Provider retry/deadline states explicit (REQ-013, INV-006, S2 of this task) | One policy in `GitHubClient::send_with_policy`: `Execution::check` before every attempt, `retry-after`/`x-ratelimit-reset` waits bounded by `max_retry_wait` and remaining deadline, `max_attempts`, cancellable `sleep_bounded`; `GitHubError::disposition` types `Retry`/`Terminal`; `CallCounts` records every request | `github::tests::rate_limits_retry_within_bounds_or_report_typed_outcomes`; `github::tests::malformed_payloads_and_interruptions_are_explicit`; `execution::tests::check_reports_cancellation_then_deadline` | PASS |
+| Credentials fail visibly and never leak (REQ-004, REQ-014) | `InstallationToken` redacted `Debug`, `HttpRequest` has no `Debug`; 401 → `Unauthorized`, 403 without rate headers → `Forbidden`; JSON errors carry category and position, never body text | `identity::tests::token_debug_is_redacted`; 401/403 cases in `rate_limits_retry_within_bounds_or_report_typed_outcomes`; malformed case in `malformed_payloads_and_interruptions_are_explicit` | PASS |
+| Narrow injected storage and persistence contracts (REQ-015, REQ-016, INV-007) | `storage::{ObjectStorage, ObjectKey, ObjectDigest, StorageError}`; `persistence::{Persistence, SnapshotScope, SnapshotPointer, ContextId, ContextRecord, PersistenceError}`; every key and method carries `Identity`; no pool, SDK, or consumer type | `storage::tests::keys_are_scoped_by_identity_and_version`; `storage::tests::digest_is_sha256_hex`; trait conformance is TASK-006's scope | PASS |
+| No symbolic duplication, no server/worker, no source retention (INV-001) | Crate depends on `bohmian-code-review` facade only; no extraction/index/select code; `Archive` and `blob` return transient bytes; nothing writes disk | `cargo tree -p bohmian-code-review-pipeline --depth 1`; `rg -n "std::fs|tokio|axum" crates/bohmian-code-review-pipeline` → no matches | PASS |
+| Scoped `mise` lane | `mise.toml` `test:pipeline`, wired into `test:rust` | `mise run test:pipeline` → 12 passed | PASS |
+
+RED/GREEN record. The crate did not exist at base, so every scenario failed to compile before this change. Tests were written alongside the client, not strictly before it; the one observed RED was `rate_limits_retry_within_bounds_or_report_typed_outcomes` failing with "scripted response for every request" because a 429 without rate headers slept the full `max_retry_wait` and retried. The policy was corrected to report `RateLimited { retry_after: max_retry_wait }` without sleeping, and in-call backoff is now capped by `max_retry_wait`; the test then passed.
+
+Fake-provider requests and failures observed: 13 API requests in the identity scenario (2 `Repository`, 2 `Blob`, all authenticated to the API host); 3 `Archive` requests per host in the redirect scenario (trusted hop unauthenticated, untrusted hop never sent); rate-limit scenario: 403+`retry-after: 0` retried once, 429+reset-in-past retried once, reset one hour out → `RateLimited(≥3590s)`, two `retry-after: 0` under `max_attempts: 2` → `RateLimited(0s)`, bare 403 → `Forbidden`, 401 → `Unauthorized`, 404 → `NotFound`, bare 429 → `RateLimited(5s)`; malformed scenario: wrong JSON shape → `MalformedResponse` terminal, 65-byte body over a 64-byte limit → `ResponseTooLarge`, 503 then 502 → `Unavailable(502)` retryable, timeout then reset → `Transport` retryable, cancelled and expired executions send zero requests, `retry-after: 2` under a 1 s deadline → `RateLimited(2s)` without sleeping.
+
+Non-goals confirmed excluded: no cold/update/PR facade, no OpenDAL adapter, no tar/gzip decoding, no concurrency limiter, no real-GitHub run. Provider concurrency ceilings (REQ-013) are left to the caller's worker pool because the client is synchronous and per-call; the real-GitHub contract run remains the opt-in integrated gate. Only the listed files changed.
+
+Commands run in this session (all exit 0): `mise run test:pipeline`, `mise run fmt:check`, `mise run lints`, `git diff --check`, `mise run gate`.
+
+Focused commands (current GREEN closure, `mise exec -- ` prefix):
+
+| Command | Observed |
+|---|---|
+| `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --lib github::tests::verified_provider_identities_cross_and_mismatches_are_rejected -- --exact` | 1 passed, exit 0 |
+| `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --lib github::tests::archive_redirect_is_trusted_only_on_archive_host_and_never_forwards_credentials -- --exact` | 1 passed, exit 0 |
+| `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --lib github::tests::rate_limits_retry_within_bounds_or_report_typed_outcomes -- --exact` | 1 passed, exit 0 |
+| `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --lib github::tests::malformed_payloads_and_interruptions_are_explicit -- --exact` | 1 passed, exit 0 |
+| `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --lib github::tests::helpers_encode_paths_and_hash_blobs_like_git -- --exact` | 1 passed, exit 0 |
+| `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --lib identity::tests::identities_validate_key_safe_spellings -- --exact` | 1 passed, exit 0 |
+| `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --lib identity::tests::object_sha_accepts_only_lowercase_hex -- --exact` | 1 passed, exit 0 |
+| `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --lib identity::tests::hosts_expose_api_base_and_archive_host -- --exact` | 1 passed, exit 0 |
+| `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --lib identity::tests::token_debug_is_redacted -- --exact` | 1 passed, exit 0 |
+| `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --lib execution::tests::check_reports_cancellation_then_deadline -- --exact` | 1 passed, exit 0 |
+| `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --lib storage::tests::keys_are_scoped_by_identity_and_version -- --exact` | 1 passed, exit 0 |
+| `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --lib storage::tests::digest_is_sha256_hex -- --exact` | 1 passed, exit 0 |
