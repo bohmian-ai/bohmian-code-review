@@ -1925,11 +1925,7 @@ mod tests {
             digest: ObjectDigest::of(b""),
             published_at: UNIX_EPOCH,
         };
-        let eligible_entry = (
-            vec![file("src/big.ts", big)],
-            vec![("src/big.ts", big)],
-            1,
-        );
+        let eligible_entry = (vec![file("src/big.ts", big)], vec![("src/big.ts", big)], 1);
         let unselected_entry = (
             vec![file("src/user.ts", USER)],
             vec![("vendor/big.ts", big), ("src/user.ts", USER)],
