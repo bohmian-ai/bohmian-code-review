@@ -6,7 +6,8 @@
 //! Objects are create-only; integrity is checked by the library through
 //! [`ObjectDigest`], not by the backend.
 
-use crate::identity::{Identity, ObjectSha};
+use crate::identity::{Identity, InvalidIdentity, ObjectSha, validate_name};
+use crate::persistence::ContextId;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fmt;
@@ -35,21 +36,14 @@ pub enum StorageError {
     },
 }
 
-/// Which immutable object a key names.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ObjectKind {
-    /// A source-free symbol snapshot.
-    Snapshot,
-    /// A selected-source review context.
-    Context,
-}
-
 /// Fully scoped storage key for one immutable object.
 ///
 /// Keys are only produced by [`ObjectKey::snapshot`] and
 /// [`ObjectKey::context`], both of which embed the caller identity, so two
-/// tenants can never share an object even for identical source.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+/// tenants can never share an object even for identical source. Every
+/// `/`-separated segment is key-safe, so a persisted key is re-validated on
+/// reload and can never traverse out of its scope.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize)]
 #[serde(transparent)]
 pub struct ObjectKey(String);
 
@@ -81,25 +75,47 @@ impl ObjectKey {
     }
 
     /// Key for the review context published under `context_id`.
-    pub fn context(identity: &Identity, context_id: &str) -> ObjectKey {
+    pub fn context(identity: &Identity, context_id: &ContextId) -> ObjectKey {
         ObjectKey(format!(
             "{}/contexts/{context_id}",
             ObjectKey::prefix(identity)
         ))
     }
 
+    /// Re-validate persisted key text: every `/`-separated segment must be a
+    /// key-safe name, which refuses empty, `.`, `..`, and foreign characters.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`InvalidIdentity::Name`] for the first segment that fails
+    /// [`validate_name`].
+    fn parse(raw: &str) -> Result<ObjectKey, InvalidIdentity> {
+        for segment in raw.split('/') {
+            validate_name(segment, "object key segment")?;
+        }
+        Ok(ObjectKey(raw.to_owned()))
+    }
+
     /// Slash-separated key text.
     pub fn as_str(&self) -> &str {
         &self.0
     }
+}
 
-    /// Which kind of object this key names.
-    pub fn kind(&self) -> ObjectKind {
-        if self.0.contains("/contexts/") {
-            ObjectKind::Context
-        } else {
-            ObjectKind::Snapshot
-        }
+impl<'de> Deserialize<'de> for ObjectKey {
+    /// Deserializes through [`ObjectKey::parse`] so serde cannot mint a key
+    /// the constructors would never produce.
+    ///
+    /// The wire shape stays a transparent string, so every constructor-built
+    /// key round-trips byte-for-byte; only the invariant is added.
+    ///
+    /// # Errors
+    ///
+    /// Returns a serde error carrying the [`InvalidIdentity`] reason when any
+    /// segment of the serialized string is not key-safe.
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<ObjectKey, D::Error> {
+        let raw = String::deserialize(deserializer)?;
+        ObjectKey::parse(&raw).map_err(serde::de::Error::custom)
     }
 }
 
@@ -189,13 +205,39 @@ mod tests {
             a.as_str(),
             format!("tenants/a/installations/42/repositories/7/snapshots/7631/1/{tree}")
         );
-        assert_eq!(a.kind(), ObjectKind::Snapshot);
-        let context = ObjectKey::context(&identity("a"), "ctx1");
+        let context = ObjectKey::context(&identity("a"), &ContextId::new("ctx1").expect("id"));
         assert_eq!(
             context.as_str(),
             "tenants/a/installations/42/repositories/7/contexts/ctx1"
         );
-        assert_eq!(context.kind(), ObjectKind::Context);
+    }
+
+    /// Constructor-built keys round-trip through serde; a traversing, empty,
+    /// dot, or non-key-safe segment is refused on reload.
+    #[test]
+    fn keys_are_revalidated_on_deserialization() {
+        let tree = ObjectSha::new(&"b".repeat(40)).expect("sha");
+        let key = ObjectKey::snapshot(&identity("a"), "v1", 1, &tree);
+        let json = serde_json::to_string(&key).expect("serialize");
+        assert_eq!(json, format!("\"{key}\""));
+        assert_eq!(
+            serde_json::from_str::<ObjectKey>(&json).expect("round trip"),
+            key
+        );
+        for hostile in [
+            "tenants/b/installations/9/repositories/3/contexts/../x",
+            "tenants/b/installations/9/repositories/3/contexts/./x",
+            "tenants/b//contexts/x",
+            "/tenants/b",
+            "tenants/b/",
+            "tenants/b/contexts/x y",
+            "",
+        ] {
+            assert!(
+                serde_json::from_str::<ObjectKey>(&format!("\"{hostile}\"")).is_err(),
+                "{hostile:?} must be refused"
+            );
+        }
     }
 
     /// Digests are deterministic and distinguish different bytes.

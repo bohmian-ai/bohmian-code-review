@@ -121,8 +121,13 @@ impl<'de> Deserialize<'de> for InstallationId {
     }
 }
 
-/// Validate a GitHub owner or repository name.
-fn validate_name(raw: &str, what: &'static str) -> Result<String, InvalidIdentity> {
+/// Validate a GitHub owner or repository name, or any other single storage-key segment.
+///
+/// # Errors
+///
+/// Returns [`InvalidIdentity::Name`] carrying `what` when `raw` is empty,
+/// longer than 100 bytes, exactly `.` or `..`, or outside `[A-Za-z0-9._-]`.
+pub(crate) fn validate_name(raw: &str, what: &'static str) -> Result<String, InvalidIdentity> {
     if raw.is_empty()
         || raw.len() > MAX_NAME_BYTES
         || raw == "."

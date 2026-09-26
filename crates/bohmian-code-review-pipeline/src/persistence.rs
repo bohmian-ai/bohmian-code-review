@@ -6,7 +6,7 @@
 //! database handle crosses this boundary; a consumer supplies the
 //! implementation and owns its own connection scoping.
 
-use crate::identity::{Identity, ObjectSha};
+use crate::identity::{Identity, InvalidIdentity, ObjectSha, validate_name};
 use crate::storage::{ObjectDigest, ObjectKey};
 use serde::{Deserialize, Serialize};
 use std::time::SystemTime;
@@ -56,14 +56,41 @@ pub struct SnapshotPointer {
 }
 
 /// Opaque identifier a caller hands to downstream workflows.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+///
+/// The text is used verbatim as the final segment of a context
+/// [`ObjectKey`], so it is restricted to one key-safe segment and
+/// re-validated on deserialization.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize)]
 #[serde(transparent)]
-pub struct ContextId(pub String);
+pub struct ContextId(String);
 
 impl ContextId {
+    /// Validate a context identifier.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`InvalidIdentity::Name`] when `raw` is empty, longer than 100
+    /// bytes, exactly `.` or `..`, or outside `[A-Za-z0-9._-]`.
+    pub fn new(raw: &str) -> Result<ContextId, InvalidIdentity> {
+        validate_name(raw, "context id").map(ContextId)
+    }
+
     /// Identifier text.
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+}
+
+impl<'de> Deserialize<'de> for ContextId {
+    /// Deserializes through [`ContextId::new`] so persisted ids are re-validated.
+    ///
+    /// # Errors
+    ///
+    /// Returns a serde error carrying the [`InvalidIdentity`] reason when the
+    /// serialized string is not a single key-safe segment.
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<ContextId, D::Error> {
+        let raw = String::deserialize(deserializer)?;
+        ContextId::new(&raw).map_err(serde::de::Error::custom)
     }
 }
 
@@ -176,4 +203,80 @@ pub trait Persistence: Send + Sync {
     ///
     /// Returns [`PersistenceError::Backend`] on backend failure.
     fn remove_repository(&self, identity: &Identity) -> Result<Vec<ObjectKey>, PersistenceError>;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::identity::{InstallationId, RepositoryIdentity, TenantId};
+    use std::time::UNIX_EPOCH;
+
+    /// Context ids are single key-safe segments on construction and reload.
+    #[test]
+    fn context_ids_are_validated_on_construction_and_deserialization() {
+        assert_eq!(ContextId::new("ctx-1").expect("id").as_str(), "ctx-1");
+        assert_eq!(
+            ContextId::new("../x"),
+            Err(InvalidIdentity::Name("context id"))
+        );
+        assert_eq!(ContextId::new(""), Err(InvalidIdentity::Name("context id")));
+        assert_eq!(
+            ContextId::new("."),
+            Err(InvalidIdentity::Name("context id"))
+        );
+        assert!(serde_json::from_str::<ContextId>("\"a/b\"").is_err());
+        assert_eq!(
+            serde_json::from_str::<ContextId>("\"a.b\"").expect("reload"),
+            ContextId::new("a.b").expect("id")
+        );
+    }
+
+    /// Persisted rows carrying a traversing key are refused on reload; a
+    /// library-built row round-trips.
+    #[test]
+    fn records_revalidate_their_keys_on_deserialization() {
+        let identity = Identity {
+            tenant: TenantId::new("a").expect("tenant"),
+            installation: InstallationId::new(1).expect("installation"),
+            repository: RepositoryIdentity::new(7, "o", "r").expect("repo"),
+        };
+        let sha = ObjectSha::new(&"a".repeat(40)).expect("sha");
+        let id = ContextId::new("ctx1").expect("id");
+        let record = ContextRecord {
+            id: id.clone(),
+            key: ObjectKey::context(&identity, &id),
+            digest: ObjectDigest::of(b""),
+            pull_request: 1,
+            base: sha.clone(),
+            head: sha.clone(),
+            published_at: UNIX_EPOCH,
+            expires_at: UNIX_EPOCH,
+        };
+        let json = serde_json::to_string(&record).expect("serialize");
+        assert_eq!(
+            serde_json::from_str::<ContextRecord>(&json).expect("round trip"),
+            record
+        );
+        let pointer = SnapshotPointer {
+            tree: sha.clone(),
+            commit: sha,
+            key: ObjectKey::snapshot(&identity, "v1", 1, &record.base),
+            digest: ObjectDigest::of(b""),
+            published_at: UNIX_EPOCH,
+        };
+        let pointer_json = serde_json::to_string(&pointer).expect("serialize");
+        assert_eq!(
+            serde_json::from_str::<SnapshotPointer>(&pointer_json).expect("round trip"),
+            pointer
+        );
+        let hostile = "tenants/b/installations/9/repositories/3/contexts/../x";
+        let good_key = record.key.as_str();
+        assert!(serde_json::from_str::<ContextRecord>(&json.replace(good_key, hostile)).is_err());
+        assert!(
+            serde_json::from_str::<SnapshotPointer>(
+                &pointer_json.replace(pointer.key.as_str(), hostile)
+            )
+            .is_err()
+        );
+    }
 }

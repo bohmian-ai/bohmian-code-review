@@ -29,4 +29,4 @@ pub use identity::{
 pub use persistence::{
     ContextId, ContextRecord, Persistence, PersistenceError, SnapshotPointer, SnapshotScope,
 };
-pub use storage::{ObjectDigest, ObjectKey, ObjectKind, ObjectStorage, StorageError};
+pub use storage::{ObjectDigest, ObjectKey, ObjectStorage, StorageError};
