@@ -1,0 +1,21 @@
+[package]
+name = "bohmian-code-review-pipeline"
+description = "GitHub/GHES source access, verified Git identities, and injected storage/persistence contracts for the review-context pipeline"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+bohmian-code-review.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha1.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+ureq.workspace = true
+
+[lints]
+workspace = true

@@ -51,6 +51,10 @@ run = "cargo test --locked -p bohmian-code-review-select --all-targets --all-fea
 description = "Run the facade's external public-API symbolic-context journey"
 run = "cargo test --locked -p bohmian-code-review --test symbolic_context_journey --all-features"
 
+[tasks."test:pipeline"]
+description = "Run outer pipeline crate tests: verified GitHub identities, bounded provider policy, and injected contracts"
+run = "cargo test --locked -p bohmian-code-review-pipeline --all-targets --all-features"
+
 [tasks."test:rust"]
 description = "Run every component lane and the public journey"
 depends = [
@@ -59,6 +63,7 @@ depends = [
   "test:resolve",
   "test:select",
   "test:symbolic-context:journey",
+  "test:pipeline",
 ]
 
 [tasks."review:verify-citations"]

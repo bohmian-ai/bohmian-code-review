@@ -7,6 +7,7 @@ members = [
     "crates/bohmian-code-review-resolve",
     "crates/bohmian-code-review-select",
     "crates/bohmian-code-review",
+    "crates/bohmian-code-review-pipeline",
 ]
 
 [workspace.package]
@@ -23,12 +24,15 @@ bohmian-code-review-extract = { path = "crates/bohmian-code-review-extract" }
 bohmian-code-review-index = { path = "crates/bohmian-code-review-index" }
 bohmian-code-review-resolve = { path = "crates/bohmian-code-review-resolve" }
 bohmian-code-review-select = { path = "crates/bohmian-code-review-select" }
+bohmian-code-review = { path = "crates/bohmian-code-review" }
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
 regex = "1"
 sha2 = "0.10"
+sha1 = "0.10"
+ureq = { version = "3", default-features = false, features = ["rustls", "platform-verifier"] }
 
 # Grammar pins are copied exactly from the donor extractor. A bump changes
 # extracted facts and requires an approved specification revision.
