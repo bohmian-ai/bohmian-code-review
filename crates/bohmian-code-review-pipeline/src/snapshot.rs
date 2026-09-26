@@ -607,6 +607,27 @@ impl<'a> ColdBuild<'a> {
     }
 }
 
+/// Reader that checks the caller's cancellation and deadline before every
+/// read of `inner`, so no archive bytes are consumed once interrupted.
+struct Interruptible<'a, R> {
+    inner: R,
+    execution: &'a Execution,
+}
+
+impl<R: Read> Read for Interruptible<'_, R> {
+    /// Reads from `inner` while the execution may continue.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`io::Error::other`] wrapping the [`Interrupted`] reason once
+    /// cancelled or past the deadline (never [`io::ErrorKind::Interrupted`],
+    /// which readers retry), and propagates `inner`'s errors.
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        self.execution.check().map_err(io::Error::other)?;
+        self.inner.read(buf)
+    }
+}
+
 /// In-memory ingest state for one attempt: eligible entries still wanted,
 /// what was indexed and skipped, and the interruption that stopped it.
 struct Ingest {
@@ -664,19 +685,37 @@ impl Ingest {
     /// Stream the tarball through bounded decompression; a stream error
     /// stops the archive and is recorded, and an interruption stops it and
     /// is kept for [`Ingest::fallback`], leaving the rest pending.
+    ///
+    /// Both the compressed body and the expanded stream are
+    /// [`Interruptible`], so cancellation and the deadline are checked
+    /// before every source read and every decompressed read, including tar
+    /// headers, eligible entry bodies, and unselected entries the tar
+    /// iterator drains. A read already blocked in the transport still ends
+    /// at the transport's own timeout.
     fn consume_archive(
         &mut self,
         archive: Archive,
         execution: &Execution,
         max_expanded_bytes: u64,
     ) {
-        let expanded = BoundedReader::new(
-            GzDecoder::new(archive.reader),
-            max_expanded_bytes,
-            "archive expansion",
-        );
-        if let Err(error) = self.stream_entries(expanded, execution) {
-            self.stats.archive_error = Some(error.to_string());
+        let expanded = Interruptible {
+            inner: BoundedReader::new(
+                GzDecoder::new(Interruptible {
+                    inner: archive.reader,
+                    execution,
+                }),
+                max_expanded_bytes,
+                "archive expansion",
+            ),
+            execution,
+        };
+        if let Err(error) = self.stream_entries(expanded) {
+            // Cancellation and an elapsed deadline never revert, so a check
+            // that fails now names the interruption that failed the read.
+            match execution.check() {
+                Err(interrupted) => self.interrupted = Some(interrupted),
+                Ok(_) => self.stats.archive_error = Some(error.to_string()),
+            }
         }
     }
 
@@ -686,20 +725,15 @@ impl Ingest {
     /// pending, entries larger than the file bound, and mismatched bytes are
     /// left pending for verified blob fallback, so an archive can never
     /// substitute content or turn an eligible file into a benign skip.
-    /// Cancellation and the deadline are checked before each entry; an
-    /// interruption stops reading and is kept on the ingest.
     ///
     /// # Errors
     ///
-    /// Returns the first tar or decompression error, including the
-    /// expansion bound; entries indexed before it stay indexed.
-    fn stream_entries<R: Read>(&mut self, expanded: R, execution: &Execution) -> io::Result<()> {
+    /// Returns the first tar, decompression, or read error, including the
+    /// expansion bound and an [`Interruptible`] interruption; entries
+    /// indexed before it stay indexed.
+    fn stream_entries<R: Read>(&mut self, expanded: R) -> io::Result<()> {
         let mut tar = tar::Archive::new(expanded);
         for entry in tar.entries()? {
-            if let Err(interrupted) = execution.check() {
-                self.interrupted = Some(interrupted);
-                return Ok(());
-            }
             let mut entry = entry?;
             if !matches!(
                 entry.header().entry_type(),
@@ -840,6 +874,7 @@ mod tests {
     use flate2::write::GzEncoder;
     use std::io::Write;
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
     use std::time::{Duration, Instant, UNIX_EPOCH};
 
     /// Declares `lookupUser` and `saveUser`.
@@ -1738,9 +1773,9 @@ mod tests {
     }
 
     /// FIND-2: when the archive supplies every eligible file, a cancellation
-    /// or a deadline that passes once the archive request starts still
-    /// stops the build before publication: the outcome reports the
-    /// interruption, nothing is written, and the prior pointer stays.
+    /// once the archive request starts still stops the build before
+    /// publication: the outcome reports the interruption, nothing is
+    /// written, and the prior pointer stays.
     #[test]
     fn interruption_during_a_complete_archive_never_publishes() {
         let files = [file("src/user.ts", USER), file("src/format.ts", FORMAT)];
@@ -1787,24 +1822,211 @@ mod tests {
             ColdBuildOutcome::Incomplete(IncompleteReason::Interrupted(Interrupted::Cancelled))
         );
         assert_eq!(result.ingest.archive_entries, 0);
+    }
 
-        let deadline = Instant::now() + Duration::from_secs(1);
-        let expiring = Execution::new(deadline, CancelToken::new());
-        let result = run(
-            &expiring,
-            Box::new(move || {
-                while Instant::now() <= deadline {
-                    std::thread::sleep(Duration::from_millis(5));
-                }
-            }),
+    /// Transport over a shared fake that serves the tarball body in
+    /// `CHUNK`-byte reads, trips `cancel` once `cancel_at` body bytes were
+    /// read, and counts every body read that starts after that.
+    struct Streamed {
+        transport: Arc<RoutedTransport>,
+        cancel: CancelToken,
+        cancel_at: usize,
+        reads_after_cancel: Arc<AtomicUsize>,
+    }
+
+    impl crate::github::HttpTransport for Streamed {
+        /// Delegates to the shared fake and wraps a tarball body.
+        ///
+        /// # Errors
+        ///
+        /// Never.
+        fn get(
+            &self,
+            request: crate::github::HttpRequest,
+        ) -> Result<crate::github::HttpResponse, crate::github::TransportError> {
+            let tarball = request.url.contains("/tarball/");
+            let mut response = self.transport.get(request)?;
+            if tarball {
+                response.body = Box::new(Chunked {
+                    inner: response.body,
+                    read: 0,
+                    cancel: self.cancel.clone(),
+                    cancel_at: self.cancel_at,
+                    reads_after_cancel: Arc::clone(&self.reads_after_cancel),
+                });
+            }
+            Ok(response)
+        }
+    }
+
+    /// Body bytes per read of a [`Chunked`] body.
+    const CHUNK: usize = 256;
+
+    /// Streaming body behind [`Streamed`].
+    struct Chunked {
+        inner: Box<dyn Read + Send>,
+        read: usize,
+        cancel: CancelToken,
+        cancel_at: usize,
+        reads_after_cancel: Arc<AtomicUsize>,
+    }
+
+    impl Read for Chunked {
+        /// Reads at most [`CHUNK`] bytes, counting reads after cancellation
+        /// and cancelling once `cancel_at` bytes were delivered.
+        ///
+        /// # Errors
+        ///
+        /// Propagates the inner reader's error.
+        fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+            if self.cancel.is_cancelled() {
+                self.reads_after_cancel.fetch_add(1, AtomicOrdering::SeqCst);
+            }
+            let want = buf.len().min(CHUNK);
+            let read = self.inner.read(&mut buf[..want])?;
+            self.read += read;
+            if self.read >= self.cancel_at {
+                self.cancel.cancel();
+            }
+            Ok(read)
+        }
+    }
+
+    /// Roughly `len` bytes of valid, poorly compressible TypeScript, so its
+    /// gzipped archive spans many body chunks.
+    fn noise(len: usize) -> Vec<u8> {
+        let mut state: u64 = 0x9e37_79b9_7f4a_7c15;
+        let mut source = String::new();
+        let mut index = 0;
+        while source.len() < len {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            source.push_str(&format!("export const v{index} = \"{state:016x}\";\n"));
+            index += 1;
+        }
+        source.into_bytes()
+    }
+
+    /// FIND-2: cancellation after the first body chunks of a large archive
+    /// entry stops source reads at the archive read chain, whether the
+    /// entry is eligible (read in full) or unselected (drained by the tar
+    /// iterator): no later body chunk is read, the build reports the
+    /// cancellation, every eligible file is not fetched, nothing is
+    /// written, and the prior pointer stays.
+    #[test]
+    fn cancellation_mid_archive_entry_stops_reading_the_body() {
+        let big: &'static [u8] = Box::leak(noise(96 * 1024).into_boxed_slice());
+        let identity = identity();
+        let prior = SnapshotPointer {
+            tree: sha('0'),
+            commit: sha('1'),
+            key: snapshot_key(&identity, &sha('0')),
+            digest: ObjectDigest::of(b""),
+            published_at: UNIX_EPOCH,
+        };
+        let eligible_entry = (
+            vec![file("src/big.ts", big)],
+            vec![("src/big.ts", big)],
+            1,
         );
+        let unselected_entry = (
+            vec![file("src/user.ts", USER)],
+            vec![("vendor/big.ts", big), ("src/user.ts", USER)],
+            1,
+        );
+        for (files, archive, eligible) in [eligible_entry, unselected_entry] {
+            let repo = FakeRepo::new(&files, &archive);
+            let cancel = CancelToken::new();
+            let reads_after_cancel = Arc::new(AtomicUsize::new(0));
+            let client = GitHubClient::with_transport(
+                GitHubHost::public(),
+                InstallationToken::new("ghs_token").expect("token"),
+                RequestLimits::default(),
+                Box::new(Streamed {
+                    transport: Arc::clone(&repo.transport),
+                    cancel: cancel.clone(),
+                    cancel_at: 16 * CHUNK,
+                    reads_after_cancel: Arc::clone(&reads_after_cancel),
+                }),
+            );
+            let storage = MemoryStorage::default();
+            let store = MemorySnapshotStore::default();
+            assert!(
+                store
+                    .publish_snapshot_pointer(&scope(&identity), None, &prior)
+                    .expect("seed")
+            );
+            let execution = Execution::new(Instant::now() + Duration::from_secs(60), cancel);
+            let result = ColdBuild::new(&client, &storage, &store, ColdBuildLimits::default())
+                .run(&execution, &identity)
+                .expect("result");
+
+            assert_eq!(reads_after_cancel.load(AtomicOrdering::SeqCst), 0);
+            assert_eq!(
+                result.outcome,
+                ColdBuildOutcome::Incomplete(IncompleteReason::Interrupted(Interrupted::Cancelled))
+            );
+            assert_eq!(result.ingest.archive_entries, 0);
+            assert_eq!(result.ingest.archive_error, None);
+            assert_eq!(result.ingest.fallback_blobs, 0);
+            assert_eq!(result.coverage.skipped.len(), eligible);
+            assert!(
+                result
+                    .coverage
+                    .skipped
+                    .iter()
+                    .all(|f| f.reason == SkipReason::NotFetched)
+            );
+            assert!(storage.keys().is_empty(), "no object written");
+            assert_eq!(
+                store.snapshot_pointer(&scope(&identity)).expect("pointer"),
+                Some(prior.clone())
+            );
+        }
+    }
+
+    /// FIND-2: the archive ingest owner recognizes an already-expired
+    /// deadline at its read chain without waiting for wall time: no entry
+    /// is indexed, no archive error is recorded, and the fallback reports
+    /// the deadline and fetches nothing, which [`ColdBuild::run`] turns into
+    /// an unpublished interrupted outcome.
+    #[test]
+    fn expired_deadline_stops_archive_ingest() {
+        let repo = FakeRepo::new(&standard_files(), &standard_archive());
+        let client = repo.client();
+        let identity = identity();
+        let listing = client
+            .tree(&execution(), &identity.repository, &repo.tree)
+            .expect("tree");
+        let mut ingest = Ingest::new(
+            &listing.entries,
+            0,
+            &RootAttributes::default(),
+            MAX_ELIGIBLE_FILE_BYTES,
+        );
+        let expired = Execution::new(Instant::now(), CancelToken::new());
+        let archive = Archive {
+            reader: Box::new(io::Cursor::new(tarball(&standard_archive()))),
+        };
+        ingest.consume_archive(archive, &expired, u64::MAX);
+
+        assert_eq!(ingest.interrupted, Some(Interrupted::DeadlineExceeded));
+        assert_eq!(ingest.stats.archive_entries, 0);
+        assert_eq!(ingest.stats.archive_error, None);
         assert_eq!(
-            result.outcome,
-            ColdBuildOutcome::Incomplete(IncompleteReason::Interrupted(
-                Interrupted::DeadlineExceeded
-            ))
+            ingest.fallback(&client, &expired, &identity, 10),
+            Some(Interrupted::DeadlineExceeded)
         );
-        assert_eq!(result.ingest.archive_entries, 0);
+        assert_eq!(ingest.stats.fallback_blobs, 0);
+        assert_eq!(ingest.indexed, 0);
+        assert!(ingest.pending.is_empty());
+        assert!(
+            ingest
+                .skipped
+                .iter()
+                .all(|f| f.reason == SkipReason::NotFetched)
+        );
     }
 
     /// FIND-1: the key is recorded before the object is written, so after an
