@@ -54,3 +54,27 @@ Return `SPEC_REVISION_REQUIRED` if governance parity requires changing approved 
 ## Authority Links
 
 `changes/active/review-helper-setup/spec.md`; `AGENTS.md`; `architecture/agent-rules.md`; `architecture/bohmian-code-review-design.md`; `architecture/references/README.md`; `architecture/references/languages/spec-driven-development.md`; `architecture/references/languages/implementation-execution.md`; `architecture/references/languages/testing-workflows.md`.
+
+## Implementation Evidence
+
+Candidate: `fa62d97` → `0e6bb82` plus this record. No executable verification script changed, so no RED was manufactured.
+
+**Governance.** All six `cr-*` skills match Wyrd's `wyrd-*` lifecycle line-for-line after name normalization; the only deltas are domain substitutions (source trust/provenance/budget for tenancy/RBAC/durability, cross-crate for cross-service, Rust/grammar layers for Python/TypeScript) and repository-local authority links. Every skill has `agents/openai.yaml` metadata naming its lifecycle route. A scan of 45 Markdown files found 0 unresolved relative links; the plain-path `implementation-plan.md` reference in `cr-spec` exists. No skill, script, or authority repair was needed.
+
+**Negative proofs** (each restored afterwards; tree clean except intended changes):
+
+| Probe | Result |
+|---|---|
+| Append a line to `.claude/skills/cr-plan/SKILL.md`, run `check:skills-sync` | exit 1, `Claude skill tree drift: >fcst.... cr-plan/SKILL.md`; `skills:sync` then `check:skills-sync` exit 0 |
+| Move `tests/symbolic_context_journey.rs` aside, run `test:symbolic-context:journey` | exit 101, `no test target named symbolic_context_journey` |
+| Point `test:select` at a nonexistent package | exit 101, `cannot specify features for packages outside of workspace` |
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| Skills and metadata preserve Wyrd semantics, links resolve, mirror matches and drift is detectable (AC-006) | `.agents/skills/cr-*`, `scripts/sync-agent-skills.sh` unchanged | normalized diff vs Wyrd; link scan; `check:skills-sync` pass and drift probe | PASS |
+| Every REQ-009 lane exists with owner scope and aggregate composition; CI calls the same names; absent target fails (AC-006) | `mise.toml` `test:rust`, `check:default`, `gate`; `.github/workflows/ci.yml` runs `mise run gate` | `mise tasks ls` lists exactly the 12 REQ-009 names; missing-target probes | PASS |
+| Integrated candidate passes fmt, lints, component tests, journey, type-check, skill sync, `gate`; IO exclusions and fixtures intact; diff scoped (AC-001–AC-005) | README status updated | `mise run gate` exit 0: core 25, extract 138 + 1, index 3, resolve 1, select 4, journey 3; `rg std::(fs|net|process)|Command::new|reqwest|git2` in `crates/*/src` empty; no path/Git deps; extract tests/fixtures unchanged since `be64610`; `git diff --check` clean | PASS |
+
+**Decisions.** The workspace type-check runs inside `check:default` rather than as a separate `check` task, keeping the lane set exactly REQ-009's. The `test:extract` commands gained `--all-features` to match every other lane. CI is one Linux job running `gate`; a multi-OS matrix was not specified.
+
+**Scope.** Changed: `mise.toml`, `.github/workflows/ci.yml`, `README.md`, this record. `IMPLEMENTATION_PLAN.md` (maintainer edit) and the untracked TASK-003 review packet are left untouched. Non-goals (runtime behavior, publication, gate weakening, hand-edited mirror) remain excluded.
