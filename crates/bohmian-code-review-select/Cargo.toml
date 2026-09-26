@@ -12,6 +12,7 @@ publish.workspace = true
 bohmian-code-review-core.workspace = true
 bohmian-code-review-index.workspace = true
 bohmian-code-review-resolve.workspace = true
+thiserror.workspace = true
 
 [lints]
 workspace = true

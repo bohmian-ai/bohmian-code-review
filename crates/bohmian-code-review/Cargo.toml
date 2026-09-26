@@ -14,6 +14,7 @@ bohmian-code-review-extract.workspace = true
 bohmian-code-review-index.workspace = true
 bohmian-code-review-resolve.workspace = true
 bohmian-code-review-select.workspace = true
+thiserror.workspace = true
 
 [lints]
 workspace = true

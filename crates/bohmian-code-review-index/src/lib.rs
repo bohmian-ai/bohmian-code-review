@@ -138,7 +138,7 @@ impl SymbolIndex {
 ///
 /// File, import, export, and parameter nodes name uses or locals, not
 /// declarations, so posting them would fabricate candidate files.
-fn is_declaration(kind: NodeKind) -> bool {
+pub fn is_declaration(kind: NodeKind) -> bool {
     !matches!(
         kind,
         NodeKind::File | NodeKind::Import | NodeKind::Export | NodeKind::Parameter

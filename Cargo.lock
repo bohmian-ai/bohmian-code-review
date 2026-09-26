@@ -29,6 +29,7 @@ dependencies = [
  "bohmian-code-review-index",
  "bohmian-code-review-resolve",
  "bohmian-code-review-select",
+ "thiserror",
 ]
 
 [[package]]
@@ -91,6 +92,7 @@ dependencies = [
  "bohmian-code-review-core",
  "bohmian-code-review-index",
  "bohmian-code-review-resolve",
+ "thiserror",
 ]
 
 [[package]]

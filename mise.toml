@@ -39,3 +39,11 @@ run = "cargo test --locked -p bohmian-code-review-index --all-targets --all-feat
 [tasks."test:resolve"]
 description = "Run candidate resolver tests over the real index"
 run = "cargo test --locked -p bohmian-code-review-resolve --all-targets --all-features"
+
+[tasks."test:select"]
+description = "Run changed-line ranking and context packing tests over the real index and resolver"
+run = "cargo test --locked -p bohmian-code-review-select --all-targets --all-features"
+
+[tasks."test:symbolic-context:journey"]
+description = "Run the facade's external public-API symbolic-context journey"
+run = "cargo test --locked -p bohmian-code-review --test symbolic_context_journey --all-features"
