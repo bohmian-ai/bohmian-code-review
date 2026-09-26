@@ -159,12 +159,14 @@ fn pattern_matches(pattern: &str, path: &str) -> bool {
     }
 }
 
-/// Recursive glob match over bytes with `*`, `?`, and `**` semantics.
+/// Recursive glob match over bytes with `*`, `?`, and `**` semantics; a
+/// trailing `**` matches everything below its directory.
 fn glob_matches(pattern: &str, text: &str) -> bool {
     let (p, t) = (pattern.as_bytes(), text.as_bytes());
     fn go(p: &[u8], t: &[u8]) -> bool {
         match p {
             [] => t.is_empty(),
+            [b'*', b'*'] => true,
             [b'*', b'*', rest @ ..] => {
                 let rest = rest.strip_prefix(b"/").unwrap_or(rest);
                 (0..=t.len()).any(|i| (i == 0 || t[i - 1] == b'/') && go(rest, &t[i..]))
@@ -295,7 +297,11 @@ mod tests {
             entry("app.min.js", TreeEntryMode::File, Some(1)),
             entry("generated/a.ts", TreeEntryMode::File, Some(1)),
             entry("vendored/a.ts", TreeEntryMode::File, Some(1)),
-            entry("big.ts", TreeEntryMode::File, Some(MAX_ELIGIBLE_FILE_BYTES + 1)),
+            entry(
+                "big.ts",
+                TreeEntryMode::File,
+                Some(MAX_ELIGIBLE_FILE_BYTES + 1),
+            ),
         ];
         let tree = classify(&entries, &attributes, &context, MAX_ELIGIBLE_FILE_BYTES);
         let eligible: Vec<&str> = tree.eligible.iter().map(|e| e.path.as_str()).collect();

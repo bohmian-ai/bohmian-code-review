@@ -1,4 +1,5 @@
-//! Injected metadata persistence: snapshot pointers and context records.
+//! Injected metadata persistence: a [`SnapshotStore`] for snapshot pointers
+//! and a separate [`ContextStore`] for context records.
 //!
 //! The library publishes metadata only after the object it names exists and
 //! validates, and every method carries the full [`Identity`] so an
@@ -123,13 +124,14 @@ pub struct ContextRecord {
     pub expires_at: SystemTime,
 }
 
-/// Metadata persistence a consumer implements.
+/// Snapshot metadata store a consumer implements: the current
+/// default-branch pointer per [`SnapshotScope`].
 ///
 /// Every method receives the caller identity and must refuse to read or
 /// write another identity's rows. Implementations must not hold a
 /// transaction open across a call into GitHub or object storage; the library
-/// never asks them to.
-pub trait Persistence: Send + Sync {
+/// never asks them to, and publishes a pointer only after its object exists.
+pub trait SnapshotStore: Send + Sync {
     /// Current pointer for `scope`, if one was published.
     ///
     /// # Errors
@@ -156,6 +158,24 @@ pub trait Persistence: Send + Sync {
         pointer: &SnapshotPointer,
     ) -> Result<bool, PersistenceError>;
 
+    /// Remove every snapshot pointer for `identity`, returning the object
+    /// keys the caller must delete from snapshot storage.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`PersistenceError::Backend`] on backend failure.
+    fn remove_repository(&self, identity: &Identity) -> Result<Vec<ObjectKey>, PersistenceError>;
+}
+
+/// Context metadata store a consumer implements: published PR context
+/// records, kept separately from snapshots because their lifecycle differs.
+///
+/// Every method receives the caller identity (or returns it, for expiry
+/// sweeps) and must refuse to read or write another identity's rows.
+/// Implementations must not hold a transaction open across a call into
+/// GitHub or object storage; the library publishes a record only after its
+/// object exists.
+pub trait ContextStore: Send + Sync {
     /// Make `record` readable for `identity`.
     ///
     /// # Errors
@@ -197,8 +217,8 @@ pub trait Persistence: Send + Sync {
     /// Returns [`PersistenceError::Backend`] when the row may still exist.
     fn delete_context(&self, identity: &Identity, id: &ContextId) -> Result<(), PersistenceError>;
 
-    /// Remove every pointer and context record for `identity`, returning the
-    /// object keys the caller must delete from storage.
+    /// Remove every context record for `identity`, returning the object keys
+    /// the caller must delete from context storage.
     ///
     /// # Errors
     ///

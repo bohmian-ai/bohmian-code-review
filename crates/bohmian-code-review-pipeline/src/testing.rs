@@ -1,27 +1,27 @@
 //! In-memory test doubles shared by facade tests: a URL-routed fake GitHub
-//! transport, create-only object storage, and identity-scoped persistence.
+//! transport, create-only object storage, and an identity-scoped snapshot store.
 //!
 //! These prove publication order, retry convergence, and isolation without
 //! a network, disk, or database. They are compiled only for tests.
 
 use crate::github::{HttpRequest, HttpResponse, HttpTransport, TransportError};
 use crate::identity::{Identity, ObjectSha};
-use crate::persistence::{
-    ContextId, ContextRecord, Persistence, PersistenceError, SnapshotPointer, SnapshotScope,
-};
+use crate::persistence::{PersistenceError, SnapshotPointer, SnapshotScope, SnapshotStore};
 use crate::storage::{ObjectKey, ObjectStorage, StorageError};
 use std::collections::{BTreeMap, HashMap};
 use std::io::Cursor;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::SystemTime;
+
+/// Hook run with every requested URL.
+type RequestHook = Box<dyn Fn(&str) + Send>;
 
 /// Fake transport answering by URL suffix; unmatched requests get 404.
 #[derive(Default)]
 pub(crate) struct RoutedTransport {
     routes: Mutex<Vec<(String, u16, Vec<u8>)>>,
     seen: Mutex<Vec<String>>,
-    on_request: Mutex<Option<Box<dyn Fn(&str) + Send>>>,
+    on_request: Mutex<Option<RequestHook>>,
 }
 
 impl RoutedTransport {
@@ -68,7 +68,9 @@ impl HttpTransport for RoutedTransport {
         let (status, body) = routes
             .iter()
             .find(|(suffix, _, _)| request.url.ends_with(suffix))
-            .map_or((404, Vec::new()), |(_, status, body)| (*status, body.clone()));
+            .map_or((404, Vec::new()), |(_, status, body)| {
+                (*status, body.clone())
+            });
         Ok(HttpResponse {
             status,
             headers: Vec::new(),
@@ -146,23 +148,22 @@ impl ObjectStorage for MemoryStorage {
     }
 }
 
-/// In-memory persistence with conditional pointer publication and a
+/// In-memory snapshot store with conditional pointer publication and a
 /// one-shot publish failure switch.
 #[derive(Default)]
-pub(crate) struct MemoryPersistence {
+pub(crate) struct MemorySnapshotStore {
     pointers: Mutex<HashMap<SnapshotScope, SnapshotPointer>>,
-    contexts: Mutex<BTreeMap<(Identity, ContextId), ContextRecord>>,
     fail_next_publish: AtomicBool,
 }
 
-impl MemoryPersistence {
+impl MemorySnapshotStore {
     /// Make the next pointer publication fail without moving the pointer.
     pub(crate) fn fail_next_publish(&self) {
         self.fail_next_publish.store(true, Ordering::SeqCst);
     }
 }
 
-impl Persistence for MemoryPersistence {
+impl SnapshotStore for MemorySnapshotStore {
     /// Pointer for `scope`.
     ///
     /// # Errors
@@ -172,7 +173,12 @@ impl Persistence for MemoryPersistence {
         &self,
         scope: &SnapshotScope,
     ) -> Result<Option<SnapshotPointer>, PersistenceError> {
-        Ok(self.pointers.lock().expect("pointers lock").get(scope).cloned())
+        Ok(self
+            .pointers
+            .lock()
+            .expect("pointers lock")
+            .get(scope)
+            .cloned())
     }
 
     /// Compare-and-set on the current pointer's tree.
@@ -200,80 +206,7 @@ impl Persistence for MemoryPersistence {
         Ok(true)
     }
 
-    /// Insert once per identity and id.
-    ///
-    /// # Errors
-    ///
-    /// `AlreadyPublished` for a duplicate id.
-    fn publish_context(
-        &self,
-        identity: &Identity,
-        record: &ContextRecord,
-    ) -> Result<(), PersistenceError> {
-        let mut contexts = self.contexts.lock().expect("contexts lock");
-        let key = (identity.clone(), record.id.clone());
-        if contexts.contains_key(&key) {
-            return Err(PersistenceError::AlreadyPublished {
-                id: record.id.clone(),
-            });
-        }
-        contexts.insert(key, record.clone());
-        Ok(())
-    }
-
-    /// Exact identity-scoped lookup.
-    ///
-    /// # Errors
-    ///
-    /// Never.
-    fn context(
-        &self,
-        identity: &Identity,
-        id: &ContextId,
-    ) -> Result<Option<ContextRecord>, PersistenceError> {
-        Ok(self
-            .contexts
-            .lock()
-            .expect("contexts lock")
-            .get(&(identity.clone(), id.clone()))
-            .cloned())
-    }
-
-    /// Records expired at `now`, oldest first by map order.
-    ///
-    /// # Errors
-    ///
-    /// Never.
-    fn expired_contexts(
-        &self,
-        now: SystemTime,
-        limit: usize,
-    ) -> Result<Vec<(Identity, ContextRecord)>, PersistenceError> {
-        Ok(self
-            .contexts
-            .lock()
-            .expect("contexts lock")
-            .iter()
-            .filter(|(_, record)| record.expires_at <= now)
-            .take(limit)
-            .map(|((identity, _), record)| (identity.clone(), record.clone()))
-            .collect())
-    }
-
-    /// Idempotent delete.
-    ///
-    /// # Errors
-    ///
-    /// Never.
-    fn delete_context(&self, identity: &Identity, id: &ContextId) -> Result<(), PersistenceError> {
-        self.contexts
-            .lock()
-            .expect("contexts lock")
-            .remove(&(identity.clone(), id.clone()));
-        Ok(())
-    }
-
-    /// Drop every row for `identity` and return the object keys they named.
+    /// Drop every pointer for `identity` and return the object keys they named.
     ///
     /// # Errors
     ///
@@ -287,16 +220,6 @@ impl Persistence for MemoryPersistence {
                 let keep = scope.identity != *identity;
                 if !keep {
                     keys.push(pointer.key.clone());
-                }
-                keep
-            });
-        self.contexts
-            .lock()
-            .expect("contexts lock")
-            .retain(|(owner, _), record| {
-                let keep = owner != identity;
-                if !keep {
-                    keys.push(record.key.clone());
                 }
                 keep
             });

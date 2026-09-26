@@ -17,7 +17,7 @@ use crate::github::{
     Archive, BoundedReader, GitHubClient, GitHubError, TreeEntry, TreeEntryMode, git_blob_sha,
 };
 use crate::identity::{Identity, ObjectSha};
-use crate::persistence::{Persistence, PersistenceError, SnapshotPointer, SnapshotScope};
+use crate::persistence::{PersistenceError, SnapshotPointer, SnapshotScope, SnapshotStore};
 use crate::storage::{ObjectDigest, ObjectKey, ObjectStorage, StorageError};
 use bohmian_code_review::{EXTRACTION_VERSION, IndexedFileFacts, RelativePath, SymbolicContext};
 use flate2::read::GzDecoder;
@@ -174,15 +174,25 @@ impl Snapshot {
     ///
     /// Returns [`ColdBuildError::Corrupt`] when the bytes do not decode,
     /// name another identity, tree, or version, or are not complete.
-    pub fn decode(bytes: &[u8], identity: &Identity, tree: &ObjectSha) -> Result<Snapshot, ColdBuildError> {
+    pub fn decode(
+        bytes: &[u8],
+        identity: &Identity,
+        tree: &ObjectSha,
+    ) -> Result<Snapshot, ColdBuildError> {
         let corrupt = |detail: String| ColdBuildError::Corrupt { detail };
         let snapshot: Snapshot =
             serde_json::from_slice(bytes).map_err(|error| corrupt(error.to_string()))?;
         if snapshot.format_version != SNAPSHOT_FORMAT_VERSION {
-            return Err(corrupt(format!("format version {}", snapshot.format_version)));
+            return Err(corrupt(format!(
+                "format version {}",
+                snapshot.format_version
+            )));
         }
         if snapshot.extraction_version != EXTRACTION_VERSION {
-            return Err(corrupt(format!("extraction version {}", snapshot.extraction_version)));
+            return Err(corrupt(format!(
+                "extraction version {}",
+                snapshot.extraction_version
+            )));
         }
         if snapshot.identity != *identity {
             return Err(corrupt("identity mismatch".to_owned()));
@@ -303,7 +313,7 @@ pub enum ColdBuildError {
 pub struct ColdBuild<'a> {
     client: &'a GitHubClient,
     storage: &'a dyn ObjectStorage,
-    persistence: &'a dyn Persistence,
+    persistence: &'a dyn SnapshotStore,
     limits: ColdBuildLimits,
 }
 
@@ -312,7 +322,7 @@ impl<'a> ColdBuild<'a> {
     pub fn new(
         client: &'a GitHubClient,
         storage: &'a dyn ObjectStorage,
-        persistence: &'a dyn Persistence,
+        persistence: &'a dyn SnapshotStore,
         limits: ColdBuildLimits,
     ) -> ColdBuild<'a> {
         ColdBuild {
@@ -344,7 +354,10 @@ impl<'a> ColdBuild<'a> {
         execution: &Execution,
         identity: &Identity,
     ) -> Result<ColdBuildResult, ColdBuildError> {
-        if execution.remaining().is_some_and(|left| left > MAX_COLD_BUILD_DEADLINE) {
+        if execution
+            .remaining()
+            .is_some_and(|left| left > MAX_COLD_BUILD_DEADLINE)
+        {
             return Err(ColdBuildError::DeadlineTooLong {
                 max: MAX_COLD_BUILD_DEADLINE,
             });
@@ -375,7 +388,9 @@ impl<'a> ColdBuild<'a> {
             outcome,
         };
 
-        let listing = self.client.tree(execution, &identity.repository, &head.tree)?;
+        let listing = self
+            .client
+            .tree(execution, &identity.repository, &head.tree)?;
         if listing.truncated {
             let coverage = Coverage {
                 truncated_tree: true,
@@ -404,7 +419,12 @@ impl<'a> ColdBuild<'a> {
             Ok(archive) => ingest.consume_archive(archive, self.limits.max_expanded_archive_bytes),
             Err(error) => ingest.archive_error = Some(error.to_string()),
         }
-        let interrupted = ingest.fallback(self.client, execution, identity, self.limits.max_fallback_blobs);
+        let interrupted = ingest.fallback(
+            self.client,
+            execution,
+            identity,
+            self.limits.max_fallback_blobs,
+        );
         let (coverage, files, context) = ingest.finish();
         if let Some(interrupted) = interrupted {
             return Ok(result(
@@ -498,11 +518,7 @@ struct Ingest {
 
 impl Ingest {
     /// Classify `entries` and start with every eligible file pending.
-    fn new(
-        entries: &[TreeEntry],
-        attributes: &RootAttributes,
-        max_file_bytes: u64,
-    ) -> Ingest {
+    fn new(entries: &[TreeEntry], attributes: &RootAttributes, max_file_bytes: u64) -> Ingest {
         let context = SymbolicContext::new();
         let tree = classify(entries, attributes, &context, max_file_bytes);
         let mut files: Vec<SnapshotFile> = tree
@@ -696,8 +712,10 @@ mod tests {
     use super::*;
     use crate::execution::CancelToken;
     use crate::github::{Operation, RequestLimits};
-    use crate::identity::{GitHubHost, InstallationId, InstallationToken, RepositoryIdentity, TenantId};
-    use crate::testing::{MemoryPersistence, MemoryStorage, RoutedTransport};
+    use crate::identity::{
+        GitHubHost, InstallationId, InstallationToken, RepositoryIdentity, TenantId,
+    };
+    use crate::testing::{MemorySnapshotStore, MemoryStorage, RoutedTransport};
     use flate2::Compression;
     use flate2::write::GzEncoder;
     use std::io::Write;
@@ -866,7 +884,11 @@ mod tests {
             header.set_mode(0o644);
             header.set_cksum();
             builder
-                .append_data(&mut header, format!("octocat-Hello-World-ccccccc/{path}"), *bytes)
+                .append_data(
+                    &mut header,
+                    format!("octocat-Hello-World-ccccccc/{path}"),
+                    *bytes,
+                )
                 .expect("entry");
         }
         let mut link = tar::Header::new_gnu();
@@ -875,15 +897,20 @@ mod tests {
         link.set_mode(0o777);
         link.set_cksum();
         builder
-            .append_link(&mut link, "octocat-Hello-World-ccccccc/link.ts", "src/user.ts")
+            .append_link(
+                &mut link,
+                "octocat-Hello-World-ccccccc/link.ts",
+                "src/user.ts",
+            )
             .expect("link");
+        // `append_data` refuses `..`, so the traversing name is written raw.
         let mut escape = tar::Header::new_gnu();
+        let name = b"octocat-Hello-World-ccccccc/../escape.ts";
+        escape.as_old_mut().name[..name.len()].copy_from_slice(name);
         escape.set_size(USER.len() as u64);
         escape.set_mode(0o644);
         escape.set_cksum();
-        builder
-            .append_data(&mut escape, "octocat-Hello-World-ccccccc/../escape.ts", USER)
-            .expect("escape");
+        builder.append(&escape, USER).expect("escape");
         let tar = builder.into_inner().expect("tar");
         let mut gz = GzEncoder::new(Vec::new(), Compression::fast());
         gz.write_all(&tar).expect("gzip");
@@ -954,7 +981,7 @@ mod tests {
         let repo = FakeRepo::new(&standard_files(), &standard_archive());
         let client = repo.client();
         let storage = MemoryStorage::default();
-        let persistence = MemoryPersistence::default();
+        let persistence = MemorySnapshotStore::default();
         let identity = identity();
         let build = ColdBuild::new(&client, &storage, &persistence, ColdBuildLimits::default());
 
@@ -968,7 +995,12 @@ mod tests {
         assert_eq!(pointer.commit, repo.commit);
         assert_eq!(
             pointer.key,
-            ObjectKey::snapshot(&identity, EXTRACTION_VERSION, SNAPSHOT_FORMAT_VERSION, &repo.tree)
+            ObjectKey::snapshot(
+                &identity,
+                EXTRACTION_VERSION,
+                SNAPSHOT_FORMAT_VERSION,
+                &repo.tree
+            )
         );
 
         let coverage = &result.coverage;
@@ -1001,31 +1033,57 @@ mod tests {
         assert_eq!(calls.get(Operation::Tree), 1);
         assert_eq!(calls.get(Operation::Blob), 3, "attributes + two fallbacks");
         let seen = repo.transport.seen();
-        assert!(seen.iter().any(|url| url.ends_with(&format!("/git/blobs/{}", blob_sha(OMITTED)))));
-        assert!(seen.iter().any(|url| url.ends_with(&format!("/git/blobs/{}", blob_sha(SUBSTITUTED)))));
-        assert!(!seen.iter().any(|url| url.ends_with(&format!("/git/blobs/{}", blob_sha(USER)))));
+        assert!(
+            seen.iter()
+                .any(|url| url.ends_with(&format!("/git/blobs/{}", blob_sha(OMITTED))))
+        );
+        assert!(
+            seen.iter()
+                .any(|url| url.ends_with(&format!("/git/blobs/{}", blob_sha(SUBSTITUTED))))
+        );
+        assert!(
+            !seen
+                .iter()
+                .any(|url| url.ends_with(&format!("/git/blobs/{}", blob_sha(USER))))
+        );
 
-        assert_eq!(storage.keys(), [pointer.key.clone()]);
+        assert_eq!(storage.keys(), std::slice::from_ref(&pointer.key));
         let bytes = storage.read(&pointer.key).expect("object");
         assert_eq!(ObjectDigest::of(&bytes), pointer.digest);
         let text = String::from_utf8(bytes.clone()).expect("json");
         assert!(text.contains("lookupUser") && text.contains("omittedFn"));
         for fragment in ["return { id }", "console.log", "return user.id", "stale"] {
-            assert!(!text.contains(fragment), "source fragment {fragment:?} persisted");
+            assert!(
+                !text.contains(fragment),
+                "source fragment {fragment:?} persisted"
+            );
         }
         let snapshot = Snapshot::decode(&bytes, &identity, &repo.tree).expect("decode");
         assert_eq!(snapshot.coverage, *coverage);
         let paths: Vec<&str> = snapshot.files.iter().map(|f| f.path.as_str()).collect();
         assert_eq!(
             paths,
-            ["src/format.ts", "src/handler.ts", "src/lfs.ts", "src/omitted.ts", "src/substituted.ts", "src/user.ts"]
+            [
+                "src/format.ts",
+                "src/handler.ts",
+                "src/lfs.ts",
+                "src/omitted.ts",
+                "src/substituted.ts",
+                "src/user.ts"
+            ]
         );
         let scope = SnapshotScope {
             identity: identity.clone(),
             extraction_version: EXTRACTION_VERSION.to_owned(),
             format_version: SNAPSHOT_FORMAT_VERSION,
         };
-        assert_eq!(persistence.snapshot_pointer(&scope).expect("pointer").as_ref(), Some(pointer));
+        assert_eq!(
+            persistence
+                .snapshot_pointer(&scope)
+                .expect("pointer")
+                .as_ref(),
+            Some(pointer)
+        );
 
         let loaded = read_snapshot(&storage, &identity, pointer)
             .expect("read")
@@ -1035,7 +1093,10 @@ mod tests {
         let hit = loaded.lookup("lookupUser");
         assert_eq!(hit.len(), 1);
         assert_eq!(hit[0].path.as_str(), "src/user.ts");
-        assert_eq!(loaded.lookup("substitutedFn")[0].path.as_str(), "src/substituted.ts");
+        assert_eq!(
+            loaded.lookup("substitutedFn")[0].path.as_str(),
+            "src/substituted.ts"
+        );
         assert_eq!(calls.get(Operation::Blob), 3, "reload fetched nothing");
 
         let again = build.run(&execution(), &identity).expect("second build");
@@ -1063,26 +1124,43 @@ mod tests {
         let prior = SnapshotPointer {
             tree: sha('0'),
             commit: sha('1'),
-            key: ObjectKey::snapshot(&identity, EXTRACTION_VERSION, SNAPSHOT_FORMAT_VERSION, &sha('0')),
+            key: ObjectKey::snapshot(
+                &identity,
+                EXTRACTION_VERSION,
+                SNAPSHOT_FORMAT_VERSION,
+                &sha('0'),
+            ),
             digest: ObjectDigest::of(b""),
             published_at: SystemTime::UNIX_EPOCH,
         };
         let run = |repo: &FakeRepo, limits: ColdBuildLimits| {
             let client = repo.client();
             let storage = MemoryStorage::default();
-            let persistence = MemoryPersistence::default();
-            assert!(persistence.publish_snapshot_pointer(&scope, None, &prior).expect("seed"));
+            let persistence = MemorySnapshotStore::default();
+            assert!(
+                persistence
+                    .publish_snapshot_pointer(&scope, None, &prior)
+                    .expect("seed")
+            );
             let result = ColdBuild::new(&client, &storage, &persistence, limits)
                 .run(&execution(), &identity)
                 .expect("build result");
             let pointer = persistence.snapshot_pointer(&scope).expect("pointer");
-            (result, storage.keys(), pointer, client.calls().get(Operation::Blob))
+            (
+                result,
+                storage.keys(),
+                pointer,
+                client.calls().get(Operation::Blob),
+            )
         };
 
         let repo = FakeRepo::new(&standard_files(), &standard_archive());
         repo.truncate_tree();
         let (result, keys, pointer, _) = run(&repo, ColdBuildLimits::default());
-        assert_eq!(result.outcome, ColdBuildOutcome::Incomplete(IncompleteReason::TruncatedTree));
+        assert_eq!(
+            result.outcome,
+            ColdBuildOutcome::Incomplete(IncompleteReason::TruncatedTree)
+        );
         assert!(result.coverage.truncated_tree && !result.coverage.is_complete());
         assert!(keys.is_empty());
         assert_eq!(pointer.as_ref(), Some(&prior));
@@ -1105,7 +1183,9 @@ mod tests {
             .find(|f| f.path.as_str() == "src/broken.ts")
             .expect("broken skipped");
         assert_eq!(broken.blob, blob_sha(BROKEN));
-        assert!(matches!(&broken.reason, SkipReason::ParseFailed { detail } if detail.contains("deferred")));
+        assert!(
+            matches!(&broken.reason, SkipReason::ParseFailed { detail } if detail.contains("deferred"))
+        );
         assert!(keys.is_empty());
         assert_eq!(pointer.as_ref(), Some(&prior));
 
@@ -1146,7 +1226,13 @@ mod tests {
                 ..ColdBuildLimits::default()
             },
         );
-        assert!(result.coverage.archive_error.as_deref().is_some_and(|e| e.contains("archive expansion")));
+        assert!(
+            result
+                .coverage
+                .archive_error
+                .as_deref()
+                .is_some_and(|e| e.contains("archive expansion"))
+        );
         assert_eq!(result.coverage.archive_entries, 0);
         assert_eq!(result.coverage.fallback_blobs, 6);
         assert_eq!(blobs, 7);
@@ -1168,7 +1254,13 @@ mod tests {
             result.outcome,
             ColdBuildOutcome::Incomplete(IncompleteReason::UnindexedFiles { count: 6 })
         );
-        assert!(result.coverage.skipped.iter().all(|f| f.reason == SkipReason::NotFetched));
+        assert!(
+            result
+                .coverage
+                .skipped
+                .iter()
+                .all(|f| f.reason == SkipReason::NotFetched)
+        );
         assert!(keys.is_empty());
         assert_eq!(pointer.as_ref(), Some(&prior));
     }
@@ -1181,7 +1273,7 @@ mod tests {
         let repo = FakeRepo::new(&standard_files(), &standard_archive());
         let client = repo.client();
         let storage = MemoryStorage::default();
-        let persistence = MemoryPersistence::default();
+        let persistence = MemorySnapshotStore::default();
         let identity = identity();
         let build = ColdBuild::new(&client, &storage, &persistence, ColdBuildLimits::default());
 
@@ -1237,7 +1329,7 @@ mod tests {
         let repo = FakeRepo::new(&standard_files(), &standard_archive());
         let client = repo.client();
         let storage = MemoryStorage::default();
-        let persistence = MemoryPersistence::default();
+        let persistence = MemorySnapshotStore::default();
         let identity = identity();
         let build = ColdBuild::new(&client, &storage, &persistence, ColdBuildLimits::default());
         let scope = SnapshotScope {
@@ -1257,7 +1349,9 @@ mod tests {
         persistence.fail_next_publish();
         assert!(matches!(
             build.run(&execution(), &identity),
-            Err(ColdBuildError::Persistence(PersistenceError::Backend { .. }))
+            Err(ColdBuildError::Persistence(
+                PersistenceError::Backend { .. }
+            ))
         ));
         assert_eq!(storage.keys().len(), 1);
         assert_eq!(persistence.snapshot_pointer(&scope).expect("pointer"), None);
@@ -1267,10 +1361,17 @@ mod tests {
         let ColdBuildOutcome::Published(pointer) = result.outcome else {
             panic!("retry must publish");
         };
-        assert_eq!(client.calls().get(Operation::Archive), archives + 1, "whole-build retry");
-        assert_eq!(storage.keys(), [pointer.key.clone()]);
         assert_eq!(
-            persistence.snapshot_pointer(&scope).expect("pointer").as_ref(),
+            client.calls().get(Operation::Archive),
+            archives + 1,
+            "whole-build retry"
+        );
+        assert_eq!(storage.keys(), std::slice::from_ref(&pointer.key));
+        assert_eq!(
+            persistence
+                .snapshot_pointer(&scope)
+                .expect("pointer")
+                .as_ref(),
             Some(&pointer)
         );
 
@@ -1293,12 +1394,22 @@ mod tests {
         corrupt_storage
             .create(&pointer.key, b"{\"not\":\"a snapshot\"}")
             .expect("seed corrupt object");
-        let corrupt_persistence = MemoryPersistence::default();
-        let build = ColdBuild::new(&client, &corrupt_storage, &corrupt_persistence, ColdBuildLimits::default());
+        let corrupt_persistence = MemorySnapshotStore::default();
+        let build = ColdBuild::new(
+            &client,
+            &corrupt_storage,
+            &corrupt_persistence,
+            ColdBuildLimits::default(),
+        );
         assert!(matches!(
             build.run(&execution(), &identity),
             Err(ColdBuildError::Corrupt { .. })
         ));
-        assert_eq!(corrupt_persistence.snapshot_pointer(&scope).expect("pointer"), None);
+        assert_eq!(
+            corrupt_persistence
+                .snapshot_pointer(&scope)
+                .expect("pointer"),
+            None
+        );
     }
 }

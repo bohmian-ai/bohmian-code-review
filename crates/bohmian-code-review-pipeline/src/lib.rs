@@ -4,7 +4,7 @@
 //! This crate obtains verified GitHub/GHES repository, commit, tree, blob,
 //! and pull-request identities through provider APIs ([`GitHubClient`]),
 //! bounds every call by a caller-supplied [`Execution`], and defines the
-//! narrow [`ObjectStorage`] and [`Persistence`] traits the stage facades
+//! narrow [`ObjectStorage`], [`SnapshotStore`], and [`ContextStore`] traits the stage facades
 //! publish through. [`ColdBuild`] is the first facade: it streams a pinned
 //! default-branch archive into a complete, source-free [`Snapshot`]. It never clones, checks out, or persists source; it
 //! depends on the public `bohmian-code-review` facade alone and imports no
@@ -35,7 +35,8 @@ pub use identity::{
     RepositoryIdentity, TenantId,
 };
 pub use persistence::{
-    ContextId, ContextRecord, Persistence, PersistenceError, SnapshotPointer, SnapshotScope,
+    ContextId, ContextRecord, ContextStore, PersistenceError, SnapshotPointer, SnapshotScope,
+    SnapshotStore,
 };
 pub use snapshot::{
     ColdBuild, ColdBuildError, ColdBuildLimits, ColdBuildOutcome, ColdBuildResult, Coverage,
