@@ -71,3 +71,16 @@ No `TenantId`, and therefore no constructed or reloaded `ObjectKey`, contains a 
 
 - **Focused:** `mise run test:pipeline`. The new assertions fail at `7983907` and pass after the fix.
 - **Broader:** `mise run fmt:check`, `mise run lints`, and `mise exec -- cargo doc --no-deps -p bohmian-code-review-pipeline --all-features` with no pipeline warnings.
+
+## Implementation evidence
+
+Commit `6c0e386`. `TenantId::new` and `validate_name` now share one segment rule, `is_key_segment(raw, max_bytes)` (`identity.rs`), which replaces `is_key_safe` and carries the empty, length, dot-only, and alphabet checks in one place. Per the user instruction, this supersedes the recommendation's inline `raw == "." || raw == ".."` copy; `is_key_safe`'s alphabet is unchanged inside it.
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| AC-R5-1 | `identity.rs` `TenantId::new` → `is_key_segment`; `Deserialize` delegates to `new` | `identities_validate_key_safe_spellings` asserts `.`/`..` via `new` and serde | PASS |
+| AC-R5-2 | `storage.rs` `hostile_keys` gains both dot-only tenant keys | `keys_are_revalidated_on_deserialization`, `persistence::tests::records_revalidate_their_keys_on_deserialization` | PASS |
+| AC-R5-3 | `InvalidIdentity::Tenant` doc/`#[error]` and `TenantId::new` `# Errors` state the dot-only rule | `cargo doc --no-deps -p bohmian-code-review-pipeline --all-features`: no pipeline warnings | PASS |
+| AC-R5-4 | no other behavior changed | `mise run test:pipeline` (23 unit/integration + doc), `mise run gate` | PASS |
+
+Commands (exit 0): `mise run test:pipeline`, `mise run fmt:check`, `mise run lints`, `mise exec -- cargo doc --no-deps -p bohmian-code-review-pipeline --all-features`, `mise run gate`, `git diff --check`. Non-goals (C2, C3, key layout, R4 behavior, `snapshot.rs`/`eligibility.rs`/`testing.rs`) untouched; write set limited to `identity.rs` and `storage.rs`.
