@@ -158,8 +158,47 @@ pub trait SnapshotStore: Send + Sync {
         pointer: &SnapshotPointer,
     ) -> Result<bool, PersistenceError>;
 
-    /// Remove every snapshot pointer for `identity`, returning the object
-    /// keys the caller must delete from snapshot storage.
+    /// Record that a validated snapshot object exists at `key`, refreshing
+    /// `recorded_at` when the row already exists.
+    ///
+    /// The library records an object after it validates and before any
+    /// pointer names it, so an object orphaned by an interrupted build is
+    /// still collectable.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`PersistenceError::Backend`] on backend failure.
+    fn record_snapshot(
+        &self,
+        identity: &Identity,
+        key: &ObjectKey,
+        recorded_at: SystemTime,
+    ) -> Result<(), PersistenceError>;
+
+    /// Up to `limit` recorded snapshots, across identities, whose
+    /// `recorded_at` is before `before` and that no pointer names.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`PersistenceError::Backend`] on backend failure.
+    fn unreferenced_snapshots(
+        &self,
+        before: SystemTime,
+        limit: usize,
+    ) -> Result<Vec<(Identity, ObjectKey)>, PersistenceError>;
+
+    /// Forget the record of `key` under `identity`; forgetting an absent
+    /// record succeeds.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`PersistenceError::Backend`] when the row may still exist.
+    fn delete_snapshot(&self, identity: &Identity, key: &ObjectKey)
+    -> Result<(), PersistenceError>;
+
+    /// Remove every snapshot pointer and record for `identity`, returning
+    /// every recorded object key the caller must delete from snapshot
+    /// storage.
     ///
     /// # Errors
     ///

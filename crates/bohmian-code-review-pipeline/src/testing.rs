@@ -12,6 +12,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::io::Cursor;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::SystemTime;
 
 /// Hook run with every requested URL.
 type RequestHook = Box<dyn Fn(&str) + Send>;
@@ -148,11 +149,12 @@ impl ObjectStorage for MemoryStorage {
     }
 }
 
-/// In-memory snapshot store with conditional pointer publication and a
-/// one-shot publish failure switch.
+/// In-memory snapshot store with conditional pointer publication, snapshot
+/// records keyed by identity, and a one-shot publish failure switch.
 #[derive(Default)]
 pub(crate) struct MemorySnapshotStore {
     pointers: Mutex<HashMap<SnapshotScope, SnapshotPointer>>,
+    records: Mutex<BTreeMap<(ObjectKey, Identity), SystemTime>>,
     fail_next_publish: AtomicBool,
 }
 
@@ -206,20 +208,90 @@ impl SnapshotStore for MemorySnapshotStore {
         Ok(true)
     }
 
-    /// Drop every pointer for `identity` and return the object keys they named.
+    /// Insert or refresh the record of `key` under `identity`.
+    ///
+    /// # Errors
+    ///
+    /// Never.
+    fn record_snapshot(
+        &self,
+        identity: &Identity,
+        key: &ObjectKey,
+        recorded_at: SystemTime,
+    ) -> Result<(), PersistenceError> {
+        self.records
+            .lock()
+            .expect("records lock")
+            .insert((key.clone(), identity.clone()), recorded_at);
+        Ok(())
+    }
+
+    /// Records older than `before` whose key no pointer of the same
+    /// identity names, in key order.
+    ///
+    /// # Errors
+    ///
+    /// Never.
+    fn unreferenced_snapshots(
+        &self,
+        before: SystemTime,
+        limit: usize,
+    ) -> Result<Vec<(Identity, ObjectKey)>, PersistenceError> {
+        let pointers = self.pointers.lock().expect("pointers lock");
+        let referenced = |identity: &Identity, key: &ObjectKey| {
+            pointers
+                .iter()
+                .any(|(scope, pointer)| scope.identity == *identity && pointer.key == *key)
+        };
+        Ok(self
+            .records
+            .lock()
+            .expect("records lock")
+            .iter()
+            .filter(|((key, identity), recorded_at)| {
+                **recorded_at < before && !referenced(identity, key)
+            })
+            .take(limit)
+            .map(|((key, identity), _)| (identity.clone(), key.clone()))
+            .collect())
+    }
+
+    /// Idempotent removal of one record under `identity`.
+    ///
+    /// # Errors
+    ///
+    /// Never.
+    fn delete_snapshot(
+        &self,
+        identity: &Identity,
+        key: &ObjectKey,
+    ) -> Result<(), PersistenceError> {
+        self.records
+            .lock()
+            .expect("records lock")
+            .remove(&(key.clone(), identity.clone()));
+        Ok(())
+    }
+
+    /// Drop every pointer and record for `identity` and return every
+    /// recorded key.
     ///
     /// # Errors
     ///
     /// Never.
     fn remove_repository(&self, identity: &Identity) -> Result<Vec<ObjectKey>, PersistenceError> {
-        let mut keys = Vec::new();
         self.pointers
             .lock()
             .expect("pointers lock")
-            .retain(|scope, pointer| {
-                let keep = scope.identity != *identity;
+            .retain(|scope, _| scope.identity != *identity);
+        let mut keys = Vec::new();
+        self.records
+            .lock()
+            .expect("records lock")
+            .retain(|(key, owner), _| {
+                let keep = owner != identity;
                 if !keep {
-                    keys.push(pointer.key.clone());
+                    keys.push(key.clone());
                 }
                 keep
             });

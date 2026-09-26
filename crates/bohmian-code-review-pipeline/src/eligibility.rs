@@ -12,7 +12,7 @@ use bohmian_code_review::{RelativePath, SymbolicContext};
 use serde::{Deserialize, Serialize};
 
 /// Largest eligible file in bytes; larger blobs are excluded before download.
-pub const MAX_ELIGIBLE_FILE_BYTES: u64 = 1024 * 1024;
+pub(crate) const MAX_ELIGIBLE_FILE_BYTES: u64 = 1024 * 1024;
 
 /// Path segments that mark vendored or generated trees.
 const EXCLUDED_SEGMENTS: [&str; 6] = [
@@ -47,7 +47,7 @@ pub enum ExclusionReason {
 
 /// One tree entry excluded from ingest, with its reason.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Exclusion {
+pub(crate) struct Exclusion {
     /// The entry's path.
     pub path: RelativePath,
     /// Why it was excluded.
@@ -56,7 +56,7 @@ pub struct Exclusion {
 
 /// The eligible blobs of one tree and everything it left out.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct EligibleTree {
+pub(crate) struct EligibleTree {
     /// Regular blobs the pipeline may fetch and index, in listing order.
     pub eligible: Vec<TreeEntry>,
     /// Entries left out, each with its reason; directories are not listed.
@@ -69,7 +69,7 @@ pub struct EligibleTree {
 /// file order and the last matching rule for each attribute wins, as Git
 /// resolves attributes. Nested `.gitattributes` files are not consulted.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct RootAttributes {
+pub(crate) struct RootAttributes {
     rules: Vec<AttributeRule>,
 }
 
@@ -87,7 +87,7 @@ impl RootAttributes {
     ///
     /// Invalid UTF-8 yields no rules rather than an error: a malformed
     /// attributes file cannot make source ineligible.
-    pub fn parse(bytes: &[u8]) -> RootAttributes {
+    pub(crate) fn parse(bytes: &[u8]) -> RootAttributes {
         let text = String::from_utf8_lossy(bytes);
         let rules = text
             .lines()
@@ -159,26 +159,69 @@ fn pattern_matches(pattern: &str, path: &str) -> bool {
     }
 }
 
-/// Recursive glob match over bytes with `*`, `?`, and `**` semantics; a
-/// trailing `**` matches everything below its directory.
+/// Match a slash-separated glob against a path, segment by segment.
+///
+/// A `**` segment matches zero or more whole path segments, or one or more
+/// when it is the last segment, so `gen/**` matches everything below `gen`.
+/// Every other segment matches one path segment through
+/// [`segment_matches`]. The pass keeps one reachability row over path
+/// segments per pattern segment, so matching is `O(pattern × path)` with no
+/// backtracking however many wildcards the pattern holds.
 fn glob_matches(pattern: &str, text: &str) -> bool {
-    let (p, t) = (pattern.as_bytes(), text.as_bytes());
-    fn go(p: &[u8], t: &[u8]) -> bool {
-        match p {
-            [] => t.is_empty(),
-            [b'*', b'*'] => true,
-            [b'*', b'*', rest @ ..] => {
-                let rest = rest.strip_prefix(b"/").unwrap_or(rest);
-                (0..=t.len()).any(|i| (i == 0 || t[i - 1] == b'/') && go(rest, &t[i..]))
+    let path: Vec<&str> = text.split('/').collect();
+    let segments: Vec<&str> = pattern.split('/').collect();
+    let mut reachable = vec![false; path.len() + 1];
+    reachable[0] = true;
+    for (index, segment) in segments.iter().enumerate() {
+        let mut next = vec![false; path.len() + 1];
+        if *segment == "**" {
+            let trailing = index + 1 == segments.len();
+            let mut seen = false;
+            for (consumed, slot) in next.iter_mut().enumerate() {
+                if !trailing {
+                    seen |= reachable[consumed];
+                }
+                *slot = seen;
+                if trailing {
+                    seen |= reachable[consumed];
+                }
             }
-            [b'*', rest @ ..] => (0..=t.len())
-                .take_while(|&i| i == 0 || t[i - 1] != b'/')
-                .any(|i| go(rest, &t[i..])),
-            [b'?', rest @ ..] => !t.is_empty() && t[0] != b'/' && go(rest, &t[1..]),
-            [c, rest @ ..] => !t.is_empty() && t[0] == *c && go(rest, &t[1..]),
+        } else {
+            for (consumed, name) in path.iter().enumerate() {
+                next[consumed + 1] = reachable[consumed] && segment_matches(segment, name);
+            }
+        }
+        reachable = next;
+    }
+    reachable[path.len()]
+}
+
+/// Match one path segment against one pattern segment where `*` matches any
+/// run of bytes and `?` exactly one.
+///
+/// Iterative greedy matching that remembers only the latest `*`: a later
+/// star subsumes every earlier backtrack choice, so this runs in
+/// `O(pattern × text)` worst case instead of exponential recursion.
+fn segment_matches(pattern: &str, text: &str) -> bool {
+    let (pattern, text) = (pattern.as_bytes(), text.as_bytes());
+    let (mut p, mut t) = (0, 0);
+    let mut star: Option<(usize, usize)> = None;
+    while t < text.len() {
+        if p < pattern.len() && pattern[p] == b'*' {
+            star = Some((p, t));
+            p += 1;
+        } else if p < pattern.len() && (pattern[p] == b'?' || pattern[p] == text[t]) {
+            p += 1;
+            t += 1;
+        } else if let Some((star_p, star_t)) = star {
+            star = Some((star_p, star_t + 1));
+            p = star_p + 1;
+            t = star_t + 1;
+        } else {
+            return false;
         }
     }
-    go(p, t)
+    pattern[p..].iter().all(|&byte| byte == b'*')
 }
 
 /// Classify every entry of a tree listing as eligible or excluded.
@@ -187,7 +230,7 @@ fn glob_matches(pattern: &str, text: &str) -> bool {
 /// root `.gitattributes` overrides, where an explicit `false` overrides the
 /// segment and minified defaults. Directory entries are dropped silently
 /// because they are not blobs.
-pub fn classify(
+pub(crate) fn classify(
     entries: &[TreeEntry],
     attributes: &RootAttributes,
     context: &SymbolicContext,
@@ -275,6 +318,30 @@ mod tests {
         assert_eq!(attributes.resolve("other.ts"), (None, None));
         assert!(glob_matches("a?c", "abc"));
         assert!(!glob_matches("a?c", "a/c"));
+    }
+
+    /// `**` spans zero or more segments mid-pattern and one or more when
+    /// trailing; `*` never crosses `/`; many-star patterns over long
+    /// near-miss text finish immediately instead of backtracking.
+    #[test]
+    fn glob_segments_and_many_stars_match_without_backtracking() {
+        assert!(glob_matches("a/**/b.ts", "a/b.ts"));
+        assert!(glob_matches("a/**/b.ts", "a/x/y/b.ts"));
+        assert!(glob_matches("**/b.ts", "b.ts"));
+        assert!(glob_matches("gen/**", "gen/a/b.ts"));
+        assert!(!glob_matches("gen/**", "gen"));
+        assert!(!glob_matches("gen/*", "gen/a/b.ts"));
+        assert!(glob_matches("*.pb.*", "x.pb.go"));
+        let pattern = "*a".repeat(40) + "*b";
+        let text = "a".repeat(4000);
+        let started = std::time::Instant::now();
+        assert!(!glob_matches(&pattern, &text));
+        assert!(!glob_matches(
+            &format!("{pattern}/**/{pattern}"),
+            &format!("{text}/{text}")
+        ));
+        assert!(glob_matches(&pattern, &format!("{text}b")));
+        assert!(started.elapsed() < std::time::Duration::from_secs(1));
     }
 
     /// Every exclusion reason is reported once; attribute `false` overrides
