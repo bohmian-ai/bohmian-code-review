@@ -555,10 +555,21 @@ pub struct Archive {
 }
 
 /// Reader that fails instead of truncating once `limit` bytes were read.
-struct BoundedReader<R> {
+pub(crate) struct BoundedReader<R> {
     inner: R,
     remaining: u64,
     resource: String,
+}
+
+impl<R: Read> BoundedReader<R> {
+    /// Bound `inner` to `limit` bytes, naming `resource` in the overflow error.
+    pub(crate) fn new(inner: R, limit: u64, resource: &str) -> BoundedReader<R> {
+        BoundedReader {
+            inner,
+            remaining: limit,
+            resource: resource.to_owned(),
+        }
+    }
 }
 
 impl<R: Read> Read for BoundedReader<R> {
@@ -698,7 +709,7 @@ fn encode_segment(raw: &str) -> String {
 }
 
 /// Git blob id of `bytes`: SHA-1 over `blob <len>\0<bytes>`.
-fn git_blob_sha(bytes: &[u8]) -> String {
+pub(crate) fn git_blob_sha(bytes: &[u8]) -> String {
     let mut hasher = Sha1::new();
     hasher.update(format!("blob {}\0", bytes.len()).as_bytes());
     hasher.update(bytes);
@@ -981,11 +992,11 @@ impl GitHubClient {
             _ => return Err(status_error(&first, &resource)),
         };
         Ok(Archive {
-            reader: Box::new(BoundedReader {
-                inner: response.body,
-                remaining: self.limits.max_archive_bytes,
-                resource,
-            }),
+            reader: Box::new(BoundedReader::new(
+                response.body,
+                self.limits.max_archive_bytes,
+                &resource,
+            )),
         })
     }
 
