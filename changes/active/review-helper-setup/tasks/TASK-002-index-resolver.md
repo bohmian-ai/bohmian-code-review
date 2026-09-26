@@ -97,9 +97,9 @@ Return `SPEC_REVISION_REQUIRED` if correctness requires parser coupling in index
 
 | Acceptance criterion | Implementation evidence | Verification evidence | Result |
 |---|---|---|---|
-| Exact case-sensitive simple/qualified lookup with duplicates in path/location/ID order; unknown empty | `crates/bohmian-code-review-index/src/lib.rs` (`SymbolIndex::lookup`, `Posting` order, `is_declaration`) | `tests/index.rs::exact_lookup_returns_all_duplicates_in_canonical_order` | PASS |
-| Per-file replacement/removal leaves complete postings, unrelated files intact; only facts/byte lengths retained | `SymbolIndex::upsert`/`remove` (`&mut self`, remove-before-insert), `IndexedFile { byte_len, nodes }` | `upsert_replaces_postings_and_removal_is_idempotent`, `successive_upserts_retain_facts_and_byte_lengths` | PASS |
-| Resolver keeps every plausible/ambiguous hit from reference names, extractor candidates, and declaration names; no exact-definition/completeness claim | `crates/bohmian-code-review-resolve/src/lib.rs` (`reference_names`, `declaration_names`, `resolve`) | `tests/resolve.rs::all_name_sources_resolve_to_every_plausible_hit` | PASS |
+| Exact case-sensitive simple/qualified lookup with duplicates in path/location/ID order; unknown empty | `crates/bohmian-code-review-index/src/lib.rs` (`SymbolIndex::lookup`, `Posting` order, `is_declaration`) | `index/src/lib.rs` `tests::exact_lookup_returns_all_duplicates_in_canonical_order` | PASS |
+| Per-file replacement/removal leaves complete postings, unrelated files intact; only facts/byte lengths retained | `SymbolIndex::upsert`/`remove` (`&mut self`, remove-before-insert), `IndexedFile { byte_len, nodes }` | `index/src/lib.rs` `tests::upsert_replaces_postings_and_removal_is_idempotent`, `tests::successive_upserts_retain_facts_and_byte_lengths` | PASS |
+| Resolver keeps every plausible/ambiguous hit from reference names, extractor candidates, and declaration names; no exact-definition/completeness claim | `crates/bohmian-code-review-resolve/src/lib.rs` (`reference_names`, `declaration_names`, `resolve`) | `resolve/src/lib.rs` `tests::all_name_sources_resolve_to_every_plausible_hit` | PASS |
 
 ### Verification
 
@@ -108,3 +108,18 @@ Return `SPEC_REVISION_REQUIRED` if correctness requires parser coupling in index
 ### Non-goals and limits
 
 No source retention, parser dependency in index, persistence, fuzzy match, or proven-definition claim. File, import, export, and parameter nodes are not posted as declarations. Malformed/unsupported extraction isolation through the facade closes in TASK-003 per this task's scope. `IMPLEMENTATION_PLAN.md` carries a pre-existing maintainer edit and was left out.
+
+### Remediation TASK-002-R1 (FIND-TASK-002-1, FIND-TASK-002-2)
+
+The four owner tests, their helpers, and every assertion moved unchanged from `crates/bohmian-code-review-{index,resolve}/tests/*.rs` into `#[cfg(test)] mod tests` in each owning `src/lib.rs`; the external test files were deleted. The resolver test still calls the real `SymbolIndex`. The RED rows above are historical lane-level observations from before the move; no focused RED was replayed.
+
+Current GREEN closure, one exact command per named test:
+
+| Command | Observed |
+|---|---|
+| `mise exec -- cargo test --locked -p bohmian-code-review-index --lib tests::exact_lookup_returns_all_duplicates_in_canonical_order -- --exact` | `1 passed; 0 failed; … 2 filtered out` |
+| `mise exec -- cargo test --locked -p bohmian-code-review-index --lib tests::upsert_replaces_postings_and_removal_is_idempotent -- --exact` | `1 passed; 0 failed; … 2 filtered out` |
+| `mise exec -- cargo test --locked -p bohmian-code-review-index --lib tests::successive_upserts_retain_facts_and_byte_lengths -- --exact` | `1 passed; 0 failed; … 2 filtered out` |
+| `mise exec -- cargo test --locked -p bohmian-code-review-resolve --lib tests::all_name_sources_resolve_to_every_plausible_hit -- --exact` | `1 passed; 0 failed; … 0 filtered out` |
+
+Each index command selects exactly its one named test; `2 filtered out` is the other two tests in the same `--lib` target, so the remediation's literal `0 filtered out` is only attainable for the single-test resolver target. Broader checks rerun after the move: `mise run test:index` (3 passed), `mise run test:resolve` (1 passed), `mise run fmt:check`, `mise run lints`, `git diff --check` — all pass. No production code, fixture, grammar, or `IMPLEMENTATION_PLAN.md` change.
