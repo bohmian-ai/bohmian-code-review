@@ -1,6 +1,6 @@
 //! [`Extractor`] — the synchronous native extraction owner.
 
-use crate::composite::{CompositeExtractor, DiscoveredSource};
+use crate::composite::{CompositeExtractor, CompositeKind, DiscoveredSource};
 use crate::config::ExtractionConfig;
 use crate::decode::decode_buffers;
 use crate::error::ExtractionError;
@@ -57,6 +57,21 @@ impl Extractor {
     /// The configuration this extractor was constructed with.
     pub fn config(&self) -> &ExtractionConfig {
         &self.config
+    }
+
+    /// The language this extractor would attempt for `file_path` from the
+    /// path alone, or `None` when the path is unregistered, routes to a
+    /// language with no native or composite extractor, or is disabled.
+    ///
+    /// Intended for filtering before source is downloaded. A `.h` path
+    /// reports [`Language::C`] here; content routing may still select C++
+    /// or Objective-C at parse time.
+    #[must_use]
+    pub fn path_language(&self, file_path: &str) -> Option<Language> {
+        let language = self.router.detect(file_path, None);
+        let supported = CompositeKind::from_discovered(file_path, language).is_some()
+            || (language.is_native() && self.config.enabled_languages().contains(&language));
+        supported.then_some(language)
     }
 
     /// Routes a repository-relative path and its source to a language using
@@ -288,6 +303,24 @@ mod tests {
     /// Returns the validated source bytes borrowed by this extraction request.
     fn source<'a>(path: &'a RelativePath, bytes: &'a [u8], language: Language) -> SourceFile<'a> {
         SourceFile::new(path, bytes, language)
+    }
+
+    #[test]
+    /// Path-only routing reports native and composite languages, honors the
+    /// enabled set, and reports nothing for unregistered or extractor-less
+    /// languages.
+    fn path_language_reports_eligibility_without_source() {
+        let all = Extractor::new(ExtractionConfig::all_native()).expect("valid config");
+        assert_eq!(all.path_language("src/a.ts"), Some(Language::Typescript));
+        assert_eq!(all.path_language("src/a.h"), Some(Language::C));
+        assert_eq!(all.path_language("src/App.svelte"), Some(Language::Svelte));
+        assert_eq!(all.path_language("conf/routes"), Some(Language::Yaml));
+        assert_eq!(all.path_language("README.md"), None);
+        assert_eq!(all.path_language("Makefile"), None);
+        let python_only = Extractor::new(ExtractionConfig::new(BTreeSet::from([Language::Python])))
+            .expect("valid config");
+        assert_eq!(python_only.path_language("a.py"), Some(Language::Python));
+        assert_eq!(python_only.path_language("a.ts"), None);
     }
 
     #[test]

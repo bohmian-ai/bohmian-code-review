@@ -110,6 +110,14 @@ mod vbnet;
 /// Verifies that corpus tests preserves the frozen extraction contract.
 mod corpus_tests;
 
+/// Identity of the extracted-fact contract produced by this crate.
+///
+/// Persisted facts are stamped with this value and refused when it differs.
+/// Bump it whenever a grammar pin in `Cargo.toml`, a walker, the decoder, or
+/// the fact projection changes what is extracted; the extraction fixtures
+/// under `corpus_tests` are the evidence such a change occurred.
+pub const EXTRACTION_VERSION: &str = "codegraph-kernel-572d22bf.tree-sitter-0.25.10.facts-1";
+
 pub use composite::{CompositeExtractor, CompositeKind, DiscoveredSource};
 pub use config::ExtractionConfig;
 pub use error::ExtractionError;
