@@ -28,8 +28,8 @@ run = "cargo clippy --locked --workspace --all-targets --all-features -- -D warn
 [tasks."test:extract"]
 description = "Run core facts and extractor tests, including the copied fixture corpus"
 run = [
-  "cargo test --locked -p bohmian-code-review-core --all-targets",
-  "cargo test --locked -p bohmian-code-review-extract --all-targets",
+  "cargo test --locked -p bohmian-code-review-core --all-targets --all-features",
+  "cargo test --locked -p bohmian-code-review-extract --all-targets --all-features",
 ]
 
 [tasks."test:index"]
@@ -47,3 +47,22 @@ run = "cargo test --locked -p bohmian-code-review-select --all-targets --all-fea
 [tasks."test:symbolic-context:journey"]
 description = "Run the facade's external public-API symbolic-context journey"
 run = "cargo test --locked -p bohmian-code-review --test symbolic_context_journey --all-features"
+
+[tasks."test:rust"]
+description = "Run every component lane and the public journey"
+depends = [
+  "test:extract",
+  "test:index",
+  "test:resolve",
+  "test:select",
+  "test:symbolic-context:journey",
+]
+
+[tasks."check:default"]
+description = "Formatting, Clippy, and workspace type-check"
+depends = ["fmt:check", "lints"]
+run = "cargo check --locked --workspace --all-targets --all-features"
+
+[tasks.gate]
+description = "Full repository gate: default checks, all Rust tests, and skill sync"
+depends = ["check:default", "test:rust", "check:skills-sync"]
