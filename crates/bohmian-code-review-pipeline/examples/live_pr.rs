@@ -27,7 +27,8 @@ use bohmian_code_review_pipeline::testing::{
 };
 use bohmian_code_review_pipeline::{
     ColdBuild, ColdBuildLimits, Contexts, GitHubClient, GitHubHost, Identity, InstallationId,
-    InstallationToken, ObjectSha, PrContext, PrContextLimits, RepositoryIdentity, RequestLimits, TenantId,
+    InstallationToken, ObjectSha, PrContext, PrContextLimits, RepositoryIdentity, RequestLimits,
+    TenantId,
 };
 use serde_json::json;
 use std::env;

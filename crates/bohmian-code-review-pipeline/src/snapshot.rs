@@ -1725,7 +1725,12 @@ pub(crate) mod tests {
         let first = build.run_at(&identity, &repo.commit).await.expect("pinned");
         assert!(matches!(first.outcome, ColdBuildOutcome::Published(_)));
         let (head, tree) = (sha('d'), sha('8'));
-        repo.push(&head, &tree, &[file("src/user.ts", USER)], &[("src/user.ts", USER)]);
+        repo.push(
+            &head,
+            &tree,
+            &[file("src/user.ts", USER)],
+            &[("src/user.ts", USER)],
+        );
 
         let repeat = build.run_at(&identity, &repo.commit).await.expect("pinned");
         assert_eq!((&repeat.commit, &repeat.tree), (&repo.commit, &repo.tree));
