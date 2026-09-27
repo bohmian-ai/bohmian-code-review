@@ -810,20 +810,32 @@ const RATE_LIMIT_BODY_BYTES: usize = 4096;
 /// Whether a 403 body names a rate limit, as GitHub's secondary-limit
 /// responses do when they carry no rate headers.
 ///
-/// At most [`RATE_LIMIT_BODY_BYTES`] are read; a read error counts as no
-/// signal, and the text never leaves this function.
+/// Only the [`rate_limit_prefix`] is inspected; the text never leaves this
+/// function.
 async fn names_rate_limit(response: &mut HttpResponse) -> bool {
-    let mut body = Vec::new();
-    while body.len() < RATE_LIMIT_BODY_BYTES {
-        match response.body.chunk().await {
-            Ok(Some(chunk)) => body.extend_from_slice(&chunk),
+    let prefix = rate_limit_prefix(response.body.as_mut()).await;
+    String::from_utf8_lossy(&prefix)
+        .to_ascii_lowercase()
+        .contains("rate limit")
+}
+
+/// The first [`RATE_LIMIT_BODY_BYTES`] of `body`, copied into a buffer
+/// that never grows past that bound: each chunk is sliced to the room left
+/// before it is copied, so one oversized chunk costs no extra copy here.
+///
+/// A read error ends the prefix early and counts as no signal.
+async fn rate_limit_prefix(body: &mut dyn HttpBody) -> Vec<u8> {
+    let mut prefix = Vec::with_capacity(RATE_LIMIT_BODY_BYTES);
+    while prefix.len() < RATE_LIMIT_BODY_BYTES {
+        match body.chunk().await {
+            Ok(Some(chunk)) => {
+                let room = RATE_LIMIT_BODY_BYTES - prefix.len();
+                prefix.extend_from_slice(&chunk[..chunk.len().min(room)]);
+            }
             _ => break,
         }
     }
-    body.truncate(RATE_LIMIT_BODY_BYTES);
-    String::from_utf8_lossy(&body)
-        .to_ascii_lowercase()
-        .contains("rate limit")
+    prefix
 }
 
 /// Whether a `Location` is `https://<trusted archive host>/...`.
@@ -1857,6 +1869,45 @@ mod tests {
 
         assert_eq!(fake.seen().len(), 1);
         assert_eq!(client.calls().get(Operation::Repository), 1);
+    }
+
+    /// A header-less 403 is classified from a hard-bounded body prefix: one
+    /// oversized chunk is copied only up to the bound, a marker past it is
+    /// ignored, a marker inside it still signals a limit, and neither case
+    /// sends a retry request.
+    #[tokio::test]
+    async fn headerless_403_inspects_only_a_bounded_prefix() {
+        let mut oversized = FixedBody::new(vec![b'x'; 4 * RATE_LIMIT_BODY_BYTES]);
+        let prefix = rate_limit_prefix(&mut oversized).await;
+        assert_eq!(prefix.len(), RATE_LIMIT_BODY_BYTES);
+        assert!(prefix.capacity() <= RATE_LIMIT_BODY_BYTES);
+
+        let (client, fake) = client_on(
+            GitHubHost::public(),
+            RequestLimits {
+                max_retry_wait: Duration::from_secs(5),
+                ..RequestLimits::default()
+            },
+        );
+        let mut beyond = vec![b'x'; RATE_LIMIT_BODY_BYTES];
+        beyond.extend_from_slice(b"rate limit");
+        fake.push(403, &[], beyond);
+        assert_eq!(
+            client.repository(&repo()).await.err(),
+            Some(GitHubError::Forbidden)
+        );
+
+        let mut within = vec![b'x'; RATE_LIMIT_BODY_BYTES - "rate limit".len()];
+        within.extend_from_slice(b"rate limit");
+        within.extend(vec![b'x'; 2 * RATE_LIMIT_BODY_BYTES]);
+        fake.push(403, &[], within);
+        assert_eq!(
+            client.repository(&repo()).await.err(),
+            Some(GitHubError::RateLimited {
+                retry_after: SECONDARY_RATE_LIMIT_WAIT
+            })
+        );
+        assert_eq!(fake.seen().len(), 2);
     }
 
     /// Scenario 2: rate limits with a short wait are retried once under one
