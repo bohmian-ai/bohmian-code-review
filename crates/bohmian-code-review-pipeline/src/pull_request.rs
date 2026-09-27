@@ -1291,6 +1291,93 @@ mod tests {
         );
     }
 
+    /// The file ceiling, not tree metadata, admits changed heads: with the
+    /// handler's size understated, a ceiling below it makes the handler a
+    /// file-local `Oversize` omission while the small head is analyzed, and
+    /// the snapshot built under the larger default ceiling is not reused.
+    /// A provider ceiling below the file ceiling stays `FetchFailed`.
+    #[tokio::test]
+    async fn file_ceiling_omits_oversize_heads_and_snapshots() {
+        let mut repo = FakeRepo::new(&standard_files(), &standard_archive());
+        let stores = Stores::default();
+        cold(&repo, &stores.snapshot_storage, &stores.snapshot_store).await;
+        let mut files = head_files(PR1_HANDLER, vec![file("src/pr1.ts", PR1_FILE)]);
+        for f in files.iter_mut().filter(|f| f.path == "src/handler.ts") {
+            f.size = Some(1);
+        }
+        route_pr(
+            &repo,
+            1,
+            (&sha('1'), &sha('2')),
+            &files,
+            &[
+                ("src/handler.ts", "modified", PR1_HANDLER, Some(PR1_PATCH)),
+                (
+                    "src/pr1.ts",
+                    "added",
+                    PR1_FILE,
+                    Some("@@ -0,0 +1,3 @@\n+export function pr1Only(): number {\n+  return 1;\n+}"),
+                ),
+            ],
+        );
+        let handler_reason = |context: &ReviewContext| {
+            context
+                .not_analyzed
+                .iter()
+                .find(|n| n.path == "src/handler.ts")
+                .map(|n| n.reason.clone())
+        };
+
+        let client = repo.client();
+        let limits = PrContextLimits {
+            max_file_bytes: 100,
+            ..PrContextLimits::default()
+        };
+        let small = stores
+            .facade(&client, limits)
+            .run(&identity(), 1)
+            .await
+            .expect("small ceiling");
+        let context = &small.context;
+        assert_eq!(
+            (
+                context.coverage.scope,
+                context.coverage.snapshot_tree.clone()
+            ),
+            (Scope::Scoped, None)
+        );
+        assert_eq!(
+            context.not_analyzed,
+            vec![NotAnalyzed {
+                path: "src/handler.ts".to_owned(),
+                reason: NotAnalyzedReason::Oversize,
+            }]
+        );
+        assert!(
+            context
+                .spans
+                .iter()
+                .all(|s| s.path.as_str() != "src/handler.ts")
+        );
+
+        repo.limits.max_blob_bytes = 100;
+        let client = repo.client();
+        let capped = stores
+            .facade(&client, PrContextLimits::default())
+            .run(&identity(), 1)
+            .await
+            .expect("provider ceiling");
+        assert_eq!(capped.context.coverage.scope, Scope::Repository);
+        assert!(
+            matches!(
+                handler_reason(&capped.context),
+                Some(NotAnalyzedReason::FetchFailed { detail }) if detail.contains("exceeds 100 bytes")
+            ),
+            "{:?}",
+            capped.context.not_analyzed
+        );
+    }
+
     /// A rejected PR-file record with a canonical filename is still a
     /// changed path: it is never selected as secondary context, and without
     /// a snapshot it seeds nearby selection. A non-canonical filename stays
