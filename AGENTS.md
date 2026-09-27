@@ -26,6 +26,7 @@ The approved outer pipeline library crate (`changes/active/repo-parser/spec.md`)
 
 - Keep stateful capabilities and workflows on cohesive concrete structs. Use free functions only for stateless transformations; use traits only for multiple real implementations. Avoid generic storage/provider interfaces, future-proofing, and unnecessary features or dependencies.
 - Use `&str`, `&[u8]`, slices, and references when ownership is unnecessary. Treat `.clone()` as an ownership decision. Use domain values such as `RelativePath` at trust boundaries.
+- Durable time comes from the persistence store's clock (the database clock), never the host clock. Do not pass host timestamps across store traits.
 - Use `thiserror` for library errors, `tracing` with structured fields when diagnostics are needed, and no unchecked `unwrap()` for input, environment, parsing, or IO. `expect()` is reserved for named invariants.
 - Keep imports at module top and use imported bare types in signatures.
 - Every new or materially modified Rust item, including private items and tests, requires useful rustdoc describing intent, workflow, and invariants. Fallible functions need `# Errors`; document remaining panics and cancellation/partial progress where applicable.
