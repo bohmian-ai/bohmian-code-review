@@ -7,7 +7,7 @@
 //! with a reason so coverage can count exclusions separately from eligible
 //! files that were not indexed.
 
-use crate::github::{TreeEntry, TreeEntryMode};
+use crate::github::{RejectedPath, TreeEntry, TreeEntryMode};
 use bohmian_code_review::{RelativePath, SymbolicContext};
 use serde::{Deserialize, Serialize};
 
@@ -43,7 +43,8 @@ pub enum ExclusionReason {
     VendoredAttribute,
     /// Reported size exceeds the file bound.
     Oversize,
-    /// The listing entry failed path, mode, or id validation.
+    /// The listing entry failed path, mode, or id validation and its path
+    /// does not prove it ineligible, so it may be an eligible source.
     InvalidEntry,
 }
 
@@ -63,6 +64,8 @@ pub(crate) struct EligibleTree {
     pub eligible: Vec<TreeEntry>,
     /// Entries left out, each with its reason; directories are not listed.
     pub excluded: Vec<Exclusion>,
+    /// Rejected listing entries whose eligibility is unknown.
+    pub unknown: usize,
 }
 
 /// Parsed root `.gitattributes` linguist overrides.
@@ -240,9 +243,13 @@ fn segment_matches(pattern: &str, text: &str) -> bool {
 /// `context` answers the path-only language query; `attributes` supplies
 /// root `.gitattributes` overrides, where an explicit `false` overrides the
 /// segment and minified defaults. Directory entries are dropped silently
-/// because they are not blobs.
+/// because they are not blobs. A `rejected` entry with a canonical path that
+/// the path rules exclude is excluded under that reason, since no mode, id,
+/// or size could make it eligible; every other rejected entry may be an
+/// eligible source and is counted in [`EligibleTree::unknown`].
 pub(crate) fn classify(
     entries: &[TreeEntry],
+    rejected: &[RejectedPath],
     attributes: &RootAttributes,
     context: &SymbolicContext,
     max_file_bytes: u64,
@@ -256,6 +263,15 @@ pub(crate) fn classify(
                 path: entry.path.clone(),
                 reason,
             }),
+        }
+    }
+    for entry in rejected {
+        let proven = RelativePath::new(&entry.path).ok().and_then(|path| {
+            path_exclusion(path.as_str(), attributes, context).map(|reason| (path, reason))
+        });
+        match proven {
+            Some((path, reason)) => tree.excluded.push(Exclusion { path, reason }),
+            None => tree.unknown += 1,
         }
     }
     tree
@@ -274,27 +290,39 @@ fn exclusion(
         TreeEntryMode::Submodule => return Err(ExclusionReason::Submodule),
         TreeEntryMode::File | TreeEntryMode::Executable => {}
     }
-    let path = entry.path.as_str();
-    if context.path_language(path).ok().flatten().is_none() {
-        return Err(ExclusionReason::Unsupported);
-    }
-    let (generated, vendored) = attributes.resolve(path);
-    if generated == Some(true) {
-        return Err(ExclusionReason::GeneratedAttribute);
-    }
-    if vendored == Some(true) {
-        return Err(ExclusionReason::VendoredAttribute);
-    }
-    if vendored.is_none() && path.split('/').any(|seg| EXCLUDED_SEGMENTS.contains(&seg)) {
-        return Err(ExclusionReason::VendoredSegment);
-    }
-    if generated.is_none() && (path.ends_with(".min.js") || path.ends_with(".min.css")) {
-        return Err(ExclusionReason::MinifiedOutput);
+    if let Some(reason) = path_exclusion(entry.path.as_str(), attributes, context) {
+        return Err(reason);
     }
     if entry.size.is_some_and(|size| size > max_file_bytes) {
         return Err(ExclusionReason::Oversize);
     }
     Ok(true)
+}
+
+/// The path-only exclusion of a regular file at `path`, if any: language,
+/// linguist attributes, vendored segments, and minified output.
+fn path_exclusion(
+    path: &str,
+    attributes: &RootAttributes,
+    context: &SymbolicContext,
+) -> Option<ExclusionReason> {
+    if context.path_language(path).ok().flatten().is_none() {
+        return Some(ExclusionReason::Unsupported);
+    }
+    let (generated, vendored) = attributes.resolve(path);
+    if generated == Some(true) {
+        return Some(ExclusionReason::GeneratedAttribute);
+    }
+    if vendored == Some(true) {
+        return Some(ExclusionReason::VendoredAttribute);
+    }
+    if vendored.is_none() && path.split('/').any(|seg| EXCLUDED_SEGMENTS.contains(&seg)) {
+        return Some(ExclusionReason::VendoredSegment);
+    }
+    if generated.is_none() && (path.ends_with(".min.js") || path.ends_with(".min.css")) {
+        return Some(ExclusionReason::MinifiedOutput);
+    }
+    None
 }
 
 #[cfg(test)]
@@ -368,6 +396,7 @@ mod tests {
         let eligible = |attributes: &[u8]| -> Vec<String> {
             classify(
                 &entries,
+                &[],
                 &RootAttributes::parse(attributes),
                 &context,
                 MAX_ELIGIBLE_FILE_BYTES,
@@ -420,7 +449,13 @@ mod tests {
                 Some(MAX_ELIGIBLE_FILE_BYTES + 1),
             ),
         ];
-        let tree = classify(&entries, &attributes, &context, MAX_ELIGIBLE_FILE_BYTES);
+        let tree = classify(
+            &entries,
+            &[],
+            &attributes,
+            &context,
+            MAX_ELIGIBLE_FILE_BYTES,
+        );
         let eligible: Vec<&str> = tree.eligible.iter().map(|e| e.path.as_str()).collect();
         assert_eq!(eligible, ["src/ok.ts", "bin/run.py", "vendor/keep.ts"]);
         let excluded: Vec<(&str, ExclusionReason)> = tree
@@ -441,5 +476,46 @@ mod tests {
                 ("big.ts", ExclusionReason::Oversize),
             ]
         );
+    }
+
+    /// A rejected entry is excluded under its path reason only when its
+    /// canonical path proves it ineligible; a supported or non-canonical
+    /// path leaves its eligibility unknown.
+    #[test]
+    fn rejected_entries_are_excluded_only_when_their_path_proves_it() {
+        let context = SymbolicContext::new();
+        let attributes = RootAttributes::parse(b"gen/* linguist-generated\n");
+        let rejected = |path: &str| RejectedPath {
+            path: path.to_owned(),
+            reason: "invalid sha".to_owned(),
+        };
+        let tree = classify(
+            &[],
+            &[
+                rejected("README.md"),
+                rejected("gen/a.ts"),
+                rejected("vendor/a.ts"),
+                rejected("src/a.ts"),
+                rejected("src/../README.md"),
+            ],
+            &attributes,
+            &context,
+            MAX_ELIGIBLE_FILE_BYTES,
+        );
+        let excluded: Vec<(&str, ExclusionReason)> = tree
+            .excluded
+            .iter()
+            .map(|e| (e.path.as_str(), e.reason))
+            .collect();
+        assert_eq!(
+            excluded,
+            [
+                ("README.md", ExclusionReason::Unsupported),
+                ("gen/a.ts", ExclusionReason::GeneratedAttribute),
+                ("vendor/a.ts", ExclusionReason::VendoredSegment),
+            ]
+        );
+        assert!(tree.eligible.is_empty());
+        assert_eq!(tree.unknown, 2);
     }
 }

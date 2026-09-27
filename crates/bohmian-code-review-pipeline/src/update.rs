@@ -132,7 +132,7 @@ mod tests {
     use crate::github::Operation;
     use crate::persistence::SnapshotScope;
     use crate::snapshot::tests::{
-        FakeRepo, File, HANDLER, LFS, OMITTED, SUBSTITUTED, blob_sha, file, identity, sha,
+        FakeRepo, File, HANDLER, LFS, OMITTED, SUBSTITUTED, bad_sha, blob_sha, file, identity, sha,
         standard_archive, standard_files,
     };
     use crate::snapshot::{ColdBuildOutcome, IncompleteReason, SkipReason};
@@ -346,6 +346,37 @@ mod tests {
         let retry = update.run(&identity).await.expect("retry");
         assert!(matches!(retry.outcome, ColdBuildOutcome::Published(_)));
         assert_eq!(pointer(&store, &identity).await.map(|p| p.tree), Some(tree));
+    }
+
+    /// A push adding a rejected entry at an unsupported path advances the
+    /// pointer; a later push adding one at a supported path keeps it.
+    #[tokio::test]
+    async fn rejected_entry_keeps_the_pointer_only_when_it_may_be_eligible() {
+        let repo = FakeRepo::new(&standard_files(), &standard_archive());
+        let storage = MemoryStorage::default();
+        let store = MemorySnapshotStore::default();
+        let identity = identity();
+        cold(&repo, &storage, &store).await;
+        let client = repo.client();
+        let update = Update::new(&client, &storage, &store, ColdBuildLimits::default());
+
+        let mut files = pushed_files();
+        files.push(bad_sha("docs/notes.md"));
+        repo.push(&sha('d'), &sha('8'), &files, &pushed_archive());
+        let proven = update.run(&identity).await.expect("update");
+        let ColdBuildOutcome::Published(advanced) = proven.outcome else {
+            panic!("expected publication, got {:?}", proven.outcome);
+        };
+        assert_eq!(advanced.tree, sha('8'));
+
+        files.push(bad_sha("src/bad.ts"));
+        repo.push(&sha('e'), &sha('9'), &files, &pushed_archive());
+        let unknown = update.run(&identity).await.expect("update");
+        assert_eq!(
+            unknown.outcome,
+            ColdBuildOutcome::Incomplete(IncompleteReason::UnindexedFiles { count: 1 })
+        );
+        assert_eq!(pointer(&store, &identity).await, Some(advanced));
     }
 
     /// Scenario 2: the update future is dropped by a paused-clock timeout

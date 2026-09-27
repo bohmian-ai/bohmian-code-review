@@ -19,7 +19,9 @@ use crate::archive::{TarStream, VerifiedEntry};
 use crate::eligibility::{
     Exclusion, ExclusionReason, MAX_ELIGIBLE_FILE_BYTES, RootAttributes, classify,
 };
-use crate::github::{Archive, BranchHead, GitHubClient, GitHubError, TreeEntry, TreeEntryMode};
+use crate::github::{
+    Archive, BranchHead, GitHubClient, GitHubError, RejectedPath, TreeEntry, TreeEntryMode,
+};
 use crate::identity::{Identity, ObjectSha};
 use crate::persistence::{PersistenceError, SnapshotPointer, SnapshotScope, SnapshotStore};
 use crate::storage::{ObjectDigest, ObjectKey, ObjectStorage, StorageError};
@@ -129,13 +131,13 @@ pub struct Coverage {
 
 impl Coverage {
     /// Every eligible file was indexed or skipped for a content reason, and
-    /// no listing entry was rejected unclassified.
+    /// no rejected listing entry may have been eligible.
     pub fn is_complete(&self) -> bool {
         !self.truncated_tree && self.unindexed() == 0
     }
 
     /// Eligible files that were neither indexed nor benignly skipped, plus
-    /// rejected listing entries, which may have been eligible.
+    /// rejected listing entries whose eligibility is unknown.
     fn unindexed(&self) -> usize {
         let rejected = self
             .excluded
@@ -592,7 +594,7 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
         let attributes = root_attributes(self.client, identity, &listing.entries).await?;
         Ok(Ok(Ingest::new(
             &listing.entries,
-            listing.rejected.len(),
+            &listing.rejected,
             &attributes,
             self.limits.max_file_bytes,
         )))
@@ -770,23 +772,23 @@ pub(crate) struct Ingest {
     pending: BTreeMap<RelativePath, ObjectSha>,
     skipped: Vec<SkippedFile>,
     excluded: Vec<Exclusion>,
-    rejected: usize,
+    unknown: usize,
     indexed: usize,
     stats: IngestStats,
 }
 
 impl Ingest {
-    /// Classify `entries` and start with every eligible file pending;
-    /// `rejected` listing entries failed validation and are counted as
-    /// [`ExclusionReason::InvalidEntry`].
+    /// Classify `entries` and `rejected` listing entries and start with
+    /// every eligible file pending; rejected entries of unknown eligibility
+    /// are counted as [`ExclusionReason::InvalidEntry`].
     pub(crate) fn new(
         entries: &[TreeEntry],
-        rejected: usize,
+        rejected: &[RejectedPath],
         attributes: &RootAttributes,
         max_file_bytes: u64,
     ) -> Ingest {
         let context = SymbolicContext::new();
-        let tree = classify(entries, attributes, &context, max_file_bytes);
+        let tree = classify(entries, rejected, attributes, &context, max_file_bytes);
         let mut files: Vec<SnapshotFile> = tree
             .eligible
             .into_iter()
@@ -807,7 +809,7 @@ impl Ingest {
             pending,
             skipped: Vec::new(),
             excluded: tree.excluded,
-            rejected,
+            unknown: tree.unknown,
             indexed: 0,
             stats: IngestStats::default(),
         }
@@ -1012,8 +1014,8 @@ impl Ingest {
         for exclusion in &self.excluded {
             *excluded.entry(exclusion.reason).or_insert(0) += 1;
         }
-        if self.rejected > 0 {
-            excluded.insert(ExclusionReason::InvalidEntry, self.rejected);
+        if self.unknown > 0 {
+            excluded.insert(ExclusionReason::InvalidEntry, self.unknown);
         }
         let coverage = Coverage {
             truncated_tree: false,
@@ -1099,6 +1101,17 @@ pub(crate) mod tests {
         }
     }
 
+    /// A regular file the listing reports with a malformed blob id, so the
+    /// provider rejects it after validating its path.
+    pub(crate) fn bad_sha(path: &'static str) -> File {
+        File {
+            path,
+            mode: "bad-sha",
+            content: b"",
+            size: None,
+        }
+    }
+
     /// A fake repository at commit `c`/tree `7` with routed responses.
     pub(crate) struct FakeRepo {
         pub(crate) transport: Arc<RoutedTransport>,
@@ -1162,9 +1175,13 @@ pub(crate) mod tests {
                     };
                     let size = f.size.unwrap_or(f.content.len() as u64);
                     transport.route(&format!("/git/blobs/{sha}"), 200, f.content);
+                    let (mode, sha) = match f.mode {
+                        "bad-sha" => ("100644", "not-a-sha".to_owned()),
+                        mode => (mode, sha.to_string()),
+                    };
                     format!(
-                        r#"{{"path":"{}","mode":"{}","type":"{kind}","sha":"{sha}","size":{size}}}"#,
-                        f.path, f.mode
+                        r#"{{"path":"{}","mode":"{mode}","type":"{kind}","sha":"{sha}","size":{size}}}"#,
+                        f.path
                     )
                 })
                 .collect();
@@ -2342,5 +2359,43 @@ pub(crate) mod tests {
         );
         assert!(!result.coverage.is_complete());
         assert!(storage.keys().is_empty());
+    }
+
+    /// A rejected entry whose canonical path is unsupported is a proven
+    /// exclusion and the snapshot publishes; a rejected entry at a
+    /// supported path may be an eligible source and blocks publication.
+    #[tokio::test]
+    async fn rejected_entry_blocks_publication_only_when_it_may_be_eligible() {
+        let build = |files: Vec<File>| async move {
+            let repo = FakeRepo::new(&files, &[("src/user.ts", USER)]);
+            let storage = MemoryStorage::default();
+            let store = MemorySnapshotStore::default();
+            let result =
+                ColdBuild::new(&repo.client(), &storage, &store, ColdBuildLimits::default())
+                    .run(&identity())
+                    .await
+                    .expect("build");
+            (result, storage.keys().len())
+        };
+        let (proven, objects) = build(vec![file("src/user.ts", USER), bad_sha("README.md")]).await;
+        assert!(matches!(proven.outcome, ColdBuildOutcome::Published(_)));
+        assert_eq!(
+            proven.coverage.excluded,
+            BTreeMap::from([(ExclusionReason::Unsupported, 1)])
+        );
+        assert!(proven.coverage.is_complete());
+        assert_eq!(objects, 1);
+
+        let (unknown, objects) =
+            build(vec![file("src/user.ts", USER), bad_sha("src/bad.ts")]).await;
+        assert_eq!(
+            unknown.outcome,
+            ColdBuildOutcome::Incomplete(IncompleteReason::UnindexedFiles { count: 1 })
+        );
+        assert_eq!(
+            unknown.coverage.excluded,
+            BTreeMap::from([(ExclusionReason::InvalidEntry, 1)])
+        );
+        assert_eq!(objects, 0);
     }
 }

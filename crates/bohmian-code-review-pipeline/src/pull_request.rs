@@ -19,7 +19,7 @@ use crate::context::{
 use crate::eligibility::MAX_ELIGIBLE_FILE_BYTES;
 use crate::github::{
     FileStatus, GitHubClient, PR_FILES_PER_PAGE, PullRequest, PullRequestFile, RejectedPath,
-    TreeEntry, TreeEntryMode,
+    TreeEntry, TreeEntryMode, TreeListing,
 };
 use crate::identity::{Identity, ObjectSha};
 use crate::persistence::{ContextRecord, ContextStore, SnapshotStore};
@@ -166,22 +166,28 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
             false => self.snapshot(identity).await?,
         };
         let limits = &self.limits;
+        let rejected_changed: Vec<RelativePath> = pinned
+            .rejected
+            .iter()
+            .filter_map(|rejected| RelativePath::new(&rejected.path).ok())
+            .collect();
         let mut ingest = match snapshot {
             Some(_) => Ingest::new(
                 &listing.entries,
-                listing.rejected.len(),
+                &listing.rejected,
                 &attributes,
                 limits.max_file_bytes,
             ),
             None => {
-                let changed = pinned
+                let seeds = pinned
                     .files
                     .iter()
                     .filter(|file| file.status != FileStatus::Removed)
                     .map(|file| &file.path)
+                    .chain(&rejected_changed)
                     .collect();
-                let near = near(&listing.entries, &changed);
-                Ingest::new(&near, 0, &attributes, limits.max_file_bytes)
+                let (entries, rejected) = near(&listing, &seeds);
+                Ingest::new(&entries, &rejected, &attributes, limits.max_file_bytes)
             }
         };
         let snapshot_tree = snapshot.map(|snapshot| {
@@ -231,7 +237,12 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
             files,
         };
 
-        let changed: BTreeSet<&RelativePath> = pinned.files.iter().map(|file| &file.path).collect();
+        let changed: BTreeSet<&RelativePath> = pinned
+            .files
+            .iter()
+            .map(|file| &file.path)
+            .chain(&rejected_changed)
+            .collect();
         let mut ranked = rank(&index, &heads, &mut not_analyzed)?;
         ranked.retain(|file| !changed.contains(&file.path));
         drop(heads);
@@ -538,17 +549,28 @@ fn blob_of<'e>(eligible: &'e [SnapshotFile], path: &RelativePath) -> Option<&'e 
         .map(|index| &eligible[index].blob)
 }
 
-/// Blob entries sharing a directory with a changed path. Uncapped, so
-/// shared eligibility classifies every one before the scoped file bound is
-/// spent on eligible files only.
-fn near(entries: &[TreeEntry], changed: &BTreeSet<&RelativePath>) -> Vec<TreeEntry> {
+/// Blob entries and rejected entries of `listing` sharing a directory with
+/// a changed path. Uncapped, so shared eligibility classifies every one
+/// before the scoped file bound is spent on eligible files only.
+fn near(
+    listing: &TreeListing,
+    changed: &BTreeSet<&RelativePath>,
+) -> (Vec<TreeEntry>, Vec<RejectedPath>) {
     let directories: BTreeSet<&str> = changed.iter().map(|path| parent(path.as_str())).collect();
-    entries
+    let entries = listing
+        .entries
         .iter()
         .filter(|entry| matches!(entry.mode, TreeEntryMode::File | TreeEntryMode::Executable))
         .filter(|entry| directories.contains(parent(entry.path.as_str())))
         .cloned()
-        .collect()
+        .collect();
+    let rejected = listing
+        .rejected
+        .iter()
+        .filter(|rejected| directories.contains(parent(&rejected.path)))
+        .cloned()
+        .collect();
+    (entries, rejected)
 }
 
 /// Directory part of a repository-relative path; empty at the root.
@@ -574,7 +596,7 @@ mod tests {
     use crate::eligibility::ExclusionReason;
     use crate::github::Operation;
     use crate::snapshot::tests::{
-        FORMAT, FakeRepo, File, USER, blob_sha, file, identity, sha, standard_archive,
+        FORMAT, FakeRepo, File, USER, bad_sha, blob_sha, file, identity, sha, standard_archive,
         standard_files,
     };
     use crate::snapshot::{ColdBuild, ColdBuildLimits, ColdBuildOutcome, SkipReason};
@@ -974,7 +996,14 @@ mod tests {
         .await
         .expect("cold build");
         assert!(matches!(result.outcome, ColdBuildOutcome::Incomplete(_)));
-        let files = head_files(PR1_HANDLER, vec![file("lib/far.ts", FAR)]);
+        let files = head_files(
+            PR1_HANDLER,
+            vec![
+                file("lib/far.ts", FAR),
+                bad_sha("src/bad.ts"),
+                bad_sha("lib/bad.ts"),
+            ],
+        );
         route_pr(
             &repo,
             1,
@@ -998,6 +1027,11 @@ mod tests {
         );
         assert!(!coverage.is_full());
         assert_eq!(coverage.files.eligible, 6, "src/ files only");
+        assert_eq!(
+            coverage.files.excluded.get(&ExclusionReason::InvalidEntry),
+            Some(&1),
+            "only the nearby rejected entry"
+        );
         let paths: BTreeSet<&str> = scoped
             .context
             .spans
@@ -1152,6 +1186,86 @@ mod tests {
             Some(&1)
         );
         assert!(!result.context.spans.is_empty());
+    }
+
+    /// A head-tree entry rejected at an unsupported path is a proven
+    /// exclusion: the overlay stays complete and coverage full.
+    #[tokio::test]
+    async fn proven_ineligible_head_tree_entry_keeps_full_coverage() {
+        let repo = FakeRepo::new(&standard_files(), &standard_archive());
+        let stores = Stores::default();
+        cold(&repo, &stores.snapshot_storage, &stores.snapshot_store).await;
+        route_pr(
+            &repo,
+            1,
+            (&sha('1'), &sha('2')),
+            &head_files(PR1_HANDLER, vec![bad_sha("docs/notes.md")]),
+            &[("src/handler.ts", "modified", PR1_HANDLER, Some(PR1_PATCH))],
+        );
+        let client = repo.client();
+        let result = stores
+            .facade(&client, PrContextLimits::default())
+            .run(&identity(), 1)
+            .await
+            .expect("context");
+        let coverage = &result.context.coverage;
+        assert!(
+            coverage.overlay_complete && coverage.is_full(),
+            "{coverage:?}"
+        );
+        assert_eq!(
+            coverage.files.excluded.get(&ExclusionReason::InvalidEntry),
+            None
+        );
+        assert!(!result.context.spans.is_empty());
+    }
+
+    /// A rejected PR-file record with a canonical filename is still a
+    /// changed path: it is never selected as secondary context, and without
+    /// a snapshot it seeds nearby selection. A non-canonical filename stays
+    /// a diagnostic only.
+    #[tokio::test]
+    async fn rejected_changed_path_is_never_secondary() {
+        let changes: [Change; 4] = [
+            ("src/handler.ts", "modified", PR1_HANDLER, Some(PR1_PATCH)),
+            ("src/user.ts", "bogus", USER, None),
+            ("lib/gone.ts", "bogus", FAR, None),
+            ("src/../x.ts", "modified", FAR, None),
+        ];
+        for warm in [true, false] {
+            let repo = FakeRepo::new(&standard_files(), &standard_archive());
+            let stores = Stores::default();
+            if warm {
+                cold(&repo, &stores.snapshot_storage, &stores.snapshot_store).await;
+            }
+            let files = head_files(PR1_HANDLER, vec![file("lib/far.ts", FAR)]);
+            route_pr(&repo, 1, (&sha('1'), &sha('2')), &files, &changes);
+            let client = repo.client();
+            let result = stores
+                .facade(&client, PrContextLimits::default())
+                .run(&identity(), 1)
+                .await
+                .expect("context");
+            let context = &result.context;
+            let paths: BTreeSet<&str> = context.spans.iter().map(|s| s.path.as_str()).collect();
+            assert!(paths.contains("src/format.ts"), "{warm}: {paths:?}");
+            assert!(!paths.contains("src/user.ts"), "{warm}: {paths:?}");
+            assert!(!paths.contains("src/handler.ts"), "{warm}: {paths:?}");
+            let rejected: BTreeSet<&str> = context
+                .not_analyzed
+                .iter()
+                .filter(|n| matches!(n.reason, NotAnalyzedReason::Rejected { .. }))
+                .map(|n| n.path.as_str())
+                .collect();
+            assert_eq!(
+                rejected,
+                BTreeSet::from(["src/user.ts", "lib/gone.ts", "src/../x.ts"])
+            );
+            assert!(!context.coverage.is_full());
+            if !warm {
+                assert_eq!(context.coverage.files.eligible, 7, "src/ and lib/");
+            }
+        }
     }
 
     /// Scenario 18: a 400-file PR is read across four pages; its head moves
