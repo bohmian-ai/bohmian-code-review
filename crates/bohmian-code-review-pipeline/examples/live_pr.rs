@@ -13,6 +13,10 @@
 //! - `BCR_WARM_RUNS` (default `0`): further PR-context calls over the same
 //!   stores, reported as warm p50/p95 for capacity measurements.
 //!
+//! The PR is read once, and the first and every warm call build its
+//! context at exactly that base/head through [`PrContext::run_at`]; a PR
+//! that moves during the run fails it, so a report never mixes workloads.
+//!
 //! Storage and persistence are the in-memory test adapters, so nothing is
 //! written outside this process and GitHub is only read. The command prints
 //! one JSON record of identity, coverage, omissions, selected spans, object
@@ -66,7 +70,8 @@ async fn bounded<T, E: Error + 'static>(
     Ok((value, started.elapsed().as_millis()))
 }
 
-/// Run cold build, PR context, and read-back for the configured PR.
+/// Run cold build, PR context at one read of the configured PR, and
+/// read-back.
 ///
 /// # Errors
 ///
@@ -114,13 +119,24 @@ async fn run() -> Result<(), Box<dyn Error>> {
         &context_store,
         PrContextLimits::default(),
     );
-    let (published, pr_ms) = bounded("pr context", limit, pr.run(&identity, number)).await?;
+    let (pull_request, _) = bounded(
+        "pull request",
+        limit,
+        client.pull_request(&identity.repository, number),
+    )
+    .await?;
+    let (published, pr_ms) =
+        bounded("pr context", limit, pr.run_at(&identity, &pull_request)).await?;
     let mut warm_ms = Vec::new();
     for _ in 0..setting("BCR_WARM_RUNS", Some("0"))?.parse::<usize>()? {
         warm_ms.push(
-            bounded("warm pr context", limit, pr.run(&identity, number))
-                .await?
-                .1,
+            bounded(
+                "warm pr context",
+                limit,
+                pr.run_at(&identity, &pull_request),
+            )
+            .await?
+            .1,
         );
     }
     warm_ms.sort_unstable();

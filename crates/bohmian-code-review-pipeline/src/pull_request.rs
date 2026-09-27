@@ -153,6 +153,46 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
         number: u64,
     ) -> Result<PrContextResult, ContextError> {
         let pinned = self.pin(identity, number).await?;
+        self.publish(identity, pinned).await
+    }
+
+    /// Build and publish the review context of `pull_request` at exactly
+    /// its base and head, as an earlier [`GitHubClient::pull_request`] read
+    /// them.
+    ///
+    /// Repeated calls with one read measure one workload: the files are
+    /// listed and the PR read again, and the call publishes only when that
+    /// read still names the given base and head. Otherwise as
+    /// [`PrContext::run`].
+    ///
+    /// # Errors
+    ///
+    /// `PullRequestMoved` with one attempt when the PR no longer names the
+    /// given base and head, and nothing is published; otherwise the errors
+    /// of [`PrContext::run`].
+    pub async fn run_at(
+        &self,
+        identity: &Identity,
+        pull_request: &PullRequest,
+    ) -> Result<PrContextResult, ContextError> {
+        let pinned = self
+            .list(identity, pull_request.clone())
+            .await?
+            .ok_or(ContextError::PullRequestMoved { attempts: 1 })?;
+        self.publish(identity, pinned).await
+    }
+
+    /// Build and publish the context of files listed under one pinned
+    /// base/head pair.
+    ///
+    /// # Errors
+    ///
+    /// The errors of [`PrContext::run`] after pinning.
+    async fn publish(
+        &self,
+        identity: &Identity,
+        pinned: Pinned,
+    ) -> Result<PrContextResult, ContextError> {
         let repository = &identity.repository;
         let pull_request = &pinned.pull_request;
         let tree = self
@@ -322,41 +362,60 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
     ///
     /// Returns provider errors and `PullRequestMoved` after the last attempt.
     async fn pin(&self, identity: &Identity, number: u64) -> Result<Pinned, ContextError> {
-        let repository = &identity.repository;
-        let max_files = self.limits.max_pr_files;
-        let pages = max_files.div_ceil(PR_FILES_PER_PAGE as usize).max(1);
         for _ in 0..self.limits.max_pagination_attempts {
-            let mut pinned = Pinned {
-                pull_request: self.client.pull_request(repository, number).await?,
-                files: Vec::new(),
-                rejected: Vec::new(),
-                truncated: false,
-            };
-            for page in 1..=pages {
-                let listed = self
-                    .client
-                    .pull_request_files(repository, number, page as u32)
-                    .await?;
-                pinned.files.extend(listed.files);
-                pinned.rejected.extend(listed.rejected);
-                if !listed.has_next {
-                    break;
-                }
-                pinned.truncated = page == pages;
-            }
-            if pinned.files.len() > max_files {
-                pinned.files.truncate(max_files);
-                pinned.truncated = true;
-            }
-            let after = self.client.pull_request(repository, number).await?;
-            let before = &pinned.pull_request;
-            if (&after.base, &after.head) == (&before.base, &before.head) {
+            let pull_request = self
+                .client
+                .pull_request(&identity.repository, number)
+                .await?;
+            if let Some(pinned) = self.list(identity, pull_request).await? {
                 return Ok(pinned);
             }
         }
         Err(ContextError::PullRequestMoved {
             attempts: self.limits.max_pagination_attempts,
         })
+    }
+
+    /// List `pull_request`'s files, then read the PR again; `None` when
+    /// that read names another base or head.
+    ///
+    /// # Errors
+    ///
+    /// Returns provider errors.
+    async fn list(
+        &self,
+        identity: &Identity,
+        pull_request: PullRequest,
+    ) -> Result<Option<Pinned>, ContextError> {
+        let repository = &identity.repository;
+        let number = pull_request.number;
+        let max_files = self.limits.max_pr_files;
+        let pages = max_files.div_ceil(PR_FILES_PER_PAGE as usize).max(1);
+        let mut pinned = Pinned {
+            pull_request,
+            files: Vec::new(),
+            rejected: Vec::new(),
+            truncated: false,
+        };
+        for page in 1..=pages {
+            let listed = self
+                .client
+                .pull_request_files(repository, number, page as u32)
+                .await?;
+            pinned.files.extend(listed.files);
+            pinned.rejected.extend(listed.rejected);
+            if !listed.has_next {
+                break;
+            }
+            pinned.truncated = page == pages;
+        }
+        if pinned.files.len() > max_files {
+            pinned.files.truncate(max_files);
+            pinned.truncated = true;
+        }
+        let after = self.client.pull_request(repository, number).await?;
+        let before = &pinned.pull_request;
+        Ok(((&after.base, &after.head) == (&before.base, &before.head)).then_some(pinned))
     }
 
     /// The current compatible default-branch snapshot, or `None` when no
@@ -1536,6 +1595,47 @@ mod tests {
             .await;
         assert_eq!(result, Err(ContextError::PullRequestMoved { attempts: 3 }));
         assert!(stores.context_store.ids().is_empty());
+    }
+
+    /// Samples at one read PR measure one base/head: a stable PR accepts
+    /// every sample at that pair, and once the head advances a sample is
+    /// refused without retry and publishes nothing.
+    #[tokio::test]
+    async fn samples_at_one_read_pr_refuse_a_moved_head() {
+        let repo = FakeRepo::new(&standard_files(), &standard_archive());
+        let stores = Stores::default();
+        cold(&repo, &stores.snapshot_storage, &stores.snapshot_store).await;
+        let (head, tree) = (sha('1'), sha('2'));
+        let files = head_files(PR1_HANDLER, vec![file("src/pr1.ts", PR1_FILE)]);
+        route_pr(
+            &repo,
+            9,
+            (&head, &tree),
+            &files,
+            &[("src/handler.ts", "modified", PR1_HANDLER, Some(PR1_PATCH))],
+        );
+        let client = repo.client();
+        let facade = stores.facade(&client, PrContextLimits::default());
+        let pull_request = client
+            .pull_request(&identity().repository, 9)
+            .await
+            .expect("pr");
+        for _ in 0..2 {
+            let sample = facade
+                .run_at(&identity(), &pull_request)
+                .await
+                .expect("stable");
+            assert_eq!(
+                (&sample.context.base, &sample.context.head),
+                (&repo.commit, &head)
+            );
+        }
+        let published = stores.context_store.ids().len();
+        repo.transport
+            .route("/pulls/9", 200, pr_json(9, &repo.commit, &sha('3')));
+        let moved = facade.run_at(&identity(), &pull_request).await;
+        assert_eq!(moved, Err(ContextError::PullRequestMoved { attempts: 1 }));
+        assert_eq!(stores.context_store.ids().len(), published);
     }
 
     /// Scenario 19: a diff and prompt reserve filling the allocation leave
