@@ -9,8 +9,9 @@
 //! streams a pinned default-branch archive into a complete, source-free
 //! [`Snapshot`], and [`Snapshots`] reads snapshots back and removes those no
 //! pointer names. [`Update`] advances that pointer incrementally from tree
-//! differences and reports review-time [`Freshness`]. It never clones, checks out, or persists source; it depends on the
-//! public `bohmian-code-review` facade alone and imports no consumer type.
+//! differences and reports review-time [`Freshness`]. It never clones,
+//! checks out, or persists source; it depends on the public
+//! `bohmian-code-review` facade alone and imports no consumer type.
 
 mod archive;
 pub mod eligibility;
