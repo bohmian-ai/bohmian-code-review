@@ -11,7 +11,7 @@
 //! blobs; the index covers only files the caller supplied.
 
 use bohmian_code_review_extract::{ExtractionConfig, ExtractionResult, Extractor};
-use bohmian_code_review_index::{SymbolIndex, is_declaration};
+use bohmian_code_review_index::SymbolIndex;
 use bohmian_code_review_select::ChangedFile;
 use std::collections::BTreeMap;
 use thiserror::Error;
@@ -224,13 +224,12 @@ impl SymbolicContext {
         self.index.lookup(name)
     }
 
-    /// Whether `path` is indexed with at least one declaration, i.e. whether
-    /// its [`SymbolicContext::export`] record carries any facts.
+    /// `path`'s source-free declaration facts exactly as
+    /// [`SymbolicContext::export`] would record them, or `None` when `path`
+    /// is not indexed.
     #[must_use]
-    pub fn has_declarations(&self, path: &RelativePath) -> bool {
-        self.index
-            .nodes(path)
-            .is_some_and(|nodes| nodes.iter().any(|node| is_declaration(node.kind)))
+    pub fn export_file(&self, path: &RelativePath) -> Option<IndexedFileFacts> {
+        self.index.export_file(path, EXTRACTION_VERSION)
     }
 
     /// Byte length retained for an indexed `path`.

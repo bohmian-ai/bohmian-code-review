@@ -241,8 +241,10 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
             None => limits.max_scoped_files.saturating_sub(ingest.indexed()),
         };
         ingest.fallback(self.client, identity, fetch_bound).await;
-        let (mut files, _, eligible, index) = ingest.finish();
+        let ingested = ingest.finish();
+        let mut files = ingested.coverage();
         files.truncated_tree = listing.truncated;
+        let (eligible, index) = (ingested.eligible, ingested.context);
         let coverage = ContextCoverage {
             scope: match snapshot_tree {
                 Some(_) => Scope::Repository,

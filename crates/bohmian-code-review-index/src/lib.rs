@@ -29,6 +29,24 @@ struct IndexedFile {
     nodes: Vec<Node>,
 }
 
+impl IndexedFile {
+    /// This file's declaration facts at `path`, stamped with
+    /// `extraction_version`; non-declaration nodes are dropped.
+    fn export(&self, path: &RelativePath, extraction_version: &str) -> IndexedFileFacts {
+        IndexedFileFacts {
+            path: path.clone(),
+            extraction_version: extraction_version.to_owned(),
+            byte_len: self.byte_len,
+            declarations: self
+                .nodes
+                .iter()
+                .filter(|node| is_declaration(node.kind))
+                .map(DeclarationFact::from_node)
+                .collect(),
+        }
+    }
+}
+
 /// Canonical posting order: path, start line, start column, ID, then the
 /// node's slot in its file so equal keys stay distinct.
 type Posting = (RelativePath, u32, u32, String, usize);
@@ -127,18 +145,20 @@ impl SymbolIndex {
     pub fn export(&self, extraction_version: &str) -> Vec<IndexedFileFacts> {
         self.files
             .iter()
-            .map(|(path, file)| IndexedFileFacts {
-                path: path.clone(),
-                extraction_version: extraction_version.to_owned(),
-                byte_len: file.byte_len,
-                declarations: file
-                    .nodes
-                    .iter()
-                    .filter(|node| is_declaration(node.kind))
-                    .map(DeclarationFact::from_node)
-                    .collect(),
-            })
+            .map(|(path, file)| file.export(path, extraction_version))
             .collect()
+    }
+
+    /// Exports `path`'s source-free declaration facts exactly as
+    /// [`SymbolIndex::export`] would, or `None` when `path` is not indexed.
+    #[must_use]
+    pub fn export_file(
+        &self,
+        path: &RelativePath,
+        extraction_version: &str,
+    ) -> Option<IndexedFileFacts> {
+        let (path, file) = self.files.get_key_value(path)?;
+        Some(file.export(path, extraction_version))
     }
 
     /// Validates `facts` and then replaces `facts.path`'s indexed facts with

@@ -33,7 +33,7 @@ use std::time::Duration;
 use thiserror::Error;
 
 /// Layout version of the serialized [`Snapshot`]; part of every snapshot key.
-pub const SNAPSHOT_FORMAT_VERSION: u32 = 1;
+pub const SNAPSHOT_FORMAT_VERSION: u32 = 2;
 
 /// Git LFS pointer files start with this line and are skipped by content.
 const LFS_POINTER_PREFIX: &[u8] = b"version https://git-lfs.github.com/spec/v1";
@@ -133,6 +133,26 @@ pub struct Coverage {
 }
 
 impl Coverage {
+    /// Coverage of a listed tree whose eligible files ended as `outcomes`,
+    /// with `excluded` entries counted by reason.
+    fn of(outcomes: &[FileOutcome], excluded: BTreeMap<ExclusionReason, usize>) -> Coverage {
+        let mut skipped: Vec<SkippedFile> = outcomes
+            .iter()
+            .filter_map(|outcome| match outcome {
+                FileOutcome::Indexed(_) => None,
+                FileOutcome::Skipped(file) => Some(file.clone()),
+            })
+            .collect();
+        skipped.sort_by(|a, b| a.path.cmp(&b.path));
+        Coverage {
+            truncated_tree: false,
+            eligible: outcomes.len(),
+            indexed: outcomes.len() - skipped.len(),
+            skipped,
+            excluded,
+        }
+    }
+
     /// Every eligible file was indexed or skipped for a content reason.
     pub fn is_complete(&self) -> bool {
         !self.truncated_tree && self.unindexed() == 0
@@ -147,13 +167,82 @@ impl Coverage {
     }
 }
 
-/// One eligible path with the blob id it was indexed or skipped at.
+/// One eligible path with the blob id the pinned tree lists for it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SnapshotFile {
     /// Repository-relative path.
     pub path: RelativePath,
     /// Blob id from the pinned tree.
     pub blob: ObjectSha,
+}
+
+/// An eligible file indexed at `blob` with at least one persisted
+/// declaration.
+///
+/// The fields are private and deserialization revalidates them, so no
+/// value, built or read back, is an indexed file without a declaration.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(try_from = "IndexedFileRecord")]
+pub struct IndexedFile {
+    blob: ObjectSha,
+    facts: IndexedFileFacts,
+}
+
+/// Unvalidated wire form of an [`IndexedFile`].
+#[derive(Deserialize)]
+struct IndexedFileRecord {
+    blob: ObjectSha,
+    facts: IndexedFileFacts,
+}
+
+impl TryFrom<IndexedFileRecord> for IndexedFile {
+    type Error = &'static str;
+
+    /// Accept only a record carrying a declaration.
+    ///
+    /// # Errors
+    ///
+    /// Returns a message when the record has no declarations.
+    fn try_from(record: IndexedFileRecord) -> Result<IndexedFile, &'static str> {
+        IndexedFile::new(record.blob, record.facts).ok_or("indexed file without declarations")
+    }
+}
+
+impl IndexedFile {
+    /// `facts` indexed at `blob`, or `None` when they carry no declaration.
+    fn new(blob: ObjectSha, facts: IndexedFileFacts) -> Option<IndexedFile> {
+        (!facts.declarations.is_empty()).then_some(IndexedFile { blob, facts })
+    }
+
+    /// Blob id the facts were extracted from.
+    pub fn blob(&self) -> &ObjectSha {
+        &self.blob
+    }
+
+    /// The file's persisted declaration facts; never empty.
+    pub fn facts(&self) -> &IndexedFileFacts {
+        &self.facts
+    }
+}
+
+/// What one eligible file ended as: indexed with declarations, or skipped
+/// with its blob and reason. Exactly one per eligible path.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum FileOutcome {
+    /// Indexed with at least one declaration.
+    Indexed(IndexedFile),
+    /// Not indexed, keeping its blob identity.
+    Skipped(SkippedFile),
+}
+
+impl FileOutcome {
+    /// The eligible file's path.
+    fn path(&self) -> &RelativePath {
+        match self {
+            FileOutcome::Indexed(file) => &file.facts.path,
+            FileOutcome::Skipped(file) => &file.path,
+        }
+    }
 }
 
 /// The immutable, source-free object stored at a snapshot key.
@@ -171,12 +260,10 @@ pub struct Snapshot {
     pub identity: Identity,
     /// Tree the snapshot indexes.
     pub tree: ObjectSha,
-    /// Every eligible path with its blob id, in canonical order.
-    pub files: Vec<SnapshotFile>,
-    /// Source-free declaration facts of every indexed file.
-    pub facts: Vec<IndexedFileFacts>,
-    /// Coverage of the tree; always complete.
-    pub coverage: Coverage,
+    /// Outcome of every eligible file, in canonical path order.
+    pub files: Vec<FileOutcome>,
+    /// Excluded tree entries counted by reason.
+    pub excluded: BTreeMap<ExclusionReason, usize>,
 }
 
 impl Snapshot {
@@ -213,13 +300,20 @@ impl Snapshot {
         if snapshot.tree != *tree {
             return Err(corrupt(format!("tree {} is not {tree}", snapshot.tree)));
         }
-        if !snapshot.coverage.is_complete() {
+        if !snapshot.coverage().is_complete() {
             return Err(corrupt("incomplete coverage".to_owned()));
         }
         Ok(snapshot)
     }
 
-    /// Load every fact into a fresh in-memory context without any source.
+    /// Coverage of the tree, derived from the file outcomes; always
+    /// complete for a decoded snapshot.
+    pub fn coverage(&self) -> Coverage {
+        Coverage::of(&self.files, self.excluded.clone())
+    }
+
+    /// Load every indexed file's facts into a fresh in-memory context
+    /// without any source.
     ///
     /// # Errors
     ///
@@ -227,8 +321,10 @@ impl Snapshot {
     /// extractor or violating a declaration invariant.
     pub fn into_context(self) -> Result<SymbolicContext, SymbolicError> {
         let mut context = SymbolicContext::new();
-        for facts in self.facts {
-            context.load(facts)?;
+        for outcome in self.files {
+            if let FileOutcome::Indexed(file) = outcome {
+                context.load(file.facts)?;
+            }
         }
         Ok(context)
     }
@@ -548,7 +644,7 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
                 Ok(snapshot) => {
                     return Ok(ColdBuildResult::new(
                         head,
-                        snapshot.coverage,
+                        snapshot.coverage(),
                         IngestStats::default(),
                         ColdBuildOutcome::Reused(pointer.clone()),
                     ));
@@ -651,7 +747,9 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
         ingest: Ingest,
         archive_too_large: bool,
     ) -> Result<ColdBuildResult, ColdBuildError> {
-        let (coverage, stats, files, context) = ingest.finish();
+        let ingested = ingest.finish();
+        let coverage = ingested.coverage();
+        let stats = ingested.stats;
         if archive_too_large {
             return Ok(ColdBuildResult::new(
                 head,
@@ -675,9 +773,8 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
             extraction_version: EXTRACTION_VERSION.to_owned(),
             identity: scope.identity.clone(),
             tree: head.tree.clone(),
-            files,
-            facts: context.export(),
-            coverage: coverage.clone(),
+            files: ingested.outcomes,
+            excluded: ingested.excluded,
         };
         let pointer = self
             .publish(scope, current, &head.commit, &snapshot)
@@ -784,11 +881,33 @@ pub(crate) struct Ingest {
     max_file_bytes: u64,
     files: Vec<SnapshotFile>,
     pending: BTreeMap<RelativePath, ObjectSha>,
-    skipped: Vec<SkippedFile>,
+    outcomes: Vec<FileOutcome>,
+    indexed: usize,
     excluded: Vec<Exclusion>,
     invalid_paths: usize,
-    indexed: usize,
     stats: IngestStats,
+}
+
+/// A finished ingest: every eligible file's outcome and the context the
+/// indexed ones populated.
+pub(crate) struct Ingested {
+    /// Outcome of every eligible file, in canonical path order.
+    pub(crate) outcomes: Vec<FileOutcome>,
+    /// Excluded tree entries counted by reason.
+    pub(crate) excluded: BTreeMap<ExclusionReason, usize>,
+    /// How the attempt obtained its bytes.
+    pub(crate) stats: IngestStats,
+    /// Every eligible path with its listed blob id, in canonical order.
+    pub(crate) eligible: Vec<SnapshotFile>,
+    /// Context holding exactly the indexed files' facts.
+    pub(crate) context: SymbolicContext,
+}
+
+impl Ingested {
+    /// Coverage derived from the outcomes.
+    pub(crate) fn coverage(&self) -> Coverage {
+        Coverage::of(&self.outcomes, self.excluded.clone())
+    }
 }
 
 impl Ingest {
@@ -821,10 +940,10 @@ impl Ingest {
             max_file_bytes,
             files,
             pending,
-            skipped: Vec::new(),
+            outcomes: Vec::new(),
+            indexed: 0,
             excluded: tree.excluded,
             invalid_paths,
-            indexed: 0,
             stats: IngestStats::default(),
         }
     }
@@ -927,31 +1046,29 @@ impl Ingest {
             .map(|index| &self.files[index].blob)
     }
 
-    /// Carry `prior`'s facts and benign skips for every pending path still
-    /// at the blob `prior` recorded, so only changed or added paths stay
-    /// pending. Facts of changed, deleted, renamed, or now-ineligible paths
-    /// are never loaded. A fact that fails to load stays pending and is
-    /// fetched like a changed blob.
+    /// Carry `prior`'s outcome for every pending path still at the blob
+    /// `prior` recorded, so only changed or added paths stay pending.
+    /// Outcomes of changed, deleted, renamed, or now-ineligible paths are
+    /// never loaded. A fact that fails to load stays pending and is fetched
+    /// like a changed blob.
     pub(crate) fn reuse(&mut self, prior: Snapshot) {
-        let unchanged: BTreeMap<RelativePath, ObjectSha> = prior
-            .files
-            .into_iter()
-            .filter(|file| self.pending.get(&file.path) == Some(&file.blob))
-            .map(|file| (file.path, file.blob))
-            .collect();
-        for facts in prior.facts {
-            let path = facts.path.clone();
-            if let Some(blob) = unchanged.get(&path)
-                && self.context.load(facts).is_ok()
-            {
-                self.stats.reused_files += 1;
-                self.settle(path, blob.clone());
-            }
-        }
-        for skipped in prior.coverage.skipped {
-            if unchanged.contains_key(&skipped.path) && self.pending.contains_key(&skipped.path) {
-                self.stats.reused_files += 1;
-                self.skip(skipped.path, skipped.blob, skipped.reason);
+        for outcome in prior.files {
+            let path = outcome.path().clone();
+            let Some(blob) = self.pending.get(&path).cloned() else {
+                continue;
+            };
+            match outcome {
+                FileOutcome::Indexed(file) if file.blob == blob => {
+                    if self.context.load(file.facts).is_ok() {
+                        self.stats.reused_files += 1;
+                        self.settle(path, blob);
+                    }
+                }
+                FileOutcome::Skipped(file) if file.blob == blob => {
+                    self.stats.reused_files += 1;
+                    self.skip(file.path, file.blob, file.reason);
+                }
+                _ => {}
             }
         }
     }
@@ -1012,36 +1129,48 @@ impl Ingest {
         }
     }
 
-    /// Count `path`, just upserted or loaded into the context, as indexed
-    /// when its exported record carries a declaration; otherwise remove it
-    /// and record a [`SkipReason::NoFacts`] skip, so every indexed file
-    /// persists at least one declaration. This is the only place the
-    /// no-facts outcome is decided.
+    /// Record `path`, just upserted or loaded into the context, as an
+    /// [`IndexedFile`] carrying its exported declarations; when the export
+    /// holds none, remove it from the context and record a
+    /// [`SkipReason::NoFacts`] skip instead.
     ///
     /// # Panics
     ///
     /// Never in practice: a path the context accepted is canonical.
     fn settle(&mut self, path: RelativePath, blob: ObjectSha) {
-        if self.context.has_declarations(&path) {
-            self.pending.remove(&path);
-            self.indexed += 1;
-            return;
+        match self
+            .context
+            .export_file(&path)
+            .and_then(|facts| IndexedFile::new(blob.clone(), facts))
+        {
+            Some(file) => {
+                self.pending.remove(&path);
+                self.indexed += 1;
+                self.outcomes.push(FileOutcome::Indexed(file));
+            }
+            None => {
+                self.context
+                    .remove(path.as_str())
+                    .expect("a path the context accepted is canonical");
+                self.skip(path, blob, SkipReason::NoFacts);
+            }
         }
-        self.context
-            .remove(path.as_str())
-            .expect("a path the context accepted is canonical");
-        self.skip(path, blob, SkipReason::NoFacts);
     }
 
     /// Record a skip and stop wanting the path.
     fn skip(&mut self, path: RelativePath, blob: ObjectSha, reason: SkipReason) {
         self.pending.remove(&path);
-        self.skipped.push(SkippedFile { path, blob, reason });
+        self.outcomes
+            .push(FileOutcome::Skipped(SkippedFile { path, blob, reason }));
     }
 
-    /// Coverage, ingest stats, eligible files, and the populated context.
-    pub(crate) fn finish(mut self) -> (Coverage, IngestStats, Vec<SnapshotFile>, SymbolicContext) {
-        self.skipped.sort_by(|a, b| a.path.cmp(&b.path));
+    /// Every eligible file's outcome, with anything still pending skipped
+    /// as not fetched, plus stats, the eligible listing, and the context.
+    pub(crate) fn finish(mut self) -> Ingested {
+        while let Some((path, blob)) = self.pending.pop_first() {
+            self.skip(path, blob, SkipReason::NotFetched);
+        }
+        self.outcomes.sort_by(|a, b| a.path().cmp(b.path()));
         let mut excluded = BTreeMap::new();
         for exclusion in &self.excluded {
             *excluded.entry(exclusion.reason).or_insert(0) += 1;
@@ -1049,14 +1178,13 @@ impl Ingest {
         if self.invalid_paths > 0 {
             *excluded.entry(ExclusionReason::Unsupported).or_insert(0) += self.invalid_paths;
         }
-        let coverage = Coverage {
-            truncated_tree: false,
-            eligible: self.files.len(),
-            indexed: self.indexed,
-            skipped: self.skipped,
+        Ingested {
+            outcomes: self.outcomes,
             excluded,
-        };
-        (coverage, self.stats, self.files, self.context)
+            stats: self.stats,
+            eligible: self.files,
+            context: self.context,
+        }
     }
 }
 
@@ -1468,8 +1596,8 @@ pub(crate) mod tests {
             );
         }
         let snapshot = Snapshot::decode(&bytes, &identity, &repo.tree).expect("decode");
-        assert_eq!(snapshot.coverage, *coverage);
-        let paths: Vec<&str> = snapshot.files.iter().map(|f| f.path.as_str()).collect();
+        assert_eq!(snapshot.coverage(), *coverage);
+        let paths: Vec<&str> = snapshot.files.iter().map(|f| f.path().as_str()).collect();
         assert_eq!(
             paths,
             [
@@ -1596,21 +1724,28 @@ pub(crate) mod tests {
         };
         let bytes = storage.read(&pointer.key).await.expect("object");
         let snapshot = Snapshot::decode(&bytes, &identity(), &repo.tree).expect("decode");
-        let paths: Vec<&str> = snapshot.facts.iter().map(|f| f.path.as_str()).collect();
-        assert_eq!(paths, ["src/user.ts"]);
+        let indexed: Vec<&str> = snapshot
+            .files
+            .iter()
+            .filter_map(|outcome| match outcome {
+                FileOutcome::Indexed(file) => Some(file.facts().path.as_str()),
+                FileOutcome::Skipped(_) => None,
+            })
+            .collect();
+        assert_eq!(indexed, ["src/user.ts"]);
     }
 
     /// The shared ingest that update reuse and PR head overlays route
-    /// through classifies an import-only file as `NoFacts` whether it is
-    /// freshly extracted or reused from a prior empty-declaration record,
-    /// and neither leaves an indexed file or a posting behind.
+    /// through classifies a freshly extracted import-only file as
+    /// `NoFacts` and leaves no posting behind, and a reused `NoFacts`
+    /// outcome carries over unchanged.
     ///
     /// # Panics
     ///
     /// Panics if either path counts the file indexed, records a different
     /// skip, or leaves it in the context.
     #[test]
-    fn empty_declaration_projection_is_no_facts_on_ingest_and_reuse() {
+    fn import_only_file_is_no_facts_on_ingest_and_reuse() {
         let path = RelativePath::new("src/only.ts").expect("path");
         let blob = blob_sha(IMPORT_ONLY);
         let entries = [TreeEntry {
@@ -1635,12 +1770,13 @@ pub(crate) mod tests {
 
         let mut ingest = fresh();
         ingest.ingest(path.clone(), blob.clone(), IMPORT_ONLY);
-        let (coverage, _, files, context) = ingest.finish();
+        let ingested = ingest.finish();
+        let coverage = ingested.coverage();
         assert_eq!(
             (coverage.indexed, coverage.skipped.as_slice()),
             (0, &expected[..])
         );
-        assert!(context.export().is_empty() && context.lookup("X").is_empty());
+        assert!(ingested.context.export().is_empty() && ingested.context.lookup("X").is_empty());
 
         let mut ingest = fresh();
         ingest.reuse(Snapshot {
@@ -1648,22 +1784,163 @@ pub(crate) mod tests {
             extraction_version: EXTRACTION_VERSION.to_owned(),
             identity: identity(),
             tree: sha('7'),
-            files,
-            facts: vec![IndexedFileFacts {
-                path: path.clone(),
-                extraction_version: EXTRACTION_VERSION.to_owned(),
-                byte_len: IMPORT_ONLY.len(),
-                declarations: Vec::new(),
-            }],
-            coverage: Coverage::default(),
+            files: ingested.outcomes,
+            excluded: BTreeMap::new(),
         });
         assert_eq!(ingest.pending(), 0);
-        let (coverage, _, _, context) = ingest.finish();
+        let ingested = ingest.finish();
+        let coverage = ingested.coverage();
         assert_eq!(
             (coverage.indexed, coverage.skipped.as_slice()),
             (0, &expected[..])
         );
-        assert!(context.export().is_empty());
+        assert!(ingested.context.export().is_empty());
+    }
+
+    /// An indexed outcome without a declaration cannot be read back: the
+    /// serialized form of an indexed file must carry at least one.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an empty indexed record deserializes or a declared one
+    /// does not round-trip.
+    #[test]
+    fn indexed_outcome_without_declarations_does_not_decode() {
+        let mut context = SymbolicContext::new();
+        context.upsert("src/user.ts", USER).expect("upsert");
+        let path = RelativePath::new("src/user.ts").expect("path");
+        let facts = context.export_file(&path).expect("indexed");
+        let file = IndexedFile::new(blob_sha(USER), facts.clone()).expect("declared");
+        let bytes = serde_json::to_vec(&FileOutcome::Indexed(file.clone())).expect("encode");
+        let decoded: FileOutcome = serde_json::from_slice(&bytes).expect("round-trip");
+        assert_eq!(decoded, FileOutcome::Indexed(file));
+
+        let empty = IndexedFileFacts {
+            declarations: Vec::new(),
+            ..facts
+        };
+        let bytes = serde_json::to_vec(&serde_json::json!({
+            "Indexed": { "blob": blob_sha(USER), "facts": empty }
+        }))
+        .expect("encode");
+        assert!(serde_json::from_slice::<FileOutcome>(&bytes).is_err());
+        assert!(IndexedFile::new(blob_sha(USER), empty).is_none());
+    }
+
+    /// A complete snapshot published under the previous format, whose
+    /// import-only file was recorded indexed with no declarations, is never
+    /// reused at the same tree: cold build and update both publish a
+    /// current-format snapshot recording that blob once as `NoFacts`, and
+    /// the old bytes do not read as complete under the current scope.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the old pointer is reused, the new snapshot records the
+    /// file differently, or the old object decodes under the current scope.
+    #[tokio::test]
+    async fn prior_format_indexed_empty_snapshot_is_not_reused() {
+        let files = [("src/only.ts", IMPORT_ONLY), ("src/user.ts", USER)];
+        let repo = FakeRepo::new(&files.map(|(path, bytes)| file(path, bytes)), &files);
+        let identity = identity();
+        let storage = MemoryStorage::default();
+        let store = MemorySnapshotStore::default();
+
+        let mut context = SymbolicContext::new();
+        for (path, bytes) in files {
+            context.upsert(path, bytes).expect("upsert");
+        }
+        let facts = context.export();
+        assert!(facts[0].declarations.is_empty(), "import-only is empty");
+        let old_bytes = serde_json::to_vec(&serde_json::json!({
+            "format_version": 1,
+            "extraction_version": EXTRACTION_VERSION,
+            "identity": identity,
+            "tree": repo.tree,
+            "files": files.map(|(path, bytes)| serde_json::json!({
+                "path": path, "blob": blob_sha(bytes)
+            })),
+            "facts": facts,
+            "coverage": Coverage { eligible: 2, indexed: 2, ..Coverage::default() },
+        }))
+        .expect("encode");
+        let old_scope = SnapshotScope {
+            format_version: 1,
+            ..scope(&identity)
+        };
+        let publish_old = |scope: SnapshotScope| {
+            let (storage, store, bytes, tree, commit) =
+                (&storage, &store, &old_bytes, &repo.tree, &repo.commit);
+            async move {
+                let key = snapshot_key(&scope, tree);
+                store
+                    .upsert_record(&scope.identity, &key)
+                    .await
+                    .expect("record");
+                storage.create(&key, bytes).await.expect("object");
+                let pointer = SnapshotPointer {
+                    tree: tree.clone(),
+                    commit: commit.clone(),
+                    key,
+                    digest: ObjectDigest::of(bytes),
+                };
+                assert!(
+                    store
+                        .publish_snapshot_pointer(&scope, None, &pointer)
+                        .await
+                        .expect("pointer")
+                );
+                pointer
+            }
+        };
+        let old = publish_old(old_scope).await;
+
+        let client = repo.client();
+        let limits = ColdBuildLimits::default();
+        let built = ColdBuild::new(&client, &storage, &store, limits.clone())
+            .run(&identity)
+            .await
+            .expect("cold build");
+        let ColdBuildOutcome::Published(pointer) = &built.outcome else {
+            panic!("expected publication, got {:?}", built.outcome);
+        };
+        assert_ne!(pointer.key, old.key);
+        assert!(built.coverage.is_complete());
+        assert_eq!((built.coverage.eligible, built.coverage.indexed), (2, 1));
+        assert_eq!(
+            built.coverage.skipped,
+            [SkippedFile {
+                path: RelativePath::new("src/only.ts").expect("path"),
+                blob: blob_sha(IMPORT_ONLY),
+                reason: SkipReason::NoFacts,
+            }]
+        );
+        let bytes = storage.read(&pointer.key).await.expect("object");
+        let snapshot = Snapshot::decode(&bytes, &identity, &repo.tree).expect("decode");
+        assert_eq!(snapshot.coverage(), built.coverage);
+        assert!(
+            matches!(&snapshot.files[1], FileOutcome::Indexed(file) if file.facts().path.as_str() == "src/user.ts")
+        );
+
+        let updated = crate::update::Update::new(&client, &storage, &store, limits)
+            .run(&identity)
+            .await
+            .expect("update");
+        assert_eq!(updated.outcome, ColdBuildOutcome::Reused(pointer.clone()));
+        assert_eq!(updated.coverage, built.coverage);
+
+        let current = scope(&identity);
+        store
+            .remove_pointers(&identity)
+            .await
+            .expect("drop pointers");
+        let _ = storage.delete(&pointer.key).await;
+        let planted = publish_old(current.clone()).await;
+        assert!(matches!(
+            Snapshots::new(&storage, &store)
+                .read(&current, &planted)
+                .await,
+            Err(ColdBuildError::Corrupt { .. })
+        ));
     }
 
     /// Scenario 2: a truncated tree, an exhausted fallback

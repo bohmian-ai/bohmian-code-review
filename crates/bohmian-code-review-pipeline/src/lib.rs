@@ -53,8 +53,8 @@ pub use persistence::{
 pub use pull_request::{PrContext, PrContextLimits, PrContextResult};
 pub use snapshot::{
     ColdBuild, ColdBuildError, ColdBuildLimits, ColdBuildOutcome, ColdBuildResult, Coverage,
-    IncompleteReason, IngestStats, SNAPSHOT_FORMAT_VERSION, SkipReason, SkippedFile, Snapshot,
-    SnapshotFile, Snapshots,
+    FileOutcome, IncompleteReason, IndexedFile, IngestStats, SNAPSHOT_FORMAT_VERSION, SkipReason,
+    SkippedFile, Snapshot, SnapshotFile, Snapshots,
 };
 pub use storage::{ObjectDigest, ObjectKey, ObjectStorage, StorageError};
 pub use update::{Freshness, Update};
