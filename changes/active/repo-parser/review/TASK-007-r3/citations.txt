@@ -1,0 +1,4 @@
+[review:verify-citations] $ python3 scripts/verify_review_citations.py changes/…
+STD-R3-1	OK
+STD-R3-1	OK
+STD-R3-1	OK
