@@ -1129,7 +1129,7 @@ pub(crate) mod tests {
         pub(crate) transport: Arc<RoutedTransport>,
         pub(crate) tree: ObjectSha,
         pub(crate) commit: ObjectSha,
-        limits: RequestLimits,
+        pub(crate) limits: RequestLimits,
     }
 
     impl FakeRepo {

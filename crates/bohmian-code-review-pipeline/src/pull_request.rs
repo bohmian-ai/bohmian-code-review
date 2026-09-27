@@ -18,8 +18,8 @@ use crate::context::{
 };
 use crate::eligibility::MAX_ELIGIBLE_FILE_BYTES;
 use crate::github::{
-    FileStatus, GitHubClient, PR_FILES_PER_PAGE, PullRequest, PullRequestFile, RejectedPath,
-    TreeEntry, TreeEntryMode, TreeListing,
+    FileStatus, GitHubClient, GitHubError, PR_FILES_PER_PAGE, PullRequest, PullRequestFile,
+    RejectedPath, TreeEntry, TreeEntryMode, TreeListing,
 };
 use crate::identity::{Identity, ObjectSha};
 use crate::persistence::{ContextLifetime, ContextRecord, ContextStore, SnapshotStore};
@@ -419,7 +419,15 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
         if changed.is_empty() {
             return Err(NotAnalyzedReason::DeletionOnly);
         }
-        let bytes = self.fetch(identity, &blob).await?;
+        let max_file_bytes = self.limits.max_file_bytes;
+        let bytes = self.fetch(identity, &blob).await.map_err(|error| {
+            match is_oversize(&error, max_file_bytes) {
+                true => NotAnalyzedReason::Oversize,
+                false => NotAnalyzedReason::FetchFailed {
+                    detail: error.to_string(),
+                },
+            }
+        })?;
         if ingest.is_pending(&file.path) && ingest.indexed() < index_cap {
             ingest.ingest(file.path.clone(), blob, &bytes);
         }
@@ -432,9 +440,10 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
 
     /// Pack `ranked` under the candidate file ceiling and `allowance`,
     /// fetching each candidate blob at its head identity only when packing
-    /// reaches it. A candidate whose blob exceeds the file ceiling or
-    /// cannot be fetched is dropped from the ranking and listed as not
-    /// analyzed, so later candidates are still considered.
+    /// reaches it. Every candidate was indexed under this invocation's file
+    /// ceiling, so a failed fetch is a provider failure: the candidate is
+    /// dropped from the ranking and listed as not analyzed, so later
+    /// candidates are still considered.
     ///
     /// # Errors
     ///
@@ -464,20 +473,21 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
                 }
             };
             let fetched = match blob_of(eligible, &missing) {
-                Some(blob) => self.fetch(identity, blob).await,
-                None => Err(NotAnalyzedReason::FetchFailed {
-                    detail: "candidate is not in the head tree".to_owned(),
-                }),
+                Some(blob) => self
+                    .fetch(identity, blob)
+                    .await
+                    .map_err(|error| error.to_string()),
+                None => Err("candidate is not in the head tree".to_owned()),
             };
             match fetched {
                 Ok(bytes) => {
                     blobs.insert(missing, bytes);
                 }
-                Err(reason) => {
+                Err(detail) => {
                     ranked.retain(|file| file.path != missing);
                     not_analyzed.push(NotAnalyzed {
                         path: missing.to_string(),
-                        reason,
+                        reason: NotAnalyzedReason::FetchFailed { detail },
                     });
                 }
             }
@@ -489,23 +499,11 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
     ///
     /// # Errors
     ///
-    /// Returns `Oversize` when the file ceiling refused the blob, otherwise
-    /// `FetchFailed` with the provider error.
-    async fn fetch(
-        &self,
-        identity: &Identity,
-        blob: &ObjectSha,
-    ) -> Result<Vec<u8>, NotAnalyzedReason> {
-        let max_file_bytes = self.limits.max_file_bytes;
+    /// Returns the provider error, including the ceiling's refusal.
+    async fn fetch(&self, identity: &Identity, blob: &ObjectSha) -> Result<Vec<u8>, GitHubError> {
         self.client
-            .blob(&identity.repository, blob, max_file_bytes)
+            .blob(&identity.repository, blob, self.limits.max_file_bytes)
             .await
-            .map_err(|error| match is_oversize(&error, max_file_bytes) {
-                true => NotAnalyzedReason::Oversize,
-                false => NotAnalyzedReason::FetchFailed {
-                    detail: error.to_string(),
-                },
-            })
     }
 }
 
@@ -622,7 +620,7 @@ mod tests {
     use super::*;
     use crate::context::CONTEXT_LIFETIME;
     use crate::eligibility::ExclusionReason;
-    use crate::github::{GitHubError, Operation};
+    use crate::github::Operation;
     use crate::snapshot::tests::{
         FORMAT, FakeRepo, File, USER, blob_sha, file, identity, sha, standard_archive,
         standard_files,

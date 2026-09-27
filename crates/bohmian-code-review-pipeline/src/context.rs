@@ -97,7 +97,7 @@ pub enum NotAnalyzedReason {
     },
     /// The patch adds no head-side lines.
     DeletionOnly,
-    /// The head or candidate blob exceeds the invocation's file ceiling;
+    /// The changed head blob exceeds the invocation's file ceiling;
     /// its bytes were never read past that ceiling.
     Oversize,
     /// The head or candidate blob could not be fetched.
