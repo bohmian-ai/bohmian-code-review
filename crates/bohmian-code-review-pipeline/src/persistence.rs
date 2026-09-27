@@ -23,6 +23,13 @@ pub enum PersistenceError {
         /// The duplicate id.
         id: ContextId,
     },
+    /// A running collection claimed the snapshot record of `key`; retry the
+    /// build after that collection deletes it.
+    #[error("snapshot record is being collected: {key}")]
+    Collecting {
+        /// The claimed key.
+        key: ObjectKey,
+    },
     /// The backend failed; `detail` must not contain credentials or source.
     #[error("persistence backend failed: {detail}")]
     Backend {
@@ -130,7 +137,11 @@ pub struct ContextRecord {
 /// A record tracks one snapshot object key and when a build last touched
 /// it. The library upserts a record before creating its object and moves a
 /// pointer only after the object validates, so every object has a record
-/// and every pointer names a validated object. Every method receives the
+/// and every pointer names a validated object. [`SnapshotStore::unreferenced`]
+/// claims the records it returns in the same atomic step that selects them,
+/// and [`SnapshotStore::upsert_record`] refuses a claimed record, so a build
+/// can never refresh, and then publish, a key whose object a collection is
+/// deleting. Every method receives the
 /// caller identity and must refuse to read or write another identity's
 /// rows. Implementations must not hold a transaction open across a call
 /// into GitHub or object storage; the library never asks them to.
@@ -165,12 +176,13 @@ pub trait SnapshotStore: Send + Sync {
         pointer: &SnapshotPointer,
     ) -> impl Future<Output = Result<bool, PersistenceError>> + Send;
 
-    /// Insert the record of `key`, or set an existing record's `touched_at`
-    /// to `touched_at`.
+    /// Insert the record of `key`, or set an existing unclaimed record's
+    /// `touched_at` to `touched_at`.
     ///
     /// # Errors
     ///
-    /// Returns [`PersistenceError::Backend`] on backend failure.
+    /// Returns [`PersistenceError::Collecting`], changing nothing, when the
+    /// record is claimed, and [`PersistenceError::Backend`] on backend failure.
     fn upsert_record(
         &self,
         identity: &Identity,
@@ -178,8 +190,14 @@ pub trait SnapshotStore: Send + Sync {
         touched_at: SystemTime,
     ) -> impl Future<Output = Result<(), PersistenceError>> + Send;
 
-    /// Keys of `identity`'s records that no pointer of `identity` names and
-    /// whose `touched_at` is before `older_than`.
+    /// Claim and return the keys of `identity`'s records that no pointer of
+    /// `identity` names and whose `touched_at` is before `older_than`.
+    ///
+    /// Selection and claim are one atomic step against record upserts and
+    /// pointer swaps (for example one `UPDATE ... RETURNING`). A claimed
+    /// record stays claimed until deleted and is returned again by the next
+    /// call, so a failed or dropped collection is retried; calls for one
+    /// identity must not overlap.
     ///
     /// # Errors
     ///

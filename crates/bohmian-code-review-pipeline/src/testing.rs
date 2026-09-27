@@ -101,13 +101,22 @@ async fn stall(switch: &AtomicBool) {
     }
 }
 
-/// Create-if-absent in-memory storage with a one-shot stall after a create
-/// and a one-shot delete failure.
+/// Yield to other futures while `held` is set: a step paused mid-flight so
+/// a test can interleave another facade call, then release it.
+async fn hold(held: &AtomicBool) {
+    while held.load(Ordering::SeqCst) {
+        tokio::task::yield_now().await;
+    }
+}
+
+/// Create-if-absent in-memory storage with a one-shot stall after a create,
+/// a one-shot delete failure, and a releasable hold before deletes.
 #[derive(Default)]
 pub(crate) struct MemoryStorage {
     objects: Mutex<BTreeMap<ObjectKey, Vec<u8>>>,
     stall_after_create: AtomicBool,
     fail_next_delete: AtomicBool,
+    pub(crate) hold_deletes: AtomicBool,
 }
 
 impl MemoryStorage {
@@ -170,6 +179,7 @@ impl ObjectStorage for MemoryStorage {
     ///
     /// `Backend` when the switch was set; the object stays.
     async fn delete(&self, key: &ObjectKey) -> Result<(), StorageError> {
+        hold(&self.hold_deletes).await;
         if self.fail_next_delete.swap(false, Ordering::SeqCst) {
             return Err(StorageError::Backend {
                 detail: "injected delete failure".to_owned(),
@@ -181,14 +191,16 @@ impl ObjectStorage for MemoryStorage {
 }
 
 /// In-memory snapshot store: pointers by scope with compare-and-swap, and
-/// records keyed by identity, with one-shot stalls after a record upsert and
-/// before a swap.
+/// records keyed by identity with `touched_at` and a collection claim, with
+/// one-shot stalls after a record upsert and before a swap and a
+/// releasable hold before swaps.
 #[derive(Default)]
 pub(crate) struct MemorySnapshotStore {
     pointers: Mutex<HashMap<SnapshotScope, SnapshotPointer>>,
-    records: Mutex<BTreeMap<(Identity, ObjectKey), SystemTime>>,
+    records: Mutex<BTreeMap<(Identity, ObjectKey), (SystemTime, bool)>>,
     stall_after_upsert: AtomicBool,
     stall_before_swap: AtomicBool,
+    pub(crate) hold_swaps: AtomicBool,
 }
 
 impl MemorySnapshotStore {
@@ -244,6 +256,7 @@ impl SnapshotStore for MemorySnapshotStore {
         pointer: &SnapshotPointer,
     ) -> Result<bool, PersistenceError> {
         stall(&self.stall_before_swap).await;
+        hold(&self.hold_swaps).await;
         let mut pointers = self.pointers.lock().expect("pointers lock");
         if pointers.get(scope).map(|pointer| &pointer.tree) != expected {
             return Ok(false);
@@ -252,27 +265,34 @@ impl SnapshotStore for MemorySnapshotStore {
         Ok(true)
     }
 
-    /// Insert or re-touch the record; honours the stall switch after writing.
+    /// Insert or re-touch an unclaimed record; honours the stall switch
+    /// after writing.
     ///
     /// # Errors
     ///
-    /// Never.
+    /// `Collecting` when the record is claimed.
     async fn upsert_record(
         &self,
         identity: &Identity,
         key: &ObjectKey,
         touched_at: SystemTime,
     ) -> Result<(), PersistenceError> {
-        self.records
-            .lock()
-            .expect("records lock")
-            .insert((identity.clone(), key.clone()), touched_at);
+        {
+            let mut records = self.records.lock().expect("records lock");
+            let record = records
+                .entry((identity.clone(), key.clone()))
+                .or_insert((touched_at, false));
+            if record.1 {
+                return Err(PersistenceError::Collecting { key: key.clone() });
+            }
+            record.0 = touched_at;
+        }
         stall(&self.stall_after_upsert).await;
         Ok(())
     }
 
-    /// `identity`'s records touched before `older_than` that none of its
-    /// pointers names, in key order.
+    /// Claim `identity`'s records touched before `older_than` that none of
+    /// its pointers names, in key order, under both locks.
     ///
     /// # Errors
     ///
@@ -288,16 +308,16 @@ impl SnapshotStore for MemorySnapshotStore {
                 .iter()
                 .any(|(scope, pointer)| scope.identity == *identity && pointer.key == *key)
         };
-        Ok(self
-            .records
-            .lock()
-            .expect("records lock")
-            .iter()
-            .filter(|((owner, key), touched_at)| {
-                owner == identity && **touched_at < older_than && !referenced(key)
-            })
-            .map(|((_, key), _)| key.clone())
-            .collect())
+        let mut claimed = Vec::new();
+        for ((owner, key), (touched_at, claim)) in
+            self.records.lock().expect("records lock").iter_mut()
+        {
+            if owner == identity && *touched_at < older_than && !referenced(key) {
+                *claim = true;
+                claimed.push(key.clone());
+            }
+        }
+        Ok(claimed)
     }
 
     /// Idempotent removal of one record under `identity`.

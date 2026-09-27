@@ -274,9 +274,14 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> Snapshots<'a, O, S> {
     /// Delete every snapshot of `identity` that no pointer names and no
     /// build touched since `older_than`, returning the deleted keys.
     ///
+    /// The store claims each returned record as it selects it, so a build
+    /// racing on the same key fails its record refresh with
+    /// [`PersistenceError::Collecting`] before creating or pointing at the
+    /// object, and a record a build refreshed first is never selected.
     /// Each object is deleted before its record, so a failure part-way
-    /// leaves a record the next call retries rather than an untracked
-    /// object; an already missing object deletes cleanly. The caller sets
+    /// leaves a claimed record the next call retries rather than an
+    /// untracked object; an already missing object deletes cleanly. Calls
+    /// for one identity must not overlap. The caller sets
     /// `older_than` further back than its longest build so an in-flight
     /// build's record, touched when it began publishing, is never
     /// collected. Every key must be a snapshot key of `identity`, so a
@@ -451,7 +456,8 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
     /// attributes calls, storage and persistence errors, `ForeignKey` or
     /// `Corrupt` for an unusable current pointer or existing object, and
     /// `PointerConflict`, a retry state, when another writer moved the
-    /// pointer first. Per-file
+    /// pointer first, or `Persistence(Collecting)`, a retry state, when a
+    /// running collection claimed this tree's record. Per-file
     /// failures and an unusable archive never error; they appear in
     /// coverage and ingest stats.
     pub async fn run(&self, identity: &Identity) -> Result<ColdBuildResult, ColdBuildError> {
@@ -851,6 +857,7 @@ mod tests {
     use flate2::Compression;
     use flate2::write::GzEncoder;
     use std::sync::Arc;
+    use std::sync::atomic::Ordering;
     use std::time::{Duration, UNIX_EPOCH};
     use tar::EntryType;
 
@@ -1740,6 +1747,95 @@ mod tests {
                 .expect("read"),
             Some(winner)
         );
+    }
+
+    /// Scenario 4 race: paused-store interleavings of `collect` and a build
+    /// of the same deterministic key. When the collector claims first, the
+    /// racing build fails with the retry state before writing anything,
+    /// the collector deletes object then record, and the retried build
+    /// publishes a present object. When the build refreshes first, the
+    /// collector selects nothing and the build publishes. No state names a
+    /// missing object or leaves an object unrecorded.
+    #[tokio::test]
+    async fn collection_claim_and_publication_never_race() {
+        let repo = FakeRepo::new(&standard_files(), &standard_archive());
+        let client = repo.client();
+        let owner = identity();
+        let key = snapshot_key(&owner, &repo.tree);
+        let recorded = || vec![(owner.clone(), key.clone())];
+
+        let storage = MemoryStorage::default();
+        let store = MemorySnapshotStore::default();
+        let build = ColdBuild::new(&client, &storage, &store, ColdBuildLimits::default());
+        let snapshots = Snapshots::new(&storage, &store);
+        store
+            .upsert_record(&owner, &key, UNIX_EPOCH)
+            .await
+            .expect("seed");
+        storage.create(&key, b"stale").await.expect("seed");
+        storage.hold_deletes.store(true, Ordering::SeqCst);
+        let (collected, raced) =
+            tokio::join!(snapshots.collect(&owner, SystemTime::now()), async {
+                let raced = build.run(&owner).await;
+                assert_eq!(
+                    store.snapshot_pointer(&scope(&owner)).await.expect("read"),
+                    None
+                );
+                assert_eq!(store.records(), recorded());
+                assert_eq!(storage.keys(), std::slice::from_ref(&key));
+                storage.hold_deletes.store(false, Ordering::SeqCst);
+                raced
+            });
+        assert_eq!(
+            raced,
+            Err(ColdBuildError::Persistence(PersistenceError::Collecting {
+                key: key.clone()
+            }))
+        );
+        assert_eq!(collected.expect("collect"), std::slice::from_ref(&key));
+        assert!(storage.keys().is_empty() && store.records().is_empty());
+        let ColdBuildOutcome::Published(pointer) = build.run(&owner).await.expect("retry").outcome
+        else {
+            panic!("retry must publish");
+        };
+        assert_eq!(pointer.key, key);
+        assert_eq!(store.records(), recorded());
+        assert!(snapshots.read(&owner, &pointer).await.is_ok());
+
+        let storage = MemoryStorage::default();
+        let store = MemorySnapshotStore::default();
+        let build = ColdBuild::new(&client, &storage, &store, ColdBuildLimits::default());
+        let snapshots = Snapshots::new(&storage, &store);
+        store
+            .upsert_record(&owner, &key, UNIX_EPOCH)
+            .await
+            .expect("seed");
+        let older_than = SystemTime::now();
+        store.hold_swaps.store(true, Ordering::SeqCst);
+        let (built, collected) = tokio::join!(build.run(&owner), async {
+            let collected = snapshots.collect(&owner, older_than).await;
+            assert_eq!(store.records(), recorded());
+            assert_eq!(storage.keys(), std::slice::from_ref(&key));
+            assert_eq!(
+                store.snapshot_pointer(&scope(&owner)).await.expect("read"),
+                None
+            );
+            store.hold_swaps.store(false, Ordering::SeqCst);
+            collected
+        });
+        assert_eq!(collected.expect("collect"), []);
+        let ColdBuildOutcome::Published(pointer) = built.expect("build").outcome else {
+            panic!("build must publish");
+        };
+        assert_eq!(
+            snapshots
+                .collect(&owner, SystemTime::now())
+                .await
+                .expect("collect"),
+            []
+        );
+        assert_eq!(store.records(), recorded());
+        assert!(snapshots.read(&owner, &pointer).await.is_ok());
     }
 
     /// The scope of `identity` under the current versions.
