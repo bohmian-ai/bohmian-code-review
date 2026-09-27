@@ -9,7 +9,7 @@ maps: [REQ-002, REQ-005, REQ-006, INV-002, INV-003, AC-001, AC-004]
 
 ## Outcome and Value
 
-A file with a syntax error yields the declarations tree-sitter recovered outside the error region instead of being rejected whole (REQ-002). A verified file with no extractable facts is a recorded content skip that does not stop the snapshot from being complete (Complete snapshot term, REQ-005, REQ-006). Real repositories whose only blockers were syntax-error files, such as `bohmian-ai/wyrd`, now publish a reusable snapshot.
+A file with a syntax error yields the declarations tree-sitter recovered, including any inside an error region, instead of being rejected whole (REQ-002). A verified file with no extractable facts is a recorded content skip that does not stop the snapshot from being complete (Complete snapshot term, REQ-005, REQ-006). Real repositories whose only blockers were syntax-error files, such as `bohmian-ai/wyrd`, now publish a reusable snapshot.
 
 ## Owners, Scope, Consumers, and Prohibited Changes
 
@@ -29,7 +29,7 @@ Prohibited: changing grammar pins or vendored grammar C; changing any checked-in
 
 ### Scenario 1 — Syntax error keeps recovered declarations
 
-**Behavior.** Rust source with an attribute on a field inside a destructuring pattern (a tree-sitter-rust 0.24.2 grammar gap, as in wyrd `crates/wyrd/wyrd-server/src/boot/mod.rs`) extracts its declarations outside the error region. TypeScript source with a raw NUL byte inside a string literal (as in wyrd `wyrd-ui/src/lib/server/wyrd.ts`) does the same. Neither returns `ExtractionError::Deferred` (REQ-002).
+**Behavior.** Rust source with an attribute on a field inside a destructuring pattern (a tree-sitter-rust 0.24.2 grammar gap, as in wyrd `crates/wyrd/wyrd-server/src/boot/mod.rs`) extracts the declarations in its recovered tree. TypeScript source with a raw NUL byte inside a string literal (as in wyrd `wyrd-ui/src/lib/server/wyrd.ts`) does the same. Neither returns `ExtractionError::Deferred` (REQ-002).
 
 **RED.** Add focused extractor tests with minimal in-memory reproductions of both constructs, run with `cargo test --locked -p bohmian-code-review-extract --all-features recovered_tree`. They fail with `ExtractionError::Deferred`.
 
@@ -74,7 +74,7 @@ Prohibited: changing grammar pins or vendored grammar C; changing any checked-in
 
 ## Material Stop Conditions
 
-Stop if a language's recovered tree makes a `match` fixture differ from its golden. Stop if a grammar produces facts from inside an error region that the spec's "drops only the declarations inside its error region" rule cannot accept. Stop if removing the deferral would change a public error contract that consumers other than the facade and pipeline depend on.
+Stop if a language's recovered tree makes a `match` fixture differ from its golden. Stop if removing the deferral would change a public error contract that consumers other than the facade and pipeline depend on.
 
 ## Authority Links
 

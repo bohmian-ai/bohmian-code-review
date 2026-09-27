@@ -7,8 +7,9 @@
 //! (`tools/oracle/fixtures/manifest.json`) marks each fixture `match`
 //! (native output must equal the golden) or `recover` (the parse tree
 //! contains errors; native extraction must succeed from tree-sitter's
-//! recovered tree and keep the declarations outside the error region, which
-//! need not equal the oracle's wasm-recovered golden).
+//! recovered tree and keep the declarations it recovered, including any
+//! inside an error region, which need not equal the oracle's wasm-recovered
+//! golden).
 //!
 //! The corpus covers all 31 native languages: the frozen kernel's original
 //! 20 plus the five systems/configuration grammar ports (Objective-C,
@@ -1648,9 +1649,9 @@ struct RecoveryExpectation {
 /// The recovered-tree expectations for every malformed corpus fixture.
 ///
 /// Each malformed fixture carries a VALID region before (and sometimes
-/// between) its broken constructs. A syntax error drops only the
-/// declarations inside its error region, so native extraction must keep the
-/// named declarations from the valid regions.
+/// between) its broken constructs. Extraction walks tree-sitter's recovered
+/// tree, so it must keep at least the named declarations from the valid
+/// regions; declarations recovered inside an error region are kept too.
 const RECOVERY_EXPECTATIONS: &[RecoveryExpectation] = &[
     RecoveryExpectation {
         path: "objc/Broken.m",

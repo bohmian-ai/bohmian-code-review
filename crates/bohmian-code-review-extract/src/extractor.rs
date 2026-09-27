@@ -392,7 +392,8 @@ mod tests {
 
     #[test]
     /// A Rust attribute on a destructured field, which tree-sitter-rust
-    /// cannot parse, drops only that region; the declarations around it stay.
+    /// cannot parse, does not reject the file; the declarations around it
+    /// are recovered.
     ///
     /// # Panics
     ///
@@ -406,8 +407,8 @@ mod tests {
     }
 
     #[test]
-    /// A raw NUL byte inside a TypeScript string literal drops only that
-    /// region; the declarations around it stay.
+    /// A raw NUL byte inside a TypeScript string literal does not reject the
+    /// file; the declarations around it are recovered.
     ///
     /// # Panics
     ///
