@@ -1473,14 +1473,17 @@ pub(crate) mod tests {
         }
     }
 
+    /// `(path, mode:content id)` of every file of one pushed tree.
+    type PushedEntries = Vec<(String, String)>;
+
     /// A fake repository at commit `c`/tree `7` with routed responses.
     pub(crate) struct FakeRepo {
         pub(crate) transport: Arc<RoutedTransport>,
         pub(crate) tree: ObjectSha,
         pub(crate) commit: ObjectSha,
         pub(crate) limits: RequestLimits,
-        /// Every pushed commit with its `(path, mode:content id)` entries.
-        history: Mutex<Vec<(ObjectSha, Vec<(String, String)>)>>,
+        /// Every pushed commit with its entries.
+        history: Mutex<Vec<(ObjectSha, PushedEntries)>>,
     }
 
     impl FakeRepo {

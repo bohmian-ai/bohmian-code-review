@@ -790,10 +790,11 @@ mod tests {
                 ),
             );
         };
-        let triggers: [(&str, &dyn Fn(&FakeRepo)); 3] = [
-            ("attributes", &attributes_changed),
-            ("diverged", &diverged),
-            ("ceiling", &at_ceiling),
+        type Trigger = fn(&FakeRepo);
+        let triggers: [(&str, Trigger); 3] = [
+            ("attributes", attributes_changed),
+            ("diverged", diverged),
+            ("ceiling", at_ceiling),
         ];
         for (name, trigger) in triggers {
             let repo = FakeRepo::new(&standard_files(), &standard_archive());
