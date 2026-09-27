@@ -40,3 +40,15 @@ Keep the four independent production facades, verified Git identity and blob inp
 | `FIND-TASK-007-2`: provider-contract row, four live reports, `live_pr.rs`, `mise.toml` | Controlled real-GitHub case report identifies the repository, refs, invocation, requests, statuses/headers and observed results for each named AC-006 case. It captures a real conditional response and rate headers, identifies those as provider-contract observations, and records passing local fake client tests for 403/429 and GHES. |
 
 Run the exact new focused checks, `mise run test:pipeline:journey`, the narrowest pipeline owner lane, `mise run fmt:check`, `mise run lints`, and `mise run gate`. Keep credentialed runs explicitly invoked and report unavailable live conditions as limits, never as passes. The remediation write set includes the benchmark/contract entrypoint and its owning source or tests where the verified input route requires them, the scoped `mise.toml` lane if needed, `changes/active/repo-parser/evidence/TASK-007/`, and the TASK-007 evidence record. Implement once at each root-cause owner, then review the original task against the full cumulative candidate.
+
+## Implementation Evidence
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| `FIND-TASK-007-1`: capacity runs select an immutable commit before measurement through the verified cold-ingest path | `ColdBuild::run_at` in `crates/bohmian-code-review-pipeline/src/snapshot.rs` (repository identity, verified commit→tree, then the shared `build`); `BCR_COMMIT` in `examples/live_pr.rs` | Fixed-commit wyrd, VS Code and Rust runs, all exit 0, with commands, commit/tree identities and every metric in the TASK-007 capacity table and reports `s20-wyrd-pr1.json`, `bench-vscode.json`, `bench-rust.json` (`Commit` replaces `BranchHead` in each call count) | PASS |
+| `FIND-TASK-007-1`: head-advance proof | `snapshot::tests::fixed_commit_build_ignores_head_advance_and_run_follows_it` | `mise run test:pipeline` (76 lib tests passed) | PASS |
+| `FIND-TASK-007-2`: controlled real-GitHub contract report | `examples/provider_contract.rs`; lane `live:provider-contract` in `mise.toml`, outside `gate` | `GITHUB_TOKEN=$(gh auth token) BCR_REPO_ID=1383739221 BCR_COMMIT=2855eac00a15581cede6e29ec5a0dde0b8bc4d48 mise run live:provider-contract`, exit 0 → `evidence/TASK-007/provider-contract-wyrd.json`: archive 302→codeload 200 gzip, recursive tree, verified blob, PR #91 patch omission (38 files), rate-limit headers on every API response, conditional replay 304 recorded as a provider observation only | PASS |
+| `FIND-TASK-007-2`: 403/429 and GHES branches | existing fake-transport tests in `github.rs` | `mise run test:pipeline` | PASS (local proof; live 403/429 not provoked) |
+| Required lanes | — | `mise run test:pipeline:journey`, `mise run fmt:check`, `mise run lints`, `git diff --check`, `mise run gate`, all exit 0 | PASS |
+
+Non-goals held: the client gained no conditional-request support, no new persisted snapshot fields, no consumer service or credentialed CI lane. Default-branch `ColdBuild::run` and PR-context behavior are unchanged.
