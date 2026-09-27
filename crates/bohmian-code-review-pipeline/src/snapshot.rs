@@ -120,7 +120,8 @@ pub struct SkippedFile {
 /// [`ColdBuildResult::ingest`] instead.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct Coverage {
-    /// The provider truncated the recursive listing; nothing was indexed.
+    /// Some tree's listing was truncated even without recursion, so the
+    /// listing could not be completed; nothing was indexed.
     pub truncated_tree: bool,
     /// Eligible files in the listed tree.
     pub eligible: usize,
@@ -458,7 +459,8 @@ fn snapshot_key(scope: &SnapshotScope, tree: &ObjectSha) -> ObjectKey {
 /// Why a complete attempt was not produced.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IncompleteReason {
-    /// The provider truncated the recursive tree listing.
+    /// Some tree's listing was truncated even without recursion, so the
+    /// tree could not be listed completely.
     TruncatedTree,
     /// The compressed or decompressed archive passed its byte bound;
     /// coverage still reports what verified fallback indexed.
@@ -664,8 +666,8 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
 
     /// List and classify `head`'s tree, with every eligible file pending.
     ///
-    /// Returns `Err` with the incomplete result when the provider truncated
-    /// the listing.
+    /// Returns `Err` with the incomplete result when the tree could not be
+    /// listed completely.
     ///
     /// # Errors
     ///
@@ -1259,6 +1261,44 @@ pub(crate) mod tests {
         pub(crate) size: Option<u64>,
     }
 
+    /// Provider JSON listing `files` as `tree`'s entries; a blob or
+    /// subtree id is the Git blob id of the entry's content.
+    pub(crate) fn listing(tree: &ObjectSha, truncated: bool, files: &[File]) -> String {
+        let entries: Vec<String> = files
+            .iter()
+            .map(|f| {
+                let kind = match f.mode {
+                    "040000" => "tree",
+                    "160000" => "commit",
+                    _ => "blob",
+                };
+                let size = f.size.unwrap_or(f.content.len() as u64);
+                let (mode, sha) = match f.mode {
+                    "bad-sha" => ("100644", "not-a-sha".to_owned()),
+                    mode => (mode, blob_sha(f.content).to_string()),
+                };
+                format!(
+                    r#"{{"path":"{}","mode":"{mode}","type":"{kind}","sha":"{sha}","size":{size}}}"#,
+                    f.path
+                )
+            })
+            .collect();
+        format!(
+            r#"{{"sha":"{tree}","truncated":{truncated},"tree":[{}]}}"#,
+            entries.join(",")
+        )
+    }
+
+    /// A directory entry whose subtree id is the blob id of `id`.
+    pub(crate) fn dir(path: &'static str, id: &'static [u8]) -> File {
+        File {
+            path,
+            mode: "040000",
+            content: id,
+            size: None,
+        }
+    }
+
     /// A regular file whose listed size is its content length.
     pub(crate) fn file(path: &'static str, content: &'static [u8]) -> File {
         File {
@@ -1331,44 +1371,29 @@ pub(crate) mod tests {
         /// Route `tree` listing `files` and every file's blob, without
         /// moving the branch.
         pub(crate) fn route_tree(&self, tree: &ObjectSha, files: &[File]) {
-            let transport = &self.transport;
-            let entries: Vec<String> = files
-                .iter()
-                .map(|f| {
-                    let sha = blob_sha(f.content);
-                    let kind = match f.mode {
-                        "040000" => "tree",
-                        "160000" => "commit",
-                        _ => "blob",
-                    };
-                    let size = f.size.unwrap_or(f.content.len() as u64);
-                    transport.route(&format!("/git/blobs/{sha}"), 200, f.content);
-                    let (mode, sha) = match f.mode {
-                        "bad-sha" => ("100644", "not-a-sha".to_owned()),
-                        mode => (mode, sha.to_string()),
-                    };
-                    format!(
-                        r#"{{"path":"{}","mode":"{mode}","type":"{kind}","sha":"{sha}","size":{size}}}"#,
-                        f.path
-                    )
-                })
-                .collect();
-            transport.json(
+            for f in files {
+                self.transport.route(
+                    &format!("/git/blobs/{}", blob_sha(f.content)),
+                    200,
+                    f.content,
+                );
+            }
+            self.transport.json(
                 &format!("/git/trees/{tree}?recursive=1"),
-                &format!(
-                    r#"{{"sha":"{tree}","truncated":false,"tree":[{}]}}"#,
-                    entries.join(",")
-                ),
+                &listing(tree, false, files),
             );
         }
 
-        /// Replace the tree route with a truncated listing.
+        /// Replace the tree's recursive and non-recursive routes with truncated
+        /// listings, so the tree cannot be listed completely.
         pub(crate) fn truncate_tree(&self) {
             let tree = &self.tree;
-            self.transport.json(
-                &format!("/git/trees/{tree}?recursive=1"),
-                &format!(r#"{{"sha":"{tree}","truncated":true,"tree":[]}}"#),
-            );
+            for query in ["?recursive=1", ""] {
+                self.transport.json(
+                    &format!("/git/trees/{tree}{query}"),
+                    &listing(tree, true, &[]),
+                );
+            }
         }
 
         /// A client over this fake under `limits`.
@@ -1943,7 +1968,7 @@ pub(crate) mod tests {
         ));
     }
 
-    /// Scenario 2: a truncated tree, an exhausted fallback
+    /// Scenario 2: an exhausted fallback
     /// bound, and an exhausted expansion or compressed archive bound each
     /// yield an incomplete result with exact skips; nothing is written and a
     /// prior pointer for another tree stays in place, even when fallback
@@ -1981,17 +2006,6 @@ pub(crate) mod tests {
                 client.calls().get(Operation::Blob),
             )
         };
-
-        let repo = FakeRepo::new(&standard_files(), &standard_archive());
-        repo.truncate_tree();
-        let (result, keys, pointer, _) = run(&repo, ColdBuildLimits::default()).await;
-        assert_eq!(
-            result.outcome,
-            ColdBuildOutcome::Incomplete(IncompleteReason::TruncatedTree)
-        );
-        assert!(result.coverage.truncated_tree && !result.coverage.is_complete());
-        assert!(keys.is_empty());
-        assert_eq!(pointer.as_ref(), Some(&prior));
 
         let mut files = standard_files();
         files.push(file("src/broken.ts", BROKEN));
@@ -2554,6 +2568,117 @@ pub(crate) mod tests {
         ] {
             assert!(!text.contains(field), "{field} persisted in the snapshot");
         }
+    }
+
+    /// A truncated root listing and a truncated nested listing are split
+    /// into subtree listings whose joined entries publish the same snapshot
+    /// bytes and coverage as the untruncated recursive listing.
+    #[tokio::test]
+    async fn truncated_listing_splits_into_the_complete_snapshot() {
+        let files = [
+            file("README.md", b"# hi\n"),
+            dir("src", b"tree:src"),
+            file("src/user.ts", USER),
+            file("src/format.ts", FORMAT),
+            dir("src/lib", b"tree:src/lib"),
+            file("src/lib/handler.ts", HANDLER),
+        ];
+        let archive = [
+            ("src/user.ts", USER),
+            ("src/format.ts", FORMAT),
+            ("src/lib/handler.ts", HANDLER),
+        ];
+        let identity = identity();
+        let publish = async |repo: &FakeRepo| {
+            let client = repo.client();
+            let storage = MemoryStorage::default();
+            let store = MemorySnapshotStore::default();
+            let result = ColdBuild::new(&client, &storage, &store, ColdBuildLimits::default())
+                .run(&identity)
+                .await
+                .expect("build");
+            let ColdBuildOutcome::Published(pointer) = &result.outcome else {
+                panic!("expected publication, got {:?}", result.outcome);
+            };
+            let bytes = storage.read(&pointer.key).await.expect("object");
+            (result.coverage, bytes, client.calls().get(Operation::Tree))
+        };
+
+        let (oracle_coverage, oracle_bytes, _) = publish(&FakeRepo::new(&files, &archive)).await;
+        assert_eq!(oracle_coverage.indexed, 3);
+
+        let repo = FakeRepo::new(&files, &archive);
+        let (src, lib) = (blob_sha(b"tree:src"), blob_sha(b"tree:src/lib"));
+        let route = |tree: &ObjectSha, query: &str, truncated: bool, files: &[File]| {
+            repo.transport.json(
+                &format!("/git/trees/{tree}{query}"),
+                &listing(tree, truncated, files),
+            );
+        };
+        route(&repo.tree, "?recursive=1", true, &files[..2]);
+        route(
+            &repo.tree,
+            "",
+            false,
+            &[file("README.md", b"# hi\n"), dir("src", b"tree:src")],
+        );
+        route(&src, "?recursive=1", true, &[]);
+        route(
+            &src,
+            "",
+            false,
+            &[
+                file("user.ts", USER),
+                file("format.ts", FORMAT),
+                dir("lib", b"tree:src/lib"),
+            ],
+        );
+        route(&lib, "?recursive=1", false, &[file("handler.ts", HANDLER)]);
+        let (coverage, bytes, tree_calls) = publish(&repo).await;
+        assert!(coverage.is_complete());
+        assert_eq!(coverage, oracle_coverage);
+        assert_eq!(bytes, oracle_bytes);
+        assert_eq!(tree_calls, 5);
+    }
+
+    /// A tree whose non-recursive listing is itself truncated cannot be
+    /// split: the attempt is incomplete with a truncated-tree coverage
+    /// reason, nothing is written, and the prior pointer stays.
+    #[tokio::test]
+    async fn unsplittable_truncated_listing_is_incomplete_and_unpublished() {
+        let identity = identity();
+        let scope = scope(&identity);
+        let prior = SnapshotPointer {
+            tree: sha('0'),
+            commit: sha('1'),
+            key: snapshot_key(&scope, &sha('0')),
+            digest: ObjectDigest::of(b""),
+        };
+        let repo = FakeRepo::new(&standard_files(), &standard_archive());
+        repo.truncate_tree();
+        let client = repo.client();
+        let storage = MemoryStorage::default();
+        let persistence = MemorySnapshotStore::default();
+        assert!(
+            persistence
+                .publish_snapshot_pointer(&scope, None, &prior)
+                .await
+                .expect("seed")
+        );
+        let result = ColdBuild::new(&client, &storage, &persistence, ColdBuildLimits::default())
+            .run(&identity)
+            .await
+            .expect("build result");
+        assert_eq!(
+            result.outcome,
+            ColdBuildOutcome::Incomplete(IncompleteReason::TruncatedTree)
+        );
+        assert!(result.coverage.truncated_tree && !result.coverage.is_complete());
+        assert!(storage.keys().is_empty());
+        assert_eq!(
+            persistence.snapshot_pointer(&scope).await.expect("pointer"),
+            Some(prior)
+        );
     }
 
     /// S14 snapshot-store isolation: an identity with no rows sees no

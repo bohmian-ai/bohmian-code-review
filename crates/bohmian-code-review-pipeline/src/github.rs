@@ -237,7 +237,7 @@ pub enum Operation {
     BranchHead,
     /// `GET /repos/{owner}/{repo}/git/commits/{sha}`.
     Commit,
-    /// `GET /repos/{owner}/{repo}/git/trees/{sha}?recursive=1`.
+    /// `GET /repos/{owner}/{repo}/git/trees/{sha}`, recursive or not.
     Tree,
     /// `GET /repos/{owner}/{repo}/git/blobs/{sha}` as raw bytes.
     Blob,
@@ -468,18 +468,48 @@ pub struct RejectedPath {
     pub reason: String,
 }
 
-/// A recursive tree listing verified against the requested tree id.
+/// A complete tree listing verified against the requested tree id.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TreeListing {
     /// Tree id as requested.
     pub sha: ObjectSha,
-    /// Whether the provider truncated the listing.
+    /// Whether some tree's non-recursive listing was truncated, so the
+    /// listing could not be split further and misses that tree's entries.
     pub truncated: bool,
     /// Entries with valid paths and modes.
     pub entries: Vec<TreeEntry>,
     /// Entries left out because their path is not a canonical
     /// [`RelativePath`]; no such path can be eligible.
     pub invalid_paths: usize,
+}
+
+impl TreeListing {
+    /// Validate `entry` with `prefix` prepended to its path and keep it, or
+    /// count it as an invalid path.
+    ///
+    /// # Errors
+    ///
+    /// [`GitHubError::MalformedResponse`] for `resource` when the entry has
+    /// an unknown mode or a malformed id.
+    fn push(
+        &mut self,
+        resource: &str,
+        prefix: &str,
+        mut entry: TreeEntryWire,
+    ) -> Result<(), GitHubError> {
+        entry.path.insert_str(0, prefix);
+        match validate_tree_entry(&entry) {
+            Ok(Some(valid)) => self.entries.push(valid),
+            Ok(None) => self.invalid_paths += 1,
+            Err(detail) => {
+                return Err(GitHubError::MalformedResponse {
+                    resource: resource.to_owned(),
+                    detail,
+                });
+            }
+        }
+        Ok(())
+    }
 }
 
 /// Provider pull-request state.
@@ -648,7 +678,7 @@ struct ShaWire {
     sha: ObjectSha,
 }
 
-/// Wire shape of a recursive tree listing.
+/// Wire shape of a tree listing, recursive or not.
 #[derive(Deserialize)]
 struct TreeWire {
     sha: ObjectSha,
@@ -944,7 +974,15 @@ impl GitHubClient {
         })
     }
 
-    /// List `tree` recursively, validating every path, mode, and id.
+    /// List `tree` completely, validating every path, mode, and id.
+    ///
+    /// When the provider truncates a recursive listing, the tree is listed
+    /// without recursion and each subtree is listed recursively in its
+    /// place, splitting again wherever a listing is still truncated. The
+    /// joined entries carry full repository-relative paths in the order an
+    /// untruncated recursive listing returns them. Only a non-recursive
+    /// listing of one tree that is itself truncated leaves
+    /// [`TreeListing::truncated`] set; that tree's entries are left out.
     ///
     /// An entry whose path is not a canonical [`RelativePath`] is counted in
     /// [`TreeListing::invalid_paths`] and left out.
@@ -959,10 +997,76 @@ impl GitHubClient {
         repository: &RepositoryIdentity,
         tree: &ObjectSha,
     ) -> Result<TreeListing, GitHubError> {
-        let resource = format!(
-            "/repos/{}/git/trees/{tree}?recursive=1",
-            repository.full_name()
-        );
+        let mut listing = TreeListing {
+            sha: tree.clone(),
+            truncated: false,
+            entries: Vec::new(),
+            invalid_paths: 0,
+        };
+        self.list_into(repository, tree, "", &mut listing).await?;
+        Ok(listing)
+    }
+
+    /// Append `tree`'s entries to `listing` with `prefix` (empty or ending
+    /// in `/`) prepended to each path, splitting a truncated recursive
+    /// listing into its subtrees.
+    ///
+    /// # Errors
+    ///
+    /// As [`GitHubClient::tree`].
+    async fn list_into(
+        &self,
+        repository: &RepositoryIdentity,
+        tree: &ObjectSha,
+        prefix: &str,
+        listing: &mut TreeListing,
+    ) -> Result<(), GitHubError> {
+        let (resource, wire) = self.tree_wire(repository, tree, true).await?;
+        if !wire.truncated {
+            for entry in wire.tree {
+                listing.push(&resource, prefix, entry)?;
+            }
+            return Ok(());
+        }
+        let (resource, wire) = self.tree_wire(repository, tree, false).await?;
+        if wire.truncated {
+            listing.truncated = true;
+            return Ok(());
+        }
+        for entry in wire.tree {
+            let subtree = match entry.mode.as_str() {
+                "040000" => Some((
+                    format!("{prefix}{}/", entry.path),
+                    ObjectSha::new(&entry.sha).map_err(|error| GitHubError::MalformedResponse {
+                        resource: resource.clone(),
+                        detail: format!("tree entry id: {error}"),
+                    })?,
+                )),
+                _ => None,
+            };
+            listing.push(&resource, prefix, entry)?;
+            if let Some((subprefix, sha)) = subtree {
+                Box::pin(self.list_into(repository, &sha, &subprefix, listing)).await?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Fetch one listing of `tree`, recursive or not, and check its id.
+    /// Returns the request path with the wire listing.
+    ///
+    /// # Errors
+    ///
+    /// [`GitHubError::IdentityMismatch`] when the provider returns another
+    /// tree id, plus any policy or transport error.
+    async fn tree_wire(
+        &self,
+        repository: &RepositoryIdentity,
+        tree: &ObjectSha,
+        recursive: bool,
+    ) -> Result<(String, TreeWire), GitHubError> {
+        let query = if recursive { "?recursive=1" } else { "" };
+        let resource = format!("/repos/{}/git/trees/{tree}{query}", repository.full_name());
         let wire: TreeWire = self
             .get_json(Operation::Tree, &resource, ACCEPT_JSON)
             .await?;
@@ -972,23 +1076,7 @@ impl GitHubClient {
                 actual: wire.sha.to_string(),
             });
         }
-        let mut entries = Vec::with_capacity(wire.tree.len());
-        let mut invalid_paths = 0;
-        for entry in &wire.tree {
-            match validate_tree_entry(entry) {
-                Ok(Some(valid)) => entries.push(valid),
-                Ok(None) => invalid_paths += 1,
-                Err(detail) => {
-                    return Err(GitHubError::MalformedResponse { resource, detail });
-                }
-            }
-        }
-        Ok(TreeListing {
-            sha: wire.sha,
-            truncated: wire.truncated,
-            entries,
-            invalid_paths,
-        })
+        Ok((resource, wire))
     }
 
     /// Fetch blob `sha` as raw bytes, reading at most the smaller of

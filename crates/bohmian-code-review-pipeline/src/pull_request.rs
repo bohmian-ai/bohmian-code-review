@@ -7,8 +7,7 @@
 //! snapshot is loaded into an invocation-private index and reconciled with
 //! the head tree through the snapshot ingest: unchanged facts are carried,
 //! changed and drifted blobs are fetched within a bound, and removed paths
-//! are never loaded. Without a usable snapshot, or with a truncated head
-//! listing, a bounded index of files near the changed paths is built
+//! are never loaded. Without a usable snapshot, a bounded index of files near the changed paths is built
 //! instead and reported as scoped. Candidate blobs are fetched at their head
 //! identity only after ranking. Source bytes are dropped once packed.
 
@@ -169,10 +168,7 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
             self.limits.max_file_bytes,
         )
         .await?;
-        let snapshot = match listing.truncated {
-            true => None,
-            false => self.snapshot(identity).await?,
-        };
+        let snapshot = self.snapshot(identity).await?;
         let limits = &self.limits;
         let rejected_changed: Vec<RelativePath> = pinned
             .rejected
