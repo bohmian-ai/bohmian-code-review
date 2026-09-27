@@ -9,7 +9,11 @@
 //! streams a pinned default-branch archive into a complete, source-free
 //! [`Snapshot`], and [`Snapshots`] reads snapshots back and removes those no
 //! pointer names. [`Update`] advances that pointer incrementally from tree
-//! differences and reports review-time [`Freshness`]. It never clones,
+//! differences and reports review-time [`Freshness`]. [`PrContext`]
+//! overlays a pull request's pinned head on a private copy of that
+//! snapshot, or on a bounded scoped index, ranks and packs candidates, and
+//! publishes one shared [`ReviewContext`] that [`Contexts`] reads back by
+//! id under the caller's identity until it expires. It never clones,
 //! checks out, or persists source; it depends on the public
 //! `bohmian-code-review` facade alone and imports no consumer type.
 

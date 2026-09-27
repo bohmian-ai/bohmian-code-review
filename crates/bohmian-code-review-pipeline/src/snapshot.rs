@@ -1,7 +1,7 @@
 //! Cold default-branch snapshot build, publication, read-back, and cleanup.
 //!
 //! [`ColdBuild::run`] pins the default branch, classifies its tree with
-//! [`classify`], streams the commit tarball through bounded decompression,
+//! `classify`, streams the commit tarball through bounded decompression,
 //! verifies every eligible entry against its Git blob id, falls back to
 //! bounded verified blob calls for anything the archive omitted or
 //! substituted, and indexes through the public [`SymbolicContext`]. Source
@@ -483,7 +483,7 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
     /// imposes no maximum of its own. A current pointer at the branch tree
     /// is validated and reused; if its object has gone missing the snapshot
     /// is rebuilt at the same key. A complete build publishes through
-    /// [`ColdBuild::publish`]; a retry after a drop at any `.await`
+    /// its three-step publication; a retry after a drop at any `.await`
     /// converges.
     ///
     /// # Errors
