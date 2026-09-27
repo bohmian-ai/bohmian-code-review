@@ -37,3 +37,16 @@ Restore a hard 4096-byte bound on the classifier's own inspection buffer and cop
 Write set: `crates/bohmian-code-review-pipeline/src/github.rs` and its inline owner tests. Preserve all previously verified source-trust, identity, archive, storage-trait, and async behavior. This task does not implement TASK-003 cold-build internals or a new provider transport.
 
 Route to `$cr-implement`; the next task review reassesses the cumulative candidate against TASK-002.
+
+## Implementation evidence
+
+Candidate: commit `02cfefa` on `review-helper-setup`. `names_rate_limit` now reads through `rate_limit_prefix`, which allocates `RATE_LIMIT_BODY_BYTES` once and slices each chunk to the remaining room before copying.
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| 1. Prefix never exceeds 4096 bytes; marker past it ignored, inside it honoured | `github::rate_limit_prefix`, `github::names_rate_limit` | `github::tests::headerless_403_inspects_only_a_bounded_prefix`: a 16 KiB single chunk yields `len == 4096` and `capacity <= 4096`; marker at byte 4096 → `Forbidden`, marker ending at byte 4096 in a 12 KiB chunk → `RateLimited` | PASS |
+| 2. Shared provider path keeps `Forbidden`/`RateLimited`, no extra retries or wait change | `send_with_policy` unchanged | same test drives `GitHubClient::repository` and asserts 2 requests for 2 calls, `retry_after == SECONDARY_RATE_LIMIT_WAIT`; `rate_limits_retry_within_bounds_or_report_typed_outcomes` still passes | PASS |
+| 3. Focused test proves the copy bound directly | capacity assertion on the returned buffer; the old `extend`-then-`truncate` shape keeps a ≥16 KiB capacity and fails it | focused test | PASS |
+| 4. Verification | — | focused test, `dropped_call_sends_no_further_requests`, `mise run test:pipeline` (30 passed), `mise run fmt:check`, `mise run lints`, `git diff --check`, `mise run gate` — all exit 0 | PASS |
+
+Only `github.rs` changed (plus this record). Transport, retry policy, errors, and async behavior are untouched; the transport's own one-chunk materialisation stays out of scope.
