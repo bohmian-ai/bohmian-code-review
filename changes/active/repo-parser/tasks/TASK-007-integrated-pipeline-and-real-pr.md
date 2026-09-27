@@ -2,7 +2,7 @@
 id: TASK-007
 kind: implementation
 status: proposed
-spec: SPEC-repo-parser@12
+spec: SPEC-repo-parser@13
 depends_on: [TASK-001, TASK-002, TASK-003, TASK-004, TASK-005]
 maps: [REQ-004, REQ-008, REQ-009, REQ-010, REQ-011, REQ-012, REQ-013, REQ-017, REQ-018, INV-001, INV-002, INV-003, INV-004, INV-005, INV-006, INV-007, AC-002, AC-003, AC-004, AC-006, AC-007, AC-008, AC-010, AC-011]
 ---
