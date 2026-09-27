@@ -40,3 +40,18 @@ Approved authority: `changes/active/repo-parser/spec.md` revision 12. Original t
 The write set covers the existing outer-crate owners and nearest tests as needed: `crates/bohmian-code-review-pipeline/src/eligibility.rs`, `snapshot.rs`, `update.rs`, `pull_request.rs`, `context.rs`, `persistence.rs`, and `testing.rs`. Include any direct public facade tests affected by the context cleanup contract. Keep symbolic crates, storage backend implementations, grammar pins and source lifetime boundaries unchanged. Do not add models, comments, consumer scheduling, detached work, new dependencies or unrelated refactors.
 
 Run exact focused selectors for the three gap scenarios and every sibling, then `mise run test:pipeline`, `mise run test:symbolic-context:journey`, `mise run fmt:check`, `mise run lints`, `mise run gate`, and `git diff --check`. Record RED/GREEN and final results. Route directly to `$cr-implement`; the next task review inspects the complete cumulative candidate.
+
+## Implementation Evidence
+
+FIND-4 follows `maintainer-decision-rejected-tree-entries.md`, not the correction above. Commits `04c1abb` (FIND-4, FIND-6) and `3959da4` (FIND-7).
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| Unknown mode or malformed SHA fails the tree listing; nothing publishes, pointer unmoved | `github.rs` `GitHubClient::tree`, `validate_tree_entry` → `MalformedResponse` | `github::tests::verified_provider_identities_cross_and_mismatches_are_rejected`, `snapshot::tests::broken_tree_entry_fails_the_build`, `update::tests::broken_tree_entry_keeps_the_pointer`, `pull_request::tests::broken_head_tree_entry_fails_the_run` | PASS |
+| Non-canonical tree path is an `Unsupported` exclusion; snapshot stays complete | `TreeListing::invalid_paths`, `Ingest::new`/`finish` | `snapshot::tests::non_canonical_tree_path_is_an_unsupported_exclusion`, `pull_request::tests::non_canonical_head_tree_path_keeps_full_coverage` | PASS |
+| Tree `rejected` list, `ExclusionReason::InvalidEntry`, and every consumer deleted (cold, update, overlay, scoped `near`) | `github.rs`, `eligibility.rs`, `snapshot.rs`, `pull_request.rs` | `rg InvalidEntry\|listing.rejected` empty outside `changes/` | PASS |
+| PR-file rejection (FIND-5) unchanged | `Pinned::rejected`, `rejected_changed` | `rejected_pr_file_is_not_full_coverage`, `rejected_changed_path_is_never_secondary` | PASS |
+| FIND-6: one scoped index ceiling across changed heads and fallback; every valid head still analyzed | `PrContext::changed_head` `index_cap` | `pull_request::tests::changed_heads_share_the_scoped_index_ceiling` (RED without cap: indexed 2; GREEN: eligible 7, indexed 1, `src/pr1.ts` NotFetched, `not_analyzed` empty, 3 blob calls = root attributes + two heads); one-head case `scoped_bound_skips_excluded_neighbors`; warm controls unchanged | PASS |
+| FIND-7: caller collection cutoff separate from 24h read expiry; in-flight publication never orphaned | `Contexts::collect_expired(older_than, ..)`, `ContextStore::expired_contexts` contract, `MemoryStorage::hold_creates` | `context::tests::cleanup_cutoff_spares_in_flight_publication` (record kept while read is `Expired`; resumed create leaves recorded object; dropped-after-upsert and held publications both cleaned after grace); existing ordinary expiry, independent publication, lag/retry tests | PASS |
+
+Commands: `mise run test:pipeline`, `mise run test:symbolic-context:journey`, `mise run fmt:check`, `mise run lints`, `git diff --check`, `mise run gate` — all exit 0 in this session. Non-goals held: symbolic crates, storage backends, grammar pins, dependencies, and the 24-hour read policy untouched.
