@@ -25,14 +25,13 @@ use bohmian_code_review::Error as SymbolicError;
 use bohmian_code_review::{EXTRACTION_VERSION, IndexedFileFacts, RelativePath, SymbolicContext};
 use flate2::write::GzDecoder;
 use serde::{Deserialize, Serialize};
-use std::collections::btree_map::Entry;
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::{self, Write};
 use std::time::Duration;
 use thiserror::Error;
 
 /// Layout version of the serialized [`Snapshot`]; part of every snapshot key.
-pub const SNAPSHOT_FORMAT_VERSION: u32 = 2;
+pub const SNAPSHOT_FORMAT_VERSION: u32 = 3;
 
 /// Git LFS pointer files start with this line and are skipped by content.
 const LFS_POINTER_PREFIX: &[u8] = b"version https://git-lfs.github.com/spec/v1";
@@ -262,8 +261,6 @@ pub struct Snapshot {
     pub tree: ObjectSha,
     /// Outcome of every eligible file, in canonical path order.
     pub files: Vec<FileOutcome>,
-    /// Excluded tree entries counted by reason.
-    pub excluded: BTreeMap<ExclusionReason, usize>,
 }
 
 impl Snapshot {
@@ -306,17 +303,11 @@ impl Snapshot {
         Ok(snapshot)
     }
 
-    /// Whether `path` is one of the tree's eligible files.
-    pub(crate) fn holds(&self, path: &RelativePath) -> bool {
-        self.files
-            .binary_search_by(|outcome| outcome.path().cmp(path))
-            .is_ok()
-    }
-
     /// Coverage of the tree, derived from the file outcomes; always
-    /// complete for a decoded snapshot.
+    /// complete for a decoded snapshot. Exclusions are not persisted, so
+    /// none are counted.
     pub fn coverage(&self) -> Coverage {
-        Coverage::of(&self.files, self.excluded.clone())
+        Coverage::of(&self.files, BTreeMap::new())
     }
 
     /// Load every indexed file's facts into a fresh in-memory context
@@ -783,7 +774,6 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
             identity: scope.identity.clone(),
             tree: head.tree.clone(),
             files: ingested.outcomes,
-            excluded: ingested.excluded,
         };
         let pointer = self
             .publish(scope, current, &head.commit, &snapshot)
@@ -964,38 +954,14 @@ impl Ingest {
 
     /// Complete an update started with [`Ingest::new`] over only the head
     /// entries of changed paths: carry `prior`'s outcome for every path not
-    /// in `removed`, add `prior`'s exclusion counts, and take back the
-    /// exclusions of `gone`, the base entries of removed paths `prior` did
-    /// not hold as eligible, plus `invalid_gone` non-canonical removed paths.
+    /// in `removed`.
     ///
-    /// The result equals ingesting the head tree afresh once the pending
-    /// changed paths are fetched, provided `attributes` are unchanged
-    /// between base and head. A carried fact that fails to load stays
-    /// pending at its prior blob and is fetched like a changed one.
-    pub(crate) fn carry(
-        &mut self,
-        prior: Snapshot,
-        removed: &[RelativePath],
-        gone: &[TreeEntry],
-        invalid_gone: usize,
-        attributes: &RootAttributes,
-    ) {
-        for (reason, count) in prior.excluded {
-            *self.excluded.entry(reason).or_insert(0) += count;
-        }
-        let gone = classify(gone, attributes, &self.context, self.max_file_bytes);
-        let gone = gone.excluded.into_iter().map(|exclusion| exclusion.reason);
-        for reason in gone.chain(std::iter::repeat_n(
-            ExclusionReason::Unsupported,
-            invalid_gone,
-        )) {
-            if let Entry::Occupied(mut count) = self.excluded.entry(reason) {
-                *count.get_mut() -= 1;
-                if *count.get() == 0 {
-                    count.remove();
-                }
-            }
-        }
+    /// The outcomes equal ingesting the head tree afresh once the pending
+    /// changed paths are fetched, provided the root attributes are
+    /// unchanged between base and head. Exclusions count only the changed
+    /// entries. A carried fact that fails to load stays pending at its
+    /// prior blob and is fetched like a changed one.
+    pub(crate) fn carry(&mut self, prior: Snapshot, removed: &[RelativePath]) {
         let removed: BTreeSet<&RelativePath> = removed.iter().collect();
         for outcome in prior.files {
             if removed.contains(outcome.path()) {
@@ -1799,7 +1765,14 @@ pub(crate) mod tests {
             );
         }
         let snapshot = Snapshot::decode(&bytes, &identity, &repo.tree).expect("decode");
-        assert_eq!(snapshot.coverage(), *coverage);
+        assert_eq!(
+            snapshot.coverage(),
+            Coverage {
+                excluded: BTreeMap::new(),
+                ..coverage.clone()
+            },
+            "exclusions are reported by the build, not persisted"
+        );
         let paths: Vec<&str> = snapshot.files.iter().map(|f| f.path().as_str()).collect();
         assert_eq!(
             paths,
@@ -1845,7 +1818,7 @@ pub(crate) mod tests {
 
         let again = build.run(&identity).await.expect("second build");
         assert_eq!(again.outcome, ColdBuildOutcome::Reused(pointer.clone()));
-        assert_eq!(again.coverage, *coverage);
+        assert_eq!(again.coverage, snapshot.coverage(), "reuse lists nothing");
         assert_eq!(again.ingest, IngestStats::default());
         assert_eq!(calls.get(Operation::Archive), 1);
         assert_eq!(calls.get(Operation::Tree), 1);
@@ -1988,7 +1961,6 @@ pub(crate) mod tests {
             identity: identity(),
             tree: sha('7'),
             files: ingested.outcomes,
-            excluded: BTreeMap::new(),
         });
         assert!(ingest.pending.is_empty());
         let ingested = ingest.finish();

@@ -625,19 +625,16 @@ pub struct Comparison {
     pub removed: Vec<RelativePath>,
     /// Canonical paths present at the head that are new or changed.
     pub added: Vec<RelativePath>,
-    /// Non-canonical paths present at the base that changed or went away;
-    /// a tree listing counts each as an invalid path.
-    pub invalid_removed: usize,
     /// Non-canonical paths present at the head that are new or changed.
     pub invalid_added: usize,
 }
 
 impl Comparison {
-    /// Record `raw` as removed from the base, or count it as invalid.
+    /// Record `raw` as removed from the base; a non-canonical path was
+    /// never eligible, so it is dropped.
     fn remove(&mut self, raw: &str) {
-        match RelativePath::new(raw) {
-            Ok(path) => self.removed.push(path),
-            Err(_) => self.invalid_removed += 1,
+        if let Ok(path) = RelativePath::new(raw) {
+            self.removed.push(path);
         }
     }
 
@@ -1181,7 +1178,6 @@ impl GitHubClient {
             files: wire.files.len(),
             removed: Vec::new(),
             added: Vec::new(),
-            invalid_removed: 0,
             invalid_added: 0,
         };
         let malformed = |detail: String| GitHubError::MalformedResponse {
@@ -1831,10 +1827,7 @@ mod tests {
             paths(&comparison.added),
             ["a.rs", "c.rs", "new.rs", "copy.rs"]
         );
-        assert_eq!(
-            (comparison.invalid_removed, comparison.invalid_added),
-            (0, 1)
-        );
+        assert_eq!(comparison.invalid_added, 1);
         assert!(fake.seen()[0].0.ends_with(&format!(
             "/repos/octocat/Hello-World/compare/{base}...{head}"
         )));

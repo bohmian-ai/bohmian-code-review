@@ -122,15 +122,7 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> Update<'a, O, S> {
             .map_or(&[][..], |root| &root.entries);
         let attributes =
             root_attributes(cold.client, identity, root, cold.limits.max_file_bytes).await?;
-        let unheld: Vec<RelativePath> = changes
-            .removed
-            .iter()
-            .filter(|path| !prior.holds(path))
-            .cloned()
-            .collect();
-        let mut base_tree = Directories::new(cold.client, identity, &pointer.tree);
-        let gone = base_tree.entries(&unheld).await?;
-        if head_tree.truncated || base_tree.truncated {
+        if head_tree.truncated {
             return Ok(ColdBuildResult::truncated(&head));
         }
 
@@ -140,13 +132,7 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> Update<'a, O, S> {
             &attributes,
             cold.limits.max_file_bytes,
         );
-        ingest.carry(
-            prior,
-            &changes.removed,
-            &gone,
-            changes.invalid_removed,
-            &attributes,
-        );
+        ingest.carry(prior, &changes.removed);
         ingest
             .fallback(cold.client, identity, cold.limits.max_changed_blobs)
             .await;
@@ -375,7 +361,7 @@ mod tests {
 
     /// Scenario 1: a push changing, deleting, renaming, and de-eligibling
     /// files takes its changes from compare without a recursive listing,
-    /// lists only the changed paths' directories, fetches only the changed
+    /// lists only the changed paths' head directories, fetches only the changed
     /// blobs, leaves the old object's bytes untouched, moves the pointer,
     /// and writes the same bytes as a cold build of the new tree; a repeat
     /// reuses it.
@@ -415,11 +401,7 @@ mod tests {
         assert_eq!(calls.get(Operation::Archive), 0);
         assert_eq!(calls.get(Operation::Blob), 3, "attributes + two changed");
         assert_eq!(calls.get(Operation::Compare), 1);
-        assert_eq!(
-            calls.get(Operation::Tree),
-            5,
-            "head root, src, src/api; base root, node_modules"
-        );
+        assert_eq!(calls.get(Operation::Tree), 3, "root, src, src/api");
         let seen = repo.transport.seen();
         assert!(!seen[before..].iter().any(|url| url.contains("recursive")));
         assert!(
@@ -449,7 +431,8 @@ mod tests {
                 coverage.excluded.get(&ExclusionReason::Symlink),
                 coverage.excluded.get(&ExclusionReason::VendoredSegment)
             ),
-            (Some(&2), None)
+            (Some(&1), None),
+            "only the changed symlink is observed"
         );
         for gone in ["saveUser", "formatUser", "substitutedFn"] {
             assert!(context.lookup(gone).is_empty(), "{gone} survived");
@@ -467,7 +450,6 @@ mod tests {
         .await
         .expect("oracle");
         assert!(matches!(oracle.outcome, ColdBuildOutcome::Published(_)));
-        assert_eq!(oracle.coverage, *coverage);
         assert_eq!(
             oracle_storage.read(&new.key).await.expect("oracle object"),
             storage.read(&new.key).await.expect("updated object")
