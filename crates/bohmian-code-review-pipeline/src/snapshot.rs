@@ -587,7 +587,13 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
                 ColdBuildOutcome::Incomplete(IncompleteReason::TruncatedTree),
             )));
         }
-        let attributes = root_attributes(self.client, identity, &listing.entries).await?;
+        let attributes = root_attributes(
+            self.client,
+            identity,
+            &listing.entries,
+            self.limits.max_file_bytes,
+        )
+        .await?;
         Ok(Ok(Ingest::new(
             &listing.entries,
             listing.invalid_paths,
@@ -734,8 +740,9 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
     }
 }
 
-/// Fetch and parse the root `.gitattributes` among `entries`, or the
-/// defaults when the tree has none.
+/// Fetch and parse the root `.gitattributes` among `entries`, in either
+/// regular blob mode, reading at most `max_file_bytes`, or the defaults
+/// when the tree has none.
 ///
 /// # Errors
 ///
@@ -744,16 +751,25 @@ pub(crate) async fn root_attributes(
     client: &GitHubClient,
     identity: &Identity,
     entries: &[TreeEntry],
+    max_file_bytes: u64,
 ) -> Result<RootAttributes, GitHubError> {
-    match entries
-        .iter()
-        .find(|entry| entry.path.as_str() == ".gitattributes" && entry.mode == TreeEntryMode::File)
-    {
+    match entries.iter().find(|entry| {
+        entry.path.as_str() == ".gitattributes"
+            && matches!(entry.mode, TreeEntryMode::File | TreeEntryMode::Executable)
+    }) {
         Some(entry) => Ok(RootAttributes::parse(
-            &client.blob(&identity.repository, &entry.sha).await?,
+            &client
+                .blob(&identity.repository, &entry.sha, max_file_bytes)
+                .await?,
         )),
         None => Ok(RootAttributes::default()),
     }
+}
+
+/// Whether `error` is a blob fetch refused by the file ceiling
+/// `max_file_bytes` rather than by a smaller provider ceiling.
+pub(crate) fn is_oversize(error: &GitHubError, max_file_bytes: u64) -> bool {
+    matches!(error, GitHubError::ResponseTooLarge { limit, .. } if *limit >= max_file_bytes)
 }
 
 /// In-memory ingest state for one attempt: eligible entries still wanted,
@@ -934,11 +950,11 @@ impl Ingest {
         }
     }
 
-    /// Fetch every still-pending blob individually, up to `max_blobs`, and
-    /// index it; everything still pending afterwards is skipped as not
-    /// fetched. A blob larger than the file bound, or than a client blob
-    /// bound at least the file bound, is a benign oversize skip; a client
-    /// bound below the file bound proves nothing and the blob is unfetched.
+    /// Fetch every still-pending blob individually, up to `max_blobs`,
+    /// reading at most the file bound, and index it; everything still
+    /// pending afterwards is skipped as not fetched. A blob refused at the
+    /// file bound is a benign oversize skip; one refused at a smaller client
+    /// blob bound proves nothing and is unfetched.
     pub(crate) async fn fallback(
         &mut self,
         client: &GitHubClient,
@@ -951,14 +967,12 @@ impl Ingest {
                 continue;
             }
             self.stats.fallback_blobs += 1;
-            match client.blob(&identity.repository, &blob).await {
-                Ok(bytes) if bytes.len() as u64 > self.max_file_bytes => {
-                    self.skip(path, blob, SkipReason::Oversize);
-                }
+            match client
+                .blob(&identity.repository, &blob, self.max_file_bytes)
+                .await
+            {
                 Ok(bytes) => self.ingest(path, blob, &bytes),
-                Err(GitHubError::ResponseTooLarge { limit, .. })
-                    if limit >= self.max_file_bytes =>
-                {
+                Err(error) if is_oversize(&error, self.max_file_bytes) => {
                     self.skip(path, blob, SkipReason::Oversize);
                 }
                 Err(error) => self.skip(

@@ -991,29 +991,31 @@ impl GitHubClient {
         })
     }
 
-    /// Fetch blob `sha` as raw bytes and verify its Git id.
+    /// Fetch blob `sha` as raw bytes, reading at most the smaller of
+    /// `max_bytes` and `max_blob_bytes`, and verify its Git id. A blob past
+    /// that bound is never returned; the error's `limit` says which bound
+    /// applied.
     ///
     /// # Errors
     ///
-    /// [`GitHubError::ResponseTooLarge`] past `max_blob_bytes`,
+    /// [`GitHubError::ResponseTooLarge`] past the bound,
     /// [`GitHubError::IdentityMismatch`] when the bytes do not hash to `sha`,
     /// plus any policy or transport error.
     pub async fn blob(
         &self,
         repository: &RepositoryIdentity,
         sha: &ObjectSha,
+        max_bytes: u64,
     ) -> Result<Vec<u8>, GitHubError> {
         let resource = format!("/repos/{}/git/blobs/{sha}", repository.full_name());
         let mut response = self
             .request(Operation::Blob, &resource, ACCEPT_RAW, true)
             .await?;
         expect_status(&response, 200, &resource)?;
-        let bytes = read_bounded(
-            response.body.as_mut(),
-            self.limits.max_blob_bytes,
-            &resource,
-        )
-        .await?;
+        let limit = usize::try_from(max_bytes)
+            .unwrap_or(usize::MAX)
+            .min(self.limits.max_blob_bytes);
+        let bytes = read_bounded(response.body.as_mut(), limit, &resource).await?;
         let actual = git_blob_sha(&bytes);
         if actual != sha.as_str() {
             return Err(GitHubError::IdentityMismatch {
@@ -1641,7 +1643,15 @@ mod tests {
         }
 
         fake.push(200, &[], blob_bytes.to_vec());
-        assert_eq!(client.blob(&repo, &blob).await.expect("blob"), blob_bytes);
+        assert_eq!(
+            client.blob(&repo, &blob, u64::MAX).await.expect("blob"),
+            blob_bytes
+        );
+        fake.push(200, &[], blob_bytes.to_vec());
+        assert!(matches!(
+            client.blob(&repo, &blob, 1).await,
+            Err(GitHubError::ResponseTooLarge { limit: 1, .. })
+        ));
         assert_eq!(fake.seen().last().map(|s| s.2.as_str()), Some(ACCEPT_RAW));
 
         fake.push_json(&format!(
@@ -1700,7 +1710,7 @@ mod tests {
         ));
         fake.push(200, &[], b"tampered\n".to_vec());
         assert!(matches!(
-            client.blob(&repo, &blob).await,
+            client.blob(&repo, &blob, u64::MAX).await,
             Err(GitHubError::IdentityMismatch { .. })
         ));
         fake.push_json(&format!(
@@ -1718,8 +1728,8 @@ mod tests {
 
         let calls = client.calls().snapshot();
         assert_eq!(calls[&Operation::Repository], 2);
-        assert_eq!(calls[&Operation::Blob], 2);
-        assert_eq!(calls.values().sum::<u64>(), 15);
+        assert_eq!(calls[&Operation::Blob], 3);
+        assert_eq!(calls.values().sum::<u64>(), 16);
     }
 
     /// Scenario 1: an archive redirect is followed once, without credentials,

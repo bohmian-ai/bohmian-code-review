@@ -24,7 +24,8 @@ use crate::github::{
 use crate::identity::{Identity, ObjectSha};
 use crate::persistence::{ContextLifetime, ContextRecord, ContextStore, SnapshotStore};
 use crate::snapshot::{
-    ColdBuildError, Ingest, Snapshot, SnapshotFile, Snapshots, root_attributes, snapshot_scope,
+    ColdBuildError, Ingest, Snapshot, SnapshotFile, Snapshots, is_oversize, root_attributes,
+    snapshot_scope,
 };
 use crate::storage::{ObjectStorage, StorageError};
 use bohmian_code_review::Error as SymbolicError;
@@ -161,7 +162,13 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
             .await?
             .tree;
         let listing = self.client.tree(repository, &tree).await?;
-        let attributes = root_attributes(self.client, identity, &listing.entries).await?;
+        let attributes = root_attributes(
+            self.client,
+            identity,
+            &listing.entries,
+            self.limits.max_file_bytes,
+        )
+        .await?;
         let snapshot = match listing.truncated {
             true => None,
             false => self.snapshot(identity).await?,
@@ -412,13 +419,7 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
         if changed.is_empty() {
             return Err(NotAnalyzedReason::DeletionOnly);
         }
-        let bytes = self
-            .client
-            .blob(&identity.repository, &blob)
-            .await
-            .map_err(|error| NotAnalyzedReason::FetchFailed {
-                detail: error.to_string(),
-            })?;
+        let bytes = self.fetch(identity, &blob).await?;
         if ingest.is_pending(&file.path) && ingest.indexed() < index_cap {
             ingest.ingest(file.path.clone(), blob, &bytes);
         }
@@ -431,8 +432,9 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
 
     /// Pack `ranked` under the candidate file ceiling and `allowance`,
     /// fetching each candidate blob at its head identity only when packing
-    /// reaches it. A candidate whose blob cannot be fetched is dropped from
-    /// the ranking and listed as not analyzed.
+    /// reaches it. A candidate whose blob exceeds the file ceiling or
+    /// cannot be fetched is dropped from the ranking and listed as not
+    /// analyzed, so later candidates are still considered.
     ///
     /// # Errors
     ///
@@ -462,26 +464,48 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
                 }
             };
             let fetched = match blob_of(eligible, &missing) {
-                Some(blob) => self
-                    .client
-                    .blob(&identity.repository, blob)
-                    .await
-                    .map_err(|error| error.to_string()),
-                None => Err("candidate is not in the head tree".to_owned()),
+                Some(blob) => self.fetch(identity, blob).await,
+                None => Err(NotAnalyzedReason::FetchFailed {
+                    detail: "candidate is not in the head tree".to_owned(),
+                }),
             };
             match fetched {
                 Ok(bytes) => {
                     blobs.insert(missing, bytes);
                 }
-                Err(detail) => {
+                Err(reason) => {
                     ranked.retain(|file| file.path != missing);
                     not_analyzed.push(NotAnalyzed {
                         path: missing.to_string(),
-                        reason: NotAnalyzedReason::FetchFailed { detail },
+                        reason,
                     });
                 }
             }
         }
+    }
+
+    /// Fetch head blob `blob`, reading at most the invocation's file
+    /// ceiling, so an oversize blob is never returned.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Oversize` when the file ceiling refused the blob, otherwise
+    /// `FetchFailed` with the provider error.
+    async fn fetch(
+        &self,
+        identity: &Identity,
+        blob: &ObjectSha,
+    ) -> Result<Vec<u8>, NotAnalyzedReason> {
+        let max_file_bytes = self.limits.max_file_bytes;
+        self.client
+            .blob(&identity.repository, blob, max_file_bytes)
+            .await
+            .map_err(|error| match is_oversize(&error, max_file_bytes) {
+                true => NotAnalyzedReason::Oversize,
+                false => NotAnalyzedReason::FetchFailed {
+                    detail: error.to_string(),
+                },
+            })
     }
 }
 
