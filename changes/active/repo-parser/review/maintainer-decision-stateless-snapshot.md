@@ -1,0 +1,3 @@
+# Maintainer decision: snapshots hold no derived state
+
+Decided 2026-09-27. The system is stateless: a snapshot is a pure function of its tree and versions. It persists only one outcome per eligible path (indexed facts or a skip with blob and reason). It persists no aggregate or derived state, in particular no per-reason exclusion counts. Exclusion counts are reported by the build call that observed them. An update edits outcomes by changed path only and never reconstructs state about paths that are not eligible, so it needs no listings at the base commit. Spec revision 14 Symbol snapshot definition updated accordingly.
