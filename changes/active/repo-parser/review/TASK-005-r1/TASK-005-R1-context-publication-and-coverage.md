@@ -44,3 +44,18 @@ Own the correction across `crates/bohmian-code-review-pipeline/src/context.rs`, 
 ## Acceptance and verification
 
 Each finding closes only when the focused proof above exercises every named sibling sink and its positive counterpart. Run the outer crate's scoped lane, the public symbolic journey, `fmt:check`, `lints`, and `gate` using `mise.toml` tasks; record exact commands, results, and `git diff --check`. Preserve the existing tests and report any unmet prerequisite or remaining limit. Route this task directly to `$cr-implement`; review the cumulative implementation against TASK-005 and revision 12 afterward.
+
+## Implementation evidence
+
+Commits `b82fb19` (FIND-1, FIND-2) and the following FIND-3/FIND-4 commit, on top of `0f8e31c`. Symbolic crates unchanged; no dependency, trait, or backend change.
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| FIND-TASK-005-1: adopted object validated | `Contexts::publish` reads and compares bytes on `AlreadyExists` (reuses `Snapshots::publish` shape); mismatch → `Corrupt` | `context::tests::existing_object_is_adopted_only_when_identical` (mismatch fails; equal bytes adopt and read back) | PASS |
+| FIND-TASK-005-2: per-publication id, lifetime, cleanup target | id = `<digest>-<publication nanos>`; record keeps `digest` for integrity; record-before-object and object-before-record order unchanged | `context::tests::identical_publications_expire_and_clean_up_independently` (distinct ids/keys, first expires at original cutoff, sweep held after listing the first removes only the first); `pull_request::tests::dropped_publication_leaves_no_readable_half_context` (dropped upsert/create retry: every object recorded, half context not found, retry id reads back) | PASS |
+| FIND-TASK-005-3: scoped bound spent on eligible files | `near` no longer caps; `Ingest::new` classifies every nearby entry; fallback bound = `max_scoped_files - indexed`, remainder reported `NotFetched` | `pull_request::tests::scoped_bound_skips_excluded_neighbors` (unsupported, generated, vendored, minified, oversize ahead of `src/user.ts`; user selected, `src/zz.ts` NotFetched, eligible 3 / indexed 2) | PASS |
+| FIND-TASK-005-4: rejected provider entries lower coverage | `ContextCoverage::pr_files_rejected` checked by `is_full`; `Coverage::is_complete`/`unindexed` count `InvalidEntry` | `pull_request::tests::rejected_pr_file_is_not_full_coverage`, `rejected_head_tree_entry_is_not_full_coverage`; `snapshot::tests::rejected_tree_entries_are_counted_as_invalid_exclusions` (cold build now `Incomplete { count: 2 }`, unpublished); benign unsupported `README.md` still full in `concurrent_prs_*` (`is_full` assert) | PASS |
+
+Commands, all exit 0 in this session: `mise run test:pipeline` (61 passed), `mise run test:symbolic-context:journey` (6 passed), `mise run fmt:check`, `mise run lints`, `mise run gate`, `git diff --check 0f8e31c HEAD`.
+
+Non-goals held: no model call, comment publication, consumer adapter, detached task, deadline, new dependency, or storage/persistence trait change. Behavior change to note for review: a default-branch tree with any rejected listing entry now yields an incomplete (unpublished) snapshot, so such repositories take the scoped path; `ContextCoverage` gains `pr_files_rejected` (format version unchanged, unreleased).
