@@ -2,8 +2,8 @@
 id: TASK-007
 kind: implementation
 status: proposed
-spec: SPEC-repo-parser@13
-depends_on: [TASK-001, TASK-002, TASK-003, TASK-004, TASK-005]
+spec: SPEC-repo-parser@14
+depends_on: [TASK-001, TASK-002, TASK-003, TASK-004, TASK-005, TASK-008, TASK-009, TASK-010]
 maps: [REQ-004, REQ-008, REQ-009, REQ-010, REQ-011, REQ-012, REQ-013, REQ-017, REQ-018, INV-001, INV-002, INV-003, INV-004, INV-005, INV-006, INV-007, AC-002, AC-003, AC-004, AC-006, AC-007, AC-008, AC-010, AC-011]
 ---
 
@@ -21,6 +21,7 @@ All code, test commands and evidence for this task live in this repository. Norm
 2. Complete S1–S19 and from-scratch/property oracles, including negative coverage, rate, identity and crash cases.
 3. Add a dedicated configurable S20 command, defaulting to the existing `bohmian-ai/wyrd` PR #91, that calls this library directly with real GitHub and injected in-memory object storage, snapshot store and context store.
 4. Run the controlled provider contract check and fixed-commit 1k/10k/50k benchmarks; record results and any needed remediation.
+5. Re-run the capacity evidence (AC-007) after TASK-008, TASK-009 and TASK-010 pass. Evidence recorded before them is superseded.
 
 ## Ordered Implementation Scenarios
 
@@ -50,7 +51,7 @@ The controlled provider contract and benchmarks measure existing behavior, so no
 
 ## Acceptance Criteria
 
-S1–S19, the complete-coverage from-scratch oracle, independent facade calls and composed journey pass in this repository. S20 passes at least once against an existing real PR with nonempty selected spans and read-back. The provider contract and reproducible benchmark reports are recorded. No consuming repository change or hosted shadow run is required. Final reviews remain separate lifecycle gates.
+S1–S19, the complete-coverage from-scratch oracle, independent facade calls and composed journey pass in this repository. S20 passes at least once against an existing real PR with nonempty selected spans and read-back. The provider contract and reproducible benchmark reports are recorded. The capacity report is re-run after TASK-008, TASK-009 and TASK-010 and shows complete published snapshots with measured warm reuse, or it names the eligible files still blocking completeness and why. No consuming repository change or hosted shadow run is required. Final reviews remain separate lifecycle gates.
 
 ## Expected Write Set and Consumer Closure
 
@@ -66,9 +67,11 @@ Stop if the four public facades cannot compose under the approved injected contr
 
 ## Authority Links
 
-[Revision 12 spec](../spec.md), [pipeline plan](../symbolic-context-service-plan.md), [library design](../../../../architecture/bohmian-code-review-design.md).
+[Revision 14 spec](../spec.md), [pipeline plan](../symbolic-context-service-plan.md), [library design](../../../../architecture/bohmian-code-review-design.md).
 
 ## Implementation Evidence
+
+The evidence below was recorded against revision 13. Its capacity (AC-007) rows are superseded and must be re-run after TASK-008, TASK-009 and TASK-010. Revision 14 resolves the material finding below.
 
 Environment: macOS 15 (Darwin 24.6.0), Apple silicon, release build, residential network, 2026-09-26. Live runs used a read-only `gh` user token; GitHub was only read. Reports live in [evidence/TASK-007](../evidence/TASK-007/); they carry paths, ranges and identities, never source text.
 
