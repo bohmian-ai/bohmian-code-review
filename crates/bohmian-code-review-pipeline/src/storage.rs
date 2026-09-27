@@ -11,7 +11,6 @@ use crate::persistence::ContextId;
 use serde::{Deserialize, Deserializer, Serialize};
 use sha2::{Digest, Sha256};
 use std::fmt;
-use std::future::Future;
 use std::num::NonZeroU64;
 use thiserror::Error;
 
@@ -211,6 +210,9 @@ impl ObjectDigest {
 ///
 /// Implementations must be safe to call from several threads and must not
 /// interpret object contents.
+///
+/// Methods return `Send` futures and implementers may write `async fn`. The
+/// trait is not dyn-compatible, so facades take it as a generic parameter.
 pub trait ObjectStorage: Send + Sync {
     /// Write a new object, refusing to overwrite.
     ///

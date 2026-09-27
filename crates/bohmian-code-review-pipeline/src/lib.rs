@@ -3,9 +3,9 @@
 //!
 //! This crate obtains verified GitHub/GHES repository, commit, tree, blob,
 //! and pull-request identities through provider APIs ([`GitHubClient`]) and
-//! defines the
-//! narrow [`ObjectStorage`], [`SnapshotStore`], and [`ContextStore`] traits
-//! the stage facades publish through. [`ColdBuild`] is the first facade: it
+//! defines the narrow async [`ObjectStorage`], [`SnapshotStore`], and
+//! [`ContextStore`] traits the stage facades publish through. Every call is
+//! an `async fn` on tokio that the caller cancels by dropping its future. [`ColdBuild`] is the first facade: it
 //! streams a pinned default-branch archive into a complete, source-free
 //! [`Snapshot`], and [`Snapshots`] reads snapshots back and removes those no
 //! pointer names. It never clones, checks out, or persists source; it depends on the

@@ -11,7 +11,6 @@ use crate::identity::{Identity, InvalidIdentity, ObjectSha, validate_name};
 use crate::storage::{ObjectDigest, ObjectKey};
 use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt;
-use std::future::Future;
 use std::time::SystemTime;
 use thiserror::Error;
 
@@ -132,6 +131,9 @@ pub struct ContextRecord {
 /// write another identity's rows. Implementations must not hold a
 /// transaction open across a call into GitHub or object storage; the library
 /// never asks them to, and publishes a pointer only after its object exists.
+///
+/// Methods return `Send` futures and implementers may write `async fn`. The
+/// trait is not dyn-compatible, so facades take it as a generic parameter.
 pub trait SnapshotStore: Send + Sync {
     /// Current pointer for `scope`, if one was published.
     ///
@@ -222,6 +224,9 @@ pub trait SnapshotStore: Send + Sync {
 /// Implementations must not hold a transaction open across a call into
 /// GitHub or object storage; the library publishes a record only after its
 /// object exists.
+///
+/// Methods return `Send` futures and implementers may write `async fn`. The
+/// trait is not dyn-compatible, so facades take it as a generic parameter.
 pub trait ContextStore: Send + Sync {
     /// Make `record` readable for `identity`.
     ///

@@ -1750,6 +1750,21 @@ mod tests {
         }
     }
 
+    /// The cold-build facade future is `Send`, so a consumer can run it on a
+    /// multi-threaded runtime; this fails to compile otherwise.
+    #[test]
+    fn cold_build_future_is_send() {
+        fn assert_send<T: Send>(_: T) {}
+        let repo = FakeRepo::new(&standard_files(), &standard_archive());
+        let client = repo.client();
+        let storage = MemoryStorage::default();
+        let store = MemorySnapshotStore::default();
+        let identity = identity();
+        let build = ColdBuild::new(&client, &storage, &store, ColdBuildLimits::default());
+        assert_send(build.run(&identity));
+        assert_send(Snapshots::new(&storage, &store).collect(SystemTime::now(), 1));
+    }
+
     /// FIND-3: tree entries the listing rejected for an invalid path or an
     /// unknown mode are counted under their own exclusion reason instead of
     /// vanishing, and do not change eligibility or completeness.

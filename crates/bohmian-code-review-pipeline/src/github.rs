@@ -17,7 +17,6 @@ use serde::Deserialize;
 use serde_json::Error as JsonError;
 use sha1::{Digest, Sha1};
 use std::collections::BTreeMap;
-use std::future::Future;
 use std::io::{self, Read};
 use std::pin::Pin;
 use std::sync::atomic::{AtomicU64, Ordering};
