@@ -35,7 +35,7 @@ const API_VERSION: &str = "2022-11-28";
 const USER_AGENT: &str = "bohmian-code-review-pipeline";
 
 /// Files requested per PR-files page; the provider's maximum.
-const PR_FILES_PER_PAGE: u32 = 100;
+pub(crate) const PR_FILES_PER_PAGE: u32 = 100;
 
 /// Boxed `Send` future returned by the object-safe transport and body seams.
 pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;

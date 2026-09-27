@@ -19,6 +19,7 @@ pub mod eligibility;
 pub mod github;
 pub mod identity;
 pub mod persistence;
+pub mod pull_request;
 pub mod snapshot;
 pub mod storage;
 #[cfg(test)]
@@ -45,6 +46,7 @@ pub use persistence::{
     ContextId, ContextRecord, ContextStore, PersistenceError, SnapshotPointer, SnapshotScope,
     SnapshotStore,
 };
+pub use pull_request::{PrContext, PrContextLimits, PrContextResult};
 pub use snapshot::{
     ColdBuild, ColdBuildError, ColdBuildLimits, ColdBuildOutcome, ColdBuildResult, Coverage,
     IncompleteReason, IngestStats, SNAPSHOT_FORMAT_VERSION, SkipReason, SkippedFile, Snapshot,

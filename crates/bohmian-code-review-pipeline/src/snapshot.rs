@@ -1129,6 +1129,14 @@ pub(crate) mod tests {
                     r#"{{"name":"main","commit":{{"sha":"{commit}","commit":{{"tree":{{"sha":"{tree}"}}}}}}}}"#
                 ),
             );
+            self.route_tree(tree, files);
+            transport.route(&format!("/tarball/{commit}"), 200, tarball(archive));
+        }
+
+        /// Route `tree` listing `files` and every file's blob, without
+        /// moving the branch.
+        pub(crate) fn route_tree(&self, tree: &ObjectSha, files: &[File]) {
+            let transport = &self.transport;
             let entries: Vec<String> = files
                 .iter()
                 .map(|f| {
@@ -1153,11 +1161,10 @@ pub(crate) mod tests {
                     entries.join(",")
                 ),
             );
-            transport.route(&format!("/tarball/{commit}"), 200, tarball(archive));
         }
 
         /// Replace the tree route with a truncated listing.
-        fn truncate_tree(&self) {
+        pub(crate) fn truncate_tree(&self) {
             let tree = &self.tree;
             self.transport.json(
                 &format!("/git/trees/{tree}?recursive=1"),
