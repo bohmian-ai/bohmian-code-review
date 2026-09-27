@@ -17,7 +17,6 @@ use serde::Deserialize;
 use serde_json::Error as JsonError;
 use sha1::{Digest, Sha1};
 use std::collections::BTreeMap;
-use std::io::{self, Read};
 use std::pin::Pin;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -603,50 +602,6 @@ impl Archive {
             });
         }
         Ok(Some(chunk))
-    }
-}
-
-/// Reader that fails instead of truncating once `limit` bytes were read.
-pub(crate) struct BoundedReader<R> {
-    inner: R,
-    remaining: u64,
-    resource: String,
-}
-
-impl<R: Read> BoundedReader<R> {
-    /// Bound `inner` to `limit` bytes, naming `resource` in the overflow error.
-    pub(crate) fn new(inner: R, limit: u64, resource: &str) -> BoundedReader<R> {
-        BoundedReader {
-            inner,
-            remaining: limit,
-            resource: resource.to_owned(),
-        }
-    }
-}
-
-impl<R: Read> Read for BoundedReader<R> {
-    /// Reads at most the remaining budget; a further byte is an error.
-    ///
-    /// # Errors
-    ///
-    /// Propagates any error from the inner reader. Once the budget is
-    /// exhausted, returns [`io::Error::other`] naming the resource if the
-    /// inner reader yields another byte instead of EOF.
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        if self.remaining == 0 {
-            let mut probe = [0u8; 1];
-            return match self.inner.read(&mut probe)? {
-                0 => Ok(0),
-                _ => Err(io::Error::other(format!(
-                    "{} exceeds archive byte limit",
-                    self.resource
-                ))),
-            };
-        }
-        let want = usize::try_from(self.remaining.min(buf.len() as u64)).unwrap_or(buf.len());
-        let read = self.inner.read(&mut buf[..want])?;
-        self.remaining -= read as u64;
-        Ok(read)
     }
 }
 

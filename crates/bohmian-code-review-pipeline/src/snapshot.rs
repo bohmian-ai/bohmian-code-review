@@ -13,23 +13,21 @@
 //! recorded. [`Snapshots`] reads published
 //! snapshots and deletes recorded snapshots no pointer names.
 
+use crate::archive::{TarStream, VerifiedEntry};
 use crate::eligibility::{
     Exclusion, ExclusionReason, MAX_ELIGIBLE_FILE_BYTES, RootAttributes, classify,
 };
-use crate::github::{
-    Archive, BoundedReader, GitHubClient, GitHubError, TreeEntry, TreeEntryMode, git_blob_sha,
-};
+use crate::github::{Archive, GitHubClient, GitHubError, TreeEntry, TreeEntryMode};
 use crate::identity::{Identity, ObjectSha};
 use crate::persistence::{PersistenceError, SnapshotPointer, SnapshotScope, SnapshotStore};
 use crate::storage::{ObjectDigest, ObjectKey, ObjectStorage, StorageError};
 use bohmian_code_review::Error as SymbolicError;
 use bohmian_code_review::{EXTRACTION_VERSION, IndexedFileFacts, RelativePath, SymbolicContext};
-use flate2::read::GzDecoder;
+use flate2::write::GzDecoder;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use std::io::{self, Cursor, Read};
+use std::io::Write;
 use std::time::SystemTime;
-use tar::EntryType;
 use thiserror::Error;
 
 /// Layout version of the serialized [`Snapshot`]; part of every snapshot key.
@@ -646,80 +644,41 @@ impl Ingest {
         }
     }
 
-    /// Read the bounded compressed archive, then expand it through bounded
-    /// decompression; a stream error stops the archive and is recorded,
-    /// leaving the rest pending for [`Ingest::fallback`].
+    /// Stream the archive through gzip into [`TarStream`], indexing each
+    /// verified entry as soon as the chunk that completes it arrives.
     ///
-    /// ponytail: the compressed archive is buffered in memory (bounded by
-    /// `max_archive_bytes`) so the synchronous tar reader can run on it; the
-    /// cold-build rework streams it.
+    /// Only the chunk in flight, one header or metadata record, and one
+    /// wanted file are held; a provider, decompression, tar, or expansion
+    /// error stops the archive and is recorded, leaving the rest pending
+    /// for [`Ingest::fallback`]. Entries indexed before it stay indexed.
     async fn consume_archive(&mut self, mut archive: Archive, max_expanded_bytes: u64) {
-        let mut compressed = Vec::new();
-        loop {
-            match archive.chunk().await {
-                Ok(Some(chunk)) => compressed.extend_from_slice(&chunk),
-                Ok(None) => break,
-                Err(error) => {
-                    self.stats.archive_error = Some(error.to_string());
-                    return;
-                }
-            }
-        }
-        let expanded = BoundedReader::new(
-            GzDecoder::new(Cursor::new(compressed)),
+        let tar = TarStream::new(
+            self.pending.clone(),
+            self.max_file_bytes,
             max_expanded_bytes,
-            "archive expansion",
         );
-        if let Err(error) = self.stream_entries(expanded) {
-            self.stats.archive_error = Some(error.to_string());
-        }
+        let mut decoder = GzDecoder::new(tar);
+        let error = loop {
+            let written = match archive.chunk().await {
+                Ok(Some(chunk)) => decoder.write_all(&chunk),
+                Ok(None) => break decoder.try_finish().err().map(|error| error.to_string()),
+                Err(error) => break Some(error.to_string()),
+            };
+            self.ingest_verified(&mut decoder.get_mut().verified);
+            if let Err(error) = written {
+                break Some(error.to_string());
+            }
+        };
+        self.ingest_verified(&mut decoder.get_mut().verified);
+        self.stats.archive_error = error;
     }
 
-    /// Index every pending tar entry whose bytes hash to the listed blob id.
-    ///
-    /// Non-regular entries, paths outside the repository prefix or not
-    /// pending, entries larger than the file bound, and mismatched bytes are
-    /// left pending for verified blob fallback, so an archive can never
-    /// substitute content or turn an eligible file into a benign skip.
-    ///
-    /// # Errors
-    ///
-    /// Returns the first tar, decompression, or read error, including the
-    /// expansion bound; entries indexed before it stay indexed.
-    fn stream_entries<R: Read>(&mut self, expanded: R) -> io::Result<()> {
-        let mut tar = tar::Archive::new(expanded);
-        for entry in tar.entries()? {
-            let mut entry = entry?;
-            if !matches!(
-                entry.header().entry_type(),
-                EntryType::Regular | EntryType::Continuous
-            ) {
-                continue;
-            }
-            let Some(path) = entry
-                .path()
-                .ok()
-                .and_then(|path| path.to_str().map(str::to_owned))
-                .and_then(|raw| raw.split_once('/').map(|(_, rest)| rest.to_owned()))
-                .and_then(|rest| RelativePath::new(&rest).ok())
-            else {
-                continue;
-            };
-            let Some(blob) = self.pending.get(&path).cloned() else {
-                continue;
-            };
-            if entry.header().size()? > self.max_file_bytes {
-                continue;
-            }
-            let mut bytes = Vec::new();
-            entry.read_to_end(&mut bytes)?;
-            if git_blob_sha(&bytes) != blob.as_str() {
-                continue;
-            }
+    /// Index and drain entries the tar stream verified against their blob ids.
+    fn ingest_verified(&mut self, verified: &mut Vec<VerifiedEntry>) {
+        for (path, blob, bytes) in verified.drain(..) {
             self.stats.archive_entries += 1;
             self.ingest(path, blob, &bytes);
         }
-        Ok(())
     }
 
     /// Fetch every still-pending blob individually, up to `max_blobs`, and
@@ -803,16 +762,16 @@ impl Ingest {
 /// through a routed fake GitHub and in-memory storage and persistence.
 mod tests {
     use super::*;
-    use crate::github::{Operation, RequestLimits};
+    use crate::github::{Operation, RequestLimits, git_blob_sha};
     use crate::identity::{
         GitHubHost, InstallationId, InstallationToken, RepositoryIdentity, TenantId,
     };
     use crate::testing::{MemorySnapshotStore, MemoryStorage, RoutedTransport};
     use flate2::Compression;
     use flate2::write::GzEncoder;
-    use std::io::Write;
     use std::sync::Arc;
     use std::time::{Duration, UNIX_EPOCH};
+    use tar::EntryType;
 
     /// Declares `lookupUser` and `saveUser`.
     const USER: &[u8] = b"export interface User {\n  id: string;\n}\n\nexport function lookupUser(id: string): User {\n  return { id };\n}\n\nexport function saveUser(user: User): void {\n  console.log(user.id);\n}\n";

@@ -11,6 +11,7 @@
 //! pointer names. It never clones, checks out, or persists source; it depends on the
 //! public `bohmian-code-review` facade alone and imports no consumer type.
 
+mod archive;
 pub mod eligibility;
 pub mod github;
 pub mod identity;

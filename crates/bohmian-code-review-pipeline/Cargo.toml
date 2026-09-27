@@ -16,11 +16,11 @@ serde.workspace = true
 serde_json.workspace = true
 sha1.workspace = true
 sha2.workspace = true
-tar.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["time"] }
 
 [dev-dependencies]
+tar.workspace = true
 tokio = { workspace = true, features = ["macros", "rt", "time", "test-util"] }
 
 [lints]
