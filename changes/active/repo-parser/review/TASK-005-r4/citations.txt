@@ -1,0 +1,9 @@
+DOMAIN-TRUST-1	OK
+DOMAIN-TRUST-1	OK
+DOMAIN-TRUST-1	OK
+TASK-A-1	OK
+TASK-A-1	OK
+TASK-A-1	OK
+TASK-B-1	REJECT	symbol 'PrContext::changed_head' not in crates/bohmian-code-review-pipeline/src/pull_request.rs
+TASK-B-1	REJECT	symbol 'PrContext::pack' not in crates/bohmian-code-review-pipeline/src/pull_request.rs
+TASK-B-1	REJECT	symbol 'Ingest::reuse' not in crates/bohmian-code-review-pipeline/src/snapshot.rs
