@@ -263,14 +263,17 @@ pub trait ContextStore: Send + Sync {
         id: &ContextId,
     ) -> impl Future<Output = Result<Option<ContextRecord>, PersistenceError>> + Send;
 
-    /// Up to `limit` records whose `expires_at` is at or before `now`, across identities.
+    /// Up to `limit` records whose `expires_at` is at or before
+    /// `older_than`, across identities. `older_than` is the caller's
+    /// collection cutoff, which trails the current time by a grace longer
+    /// than its publication timeout, not the read expiry.
     ///
     /// # Errors
     ///
     /// Returns [`PersistenceError::Backend`] on backend failure.
     fn expired_contexts(
         &self,
-        now: SystemTime,
+        older_than: SystemTime,
         limit: usize,
     ) -> impl Future<Output = Result<Vec<(Identity, ContextRecord)>, PersistenceError>> + Send;
 

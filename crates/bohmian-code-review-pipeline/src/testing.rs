@@ -128,12 +128,14 @@ async fn hold(held: &AtomicBool) {
 }
 
 /// Create-if-absent in-memory storage with a one-shot stall after a create,
-/// a one-shot delete failure, and a releasable hold before deletes.
+/// a one-shot delete failure, and releasable holds before creates and
+/// deletes.
 #[derive(Default)]
 pub(crate) struct MemoryStorage {
     objects: Mutex<BTreeMap<ObjectKey, Vec<u8>>>,
     stall_after_create: AtomicBool,
     fail_next_delete: AtomicBool,
+    pub(crate) hold_creates: AtomicBool,
     pub(crate) hold_deletes: AtomicBool,
 }
 
@@ -160,12 +162,14 @@ impl MemoryStorage {
 }
 
 impl ObjectStorage for MemoryStorage {
-    /// Refuses overwrites; honours the stall switch after storing.
+    /// Refuses overwrites; honours the hold before storing and the stall
+    /// switch after.
     ///
     /// # Errors
     ///
     /// `AlreadyExists` for a taken key.
     async fn create(&self, key: &ObjectKey, bytes: &[u8]) -> Result<(), StorageError> {
+        hold(&self.hold_creates).await;
         {
             let mut objects = self.objects.lock().expect("objects lock");
             if objects.contains_key(key) {
@@ -431,14 +435,14 @@ impl ContextStore for MemoryContextStore {
             .cloned())
     }
 
-    /// Up to `limit` records expired at `now`, in key order.
+    /// Up to `limit` records expired at or before `older_than`, in key order.
     ///
     /// # Errors
     ///
     /// Never.
     async fn expired_contexts(
         &self,
-        now: SystemTime,
+        older_than: SystemTime,
         limit: usize,
     ) -> Result<Vec<(Identity, ContextRecord)>, PersistenceError> {
         Ok(self
@@ -446,7 +450,7 @@ impl ContextStore for MemoryContextStore {
             .lock()
             .expect("records lock")
             .iter()
-            .filter(|(_, record)| record.expires_at <= now)
+            .filter(|(_, record)| record.expires_at <= older_than)
             .take(limit)
             .map(|((identity, _), record)| (identity.clone(), record.clone()))
             .collect())

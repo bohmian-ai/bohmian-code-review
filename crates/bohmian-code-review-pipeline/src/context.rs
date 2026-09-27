@@ -394,8 +394,15 @@ impl<'a, O: ObjectStorage, C: ContextStore> Contexts<'a, O, C> {
         Ok(context)
     }
 
-    /// Delete up to `limit` contexts expired at `now`: each object, where a
-    /// missing object is success, then its record.
+    /// Delete up to `limit` contexts whose `expires_at` is at or before
+    /// `older_than`: each object, where a missing object is success, then
+    /// its record.
+    ///
+    /// Reads stop at `expires_at` whatever the cutoff. A publication may
+    /// still create its object after its record's expiry when the caller's
+    /// timeout is longer than the context lifetime, so the caller passes
+    /// `now` minus a grace longer than its PR-context timeout; a record
+    /// inside that grace is left for a later sweep.
     ///
     /// A failed object delete, or a record naming another identity's key,
     /// keeps the record and is reported as lag for the next sweep; the
@@ -406,11 +413,11 @@ impl<'a, O: ObjectStorage, C: ContextStore> Contexts<'a, O, C> {
     /// Returns the persistence failure listing expired records.
     pub async fn collect_expired(
         &self,
-        now: SystemTime,
+        older_than: SystemTime,
         limit: usize,
     ) -> Result<ContextCleanup, ContextError> {
         let mut cleanup = ContextCleanup::default();
-        for (identity, record) in self.store.expired_contexts(now, limit).await? {
+        for (identity, record) in self.store.expired_contexts(older_than, limit).await? {
             let deleted = if record.key != ObjectKey::context(&identity, &record.id) {
                 Err(format!("record names a foreign key: {}", record.key))
             } else {
@@ -724,5 +731,62 @@ mod tests {
         assert!(retry.lagging.is_empty());
         assert_eq!(store.ids(), [(acme.clone(), fresh.id.clone())]);
         assert_eq!(storage.keys(), [fresh.key]);
+    }
+
+    /// A sweep whose cutoff trails `now` by a grace longer than the
+    /// publication timeout keeps a record whose object create is still in
+    /// flight past read expiry, so the resumed publication is never
+    /// orphaned; once the grace passes, cleanup removes object then record.
+    /// A publication dropped after its upsert is cleaned up the same way.
+    #[tokio::test(start_paused = true)]
+    async fn cleanup_cutoff_spares_in_flight_publication() {
+        let storage = MemoryStorage::default();
+        let store = MemoryContextStore::default();
+        let contexts = Contexts::new(&storage, &store);
+        let acme = identity("acme", 1);
+        let grace = Duration::from_secs(3600);
+        let expired = UNIX_EPOCH + CONTEXT_LIFETIME;
+        let review = context(&acme);
+        storage.hold_creates.store(true, Ordering::SeqCst);
+        let (published, (sweep, read)) =
+            tokio::join!(contexts.publish(&acme, &review, UNIX_EPOCH), async {
+                while store.ids().is_empty() {
+                    tokio::task::yield_now().await;
+                }
+                let sweep = contexts.collect_expired(expired - grace, 10).await;
+                let id = store.ids()[0].1.clone();
+                let read = contexts.read(&acme, &id, expired).await;
+                storage.hold_creates.store(false, Ordering::SeqCst);
+                (sweep, read)
+            });
+        let record = published.expect("publish");
+        assert_eq!(sweep.expect("sweep"), ContextCleanup::default());
+        assert_eq!(
+            read,
+            Err(ContextError::Expired {
+                id: record.id.clone()
+            })
+        );
+        assert_eq!(store.ids(), [(acme.clone(), record.id.clone())]);
+        assert_eq!(storage.keys(), std::slice::from_ref(&record.key));
+
+        let later = expired + Duration::from_secs(1);
+        store.stall_after_upsert();
+        let dropped = tokio::time::timeout(
+            Duration::from_secs(1),
+            contexts.publish(&acme, &review, later - CONTEXT_LIFETIME),
+        )
+        .await;
+        assert!(dropped.is_err());
+        assert_eq!(storage.keys().len(), 1, "dropped before its create");
+
+        let sweep = contexts
+            .collect_expired(later, 10)
+            .await
+            .expect("late sweep");
+        assert_eq!(sweep.deleted.len(), 2);
+        assert!(sweep.lagging.is_empty());
+        assert!(store.ids().is_empty());
+        assert!(storage.keys().is_empty());
     }
 }
