@@ -18,7 +18,7 @@ use thiserror::Error;
 
 pub use bohmian_code_review_core::{
     DeclarationFact, ExtractionDiagnostic, IndexedFileFacts, InvalidFact, InvalidRelativePath,
-    Language, Node, RawReference, RelativePath,
+    Language, Node, NodeKind, RawReference, RelativePath,
 };
 pub use bohmian_code_review_extract::{EXTRACTION_VERSION, ExtractionError};
 pub use bohmian_code_review_index::SymbolHit;

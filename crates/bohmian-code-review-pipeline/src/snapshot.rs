@@ -24,7 +24,9 @@ use crate::identity::{Identity, ObjectSha};
 use crate::persistence::{PersistenceError, SnapshotPointer, SnapshotScope, SnapshotStore};
 use crate::storage::{ObjectDigest, ObjectKey, ObjectStorage, StorageError};
 use bohmian_code_review::Error as SymbolicError;
-use bohmian_code_review::{EXTRACTION_VERSION, IndexedFileFacts, RelativePath, SymbolicContext};
+use bohmian_code_review::{
+    EXTRACTION_VERSION, IndexedFileFacts, NodeKind, RelativePath, SymbolicContext,
+};
 use flate2::write::GzDecoder;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -73,6 +75,8 @@ pub enum SkipReason {
     /// Fetched bytes, or a provider ceiling at least the file bound, proved
     /// the blob exceeds the file bound.
     Oversize,
+    /// The verified content extracted to no declarations.
+    NoFacts,
     /// The extractor rejected the content; `detail` carries no source.
     ParseFailed {
         /// Extractor error text.
@@ -92,7 +96,10 @@ impl SkipReason {
     /// content itself is not indexable source, as opposed to a file the
     /// attempt failed to fetch or parse.
     fn is_benign(&self) -> bool {
-        matches!(self, SkipReason::LfsPointer | SkipReason::Oversize)
+        matches!(
+            self,
+            SkipReason::LfsPointer | SkipReason::Oversize | SkipReason::NoFacts
+        )
     }
 }
 
@@ -986,14 +993,22 @@ impl Ingest {
         }
     }
 
-    /// Index verified `bytes` for `path`, or skip it for an LFS pointer or
-    /// extractor failure. The bytes are dropped by the caller afterwards.
+    /// Index verified `bytes` for `path`, or skip it for an LFS pointer, no
+    /// extractable declarations, or extractor failure. A no-facts file is
+    /// removed from the context so only indexed files carry facts. The bytes
+    /// are dropped by the caller afterwards.
     pub(crate) fn ingest(&mut self, path: RelativePath, blob: ObjectSha, bytes: &[u8]) {
         if bytes.starts_with(LFS_POINTER_PREFIX) {
             self.skip(path, blob, SkipReason::LfsPointer);
             return;
         }
         match self.context.upsert(path.as_str(), bytes) {
+            Ok(facts) if facts.nodes.iter().all(|node| node.kind == NodeKind::File) => {
+                self.context
+                    .remove(path.as_str())
+                    .expect("a path upsert accepted is canonical");
+                self.skip(path, blob, SkipReason::NoFacts);
+            }
             Ok(_) => {
                 self.pending.remove(&path);
                 self.indexed += 1;
@@ -1073,7 +1088,7 @@ pub(crate) mod tests {
     /// A Git LFS pointer.
     pub(crate) const LFS: &[u8] =
         b"version https://git-lfs.github.com/spec/v1\noid sha256:0000\nsize 12\n";
-    /// A parse-error file the extractor defers.
+    /// A parse-error file whose recovered tree holds no declarations.
     const BROKEN: &[u8] = b"export function (\n";
 
     /// Forty copies of `ch` as an object id.
@@ -1520,11 +1535,49 @@ pub(crate) mod tests {
         );
     }
 
-    /// Scenario 2: a truncated tree, a parse failure, an exhausted fallback
+    /// A verified file that extracts to no declarations is a recorded
+    /// content skip carrying its blob identity; the build stays complete
+    /// and publishes.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the build fails, does not publish, or records a different skip.
+    #[tokio::test]
+    async fn no_facts_file_is_a_recorded_skip_in_a_published_build() {
+        let repo = FakeRepo::new(
+            &[file("src/user.ts", USER), file("src/broken.ts", BROKEN)],
+            &[("src/user.ts", USER), ("src/broken.ts", BROKEN)],
+        );
+        let client = repo.client();
+        let storage = MemoryStorage::default();
+        let persistence = MemorySnapshotStore::default();
+        let result = ColdBuild::new(&client, &storage, &persistence, ColdBuildLimits::default())
+            .run(&identity())
+            .await
+            .expect("cold build");
+        assert!(
+            matches!(result.outcome, ColdBuildOutcome::Published(_)),
+            "expected publication, got {:?}",
+            result.outcome
+        );
+        assert!(result.coverage.is_complete());
+        assert_eq!((result.coverage.eligible, result.coverage.indexed), (2, 1));
+        assert_eq!(
+            result.coverage.skipped,
+            [SkippedFile {
+                path: RelativePath::new("src/broken.ts").expect("path"),
+                blob: blob_sha(BROKEN),
+                reason: SkipReason::NoFacts,
+            }]
+        );
+    }
+
+    /// Scenario 2: a truncated tree, an exhausted fallback
     /// bound, and an exhausted expansion or compressed archive bound each
     /// yield an incomplete result with exact skips; nothing is written and a
     /// prior pointer for another tree stays in place, even when fallback
-    /// fetched every file after the archive bound.
+    /// fetched every file after the archive bound. A parse-error file with
+    /// no recovered declarations is a benign skip that still publishes.
     #[tokio::test]
     async fn incomplete_attempts_report_coverage_and_keep_the_prior_pointer() {
         let identity = identity();
@@ -1575,10 +1628,12 @@ pub(crate) mod tests {
         archive.push(("src/broken.ts", BROKEN));
         let repo = FakeRepo::new(&files, &archive);
         let (result, keys, pointer, _) = run(&repo, ColdBuildLimits::default()).await;
-        assert_eq!(
-            result.outcome,
-            ColdBuildOutcome::Incomplete(IncompleteReason::UnindexedFiles { count: 1 })
-        );
+        let ColdBuildOutcome::Published(published) = &result.outcome else {
+            panic!(
+                "a parse-error file must not block publication, got {:?}",
+                result.outcome
+            );
+        };
         assert_eq!((result.coverage.eligible, result.coverage.indexed), (7, 5));
         let broken = result
             .coverage
@@ -1587,11 +1642,9 @@ pub(crate) mod tests {
             .find(|f| f.path.as_str() == "src/broken.ts")
             .expect("broken skipped");
         assert_eq!(broken.blob, blob_sha(BROKEN));
-        assert!(
-            matches!(&broken.reason, SkipReason::ParseFailed { detail } if detail.contains("deferred"))
-        );
-        assert!(keys.is_empty());
-        assert_eq!(pointer.as_ref(), Some(&prior));
+        assert_eq!(broken.reason, SkipReason::NoFacts);
+        assert!(!keys.is_empty());
+        assert_eq!(pointer.as_ref(), Some(published));
 
         let repo = FakeRepo::new(&standard_files(), &standard_archive());
         let (result, keys, pointer, blobs) = run(
