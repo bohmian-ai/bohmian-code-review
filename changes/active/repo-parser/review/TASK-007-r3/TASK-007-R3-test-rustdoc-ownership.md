@@ -23,3 +23,16 @@ Approved [revision 14 specification](../../spec.md), [original TASK-007](../../t
 **Write set.** `crates/bohmian-code-review-pipeline/src/snapshot.rs` and `crates/bohmian-code-review-pipeline/examples/provider_contract.rs` only. No evidence report or specification change is required for this comment-only correction.
 
 **Acceptance and proof.** Source inspection shows the Scenario 1 description directly attached to `complete_cold_snapshot_is_verified_source_free_and_reloadable`, a separate accurate description directly attached to `fixed_commit_build_ignores_head_advance_and_run_follows_it`, and useful module rustdoc on `provider_contract::tests`. Run `mise run test:pipeline`, `mise run fmt:check`, `mise run lints`, and `git diff --check`. The final task review rechecks the cumulative base-to-candidate range. No behavioral test is added for comments.
+
+## Implementation evidence
+
+Commit `74bfd29` (comment-only; write set `snapshot.rs`, `provider_contract.rs`).
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| Scenario 1 rustdoc directly attached to `complete_cold_snapshot_is_verified_source_free_and_reloadable` | `crates/bohmian-code-review-pipeline/src/snapshot.rs` (doc restored above the cold-journey test, text as at base) | Source inspection | PASS |
+| Separate accurate rustdoc on `fixed_commit_build_ignores_head_advance_and_run_follows_it` | Same file; describes pinned publish, reuse after head advance, and `run` following the new head | Source inspection against the test body | PASS |
+| Module rustdoc on `provider_contract::tests` | `crates/bohmian-code-review-pipeline/examples/provider_contract.rs` inner `//!` doc on the captured-report verdict checks | Source inspection | PASS |
+| Verification commands | — | `mise run test:pipeline`, `mise run fmt:check`, `mise run lints`, `git diff --check`, `mise run gate`: all exit 0 | PASS |
+
+Non-goals held: no test body, behavior, helper, dependency, fixture, evidence report, or specification change.
