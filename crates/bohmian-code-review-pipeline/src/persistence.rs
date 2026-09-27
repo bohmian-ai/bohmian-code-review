@@ -124,13 +124,16 @@ pub struct ContextRecord {
     pub expires_at: SystemTime,
 }
 
-/// Snapshot metadata store a consumer implements: the current
-/// default-branch pointer per [`SnapshotScope`].
+/// Snapshot metadata store a consumer implements: snapshot records and the
+/// current default-branch pointer per [`SnapshotScope`].
 ///
-/// Every method receives the caller identity and must refuse to read or
-/// write another identity's rows. Implementations must not hold a
-/// transaction open across a call into GitHub or object storage; the library
-/// never asks them to, and publishes a pointer only after its object exists.
+/// A record tracks one snapshot object key and when a build last touched
+/// it. The library upserts a record before creating its object and moves a
+/// pointer only after the object validates, so every object has a record
+/// and every pointer names a validated object. Every method receives the
+/// caller identity and must refuse to read or write another identity's
+/// rows. Implementations must not hold a transaction open across a call
+/// into GitHub or object storage; the library never asks them to.
 ///
 /// Methods return `Send` futures and implementers may write `async fn`. The
 /// trait is not dyn-compatible, so facades take it as a generic parameter.
@@ -145,10 +148,11 @@ pub trait SnapshotStore: Send + Sync {
         scope: &SnapshotScope,
     ) -> impl Future<Output = Result<Option<SnapshotPointer>, PersistenceError>> + Send;
 
-    /// Publish `pointer` only when the current pointer's tree equals `expected`.
+    /// Compare-and-swap: publish `pointer` only when the current pointer's
+    /// tree equals `expected` (`None` meaning no pointer).
     ///
     /// Returns `true` when the pointer moved and `false` when another
-    /// publication won, so concurrent updates converge without a lock held
+    /// publication won, so concurrent builds converge without a lock held
     /// across IO.
     ///
     /// # Errors
@@ -161,59 +165,52 @@ pub trait SnapshotStore: Send + Sync {
         pointer: &SnapshotPointer,
     ) -> impl Future<Output = Result<bool, PersistenceError>> + Send;
 
-    /// Record that a snapshot object is about to exist at `key`, refreshing
-    /// `recorded_at` when the row already exists.
-    ///
-    /// The library records a key before it writes the object and before any
-    /// pointer names it, so every object an interrupted build leaves behind
-    /// is tracked and collectable; a record whose object was never written
-    /// collects cleanly because deleting an absent object succeeds.
+    /// Insert the record of `key`, or set an existing record's `touched_at`
+    /// to `touched_at`.
     ///
     /// # Errors
     ///
     /// Returns [`PersistenceError::Backend`] on backend failure.
-    fn record_snapshot(
+    fn upsert_record(
         &self,
         identity: &Identity,
         key: &ObjectKey,
-        recorded_at: SystemTime,
+        touched_at: SystemTime,
     ) -> impl Future<Output = Result<(), PersistenceError>> + Send;
 
-    /// Up to `limit` recorded snapshots, across identities, whose
-    /// `recorded_at` is before `before` and that no pointer names.
+    /// Keys of `identity`'s records that no pointer of `identity` names and
+    /// whose `touched_at` is before `older_than`.
     ///
     /// # Errors
     ///
     /// Returns [`PersistenceError::Backend`] on backend failure.
-    fn unreferenced_snapshots(
+    fn unreferenced(
         &self,
-        before: SystemTime,
-        limit: usize,
-    ) -> impl Future<Output = Result<Vec<(Identity, ObjectKey)>, PersistenceError>> + Send;
+        identity: &Identity,
+        older_than: SystemTime,
+    ) -> impl Future<Output = Result<Vec<ObjectKey>, PersistenceError>> + Send;
 
-    /// Forget the record of `key` under `identity`; forgetting an absent
+    /// Delete the record of `key` under `identity`; deleting an absent
     /// record succeeds.
     ///
     /// # Errors
     ///
     /// Returns [`PersistenceError::Backend`] when the row may still exist.
-    fn delete_snapshot(
+    fn delete_record(
         &self,
         identity: &Identity,
         key: &ObjectKey,
     ) -> impl Future<Output = Result<(), PersistenceError>> + Send;
 
-    /// Remove every snapshot pointer and record for `identity`, returning
-    /// every recorded object key the caller must delete from snapshot
-    /// storage.
+    /// Remove every pointer of `identity`, leaving its records unreferenced.
     ///
     /// # Errors
     ///
     /// Returns [`PersistenceError::Backend`] on backend failure.
-    fn remove_repository(
+    fn remove_pointers(
         &self,
         identity: &Identity,
-    ) -> impl Future<Output = Result<Vec<ObjectKey>, PersistenceError>> + Send;
+    ) -> impl Future<Output = Result<(), PersistenceError>> + Send;
 }
 
 /// Context metadata store a consumer implements: published PR context

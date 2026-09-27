@@ -5,13 +5,15 @@
 //! verifies every eligible entry against its Git blob id, falls back to
 //! bounded verified blob calls for anything the archive omitted or
 //! substituted, and indexes through the public [`SymbolicContext`]. Source
-//! bytes live only while one entry is being parsed. A [`Snapshot`] is
-//! recorded, then written at its immutable key and compared byte for byte on
-//! read-back before the pointer moves; an incomplete attempt writes nothing
-//! and returns exact coverage. Dropping the build future at any `.await`
-//! leaves the pointer on a complete snapshot and every written object
-//! recorded. [`Snapshots`] reads published
-//! snapshots and deletes recorded snapshots no pointer names.
+//! bytes live only while one entry is being parsed.
+//!
+//! A complete [`Snapshot`] is published in three idempotent steps: upsert
+//! its record (refreshing `touched_at`), create its object if absent, and
+//! compare-and-swap the pointer. An incomplete attempt writes nothing and
+//! returns exact coverage. Dropping the build future at any `.await` leaves
+//! the pointer on a complete snapshot or absent and every object recorded,
+//! and a retry converges on the same key. [`Snapshots`] reads published
+//! snapshots and collects records no pointer names.
 
 use crate::archive::{TarStream, VerifiedEntry};
 use crate::eligibility::{
@@ -268,42 +270,54 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> Snapshots<'a, O, S> {
         Snapshot::decode(&bytes, identity, &pointer.tree)
     }
 
-    /// Delete up to `limit` recorded snapshots older than `before` that no
-    /// pointer names, returning the deleted keys.
+    /// Delete every snapshot of `identity` that no pointer names and no
+    /// build touched since `older_than`, returning the deleted keys.
     ///
     /// Each object is deleted before its record, so a failure part-way
     /// leaves a record the next call retries rather than an untracked
-    /// object. A record whose object was never written deletes cleanly
-    /// because deleting an absent object succeeds. Every returned key must
-    /// be a snapshot key of the identity it was returned with, so a faulty
-    /// store cannot steer deletion into another tenant, installation, or
-    /// repository.
-    ///
-    /// ponytail: a build adopting an object between the store's listing and
-    /// the delete can publish a pointer to a just-deleted object; the next
-    /// cold build sees the object missing and rebuilds it. A store-side lease
-    /// closes the window if that ever matters.
+    /// object; an already missing object deletes cleanly. The caller sets
+    /// `older_than` further back than its longest build so an in-flight
+    /// build's record, touched when it began publishing, is never
+    /// collected. Every key must be a snapshot key of `identity`, so a
+    /// faulty store cannot steer deletion into another namespace.
     ///
     /// # Errors
     ///
-    /// Returns [`ColdBuildError::ForeignKey`] for a key outside its
-    /// identity's snapshot namespace, otherwise the first persistence or
-    /// storage failure; keys deleted before it stay deleted.
+    /// Returns [`ColdBuildError::ForeignKey`] for a key outside `identity`'s
+    /// snapshot namespace, otherwise the first persistence or storage
+    /// failure; keys deleted before it stay deleted.
     pub async fn collect(
         &self,
-        before: SystemTime,
-        limit: usize,
+        identity: &Identity,
+        older_than: SystemTime,
     ) -> Result<Vec<ObjectKey>, ColdBuildError> {
         let mut deleted = Vec::new();
-        for (identity, key) in self.store.unreferenced_snapshots(before, limit).await? {
-            if !key.is_snapshot_of(&identity) {
+        for key in self.store.unreferenced(identity, older_than).await? {
+            if !key.is_snapshot_of(identity) {
                 return Err(ColdBuildError::ForeignKey { key });
             }
             self.storage.delete(&key).await?;
-            self.store.delete_snapshot(&identity, &key).await?;
+            self.store.delete_record(identity, &key).await?;
             deleted.push(key);
         }
         Ok(deleted)
+    }
+
+    /// Remove `identity`'s snapshot namespace: drop its pointers, then
+    /// collect every record touched before now, returning the deleted keys.
+    ///
+    /// A failure part-way leaves the remaining records for a retry. The
+    /// caller invokes it only when no build for `identity` is running.
+    ///
+    /// # Errors
+    ///
+    /// As [`Snapshots::collect`], plus the pointer removal failure.
+    pub async fn remove_repository(
+        &self,
+        identity: &Identity,
+    ) -> Result<Vec<ObjectKey>, ColdBuildError> {
+        self.store.remove_pointers(identity).await?;
+        self.collect(identity, SystemTime::now()).await
     }
 }
 
@@ -386,7 +400,8 @@ pub enum ColdBuildError {
         /// What failed validation; never source text.
         detail: String,
     },
-    /// Another publication moved the pointer first; retry the build.
+    /// Another writer moved the pointer first; nothing is lost and a retry
+    /// of the build converges.
     #[error("snapshot pointer changed during the build")]
     PointerConflict,
 }
@@ -420,19 +435,17 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
     /// The caller bounds the call by dropping its future; the library
     /// imposes no maximum of its own. A current pointer at the branch tree
     /// is validated and reused; if its object has gone missing the snapshot
-    /// is rebuilt. Publication order is fixed: the key is recorded, the
-    /// object is created (or an existing one adopted), read back and
-    /// compared byte for byte, and only then is the pointer published
-    /// conditionally on the pointer observed at the start. A retry after a
-    /// drop at any `.await` converges, and every object written is tracked
-    /// for collection and namespace removal.
+    /// is rebuilt at the same key. A complete build publishes through
+    /// [`ColdBuild::publish`]; a retry after a drop at any `.await`
+    /// converges.
     ///
     /// # Errors
     ///
     /// Returns provider errors for the repository, branch, tree, and
     /// attributes calls, storage and persistence errors, `ForeignKey` or
     /// `Corrupt` for an unusable current pointer or existing object, and
-    /// `PointerConflict` when the conditional publication lost. Per-file
+    /// `PointerConflict`, a retry state, when another writer moved the
+    /// pointer first. Per-file
     /// failures and an unusable archive never error; they appear in
     /// coverage and ingest stats.
     pub async fn run(&self, identity: &Identity) -> Result<ColdBuildResult, ColdBuildError> {
@@ -541,11 +554,15 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
         ))
     }
 
-    /// Record `snapshot`'s key, write it there or adopt the object already
-    /// there when its bytes are identical, then move the pointer.
+    /// Publish `snapshot` in three idempotent steps: upsert its record,
+    /// refreshing `touched_at`; create its object if absent, adopting an
+    /// existing object only when its bytes equal the built bytes (which
+    /// embed identity, versions, and tree); then compare-and-swap the
+    /// pointer from `current`.
     ///
-    /// Recording first means a failure at any later step leaves a tracked
-    /// key that collection or namespace removal deletes.
+    /// Dropped after any step, the pointer is untouched and every object
+    /// has a record; a retry of the same tree reaches the same key and
+    /// adopts what the dropped attempt wrote.
     ///
     /// # Errors
     ///
@@ -562,23 +579,26 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
         let bytes = serde_json::to_vec(snapshot).map_err(|error| ColdBuildError::Corrupt {
             detail: error.to_string(),
         })?;
-        let now = SystemTime::now();
-        self.store.record_snapshot(identity, &key, now).await?;
+        self.store
+            .upsert_record(identity, &key, SystemTime::now())
+            .await?;
         match self.storage.create(&key, &bytes).await {
-            Ok(()) | Err(StorageError::AlreadyExists { .. }) => {}
+            Ok(()) => {}
+            Err(StorageError::AlreadyExists { .. }) => {
+                if self.storage.read(&key).await? != bytes {
+                    return Err(ColdBuildError::Corrupt {
+                        detail: "existing object differs from the built snapshot".to_owned(),
+                    });
+                }
+            }
             Err(error) => return Err(error.into()),
-        }
-        if self.storage.read(&key).await? != bytes {
-            return Err(ColdBuildError::Corrupt {
-                detail: "stored object differs from the built snapshot".to_owned(),
-            });
         }
         let pointer = SnapshotPointer {
             tree: snapshot.tree.clone(),
             commit: commit.clone(),
             key,
             digest: ObjectDigest::of(&bytes),
-            published_at: now,
+            published_at: SystemTime::now(),
         };
         let expected = current.map(|pointer| &pointer.tree);
         if !self
@@ -683,7 +703,8 @@ impl Ingest {
 
     /// Fetch every still-pending blob individually, up to `max_blobs`, and
     /// index it; everything still pending afterwards is skipped as not
-    /// fetched.
+    /// fetched. A blob larger than the file bound, or than the client's
+    /// blob bound, is a benign oversize skip.
     async fn fallback(&mut self, client: &GitHubClient, identity: &Identity, max_blobs: usize) {
         while let Some((path, blob)) = self.pending.pop_first() {
             if self.stats.fallback_blobs >= max_blobs {
@@ -696,6 +717,9 @@ impl Ingest {
                     self.skip(path, blob, SkipReason::Oversize);
                 }
                 Ok(bytes) => self.ingest(path, blob, &bytes),
+                Err(GitHubError::ResponseTooLarge { .. }) => {
+                    self.skip(path, blob, SkipReason::Oversize);
+                }
                 Err(error) => self.skip(
                     path,
                     blob,
@@ -1327,98 +1351,189 @@ mod tests {
         assert_eq!(pointer.as_ref(), Some(&prior));
     }
 
-    /// S17: a storage failure before the object exists surfaces and leaves
-    /// no pointer; a persistence failure after the object was written leaves
-    /// the object without a pointer, and the retry adopts the validated
-    /// existing object and publishes. A corrupt object at the key is refused
-    /// rather than adopted, and a tampered digest fails read-back.
+    /// A blob listed under the file bound whose verified bytes exceed it is
+    /// a benign skip that keeps its path and blob identity, so the build
+    /// still completes.
     #[tokio::test]
-    async fn publication_is_crash_safe_and_retry_converges() {
+    async fn verified_oversize_blob_is_a_benign_skip() {
+        let big: &'static [u8] =
+            Box::leak(vec![b'x'; MAX_ELIGIBLE_FILE_BYTES as usize + 1].into_boxed_slice());
+        let files = [
+            file("src/user.ts", USER),
+            File {
+                path: "src/big.ts",
+                mode: "100644",
+                content: big,
+                size: Some(1),
+            },
+        ];
+        let repo = FakeRepo::new(&files, &[("src/user.ts", USER)]);
+        let client = repo.client();
+        let storage = MemoryStorage::default();
+        let store = MemorySnapshotStore::default();
+        let result = ColdBuild::new(&client, &storage, &store, ColdBuildLimits::default())
+            .run(&identity())
+            .await
+            .expect("build");
+        assert!(matches!(result.outcome, ColdBuildOutcome::Published(_)));
+        assert_eq!(
+            result.coverage.skipped,
+            [SkippedFile {
+                path: RelativePath::new("src/big.ts").expect("path"),
+                blob: blob_sha(big),
+                reason: SkipReason::Oversize,
+            }]
+        );
+    }
+
+    /// Scenario 3: the build future is dropped by a paused-clock timeout
+    /// after the record upsert, after the object create, and before the
+    /// pointer swap, with and without a prior pointer. Each drop leaves the
+    /// pointer where it was and every stored object recorded; the retry
+    /// adopts what was written, lands on the same key, and advances.
+    #[tokio::test(start_paused = true)]
+    async fn dropped_publication_keeps_pointer_and_retry_converges() {
+        let repo = FakeRepo::new(&standard_files(), &standard_archive());
+        let client = repo.client();
+        let identity = identity();
+        let key = snapshot_key(&identity, &repo.tree);
+        let prior = SnapshotPointer {
+            tree: sha('0'),
+            commit: sha('1'),
+            key: snapshot_key(&identity, &sha('0')),
+            digest: ObjectDigest::of(b""),
+            published_at: UNIX_EPOCH,
+        };
+        let steps: [(fn(&MemoryStorage, &MemorySnapshotStore), bool); 3] = [
+            (|_, store| store.stall_after_upsert(), false),
+            (|storage, _| storage.stall_after_create(), true),
+            (|_, store| store.stall_before_swap(), true),
+        ];
+        for prior in [None, Some(prior)] {
+            for (stall, object_written) in steps {
+                let storage = MemoryStorage::default();
+                let store = MemorySnapshotStore::default();
+                if let Some(prior) = &prior {
+                    assert!(
+                        store
+                            .publish_snapshot_pointer(&scope(&identity), None, prior)
+                            .await
+                            .expect("seed")
+                    );
+                }
+                let build = ColdBuild::new(&client, &storage, &store, ColdBuildLimits::default());
+                stall(&storage, &store);
+                let dropped =
+                    tokio::time::timeout(Duration::from_secs(60), build.run(&identity)).await;
+                assert!(dropped.is_err(), "the stalled build must be dropped");
+                let pointer = store
+                    .snapshot_pointer(&scope(&identity))
+                    .await
+                    .expect("read");
+                assert_eq!(pointer, prior);
+                assert_eq!(store.records(), [(identity.clone(), key.clone())]);
+                let expected_objects = if object_written {
+                    vec![key.clone()]
+                } else {
+                    vec![]
+                };
+                assert_eq!(storage.keys(), expected_objects);
+
+                let retry = build.run(&identity).await.expect("retry");
+                let ColdBuildOutcome::Published(published) = retry.outcome else {
+                    panic!("retry must publish, got {:?}", retry.outcome);
+                };
+                assert_eq!(published.key, key);
+                assert_eq!(storage.keys(), std::slice::from_ref(&key));
+                assert_eq!(store.records(), [(identity.clone(), key.clone())]);
+                assert_eq!(
+                    store
+                        .snapshot_pointer(&scope(&identity))
+                        .await
+                        .expect("read"),
+                    Some(published.clone())
+                );
+                assert!(
+                    Snapshots::new(&storage, &store)
+                        .read(&identity, &published)
+                        .await
+                        .is_ok()
+                );
+            }
+        }
+    }
+
+    /// An existing object under the key is adopted only when its bytes equal
+    /// the built snapshot; other bytes are refused and the pointer stays
+    /// absent, while the record keeps the object collectable.
+    #[tokio::test]
+    async fn existing_object_with_other_bytes_is_refused() {
         let repo = FakeRepo::new(&standard_files(), &standard_archive());
         let client = repo.client();
         let storage = MemoryStorage::default();
-        let persistence = MemorySnapshotStore::default();
+        let store = MemorySnapshotStore::default();
         let identity = identity();
-        let build = ColdBuild::new(&client, &storage, &persistence, ColdBuildLimits::default());
-        let scope = SnapshotScope {
-            identity: identity.clone(),
-            extraction_version: EXTRACTION_VERSION.to_owned(),
-            format_version: SNAPSHOT_FORMAT_VERSION,
-        };
-
-        storage.fail_next_create();
-        assert!(matches!(
-            build.run(&identity).await,
-            Err(ColdBuildError::Storage(StorageError::Backend { .. }))
-        ));
-        assert!(storage.keys().is_empty());
-        assert_eq!(
-            persistence.snapshot_pointer(&scope).await.expect("pointer"),
-            None
-        );
-
-        persistence.fail_next_publish();
-        assert!(matches!(
-            build.run(&identity).await,
-            Err(ColdBuildError::Persistence(
-                PersistenceError::Backend { .. }
-            ))
-        ));
-        assert_eq!(storage.keys().len(), 1);
-        assert_eq!(
-            persistence.snapshot_pointer(&scope).await.expect("pointer"),
-            None
-        );
-
-        let archives = client.calls().get(Operation::Archive);
-        let result = build.run(&identity).await.expect("retry");
-        let ColdBuildOutcome::Published(pointer) = result.outcome else {
-            panic!("retry must publish");
-        };
-        assert_eq!(
-            client.calls().get(Operation::Archive),
-            archives + 1,
-            "whole-build retry"
-        );
-        assert_eq!(storage.keys(), std::slice::from_ref(&pointer.key));
-        assert_eq!(
-            persistence
-                .snapshot_pointer(&scope)
-                .await
-                .expect("pointer")
-                .as_ref(),
-            Some(&pointer)
-        );
-
-        let mut tampered = pointer.clone();
-        tampered.digest = ObjectDigest::of(b"other");
-        assert!(matches!(
-            Snapshots::new(&storage, &persistence).read(&identity, &tampered).await,
-            Err(ColdBuildError::Corrupt { detail }) if detail == "digest mismatch"
-        ));
-
-        let corrupt_storage = MemoryStorage::default();
-        corrupt_storage
-            .create(&pointer.key, b"{\"not\":\"a snapshot\"}")
+        let key = snapshot_key(&identity, &repo.tree);
+        storage
+            .create(&key, b"{\"not\":\"a snapshot\"}")
             .await
-            .expect("seed corrupt object");
-        let corrupt_persistence = MemorySnapshotStore::default();
-        let build = ColdBuild::new(
-            &client,
-            &corrupt_storage,
-            &corrupt_persistence,
-            ColdBuildLimits::default(),
-        );
-        assert!(matches!(
-            build.run(&identity).await,
-            Err(ColdBuildError::Corrupt { .. })
-        ));
+            .expect("seed");
+        let result = ColdBuild::new(&client, &storage, &store, ColdBuildLimits::default())
+            .run(&identity)
+            .await;
+        assert!(matches!(result, Err(ColdBuildError::Corrupt { .. })));
         assert_eq!(
-            corrupt_persistence
-                .snapshot_pointer(&scope)
+            store
+                .snapshot_pointer(&scope(&identity))
                 .await
-                .expect("pointer"),
+                .expect("read"),
             None
+        );
+        assert_eq!(store.records(), [(identity.clone(), key)]);
+    }
+
+    /// A swap that loses to another writer returns the typed retry state and
+    /// leaves the winner's pointer in place.
+    #[tokio::test]
+    async fn lost_pointer_swap_returns_retry_state() {
+        let repo = FakeRepo::new(&standard_files(), &standard_archive());
+        let client = repo.client();
+        let storage = MemoryStorage::default();
+        let store = MemorySnapshotStore::default();
+        let identity = identity();
+        let build = ColdBuild::new(&client, &storage, &store, ColdBuildLimits::default());
+        let ColdBuildOutcome::Published(pointer) =
+            build.run(&identity).await.expect("build").outcome
+        else {
+            panic!("expected publication");
+        };
+        let snapshot = Snapshots::new(&storage, &store)
+            .read(&identity, &pointer)
+            .await
+            .expect("read");
+        let winner = SnapshotPointer {
+            tree: sha('0'),
+            key: snapshot_key(&identity, &sha('0')),
+            ..pointer.clone()
+        };
+        assert!(
+            store
+                .publish_snapshot_pointer(&scope(&identity), Some(&pointer.tree), &winner)
+                .await
+                .expect("winner")
+        );
+        assert_eq!(
+            build
+                .publish(&scope(&identity), Some(&pointer), &repo.commit, &snapshot)
+                .await,
+            Err(ColdBuildError::PointerConflict)
+        );
+        assert_eq!(
+            store
+                .snapshot_pointer(&scope(&identity))
+                .await
+                .expect("read"),
+            Some(winner)
         );
     }
 
@@ -1544,169 +1659,126 @@ mod tests {
         );
     }
 
-    /// REQ-006 cleanup and retry: an object left without a pointer by an
-    /// interrupted publication is recorded, so collection removes it once
-    /// expired and never touches a pointed-to snapshot; a pointer whose
-    /// object went missing is rebuilt; namespace removal returns every
-    /// recorded key of that identity only.
-    #[tokio::test]
-    async fn collection_removes_only_expired_unreferenced_snapshots() {
+    /// Scenario 4: `collect` deletes the object, then the record, of each
+    /// stale unreferenced record of its identity only. A missing object
+    /// counts as deleted; a failed object delete keeps its record for the
+    /// next call; the pointed-to snapshot and a record re-touched by an
+    /// in-flight build survive; another identity's records are untouched;
+    /// namespace removal returns only that repository's keys; a pointer
+    /// whose object went missing is rebuilt at the same key.
+    #[tokio::test(start_paused = true)]
+    async fn collect_removes_only_stale_unreferenced_records() {
         let repo = FakeRepo::new(&standard_files(), &standard_archive());
         let client = repo.client();
         let storage = MemoryStorage::default();
         let store = MemorySnapshotStore::default();
         let build = ColdBuild::new(&client, &storage, &store, ColdBuildLimits::default());
+        let snapshots = Snapshots::new(&storage, &store);
         let owner = identity();
-        let orphaned = Identity {
-            tenant: TenantId::new("orphaned").expect("tenant"),
+        let other = Identity {
+            installation: InstallationId::new(43).expect("installation"),
             ..owner.clone()
         };
-        let ColdBuildOutcome::Published(pointer) = build.run(&owner).await.expect("owner").outcome
-        else {
-            panic!("owner must publish");
-        };
-        store.fail_next_publish();
-        assert!(build.run(&orphaned).await.is_err());
-        let orphan = ObjectKey::snapshot(
-            &orphaned,
-            EXTRACTION_VERSION,
-            SNAPSHOT_FORMAT_VERSION,
-            &repo.tree,
-        );
-        assert_eq!(storage.keys().len(), 2);
-
-        assert_eq!(
-            Snapshots::new(&storage, &store)
-                .collect(UNIX_EPOCH, 10)
+        let head = snapshot_key(&owner, &repo.tree);
+        let stale = snapshot_key(&owner, &sha('1'));
+        let gone = snapshot_key(&owner, &sha('2'));
+        let foreign = snapshot_key(&other, &sha('1'));
+        for (identity, key) in [
+            (&owner, &head),
+            (&owner, &stale),
+            (&owner, &gone),
+            (&other, &foreign),
+        ] {
+            store
+                .upsert_record(identity, key, UNIX_EPOCH)
                 .await
-                .expect("nothing expired"),
-            []
+                .expect("seed record");
+        }
+        storage.create(&stale, b"stale").await.expect("seed");
+        storage.create(&foreign, b"foreign").await.expect("seed");
+
+        let older_than = SystemTime::now();
+        store.stall_before_swap();
+        assert!(
+            tokio::time::timeout(Duration::from_secs(60), build.run(&owner))
+                .await
+                .is_err()
         );
-        let later = SystemTime::now() + Duration::from_secs(3600);
+        storage.fail_next_delete();
+        assert!(matches!(
+            snapshots.collect(&owner, older_than).await,
+            Err(ColdBuildError::Storage(StorageError::Backend { .. }))
+        ));
+        assert!(store.records().contains(&(owner.clone(), stale.clone())));
         assert_eq!(
-            Snapshots::new(&storage, &store)
-                .collect(later, 10)
+            snapshots
+                .collect(&owner, older_than)
                 .await
                 .expect("collect"),
-            [orphan]
+            [stale.clone(), gone.clone()]
         );
-        assert_eq!(storage.keys(), std::slice::from_ref(&pointer.key));
+        assert_eq!(storage.keys(), [head.clone(), foreign.clone()]);
         assert_eq!(
-            Snapshots::new(&storage, &store)
-                .collect(later, 10)
-                .await
-                .expect("idempotent"),
-            []
-        );
-        assert!(
-            Snapshots::new(&storage, &store)
-                .read(&owner, &pointer)
-                .await
-                .is_ok()
+            store.records(),
+            [
+                (owner.clone(), head.clone()),
+                (other.clone(), foreign.clone())
+            ]
         );
 
-        let faulty = MemorySnapshotStore::default();
-        faulty
-            .record_snapshot(&orphaned, &pointer.key, UNIX_EPOCH)
-            .await
-            .expect("forge record");
-        assert_eq!(
-            Snapshots::new(&storage, &faulty).collect(later, 10).await,
-            Err(ColdBuildError::ForeignKey {
-                key: pointer.key.clone()
-            })
-        );
-        assert!(
-            Snapshots::new(&storage, &store)
-                .read(&owner, &pointer)
-                .await
-                .is_ok()
-        );
+        let ColdBuildOutcome::Published(pointer) = build.run(&owner).await.expect("build").outcome
+        else {
+            panic!("expected publication");
+        };
+        let later = SystemTime::now() + Duration::from_secs(3600);
+        assert_eq!(snapshots.collect(&owner, later).await.expect("collect"), []);
+        assert!(snapshots.read(&owner, &pointer).await.is_ok());
 
-        storage.delete(&pointer.key).await.expect("lose object");
-        let rebuilt = build.run(&owner).await.expect("rebuild");
-        let ColdBuildOutcome::Published(rebuilt) = rebuilt.outcome else {
+        storage.delete(&head).await.expect("lose object");
+        let ColdBuildOutcome::Published(rebuilt) =
+            build.run(&owner).await.expect("rebuild").outcome
+        else {
             panic!("a missing pointed-to object is rebuilt");
         };
-        assert_eq!(rebuilt.key, pointer.key);
-        assert!(
-            Snapshots::new(&storage, &store)
-                .read(&owner, &rebuilt)
-                .await
-                .is_ok()
-        );
+        assert_eq!(rebuilt.key, head);
+        assert!(snapshots.read(&owner, &rebuilt).await.is_ok());
 
-        assert!(matches!(
-            build.run(&orphaned).await.expect("retry").outcome,
-            ColdBuildOutcome::Published(_)
-        ));
         assert_eq!(
-            store.remove_repository(&owner).await.expect("remove"),
-            [pointer.key]
+            snapshots.remove_repository(&owner).await.expect("remove"),
+            [head]
         );
         assert_eq!(
             store.snapshot_pointer(&scope(&owner)).await.expect("read"),
             None
         );
-        assert!(
-            store
-                .snapshot_pointer(&scope(&orphaned))
-                .await
-                .expect("read")
-                .is_some()
-        );
+        assert_eq!(storage.keys(), [foreign.clone()]);
+        assert_eq!(store.records(), [(other, foreign)]);
     }
 
-    /// FIND-1: the key is recorded before the object is written, so after an
-    /// injected create, read-back, or pointer-publish failure the snapshot
-    /// is tracked: expired collection leaves storage empty, and namespace
-    /// removal returns the key for deletion.
+    /// A faulty store that returns a key outside the identity's namespace
+    /// cannot steer deletion there.
     #[tokio::test]
-    async fn every_interrupted_publication_leaves_a_tracked_key() {
-        let repo = FakeRepo::new(&standard_files(), &standard_archive());
-        let client = repo.client();
-        let identity = identity();
-        let key = snapshot_key(&identity, &repo.tree);
-        let failures: [fn(&MemoryStorage, &MemorySnapshotStore); 3] = [
-            |storage, _| storage.fail_next_create(),
-            |storage, _| storage.fail_next_read(),
-            |_, store| store.fail_next_publish(),
-        ];
-        let later = SystemTime::now() + Duration::from_secs(3600);
-        for inject in failures {
-            let interrupted = async || {
-                let storage = MemoryStorage::default();
-                let store = MemorySnapshotStore::default();
-                inject(&storage, &store);
-                assert!(
-                    ColdBuild::new(&client, &storage, &store, ColdBuildLimits::default())
-                        .run(&identity)
-                        .await
-                        .is_err()
-                );
-                assert_eq!(
-                    store
-                        .snapshot_pointer(&scope(&identity))
-                        .await
-                        .expect("read"),
-                    None
-                );
-                (storage, store)
-            };
-
-            let (storage, store) = interrupted().await;
+    async fn collect_refuses_foreign_keys() {
+        let storage = MemoryStorage::default();
+        let store = MemorySnapshotStore::default();
+        let owner = identity();
+        let victim = Identity {
+            tenant: TenantId::new("victim").expect("tenant"),
+            ..owner.clone()
+        };
+        let key = snapshot_key(&victim, &sha('1'));
+        storage.create(&key, b"victim").await.expect("seed");
+        store
+            .upsert_record(&owner, &key, UNIX_EPOCH)
+            .await
+            .expect("forge record");
+        assert_eq!(
             Snapshots::new(&storage, &store)
-                .collect(later, 10)
-                .await
-                .expect("collect");
-            assert!(storage.keys().is_empty());
-
-            let (_storage, store) = interrupted().await;
-            assert_eq!(
-                store.remove_repository(&identity).await.expect("remove"),
-                std::slice::from_ref(&key)
-            );
-        }
+                .collect(&owner, SystemTime::now())
+                .await,
+            Err(ColdBuildError::ForeignKey { key: key.clone() })
+        );
+        assert_eq!(storage.keys(), [key]);
     }
 
     /// The cold-build facade future is `Send`, so a consumer can run it on a
@@ -1721,7 +1793,7 @@ mod tests {
         let identity = identity();
         let build = ColdBuild::new(&client, &storage, &store, ColdBuildLimits::default());
         assert_send(build.run(&identity));
-        assert_send(Snapshots::new(&storage, &store).collect(SystemTime::now(), 1));
+        assert_send(Snapshots::new(&storage, &store).collect(&identity, SystemTime::now()));
     }
 
     /// FIND-3: tree entries the listing rejected for an invalid path or an

@@ -1,5 +1,5 @@
 //! In-memory test doubles shared by facade tests: a fixed response body, a
-//! URL-routed fake GitHub transport, create-only object storage, and an identity-scoped snapshot store.
+//! URL-routed fake GitHub transport, create-if-absent object storage, and an identity-scoped snapshot store.
 //!
 //! These prove publication order, retry convergence, and isolation without
 //! a network, disk, or database. They are compiled only for tests.
@@ -93,24 +93,32 @@ impl HttpTransport for RoutedTransport {
     }
 }
 
-/// Create-only in-memory storage with one-shot create and read failure
-/// switches.
+/// Wait forever: a stalled step whose future the test drops with a
+/// paused-clock `tokio::time::timeout`.
+async fn stall(switch: &AtomicBool) {
+    if switch.swap(false, Ordering::SeqCst) {
+        std::future::pending::<()>().await;
+    }
+}
+
+/// Create-if-absent in-memory storage with a one-shot stall after a create
+/// and a one-shot delete failure.
 #[derive(Default)]
 pub(crate) struct MemoryStorage {
     objects: Mutex<BTreeMap<ObjectKey, Vec<u8>>>,
-    fail_next_create: AtomicBool,
-    fail_next_read: AtomicBool,
+    stall_after_create: AtomicBool,
+    fail_next_delete: AtomicBool,
 }
 
 impl MemoryStorage {
-    /// Make the next `create` fail after nothing was written.
-    pub(crate) fn fail_next_create(&self) {
-        self.fail_next_create.store(true, Ordering::SeqCst);
+    /// Make the next `create` store its object, then never return.
+    pub(crate) fn stall_after_create(&self) {
+        self.stall_after_create.store(true, Ordering::SeqCst);
     }
 
-    /// Make the next `read` fail with a backend error; stored objects stay.
-    pub(crate) fn fail_next_read(&self) {
-        self.fail_next_read.store(true, Ordering::SeqCst);
+    /// Make the next `delete` fail with the object still present.
+    pub(crate) fn fail_next_delete(&self) {
+        self.fail_next_delete.store(true, Ordering::SeqCst);
     }
 
     /// Every stored key in order.
@@ -125,36 +133,29 @@ impl MemoryStorage {
 }
 
 impl ObjectStorage for MemoryStorage {
-    /// Refuses overwrites and honours the failure switch.
+    /// Refuses overwrites; honours the stall switch after storing.
     ///
     /// # Errors
     ///
-    /// `AlreadyExists` for a taken key, `Backend` when the switch was set.
+    /// `AlreadyExists` for a taken key.
     async fn create(&self, key: &ObjectKey, bytes: &[u8]) -> Result<(), StorageError> {
-        if self.fail_next_create.swap(false, Ordering::SeqCst) {
-            return Err(StorageError::Backend {
-                detail: "injected create failure".to_owned(),
-            });
+        {
+            let mut objects = self.objects.lock().expect("objects lock");
+            if objects.contains_key(key) {
+                return Err(StorageError::AlreadyExists { key: key.clone() });
+            }
+            objects.insert(key.clone(), bytes.to_vec());
         }
-        let mut objects = self.objects.lock().expect("objects lock");
-        if objects.contains_key(key) {
-            return Err(StorageError::AlreadyExists { key: key.clone() });
-        }
-        objects.insert(key.clone(), bytes.to_vec());
+        stall(&self.stall_after_create).await;
         Ok(())
     }
 
-    /// Exact-key read that honours the read failure switch.
+    /// Exact-key read.
     ///
     /// # Errors
     ///
-    /// `Backend` when the switch was set, `NotFound` when absent.
+    /// `NotFound` when absent.
     async fn read(&self, key: &ObjectKey) -> Result<Vec<u8>, StorageError> {
-        if self.fail_next_read.swap(false, Ordering::SeqCst) {
-            return Err(StorageError::Backend {
-                detail: "injected read failure".to_owned(),
-            });
-        }
         self.objects
             .lock()
             .expect("objects lock")
@@ -163,30 +164,52 @@ impl ObjectStorage for MemoryStorage {
             .ok_or_else(|| StorageError::NotFound { key: key.clone() })
     }
 
-    /// Idempotent delete.
+    /// Delete where an absent key succeeds; honours the failure switch.
     ///
     /// # Errors
     ///
-    /// Never.
+    /// `Backend` when the switch was set; the object stays.
     async fn delete(&self, key: &ObjectKey) -> Result<(), StorageError> {
+        if self.fail_next_delete.swap(false, Ordering::SeqCst) {
+            return Err(StorageError::Backend {
+                detail: "injected delete failure".to_owned(),
+            });
+        }
         self.objects.lock().expect("objects lock").remove(key);
         Ok(())
     }
 }
 
-/// In-memory snapshot store with conditional pointer publication, snapshot
-/// records keyed by identity, and a one-shot publish failure switch.
+/// In-memory snapshot store: pointers by scope with compare-and-swap, and
+/// records keyed by identity, with one-shot stalls after a record upsert and
+/// before a swap.
 #[derive(Default)]
 pub(crate) struct MemorySnapshotStore {
     pointers: Mutex<HashMap<SnapshotScope, SnapshotPointer>>,
-    records: Mutex<BTreeMap<(ObjectKey, Identity), SystemTime>>,
-    fail_next_publish: AtomicBool,
+    records: Mutex<BTreeMap<(Identity, ObjectKey), SystemTime>>,
+    stall_after_upsert: AtomicBool,
+    stall_before_swap: AtomicBool,
 }
 
 impl MemorySnapshotStore {
-    /// Make the next pointer publication fail without moving the pointer.
-    pub(crate) fn fail_next_publish(&self) {
-        self.fail_next_publish.store(true, Ordering::SeqCst);
+    /// Make the next `upsert_record` write its record, then never return.
+    pub(crate) fn stall_after_upsert(&self) {
+        self.stall_after_upsert.store(true, Ordering::SeqCst);
+    }
+
+    /// Make the next pointer swap never return, without moving the pointer.
+    pub(crate) fn stall_before_swap(&self) {
+        self.stall_before_swap.store(true, Ordering::SeqCst);
+    }
+
+    /// Every `(identity, key)` record in order.
+    pub(crate) fn records(&self) -> Vec<(Identity, ObjectKey)> {
+        self.records
+            .lock()
+            .expect("records lock")
+            .keys()
+            .cloned()
+            .collect()
     }
 }
 
@@ -208,62 +231,59 @@ impl SnapshotStore for MemorySnapshotStore {
             .cloned())
     }
 
-    /// Compare-and-set on the current pointer's tree.
+    /// Compare-and-swap on the current pointer's tree; honours the stall
+    /// switch before comparing.
     ///
     /// # Errors
     ///
-    /// `Backend` when the failure switch was set.
+    /// Never.
     async fn publish_snapshot_pointer(
         &self,
         scope: &SnapshotScope,
         expected: Option<&ObjectSha>,
         pointer: &SnapshotPointer,
     ) -> Result<bool, PersistenceError> {
-        if self.fail_next_publish.swap(false, Ordering::SeqCst) {
-            return Err(PersistenceError::Backend {
-                detail: "injected publish failure".to_owned(),
-            });
-        }
+        stall(&self.stall_before_swap).await;
         let mut pointers = self.pointers.lock().expect("pointers lock");
-        let current = pointers.get(scope).map(|pointer| &pointer.tree);
-        if current != expected {
+        if pointers.get(scope).map(|pointer| &pointer.tree) != expected {
             return Ok(false);
         }
         pointers.insert(scope.clone(), pointer.clone());
         Ok(true)
     }
 
-    /// Insert or refresh the record of `key` under `identity`.
+    /// Insert or re-touch the record; honours the stall switch after writing.
     ///
     /// # Errors
     ///
     /// Never.
-    async fn record_snapshot(
+    async fn upsert_record(
         &self,
         identity: &Identity,
         key: &ObjectKey,
-        recorded_at: SystemTime,
+        touched_at: SystemTime,
     ) -> Result<(), PersistenceError> {
         self.records
             .lock()
             .expect("records lock")
-            .insert((key.clone(), identity.clone()), recorded_at);
+            .insert((identity.clone(), key.clone()), touched_at);
+        stall(&self.stall_after_upsert).await;
         Ok(())
     }
 
-    /// Records older than `before` whose key no pointer of the same
-    /// identity names, in key order.
+    /// `identity`'s records touched before `older_than` that none of its
+    /// pointers names, in key order.
     ///
     /// # Errors
     ///
     /// Never.
-    async fn unreferenced_snapshots(
+    async fn unreferenced(
         &self,
-        before: SystemTime,
-        limit: usize,
-    ) -> Result<Vec<(Identity, ObjectKey)>, PersistenceError> {
+        identity: &Identity,
+        older_than: SystemTime,
+    ) -> Result<Vec<ObjectKey>, PersistenceError> {
         let pointers = self.pointers.lock().expect("pointers lock");
-        let referenced = |identity: &Identity, key: &ObjectKey| {
+        let referenced = |key: &ObjectKey| {
             pointers
                 .iter()
                 .any(|(scope, pointer)| scope.identity == *identity && pointer.key == *key)
@@ -273,11 +293,10 @@ impl SnapshotStore for MemorySnapshotStore {
             .lock()
             .expect("records lock")
             .iter()
-            .filter(|((key, identity), recorded_at)| {
-                **recorded_at < before && !referenced(identity, key)
+            .filter(|((owner, key), touched_at)| {
+                owner == identity && **touched_at < older_than && !referenced(key)
             })
-            .take(limit)
-            .map(|((key, identity), _)| (identity.clone(), key.clone()))
+            .map(|((_, key), _)| key.clone())
             .collect())
     }
 
@@ -286,7 +305,7 @@ impl SnapshotStore for MemorySnapshotStore {
     /// # Errors
     ///
     /// Never.
-    async fn delete_snapshot(
+    async fn delete_record(
         &self,
         identity: &Identity,
         key: &ObjectKey,
@@ -294,35 +313,20 @@ impl SnapshotStore for MemorySnapshotStore {
         self.records
             .lock()
             .expect("records lock")
-            .remove(&(key.clone(), identity.clone()));
+            .remove(&(identity.clone(), key.clone()));
         Ok(())
     }
 
-    /// Drop every pointer and record for `identity` and return every
-    /// recorded key.
+    /// Drop every pointer of `identity`.
     ///
     /// # Errors
     ///
     /// Never.
-    async fn remove_repository(
-        &self,
-        identity: &Identity,
-    ) -> Result<Vec<ObjectKey>, PersistenceError> {
+    async fn remove_pointers(&self, identity: &Identity) -> Result<(), PersistenceError> {
         self.pointers
             .lock()
             .expect("pointers lock")
             .retain(|scope, _| scope.identity != *identity);
-        let mut keys = Vec::new();
-        self.records
-            .lock()
-            .expect("records lock")
-            .retain(|(key, owner), _| {
-                let keep = owner != identity;
-                if !keep {
-                    keys.push(key.clone());
-                }
-                keep
-            });
-        Ok(keys)
+        Ok(())
     }
 }
