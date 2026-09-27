@@ -19,9 +19,7 @@ use crate::archive::{TarStream, VerifiedEntry};
 use crate::eligibility::{
     Exclusion, ExclusionReason, MAX_ELIGIBLE_FILE_BYTES, RootAttributes, classify,
 };
-use crate::github::{
-    Archive, BranchHead, GitHubClient, GitHubError, RejectedPath, TreeEntry, TreeEntryMode,
-};
+use crate::github::{Archive, BranchHead, GitHubClient, GitHubError, TreeEntry, TreeEntryMode};
 use crate::identity::{Identity, ObjectSha};
 use crate::persistence::{PersistenceError, SnapshotPointer, SnapshotScope, SnapshotStore};
 use crate::storage::{ObjectDigest, ObjectKey, ObjectStorage, StorageError};
@@ -130,26 +128,17 @@ pub struct Coverage {
 }
 
 impl Coverage {
-    /// Every eligible file was indexed or skipped for a content reason, and
-    /// no rejected listing entry may have been eligible.
+    /// Every eligible file was indexed or skipped for a content reason.
     pub fn is_complete(&self) -> bool {
         !self.truncated_tree && self.unindexed() == 0
     }
 
-    /// Eligible files that were neither indexed nor benignly skipped, plus
-    /// rejected listing entries whose eligibility is unknown.
+    /// Eligible files that were neither indexed nor benignly skipped.
     fn unindexed(&self) -> usize {
-        let rejected = self
-            .excluded
-            .get(&ExclusionReason::InvalidEntry)
-            .copied()
-            .unwrap_or(0);
-        rejected
-            + self
-                .skipped
-                .iter()
-                .filter(|file| !file.reason.is_benign())
-                .count()
+        self.skipped
+            .iter()
+            .filter(|file| !file.reason.is_benign())
+            .count()
     }
 }
 
@@ -594,7 +583,7 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
         let attributes = root_attributes(self.client, identity, &listing.entries).await?;
         Ok(Ok(Ingest::new(
             &listing.entries,
-            &listing.rejected,
+            listing.invalid_paths,
             &attributes,
             self.limits.max_file_bytes,
         )))
@@ -772,23 +761,23 @@ pub(crate) struct Ingest {
     pending: BTreeMap<RelativePath, ObjectSha>,
     skipped: Vec<SkippedFile>,
     excluded: Vec<Exclusion>,
-    unknown: usize,
+    invalid_paths: usize,
     indexed: usize,
     stats: IngestStats,
 }
 
 impl Ingest {
-    /// Classify `entries` and `rejected` listing entries and start with
-    /// every eligible file pending; rejected entries of unknown eligibility
-    /// are counted as [`ExclusionReason::InvalidEntry`].
+    /// Classify `entries` and start with every eligible file pending;
+    /// `invalid_paths` listing entries with non-canonical paths are counted
+    /// as [`ExclusionReason::Unsupported`].
     pub(crate) fn new(
         entries: &[TreeEntry],
-        rejected: &[RejectedPath],
+        invalid_paths: usize,
         attributes: &RootAttributes,
         max_file_bytes: u64,
     ) -> Ingest {
         let context = SymbolicContext::new();
-        let tree = classify(entries, rejected, attributes, &context, max_file_bytes);
+        let tree = classify(entries, attributes, &context, max_file_bytes);
         let mut files: Vec<SnapshotFile> = tree
             .eligible
             .into_iter()
@@ -809,7 +798,7 @@ impl Ingest {
             pending,
             skipped: Vec::new(),
             excluded: tree.excluded,
-            unknown: tree.unknown,
+            invalid_paths,
             indexed: 0,
             stats: IngestStats::default(),
         }
@@ -1014,8 +1003,8 @@ impl Ingest {
         for exclusion in &self.excluded {
             *excluded.entry(exclusion.reason).or_insert(0) += 1;
         }
-        if self.unknown > 0 {
-            excluded.insert(ExclusionReason::InvalidEntry, self.unknown);
+        if self.invalid_paths > 0 {
+            *excluded.entry(ExclusionReason::Unsupported).or_insert(0) += self.invalid_paths;
         }
         let coverage = Coverage {
             truncated_tree: false,
@@ -1101,8 +1090,8 @@ pub(crate) mod tests {
         }
     }
 
-    /// A regular file the listing reports with a malformed blob id, so the
-    /// provider rejects it after validating its path.
+    /// A regular file the listing reports with a malformed blob id, which
+    /// breaks the whole listing.
     pub(crate) fn bad_sha(path: &'static str) -> File {
         File {
             path,
@@ -2324,78 +2313,52 @@ pub(crate) mod tests {
         assert_send(Snapshots::new(&storage, &store).collect(&identity, SystemTime::now()));
     }
 
-    /// Tree entries the listing rejected for an invalid path or an unknown
-    /// mode are counted under their own exclusion reason instead of
-    /// vanishing; since either may be an eligible source, they leave the
-    /// snapshot incomplete and unpublished.
+    /// A listing entry at a non-canonical path is excluded as unsupported
+    /// and the snapshot still publishes complete.
     #[tokio::test]
-    async fn rejected_tree_entries_are_counted_as_invalid_exclusions() {
-        let files = [
-            file("src/user.ts", USER),
-            file("src/a\\\\b.ts", FORMAT),
-            File {
-                path: "src/odd.ts",
-                mode: "100600",
-                content: HANDLER,
-                size: None,
-            },
-        ];
+    async fn non_canonical_tree_path_is_an_unsupported_exclusion() {
+        let files = [file("src/user.ts", USER), file("src/a\\\\b.ts", FORMAT)];
         let repo = FakeRepo::new(&files, &[("src/user.ts", USER)]);
-        let client = repo.client();
         let storage = MemoryStorage::default();
         let store = MemorySnapshotStore::default();
-        let result = ColdBuild::new(&client, &storage, &store, ColdBuildLimits::default())
+        let result = ColdBuild::new(&repo.client(), &storage, &store, ColdBuildLimits::default())
             .run(&identity())
             .await
             .expect("build");
-        assert_eq!(
-            result.outcome,
-            ColdBuildOutcome::Incomplete(IncompleteReason::UnindexedFiles { count: 2 })
-        );
-        assert_eq!((result.coverage.eligible, result.coverage.indexed), (1, 1));
+        assert!(matches!(result.outcome, ColdBuildOutcome::Published(_)));
         assert_eq!(
             result.coverage.excluded,
-            BTreeMap::from([(ExclusionReason::InvalidEntry, 2)])
+            BTreeMap::from([(ExclusionReason::Unsupported, 1)])
         );
-        assert!(!result.coverage.is_complete());
-        assert!(storage.keys().is_empty());
+        assert!(result.coverage.is_complete());
+        assert_eq!(storage.keys().len(), 1);
     }
 
-    /// A rejected entry whose canonical path is unsupported is a proven
-    /// exclusion and the snapshot publishes; a rejected entry at a
-    /// supported path may be an eligible source and blocks publication.
+    /// A listing entry with an unknown mode or malformed id fails the build
+    /// with a provider error and publishes nothing.
     #[tokio::test]
-    async fn rejected_entry_blocks_publication_only_when_it_may_be_eligible() {
-        let build = |files: Vec<File>| async move {
-            let repo = FakeRepo::new(&files, &[("src/user.ts", USER)]);
+    async fn broken_tree_entry_fails_the_build() {
+        let odd_mode = File {
+            path: "docs/notes.md",
+            mode: "100600",
+            content: HANDLER,
+            size: None,
+        };
+        for broken in [odd_mode, bad_sha("docs/notes.md")] {
+            let repo = FakeRepo::new(&[file("src/user.ts", USER), broken], &[]);
             let storage = MemoryStorage::default();
             let store = MemorySnapshotStore::default();
-            let result =
+            let error =
                 ColdBuild::new(&repo.client(), &storage, &store, ColdBuildLimits::default())
                     .run(&identity())
                     .await
-                    .expect("build");
-            (result, storage.keys().len())
-        };
-        let (proven, objects) = build(vec![file("src/user.ts", USER), bad_sha("README.md")]).await;
-        assert!(matches!(proven.outcome, ColdBuildOutcome::Published(_)));
-        assert_eq!(
-            proven.coverage.excluded,
-            BTreeMap::from([(ExclusionReason::Unsupported, 1)])
-        );
-        assert!(proven.coverage.is_complete());
-        assert_eq!(objects, 1);
-
-        let (unknown, objects) =
-            build(vec![file("src/user.ts", USER), bad_sha("src/bad.ts")]).await;
-        assert_eq!(
-            unknown.outcome,
-            ColdBuildOutcome::Incomplete(IncompleteReason::UnindexedFiles { count: 1 })
-        );
-        assert_eq!(
-            unknown.coverage.excluded,
-            BTreeMap::from([(ExclusionReason::InvalidEntry, 1)])
-        );
-        assert_eq!(objects, 0);
+                    .expect_err("broken listing");
+            assert!(matches!(
+                error,
+                ColdBuildError::GitHub(GitHubError::MalformedResponse { .. })
+            ));
+            assert!(storage.keys().is_empty());
+            assert!(store.records().is_empty());
+        }
     }
 }

@@ -12,7 +12,7 @@
 
 use crate::identity::{GitHubHost, InstallationToken, ObjectSha, RepositoryIdentity};
 use crate::storage::hex;
-use bohmian_code_review::{InvalidRelativePath, RelativePath};
+use bohmian_code_review::RelativePath;
 use serde::Deserialize;
 use serde_json::Error as JsonError;
 use sha1::{Digest, Sha1};
@@ -459,7 +459,7 @@ pub struct TreeEntry {
     pub size: Option<u64>,
 }
 
-/// A provider entry that could not become a trusted [`TreeEntry`] or PR file.
+/// A provider PR file that could not become a trusted [`PullRequestFile`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RejectedPath {
     /// Raw path text as reported; never used as an identity.
@@ -477,8 +477,9 @@ pub struct TreeListing {
     pub truncated: bool,
     /// Entries with valid paths and modes.
     pub entries: Vec<TreeEntry>,
-    /// Entries dropped for an invalid path, mode, or id.
-    pub rejected: Vec<RejectedPath>,
+    /// Entries left out because their path is not a canonical
+    /// [`RelativePath`]; no such path can be eligible.
+    pub invalid_paths: usize,
 }
 
 /// Provider pull-request state.
@@ -655,7 +656,7 @@ struct TreeWire {
     tree: Vec<TreeEntryWire>,
 }
 
-/// One raw tree entry; validated into [`TreeEntry`] or [`RejectedPath`].
+/// One raw tree entry; validated into [`TreeEntry`] or counted as an invalid path.
 #[derive(Deserialize)]
 struct TreeEntryWire {
     path: String,
@@ -943,13 +944,16 @@ impl GitHubClient {
         })
     }
 
-    /// List `tree` recursively, validating every path and mode.
+    /// List `tree` recursively, validating every path, mode, and id.
+    ///
+    /// An entry whose path is not a canonical [`RelativePath`] is counted in
+    /// [`TreeListing::invalid_paths`] and left out.
     ///
     /// # Errors
     ///
     /// [`GitHubError::IdentityMismatch`] when the provider returns another
-    /// tree id, plus any policy or transport error. Individual bad entries
-    /// are reported in [`TreeListing::rejected`] rather than failing the call.
+    /// tree id, [`GitHubError::MalformedResponse`] when any entry has an
+    /// unknown mode or a malformed id, plus any policy or transport error.
     pub async fn tree(
         &self,
         repository: &RepositoryIdentity,
@@ -969,21 +973,21 @@ impl GitHubClient {
             });
         }
         let mut entries = Vec::with_capacity(wire.tree.len());
-        let mut rejected = Vec::new();
-        for entry in wire.tree {
-            match validate_tree_entry(&entry) {
-                Ok(valid) => entries.push(valid),
-                Err(reason) => rejected.push(RejectedPath {
-                    path: entry.path,
-                    reason,
-                }),
+        let mut invalid_paths = 0;
+        for entry in &wire.tree {
+            match validate_tree_entry(entry) {
+                Ok(Some(valid)) => entries.push(valid),
+                Ok(None) => invalid_paths += 1,
+                Err(detail) => {
+                    return Err(GitHubError::MalformedResponse { resource, detail });
+                }
             }
         }
         Ok(TreeListing {
             sha: wire.sha,
             truncated: wire.truncated,
             entries,
-            rejected,
+            invalid_paths,
         })
     }
 
@@ -1371,25 +1375,26 @@ fn json_error_category(error: &JsonError) -> &'static str {
     }
 }
 
-/// Validate a raw tree entry.
+/// Validate a raw tree entry; `Ok(None)` when its path is not a canonical
+/// [`RelativePath`], which makes it ineligible rather than untrusted.
 ///
 /// # Errors
 ///
-/// Returns the rejection reason as text when the path is not a canonical
-/// [`RelativePath`], the mode is unknown, or the sha is not a valid
-/// [`ObjectSha`]; the caller records it in [`TreeListing::rejected`].
-fn validate_tree_entry(entry: &TreeEntryWire) -> Result<TreeEntry, String> {
-    let path =
-        RelativePath::new(&entry.path).map_err(|error: InvalidRelativePath| error.to_string())?;
-    let mode =
-        TreeEntryMode::parse(&entry.mode).ok_or_else(|| format!("unknown mode {}", entry.mode))?;
-    let sha = ObjectSha::new(&entry.sha).map_err(|error| error.to_string())?;
-    Ok(TreeEntry {
+/// Returns the detail as text when the mode is unknown or the sha is not a
+/// valid [`ObjectSha`]: the listing itself is broken.
+fn validate_tree_entry(entry: &TreeEntryWire) -> Result<Option<TreeEntry>, String> {
+    let mode = TreeEntryMode::parse(&entry.mode)
+        .ok_or_else(|| format!("unknown tree mode {}", entry.mode))?;
+    let sha = ObjectSha::new(&entry.sha).map_err(|error| format!("tree entry id: {error}"))?;
+    let Ok(path) = RelativePath::new(&entry.path) else {
+        return Ok(None);
+    };
+    Ok(Some(TreeEntry {
         path,
         mode,
         sha,
         size: entry.size,
-    })
+    }))
 }
 
 /// Validate a raw PR file.
@@ -1610,7 +1615,6 @@ mod tests {
             r#"{{"sha":"{tree}","truncated":false,"tree":[
                 {{"path":"src/lib.rs","mode":"100644","type":"blob","sha":"{blob}","size":6}},
                 {{"path":"../escape","mode":"100644","type":"blob","sha":"{blob}"}},
-                {{"path":"weird","mode":"777777","type":"blob","sha":"{blob}"}},
                 {{"path":"src","mode":"040000","type":"tree","sha":"{tree}"}}
             ]}}"#
         ));
@@ -1621,14 +1625,20 @@ mod tests {
         assert_eq!(listing.entries[0].mode, TreeEntryMode::File);
         assert_eq!(listing.entries[0].size, Some(6));
         assert_eq!(listing.entries[1].mode, TreeEntryMode::Directory);
-        assert_eq!(
-            listing
-                .rejected
-                .iter()
-                .map(|r| r.path.as_str())
-                .collect::<Vec<_>>(),
-            ["../escape", "weird"]
-        );
+        assert_eq!(listing.invalid_paths, 1);
+
+        // An unknown mode or malformed id breaks the whole listing.
+        for (mode, sha) in [("777777", blob.to_string()), ("100644", "zz".to_owned())] {
+            fake.push_json(&format!(
+                r#"{{"sha":"{tree}","truncated":false,"tree":[
+                    {{"path":"src/lib.rs","mode":"{mode}","type":"blob","sha":"{sha}"}}
+                ]}}"#
+            ));
+            assert!(matches!(
+                client.tree(&repo, &tree).await,
+                Err(GitHubError::MalformedResponse { .. })
+            ));
+        }
 
         fake.push(200, &[], blob_bytes.to_vec());
         assert_eq!(client.blob(&repo, &blob).await.expect("blob"), blob_bytes);
@@ -1709,7 +1719,7 @@ mod tests {
         let calls = client.calls().snapshot();
         assert_eq!(calls[&Operation::Repository], 2);
         assert_eq!(calls[&Operation::Blob], 2);
-        assert_eq!(calls.values().sum::<u64>(), 13);
+        assert_eq!(calls.values().sum::<u64>(), 15);
     }
 
     /// Scenario 1: an archive redirect is followed once, without credentials,
