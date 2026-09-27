@@ -62,3 +62,21 @@ Stop if update publication can overwrite an immutable snapshot or expose a point
 ## Authority Links
 
 [Revision 12 spec](../spec.md), [pipeline plan](../symbolic-context-service-plan.md).
+
+## Implementation Evidence
+
+Candidate: `Update` facade in `crates/bohmian-code-review-pipeline/src/update.rs`; `ColdBuild::run` split into `pin`/`build`/`start`/`fetch`/`complete` in `snapshot.rs` so the update reuses the one `publish` path (record upsert with `touched_at`, create-if-absent object, pointer CAS) and `Snapshots::collect` unchanged. `Ingest::reuse` carries facts and benign skips only for paths whose blob is unchanged; `ColdBuildLimits::max_changed_blobs` (default 2,000) switches changed-blob fetches to the archive; `IngestStats::reused_files` reports reuse. `Update::freshness` returns typed `Freshness::{Current, Stale}` from the pointer and branch head without reading or building.
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| S3: changed/deleted/renamed/now-ineligible facts match a fresh parse; only changed blobs fetched; old snapshot immutable; pointer moves | `Update::run`, `Ingest::reuse` | `update::tests::change_delete_and_rename_match_a_fresh_parse`: 0 archive calls, 3 blob calls (attributes + 2 changed), `reused_files=2`; old object bytes equal before/after; update object bytes equal a from-scratch `ColdBuild` of the new tree; `saveUser`/`formatUser`/`substitutedFn` absent; repeat is `Reused` with no fetch | PASS |
+| S4/S16: moving or force-pushed head detected from tree identity; repeated calls converge; lost swap is a retry state | CAS in `ColdBuild::publish`, `Update::freshness` | `moving_head_is_reported_stale_and_updates_converge`: head moved mid-publication → pointer on pinned tree, `Freshness::Stale` at new head; racing update loses → `PointerConflict`; retry `Reused`; `Freshness::Current` | PASS |
+| S8: version change uses a new key, no old facts reused | current-version `snapshot_scope` | `version_change_rebuilds_under_a_new_key`: archive cold build, `reused_files=0`, new key ≠ old, old-scope pointer untouched | PASS |
+| S9: review-time stale-pointer check is typed and non-blocking | `Update::freshness` | same moving-head test: stale result with 0 tree calls | PASS |
+| Failed changed blob leaves pointer; whole retry publishes; coverage explicit | `ColdBuild::complete` | `failed_changed_blob_keeps_the_pointer_until_a_retry`: `Incomplete(UnindexedFiles{1})`, `FetchFailed` skip for `src/user.ts`, pointer/objects/records unchanged; retry publishes | PASS |
+| S17/REQ-013: dropped update leaves pointer on a complete snapshot, every object recorded, retry converges | reused `publish` | `dropped_update_keeps_the_pointer_and_retry_converges`: paused-clock timeout after upsert, after create, before swap | PASS |
+| Changed-blob ceiling bounded | `max_changed_blobs` | `changes_past_the_ceiling_use_the_archive` | PASS |
+
+Commands (this session, all exit 0): `mise run test:pipeline` (46 lib tests), `mise run fmt:check`, `mise run lints`, `git diff --check`, `mise run gate`.
+
+Non-goals held: no queue, worker, detached task, cancel token, or deadline; changed-blob fetches are sequential in the call, so no `JoinSet` is needed; no snapshot-store transaction spans IO; no consumer code or new dependency. Changed files: `lib.rs`, `snapshot.rs`, `update.rs`, this task.
