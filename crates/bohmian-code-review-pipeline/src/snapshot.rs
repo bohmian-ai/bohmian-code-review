@@ -1404,7 +1404,8 @@ mod tests {
             digest: ObjectDigest::of(b""),
             published_at: UNIX_EPOCH,
         };
-        let steps: [(fn(&MemoryStorage, &MemorySnapshotStore), bool); 3] = [
+        type Stall = fn(&MemoryStorage, &MemorySnapshotStore);
+        let steps: [(Stall, bool); 3] = [
             (|_, store| store.stall_after_upsert(), false),
             (|storage, _| storage.stall_after_create(), true),
             (|_, store| store.stall_before_swap(), true),
@@ -1751,7 +1752,7 @@ mod tests {
             store.snapshot_pointer(&scope(&owner)).await.expect("read"),
             None
         );
-        assert_eq!(storage.keys(), [foreign.clone()]);
+        assert_eq!(storage.keys(), std::slice::from_ref(&foreign));
         assert_eq!(store.records(), [(other, foreign)]);
     }
 
