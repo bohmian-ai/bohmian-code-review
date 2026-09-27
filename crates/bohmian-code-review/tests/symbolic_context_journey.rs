@@ -82,6 +82,10 @@ const PR_DIFF: &str = concat!(
     "-}\n",
 );
 
+/// The extraction version before parse-error files kept their recovered
+/// trees; facts stamped with it must never load.
+const PREVIOUS_EXTRACTION_VERSION: &str = "codegraph-kernel-572d22bf.tree-sitter-0.25.10.facts-1";
+
 /// All four head-side journey files.
 const FILES: [(&str, &str); 4] = [
     ("src/handler.ts", HANDLER),
@@ -149,12 +153,14 @@ fn upsert_is_transactional_and_remove_is_idempotent() {
         .upsert("src/unrelated.ts", UNRELATED.as_bytes())
         .expect("extracts");
 
-    let malformed = context.upsert("src/user.ts", b"export function (((\n");
-    assert!(matches!(
-        malformed,
-        Err(Error::Extraction { ref path, source: ExtractionError::Deferred { .. } })
-            if path.as_str() == "src/user.ts"
-    ));
+    let recovered = context
+        .upsert(
+            "src/broken.ts",
+            b"export function recovered(): void {}\nexport function (((\n",
+        )
+        .expect("a syntax error keeps the recovered tree");
+    assert!(recovered.nodes.iter().any(|node| node.name == "recovered"));
+    assert_eq!(context.remove("src/broken.ts"), Ok(true));
     assert!(matches!(
         context.upsert("src/user.ts", b"\xff"),
         Err(Error::NotUtf8 { .. })
@@ -452,11 +458,11 @@ fn exported_facts_reload_without_source_and_reject_invalid_records() {
     );
 
     let mut stale = user.clone();
-    stale.extraction_version = "other-extractor".to_owned();
+    stale.extraction_version = PREVIOUS_EXTRACTION_VERSION.to_owned();
     assert!(matches!(
         loaded.load(stale),
         Err(Error::ExtractionVersionMismatch { ref path, ref found, .. })
-            if path.as_str() == "src/user.ts" && found == "other-extractor"
+            if path.as_str() == "src/user.ts" && found == PREVIOUS_EXTRACTION_VERSION
     ));
     let mut malformed = user.clone();
     malformed.declarations[1].start_line = 0;
@@ -506,6 +512,7 @@ fn path_language_identifies_eligible_paths_before_download() {
         Err(Error::InvalidPath { .. })
     ));
     assert!(!EXTRACTION_VERSION.is_empty());
+    assert_ne!(EXTRACTION_VERSION, PREVIOUS_EXTRACTION_VERSION);
 }
 
 #[test]

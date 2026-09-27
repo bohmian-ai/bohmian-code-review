@@ -4,9 +4,8 @@
 //!
 //! Same porting contract as tsjs/: behavior parity with the wasm path,
 //! bug-for-bug, verified by scripts/kernel-parity.mjs and the full-index
-//! dump-diff gate. Positions in UTF-16 code units. Files whose parse tree
-//! contains ERRORS defer to the wasm extractor (encoding-dependent recovery —
-//! see tsjs/mod.rs).
+//! dump-diff gate. Positions in UTF-16 code units. Files with parse
+//! errors extract from tree-sitter's recovered tree.
 
 use crate::buffers::{
     Arena, BoolFlags, EdgeRow, EmitOut, FLAG_IS_STATIC, FUNCTION_REF_CODE, NONE, NONE_STR, NodeRow,
@@ -278,7 +277,7 @@ pub struct Walker<'t> {
 ///
 /// # Errors
 ///
-/// Returns an error when the native grammar is unavailable, tree-sitter rejects grammar installation, parsing returns no tree, or the tree contains errors and must defer to canonical wasm recovery.
+/// Returns an error when the native grammar is unavailable, tree-sitter rejects grammar installation, or parsing returns no tree.
 ///
 /// # Panics
 ///
@@ -293,10 +292,6 @@ pub fn extract(file_path: &str, source: &str) -> Result<EmitOut, String> {
     let tree = parser
         .parse(source, None)
         .ok_or_else(|| "parser returned null tree".to_string())?;
-    if tree.root_node().has_error() {
-        return Err("defer: parse tree contains errors — wasm recovery is canonical".to_string());
-    }
-
     let mut w = Walker {
         src: source,
         file_path,

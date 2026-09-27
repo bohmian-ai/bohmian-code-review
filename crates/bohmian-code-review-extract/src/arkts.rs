@@ -33,7 +33,7 @@ use crate::buffers::EmitOut;
 ///
 /// # Errors
 ///
-/// Returns an error when the native grammar is unavailable, tree-sitter rejects grammar installation, parsing returns no tree, or the tree contains errors and must defer to canonical wasm recovery.
+/// Returns an error when the native grammar is unavailable, tree-sitter rejects grammar installation, or parsing returns no tree.
 pub fn extract(file_path: &str, source: &str) -> Result<EmitOut, String> {
     crate::tsjs::extract(file_path, source, "arkts")
 }

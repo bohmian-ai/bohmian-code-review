@@ -24,7 +24,7 @@
 //! `external` maps to public visibility but keeps its raw text in the
 //! signature; constants declared with an explicit type parse as
 //! `state_variable_declaration` and become fields inside a contract;
-//! `typedef` is NOT part of this grammar (it parses as an ERROR and defers).
+//! `typedef` is NOT part of this grammar (it parses as an ERROR).
 //! Solidity is NOT in TYPE_ANNOTATION_LANGUAGES, VALUE_REF_LANGS, or
 //! FN_REF_SPECS. Positions are emitted in UTF-16 code units.
 
@@ -138,7 +138,7 @@ pub struct Walker<'t> {
 ///
 /// # Errors
 ///
-/// Returns an error when the native grammar is unavailable, tree-sitter rejects grammar installation, parsing returns no tree, or the tree contains errors and must defer to canonical wasm recovery.
+/// Returns an error when the native grammar is unavailable, tree-sitter rejects grammar installation, or parsing returns no tree.
 ///
 /// # Panics
 ///
@@ -153,10 +153,6 @@ pub fn extract(file_path: &str, source: &str) -> Result<EmitOut, String> {
     let tree = parser
         .parse(source, None)
         .ok_or_else(|| "parser returned null tree".to_string())?;
-    if tree.root_node().has_error() {
-        return Err(crate::error::CANONICAL_DEFER_MESSAGE.to_string());
-    }
-
     let mut w = Walker {
         src: source,
         file_path,

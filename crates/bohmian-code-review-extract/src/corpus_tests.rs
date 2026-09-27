@@ -5,10 +5,10 @@
 //! captured from the pinned upstream oracle (the wasm extractor at
 //! `572d22bf`, run with `CODEGRAPH_KERNEL=0`). The corpus manifest
 //! (`tools/oracle/fixtures/manifest.json`) marks each fixture `match`
-//! (native output must equal the golden) or `defer` (the parse tree
-//! contains errors; native extraction must return
-//! [`ExtractionError::Deferred`] and the golden records the oracle's
-//! recovered extraction — the skipped/deferred distinction).
+//! (native output must equal the golden) or `recover` (the parse tree
+//! contains errors; native extraction must succeed from tree-sitter's
+//! recovered tree and keep the declarations outside the error region, which
+//! need not equal the oracle's wasm-recovered golden).
 //!
 //! The corpus covers all 31 native languages: the frozen kernel's original
 //! 20 plus the five systems/configuration grammar ports (Objective-C,
@@ -31,7 +31,7 @@ use crate::config::ExtractionConfig;
 use crate::error::ExtractionError;
 use crate::extractor::Extractor;
 use crate::source_file::SourceFile;
-use bohmian_code_review_core::{Language, RelativePath};
+use bohmian_code_review_core::{Language, NodeKind, RelativePath};
 use std::path::{Path, PathBuf};
 
 /// Repository root relative to the crate manifest dir (crates/bohmian-code-review-extract).
@@ -75,7 +75,7 @@ struct CorpusEntry {
     path: String,
     /// Language wire name.
     language: String,
-    /// `match` or `defer`.
+    /// `match` or `recover`.
     expected: String,
 }
 
@@ -125,7 +125,7 @@ fn extractor() -> Extractor {
         .expect("default extractor construction succeeds")
 }
 
-/// Extract the fixture and compare against its golden (or assert deferral).
+/// Extract the fixture and compare against its golden (or assert recovery).
 ///
 /// # Panics
 ///
@@ -158,75 +158,23 @@ fn check_entry(entry: &CorpusEntry) {
                 entry.path, entry.language
             );
         }
-        "defer" => {
-            // The exact typed defer contract: the language and the canonical
-            // deferral message are asserted verbatim; the error IS the
-            // complete outcome (native emits no partial facts on defer).
-            match result {
-                Err(ExtractionError::Deferred { language, message }) => {
-                    assert_eq!(
-                        language,
-                        language_of(entry),
-                        "defer language mismatch for {}",
-                        entry.path
-                    );
-                    assert_eq!(
-                        message,
-                        crate::error::CANONICAL_DEFER_MESSAGE,
-                        "defer message mismatch for {}",
-                        entry.path
-                    );
-                }
-                other => panic!(
-                    "{} must defer with the exact typed Deferred error, got {:?}",
-                    entry.path,
-                    other.map(|_| ())
-                ),
-            }
-            // The oracle golden records the canonical defer projection: a
-            // complete recovered extraction (nodes/edges/refs), the frozen
-            // diagnostic projection for parse-error trees (empty), and the
-            // file node first carrying the exact fixture path.
-            let golden_path = goldens_dir().join(format!("{}.json", entry.path));
-            let golden_raw = std::fs::read_to_string(&golden_path).unwrap_or_else(|error| {
-                panic!(
-                    "deferred fixture {} must have an oracle golden: {error}",
-                    entry.path
-                )
+        "recover" => {
+            // The recovered-tree outcome: extraction succeeds and the file
+            // node comes first with the exact fixture path. Recovered symbols
+            // are pinned per fixture by
+            // `recover_fixtures_keep_valid_regions_per_fixture`.
+            let result = result.unwrap_or_else(|error| {
+                panic!("{} must extract its recovered tree: {error}", entry.path)
             });
-            let golden: serde_json::Value =
-                serde_json::from_str(&golden_raw).expect("golden must be valid JSON");
-            for key in ["nodes", "edges", "unresolvedReferences", "errors"] {
-                assert!(
-                    golden[key].is_array(),
-                    "defer golden {} must carry a {key} array",
-                    entry.path
-                );
-            }
+            let file = result.nodes.first().expect("file node");
             assert_eq!(
-                golden["errors"],
-                serde_json::json!([]),
-                "defer golden {} must record the frozen diagnostic projection for parse-error trees",
-                entry.path
-            );
-            let nodes = golden["nodes"].as_array().expect("nodes array");
-            assert!(
-                !nodes.is_empty(),
-                "defer golden {} must record a recovery",
-                entry.path
-            );
-            assert_eq!(
-                nodes[0]["kind"], "file",
-                "defer golden {} file node first",
-                entry.path
-            );
-            assert_eq!(
-                nodes[0]["filePath"], entry.path,
-                "defer golden {} file node carries the exact fixture path",
+                (file.kind, file.file_path.as_str()),
+                (NodeKind::File, entry.path.as_str()),
+                "recover fixture {} file node first",
                 entry.path
             );
         }
-        other => panic!("manifest expected must be `match` or `defer`, got `{other}`"),
+        other => panic!("manifest expected must be `match` or `recover`, got `{other}`"),
     }
 }
 
@@ -348,7 +296,7 @@ fn enterprise_per_language_normalized_differential() {
 /// Panics if the enterprise corpus lacks any required matrix row.
 fn enterprise_fixture_matrix_is_exhaustive() {
     let entries = enterprise_entries();
-    let has_defer = entries.iter().any(|entry| entry.expected == "defer");
+    let has_recover = entries.iter().any(|entry| entry.expected == "recover");
     let has_empty = entries.iter().any(|entry| entry.path.contains("Empty."));
     let has_unicode = entries.iter().any(|entry| entry.path.contains("Unicode"));
     // Dialect/path-specific rows per family.
@@ -376,8 +324,8 @@ fn enterprise_fixture_matrix_is_exhaustive() {
         .iter()
         .any(|entry| entry.path == "cfscript/Interface.cfs");
     assert!(
-        has_defer,
-        "enterprise corpus must include malformed (defer) fixtures"
+        has_recover,
+        "enterprise corpus must include malformed (recover) fixtures"
     );
     assert!(has_empty, "enterprise corpus must include empty fixtures");
     assert!(
@@ -914,12 +862,12 @@ fn systems_config_per_language_normalized_differential() {
 /// Verifies that systems config fixtures include valid, malformed, empty, unicode, and path-routing cases.
 fn systems_config_fixture_matrix_is_exhaustive() {
     let entries = systems_config_entries();
-    let has_defer = entries.iter().any(|entry| entry.expected == "defer");
+    let has_recover = entries.iter().any(|entry| entry.expected == "recover");
     let has_empty = entries.iter().any(|entry| entry.path.contains("Empty."));
     let has_unicode = entries.iter().any(|entry| entry.path.contains("Unicode"));
     assert!(
-        has_defer,
-        "systems/config corpus must include malformed (defer) fixtures"
+        has_recover,
+        "systems/config corpus must include malformed (recover) fixtures"
     );
     assert!(
         has_empty,
@@ -1688,28 +1636,27 @@ fn routing_owner_agrees_with_manifest_for_every_fixture() {
     }
 }
 
-/// One deferred fixture's canonical oracle projection expectation: the
-/// recovered (kind, name) pairs the frozen wasm recovery must contain.
-struct DeferRecoveryExpectation {
+/// One malformed fixture's recovered-tree expectation: the (kind, name)
+/// pairs native extraction must keep from the fixture's valid regions.
+struct RecoveryExpectation {
     /// Fixture path (also the extraction filePath).
     path: &'static str,
-    /// Recovered (kind, name) pairs present in the oracle golden.
+    /// Recovered (kind, name) pairs native extraction must emit.
     recovered: &'static [(&'static str, &'static str)],
 }
 
-/// The canonical defer expectations for every deferred corpus fixture.
+/// The recovered-tree expectations for every malformed corpus fixture.
 ///
 /// Each malformed fixture carries a VALID region before (and sometimes
-/// between) its broken constructs; the frozen oracle recovers those valid
-/// regions, and the native side routes the whole file to the canonical wasm
-/// recovery. Asserting the recovered symbols per fixture proves the defer
-/// classification is not hiding semantic recovery drift.
-const DEFER_RECOVERY_EXPECTATIONS: &[DeferRecoveryExpectation] = &[
-    DeferRecoveryExpectation {
+/// between) its broken constructs. A syntax error drops only the
+/// declarations inside its error region, so native extraction must keep the
+/// named declarations from the valid regions.
+const RECOVERY_EXPECTATIONS: &[RecoveryExpectation] = &[
+    RecoveryExpectation {
         path: "objc/Broken.m",
         recovered: &[("class", "BrokenClass")],
     },
-    DeferRecoveryExpectation {
+    RecoveryExpectation {
         path: "objc/Broken2.m",
         recovered: &[
             ("class", "ValidThing"),
@@ -1717,11 +1664,11 @@ const DEFER_RECOVERY_EXPECTATIONS: &[DeferRecoveryExpectation] = &[
             ("class", "BrokenThing"),
         ],
     },
-    DeferRecoveryExpectation {
+    RecoveryExpectation {
         path: "solidity/Broken.sol",
         recovered: &[("class", "Broken"), ("field", "value"), ("method", "set")],
     },
-    DeferRecoveryExpectation {
+    RecoveryExpectation {
         path: "solidity/Broken2.sol",
         recovered: &[
             ("class", "ValidContract"),
@@ -1730,15 +1677,15 @@ const DEFER_RECOVERY_EXPECTATIONS: &[DeferRecoveryExpectation] = &[
             ("class", "BrokenContract"),
         ],
     },
-    DeferRecoveryExpectation {
+    RecoveryExpectation {
         path: "terraform/Broken.tf",
         recovered: &[("variable", "broken")],
     },
-    DeferRecoveryExpectation {
+    RecoveryExpectation {
         path: "terraform/Broken2.tf",
         recovered: &[("class", "aws_s3_bucket.good"), ("variable", "broken")],
     },
-    DeferRecoveryExpectation {
+    RecoveryExpectation {
         path: "arkts/Broken.ets",
         recovered: &[
             ("struct", "Broken"),
@@ -1746,7 +1693,7 @@ const DEFER_RECOVERY_EXPECTATIONS: &[DeferRecoveryExpectation] = &[
             ("method", "build"),
         ],
     },
-    DeferRecoveryExpectation {
+    RecoveryExpectation {
         path: "arkts/Broken2.ets",
         recovered: &[
             ("struct", "GoodList"),
@@ -1755,11 +1702,11 @@ const DEFER_RECOVERY_EXPECTATIONS: &[DeferRecoveryExpectation] = &[
             ("function", "brokenExtend"),
         ],
     },
-    DeferRecoveryExpectation {
+    RecoveryExpectation {
         path: "nix/Broken.nix",
         recovered: &[("variable", "x")],
     },
-    DeferRecoveryExpectation {
+    RecoveryExpectation {
         path: "nix/Broken2.nix",
         recovered: &[
             ("variable", "goodAttr"),
@@ -1767,11 +1714,11 @@ const DEFER_RECOVERY_EXPECTATIONS: &[DeferRecoveryExpectation] = &[
             ("variable", "src"),
         ],
     },
-    DeferRecoveryExpectation {
+    RecoveryExpectation {
         path: "pascal/Broken.pas",
         recovered: &[("file", "Broken.pas")],
     },
-    DeferRecoveryExpectation {
+    RecoveryExpectation {
         path: "pascal/Broken2.pas",
         recovered: &[
             ("module", "PartialUnit"),
@@ -1779,11 +1726,11 @@ const DEFER_RECOVERY_EXPECTATIONS: &[DeferRecoveryExpectation] = &[
             ("method", "Good"),
         ],
     },
-    DeferRecoveryExpectation {
+    RecoveryExpectation {
         path: "cfscript/Broken.cfs",
         recovered: &[("class", "Broken"), ("function", "ok")],
     },
-    DeferRecoveryExpectation {
+    RecoveryExpectation {
         path: "cfscript/Broken2.cfs",
         recovered: &[
             ("class", "Broken2"),
@@ -1791,15 +1738,15 @@ const DEFER_RECOVERY_EXPECTATIONS: &[DeferRecoveryExpectation] = &[
             ("method", "badFn"),
         ],
     },
-    DeferRecoveryExpectation {
+    RecoveryExpectation {
         path: "cfquery/Broken.sql",
         recovered: &[("file", "Broken.sql")],
     },
-    DeferRecoveryExpectation {
+    RecoveryExpectation {
         path: "cobol/Broken.cbl",
         recovered: &[("module", "GOOD"), ("function", "MAIN")],
     },
-    DeferRecoveryExpectation {
+    RecoveryExpectation {
         path: "cobol/Broken2.cbl",
         recovered: &[
             ("module", "GOODPROG"),
@@ -1807,50 +1754,50 @@ const DEFER_RECOVERY_EXPECTATIONS: &[DeferRecoveryExpectation] = &[
             ("function", "MAIN"),
         ],
     },
-    DeferRecoveryExpectation {
+    RecoveryExpectation {
         path: "vbnet/Broken.vb",
         recovered: &[("import", "System"), ("class", "Broken")],
     },
-    DeferRecoveryExpectation {
+    RecoveryExpectation {
         path: "erlang/Broken.erl",
         recovered: &[("namespace", "broken")],
     },
 ];
 
 #[test]
-/// Verifies that every deferred fixture's oracle golden recovers exactly the
-/// valid regions (partial-valid malformed coverage) — the canonical defer
-/// projection is compared structurally, never by arbitrary golden existence.
+/// Verifies that every malformed fixture's native extraction keeps the
+/// declarations of its valid regions.
 ///
 /// # Panics
 ///
-/// Panics if a defer expectation names a fixture that is not deferred, a
-/// golden is missing or malformed, or a recovered (kind, name) pair is absent
-/// from the golden's nodes.
-fn defer_contract_recovers_valid_regions_per_fixture() {
+/// Panics if an expectation names a fixture that is not `recover`, the
+/// fixture cannot be read or extracted, or a recovered (kind, name) pair is
+/// absent from the native nodes.
+fn recover_fixtures_keep_valid_regions_per_fixture() {
     let entries = load_manifest();
-    for expectation in DEFER_RECOVERY_EXPECTATIONS {
+    for expectation in RECOVERY_EXPECTATIONS {
         let entry = entries
             .iter()
             .find(|entry| entry.path == expectation.path)
             .unwrap_or_else(|| panic!("expectation names unknown fixture {}", expectation.path));
         assert_eq!(
-            entry.expected, "defer",
-            "{} must be a deferred fixture",
+            entry.expected, "recover",
+            "{} must be a recover fixture",
             expectation.path
         );
-        let golden_path = goldens_dir().join(format!("{}.json", expectation.path));
-        let golden_raw =
-            std::fs::read_to_string(&golden_path).expect("deferred fixture golden must exist");
-        let golden: serde_json::Value =
-            serde_json::from_str(&golden_raw).expect("golden must be valid JSON");
-        let nodes = golden["nodes"].as_array().expect("nodes array");
+        let bytes = std::fs::read(fixtures_dir().join(&entry.path)).expect("fixture must exist");
+        let path = RelativePath::new(&entry.path).expect("fixture path");
+        let result = extractor()
+            .extract(SourceFile::new(&path, &bytes, language_of(entry)))
+            .unwrap_or_else(|error| panic!("{} must extract: {error}", entry.path));
+        let native = serde_json::to_value(&result).expect("native result serializes");
+        let nodes = native["nodes"].as_array().expect("nodes array");
         for (kind, name) in expectation.recovered {
             assert!(
                 nodes
                     .iter()
                     .any(|node| node["kind"] == *kind && node["name"] == *name),
-                "{} golden must recover {} `{}`",
+                "{} must recover {} `{}`",
                 expectation.path,
                 kind,
                 name
@@ -1864,9 +1811,9 @@ fn defer_contract_recovers_valid_regions_per_fixture() {
 // ---------------------------------------------------------------------------
 
 /// The composite manifest entries: `match` fixtures whose routed
-/// language+path classifies into the closed [`CompositeKind`] set. Defer
+/// language+path classifies into the closed [`CompositeKind`] set. Recover
 /// entries (e.g. `cfscript/Broken.cfs`) stay with the native corpus's
-/// defer-contract handling; the composite differential proves the routed
+/// recovered-tree handling; the composite differential proves the routed
 /// match output.
 fn composite_entries() -> Vec<CorpusEntry> {
     load_manifest()

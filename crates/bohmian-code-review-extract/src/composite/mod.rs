@@ -257,7 +257,7 @@ impl CompositeExtractor {
     /// Returns [`ExtractionError::UnsupportedLanguage`] for an unregistered
     /// or unsupported language, and the native extractor's typed errors
     /// ([`ExtractionError::DisabledLanguage`],
-    /// [`ExtractionError::SourceNotUtf8`], [`ExtractionError::Deferred`],
+    /// [`ExtractionError::SourceNotUtf8`],
     /// [`ExtractionError::ExtractionFailed`]) when the routed file or an
     /// embedded fragment fails native extraction.
     pub fn extract(

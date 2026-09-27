@@ -7,7 +7,7 @@
 //! [`Extractor::extract`] decodes them into typed native facts
 //! ([`ExtractionResult`]). Extraction semantics — node IDs, names, qualified
 //! names, signatures, metadata, positions, edges, raw references, ordering,
-//! optionality, and the malformed/deferred distinction — are preserved
+//! optionality — are preserved
 //! exactly. Only the NAPI surface is gone: a development-only adapter under
 //! `tools/oracle` re-exposes conversion over the same `Extractor`.
 //!
@@ -116,7 +116,8 @@ mod corpus_tests;
 /// Bump it whenever a grammar pin in `Cargo.toml`, a walker, the decoder, or
 /// the fact projection changes what is extracted; the extraction fixtures
 /// under `corpus_tests` are the evidence such a change occurred.
-pub const EXTRACTION_VERSION: &str = "codegraph-kernel-572d22bf.tree-sitter-0.25.10.facts-1";
+pub const EXTRACTION_VERSION: &str =
+    "codegraph-kernel-572d22bf.tree-sitter-0.25.10.recovered-tree.facts-2";
 
 pub use composite::{CompositeExtractor, CompositeKind, DiscoveredSource};
 pub use config::ExtractionConfig;

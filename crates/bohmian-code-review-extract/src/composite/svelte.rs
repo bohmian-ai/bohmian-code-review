@@ -212,20 +212,11 @@ impl<'a> SvelteWalker<'a> {
         } else {
             Language::Javascript
         };
-        let inner = self
-            .native
-            .extract(SourceFile::new(
-                self.path,
-                block.content.as_bytes(),
-                script_language,
-            ))
-            .map_err(|error| {
-                if let ExtractionError::Deferred { language, message } = error {
-                    ExtractionError::Deferred { language, message }
-                } else {
-                    error
-                }
-            })?;
+        let inner = self.native.extract(SourceFile::new(
+            self.path,
+            block.content.as_bytes(),
+            script_language,
+        ))?;
         let file_path = self.path.as_str().to_string();
         for mut node in inner.nodes {
             node.start_line += block.start_line;

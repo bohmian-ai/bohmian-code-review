@@ -6,11 +6,9 @@ use thiserror::Error;
 /// Errors produced by [`crate::Extractor::new`] and
 /// [`crate::Extractor::extract`].
 ///
-/// The variants preserve the frozen kernel's failure distinctions: an
-/// unsupported language is a routing error, a parse-tree-with-errors file is
-/// [`ExtractionError::Deferred`] (upstream deferred to the wasm fallback with
-/// a `"defer:"` signal), and any other walker failure is
-/// [`ExtractionError::ExtractionFailed`]. Malformed buffers and invalid
+/// An unsupported language is a routing error and a walker failure is
+/// [`ExtractionError::ExtractionFailed`]; a parse tree with syntax errors is
+/// not an error, its recovered declarations are extracted. Malformed buffers and invalid
 /// configuration are separate typed errors.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum ExtractionError {
@@ -35,16 +33,7 @@ pub enum ExtractionError {
         /// The UTF-8 conversion error message.
         message: String,
     },
-    /// The file's parse tree contains errors and extraction was deferred
-    /// (upstream would fall back to the wasm extractor's error recovery).
-    #[error("extraction deferred for `{language}`: {message}")]
-    Deferred {
-        /// The deferred language.
-        language: Language,
-        /// The walker's deferral message.
-        message: String,
-    },
-    /// The walker failed for another reason (grammar setup, null parse).
+    /// The walker failed (grammar setup, null parse).
     #[error("extraction failed for `{language}`: {message}")]
     ExtractionFailed {
         /// The failing language.
@@ -71,12 +60,6 @@ pub enum ExtractionError {
         message: String,
     },
 }
-
-/// The canonical native deferral message: a parse tree containing errors is
-/// routed to the wasm recovery path. This exact spelling is a stable wire
-/// contract — the defer contract tests assert it verbatim.
-pub const CANONICAL_DEFER_MESSAGE: &str =
-    "defer: parse tree contains errors — wasm recovery is canonical";
 
 #[cfg(test)]
 /// Contains focused regression tests for this module's frozen behavior and invariants.

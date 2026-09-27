@@ -103,12 +103,12 @@
     {
       "path": "java/Broken.java",
       "language": "java",
-      "expected": "defer"
+      "expected": "recover"
     },
     {
       "path": "typescript/Broken.ts",
       "language": "typescript",
-      "expected": "defer"
+      "expected": "recover"
     },
     {
       "path": "objc/Basic.m",
@@ -118,7 +118,7 @@
     {
       "path": "objc/Broken.m",
       "language": "objc",
-      "expected": "defer"
+      "expected": "recover"
     },
     {
       "path": "objc/Empty.m",
@@ -143,7 +143,7 @@
     {
       "path": "solidity/Broken.sol",
       "language": "solidity",
-      "expected": "defer"
+      "expected": "recover"
     },
     {
       "path": "solidity/Empty.sol",
@@ -163,7 +163,7 @@
     {
       "path": "terraform/Broken.tf",
       "language": "terraform",
-      "expected": "defer"
+      "expected": "recover"
     },
     {
       "path": "terraform/Empty.tf",
@@ -193,7 +193,7 @@
     {
       "path": "arkts/Broken.ets",
       "language": "arkts",
-      "expected": "defer"
+      "expected": "recover"
     },
     {
       "path": "arkts/Empty.ets",
@@ -213,7 +213,7 @@
     {
       "path": "nix/Broken.nix",
       "language": "nix",
-      "expected": "defer"
+      "expected": "recover"
     },
     {
       "path": "nix/Empty.nix",
@@ -233,27 +233,27 @@
     {
       "path": "objc/Broken2.m",
       "language": "objc",
-      "expected": "defer"
+      "expected": "recover"
     },
     {
       "path": "solidity/Broken2.sol",
       "language": "solidity",
-      "expected": "defer"
+      "expected": "recover"
     },
     {
       "path": "terraform/Broken2.tf",
       "language": "terraform",
-      "expected": "defer"
+      "expected": "recover"
     },
     {
       "path": "arkts/Broken2.ets",
       "language": "arkts",
-      "expected": "defer"
+      "expected": "recover"
     },
     {
       "path": "nix/Broken2.nix",
       "language": "nix",
-      "expected": "defer"
+      "expected": "recover"
     },
     {
       "path": "pascal/Basic.pas",
@@ -263,12 +263,12 @@
     {
       "path": "pascal/Broken.pas",
       "language": "pascal",
-      "expected": "defer"
+      "expected": "recover"
     },
     {
       "path": "pascal/Broken2.pas",
       "language": "pascal",
-      "expected": "defer"
+      "expected": "recover"
     },
     {
       "path": "pascal/Empty.pas",
@@ -293,12 +293,12 @@
     {
       "path": "cfscript/Broken.cfs",
       "language": "cfscript",
-      "expected": "defer"
+      "expected": "recover"
     },
     {
       "path": "cfscript/Broken2.cfs",
       "language": "cfscript",
-      "expected": "defer"
+      "expected": "recover"
     },
     {
       "path": "cfscript/Empty.cfs",
@@ -323,7 +323,7 @@
     {
       "path": "cfquery/Broken.sql",
       "language": "cfquery",
-      "expected": "defer"
+      "expected": "recover"
     },
     {
       "path": "cfquery/Empty.sql",
@@ -343,7 +343,7 @@
     {
       "path": "cobol/Broken.cbl",
       "language": "cobol",
-      "expected": "defer"
+      "expected": "recover"
     },
     {
       "path": "cobol/Free.cbl",
@@ -373,7 +373,7 @@
     {
       "path": "vbnet/Broken.vb",
       "language": "vbnet",
-      "expected": "defer"
+      "expected": "recover"
     },
     {
       "path": "vbnet/Empty.vb",
@@ -403,7 +403,7 @@
     {
       "path": "erlang/Broken.erl",
       "language": "erlang",
-      "expected": "defer"
+      "expected": "recover"
     },
     {
       "path": "erlang/Empty.erl",
@@ -428,7 +428,7 @@
     {
       "path": "cobol/Broken2.cbl",
       "language": "cobol",
-      "expected": "defer"
+      "expected": "recover"
     },
     {
       "path": "pascal/Form.fmx",

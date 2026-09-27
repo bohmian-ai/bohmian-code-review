@@ -159,7 +159,7 @@ pub struct Walker<'t> {
 ///
 /// # Errors
 ///
-/// Returns an error when the native grammar is unavailable, tree-sitter rejects grammar installation, parsing returns no tree, or the tree contains errors and must defer to canonical wasm recovery.
+/// Returns an error when the native grammar is unavailable, tree-sitter rejects grammar installation, or parsing returns no tree.
 ///
 /// # Panics
 ///
@@ -177,7 +177,7 @@ pub fn extract(file_path: &str, source: &str) -> Result<EmitOut, String> {
 ///
 /// # Errors
 ///
-/// Returns an error when tree-sitter rejects grammar installation, parsing returns no tree, or the tree contains errors and must defer to canonical wasm recovery.
+/// Returns an error when tree-sitter rejects grammar installation, or parsing returns no tree.
 ///
 /// # Panics
 ///
@@ -195,10 +195,6 @@ pub(crate) fn extract_prepared(
     let tree = parser
         .parse(source, None)
         .ok_or_else(|| "parser returned null tree".to_string())?;
-    if tree.root_node().has_error() {
-        return Err(crate::error::CANONICAL_DEFER_MESSAGE.to_string());
-    }
-
     let mut w = Walker {
         src: source,
         file_path,

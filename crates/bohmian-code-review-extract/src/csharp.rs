@@ -8,8 +8,8 @@
 //! emission hole (property/accessor bodies, constructor initializers,
 //! delegates/events/operators/indexers, top-level locals) and garbage ref
 //! (`(repo)` primary-ctor extends, `: byte` enum extends, `nameof` calls)
-//! this file preserves on purpose. Positions in UTF-16 code units. Files whose
-//! parse tree contains ERRORS defer to the wasm extractor.
+//! this file preserves on purpose. Positions in UTF-16 code units. Files with
+//! parse errors extract from tree-sitter's recovered tree.
 //!
 //! preParse (#237 `#if` blanking) stays TS-side: the route point hoists it, so
 //! the kernel receives pre-blanked bytes — port NOTHING of it here (its regex
@@ -275,7 +275,7 @@ pub struct Walker<'t> {
 ///
 /// # Errors
 ///
-/// Returns an error when the native grammar is unavailable, tree-sitter rejects grammar installation, parsing returns no tree, or the tree contains errors and must defer to canonical wasm recovery.
+/// Returns an error when the native grammar is unavailable, tree-sitter rejects grammar installation, or parsing returns no tree.
 ///
 /// # Panics
 ///
@@ -290,10 +290,6 @@ pub fn extract(file_path: &str, source: &str) -> Result<EmitOut, String> {
     let tree = parser
         .parse(source, None)
         .ok_or_else(|| "parser returned null tree".to_string())?;
-    if tree.root_node().has_error() {
-        return Err("defer: parse tree contains errors — wasm recovery is canonical".to_string());
-    }
-
     let mut w = Walker {
         src: source,
         file_path,
@@ -1157,8 +1153,8 @@ impl<'t> Walker<'t> {
     /// Signature is ALWAYS undefined (no getSignature hook); isAsync is real.
     fn extract_method(&mut self, node: Node<'t>) {
         if !self.inside_class_like() {
-            // Unreachable on non-erroring C# (top-level `void M(){}` parses as
-            // local_function_statement; erroring files defer) — mirror the TS
+            // Reached only in recovered trees (top-level `void M(){}` parses as
+            // local_function_statement) — mirror the TS
             // treat-as-function tail for shape.
             self.extract_function(node);
             return;

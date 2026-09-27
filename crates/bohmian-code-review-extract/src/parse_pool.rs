@@ -239,13 +239,13 @@ mod tests {
     }
 
     #[test]
-    /// A syntactically malformed file defers with a typed file-local error
-    /// while the valid files on either side of it still extract.
+    /// A syntactically malformed file extracts from its recovered tree
+    /// without disturbing the valid files on either side of it.
     ///
     /// # Panics
     ///
-    /// Panics if the malformed file does not defer or a valid file fails.
-    fn malformed_file_defers_alone_and_later_valid_file_parses() {
+    /// Panics if any file fails or a valid file loses its declaration.
+    fn malformed_file_recovers_alone_and_later_valid_file_parses() {
         let requests = [
             ParseRequest {
                 file_path: "src/a.ts",
@@ -277,13 +277,7 @@ mod tests {
                 .collect()
         };
         assert_eq!(function_names(0), vec!["lookupUser"]);
-        assert!(matches!(
-            outcomes[1].as_ref().expect("attempted"),
-            Err(ExtractionError::Deferred {
-                language: Language::Typescript,
-                ..
-            })
-        ));
+        function_names(1);
         assert_eq!(function_names(2), vec!["saveUser"]);
     }
 

@@ -23,8 +23,7 @@
 //! field; static-member WRITES emit (unlike kotlin); infix calls are
 //! invisible; `derives` emits nothing; value-ref same-name targets take the
 //! LAST registration. Positions in UTF-16 code units. Files with parse errors
-//! defer to wasm — including scala-3 PHANTOM hasError files (flag-true, zero
-//! ERROR nodes): trust the flag.
+//! extract from tree-sitter's recovered tree.
 
 use crate::buffers::{
     Arena, BoolFlags, EdgeRow, EmitOut, FLAG_IS_ASYNC, FLAG_IS_EXPORTED, FLAG_IS_STATIC,
@@ -343,7 +342,7 @@ pub struct Walker<'t> {
 ///
 /// # Errors
 ///
-/// Returns an error when the native grammar is unavailable, tree-sitter rejects grammar installation, parsing returns no tree, or the tree contains errors and must defer to canonical wasm recovery.
+/// Returns an error when the native grammar is unavailable, tree-sitter rejects grammar installation, or parsing returns no tree.
 ///
 /// # Panics
 ///
@@ -358,12 +357,6 @@ pub fn extract(file_path: &str, source: &str) -> Result<EmitOut, String> {
     let tree = parser
         .parse(source, None)
         .ok_or_else(|| "parser returned null tree".to_string())?;
-    if tree.root_node().has_error() {
-        // Includes scala-3 PHANTOMS (flag-true, zero ERROR nodes) — the flag
-        // is the policy, never node-scanning.
-        return Err("defer: parse tree contains errors — wasm recovery is canonical".to_string());
-    }
-
     let mut w = Walker {
         src: source,
         file_path,

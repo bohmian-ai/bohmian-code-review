@@ -69,7 +69,7 @@ pub enum Error {
         /// The file's path.
         path: RelativePath,
     },
-    /// The extractor rejected or deferred the file.
+    /// The extractor rejected the file.
     #[error("extraction failed for `{path}`: {source}")]
     Extraction {
         /// The file's path.
@@ -143,7 +143,7 @@ impl SymbolicContext {
     /// # Errors
     ///
     /// Returns [`Error::InvalidPath`], [`Error::NotUtf8`], or
-    /// [`Error::Extraction`] for unsupported, disabled, deferred, or failed
+    /// [`Error::Extraction`] for unsupported, disabled, or failed
     /// extraction.
     pub fn upsert(&mut self, path: &str, source: &[u8]) -> Result<FileFacts<'_>, Error> {
         let path = relative_path(path)?;

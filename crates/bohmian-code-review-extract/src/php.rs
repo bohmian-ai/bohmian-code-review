@@ -15,7 +15,8 @@
 //! machinery is resolution-side); nullsafe `?->` emits nothing; literal
 //! receivers are not suppressed; interface multi-extends drops all but the
 //! first base; property type-hints emit no refs from field nodes. Positions in
-//! UTF-16 code units. Files with parse errors defer to wasm (≈0–0.1%).
+//! UTF-16 code units. Files with parse errors
+//! extract from tree-sitter's recovered tree.
 
 use crate::buffers::{
     Arena, BoolFlags, EdgeRow, EmitOut, FLAG_IS_EXPORTED, FLAG_IS_STATIC, FUNCTION_REF_CODE, NONE,
@@ -275,7 +276,7 @@ pub struct Walker<'t> {
 ///
 /// # Errors
 ///
-/// Returns an error when the native grammar is unavailable, tree-sitter rejects grammar installation, parsing returns no tree, or the tree contains errors and must defer to canonical wasm recovery.
+/// Returns an error when the native grammar is unavailable, tree-sitter rejects grammar installation, or parsing returns no tree.
 ///
 /// # Panics
 ///
@@ -290,10 +291,6 @@ pub fn extract(file_path: &str, source: &str) -> Result<EmitOut, String> {
     let tree = parser
         .parse(source, None)
         .ok_or_else(|| "parser returned null tree".to_string())?;
-    if tree.root_node().has_error() {
-        return Err("defer: parse tree contains errors — wasm recovery is canonical".to_string());
-    }
-
     let mut w = Walker {
         src: source,
         file_path,

@@ -10,7 +10,7 @@
 //! top-level var/const specs walk their initializers ATTRIBUTED to the
 //! declared symbol (#693), 2-hop field chains (`t.conn.Exec`) keep the chain
 //! (#1276), and `New().Method()` re-encodes as `New().Method` (#645/#608)
-//! only for bare-identifier factories. Files with parse errors defer to wasm.
+//! only for bare-identifier factories. Files with parse errors extract from tree-sitter's recovered tree.
 
 use crate::buffers::{
     Arena, BoolFlags, EdgeRow, EmitOut, FLAG_IS_EXPORTED, FUNCTION_REF_CODE, NONE, NONE_STR,
@@ -172,7 +172,7 @@ pub struct Walker<'t> {
 ///
 /// # Errors
 ///
-/// Returns an error when the native grammar is unavailable, tree-sitter rejects grammar installation, parsing returns no tree, or the tree contains errors and must defer to canonical wasm recovery.
+/// Returns an error when the native grammar is unavailable, tree-sitter rejects grammar installation, or parsing returns no tree.
 ///
 /// # Panics
 ///
@@ -187,10 +187,6 @@ pub fn extract(file_path: &str, source: &str) -> Result<EmitOut, String> {
     let tree = parser
         .parse(source, None)
         .ok_or_else(|| "parser returned null tree".to_string())?;
-    if tree.root_node().has_error() {
-        return Err("defer: parse tree contains errors — wasm recovery is canonical".to_string());
-    }
-
     let mut w = Walker {
         src: source,
         file_path,

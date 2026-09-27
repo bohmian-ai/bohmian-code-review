@@ -18,8 +18,7 @@ use bohmian_code_review_core::{Language, RelativePath};
 /// Owns an [`ExtractionConfig`] and the closed [`LanguageRouter`], and exposes
 /// the frozen kernel's per-language extraction as native Rust facts.
 /// Construction validates the configuration; `extract` dispatches one
-/// pre-classified file to its walker, preserves the upstream
-/// malformed/deferred distinction as a typed error, and decodes the walker's
+/// pre-classified file to its walker and decodes the walker's
 /// flat-buffer tables into an [`ExtractionResult`]. `detect_language` and
 /// `extract_detected` route an arbitrary path+source through the router first
 /// — the ergonomic entry surface that does not require a pre-classified
@@ -89,8 +88,7 @@ impl Extractor {
     /// when not enabled, [`ExtractionError::UnsupportedLanguage`] when the
     /// routed language has no native grammar, and
     /// [`ExtractionError::SourceNotUtf8`] when the bytes are invalid UTF-8.
-    /// A parse tree containing errors defers with
-    /// [`ExtractionError::Deferred`]; other walker failures surface as
+    /// Walker failures surface as
     /// [`ExtractionError::ExtractionFailed`].
     ///
     /// # Errors
@@ -118,8 +116,7 @@ impl Extractor {
     /// its language is not enabled by the configuration, with
     /// [`ExtractionError::UnsupportedLanguage`] when the language has no
     /// native grammar, and with [`ExtractionError::SourceNotUtf8`] when the
-    /// bytes are not valid UTF-8. A parse tree containing errors defers with
-    /// [`ExtractionError::Deferred`]; other walker failures surface as
+    /// bytes are not valid UTF-8. Walker failures surface as
     /// [`ExtractionError::ExtractionFailed`].
     ///
     /// # Errors
@@ -127,8 +124,7 @@ impl Extractor {
     /// Returns [`ExtractionError::DisabledLanguage`],
     /// [`ExtractionError::UnsupportedLanguage`], or
     /// [`ExtractionError::SourceNotUtf8`] during admission. Walker failures
-    /// map to [`ExtractionError::Deferred`] for parse-error trees and
-    /// [`ExtractionError::ExtractionFailed`] otherwise; malformed ABI tables
+    /// map to [`ExtractionError::ExtractionFailed`]; malformed ABI tables
     /// return [`ExtractionError::Decode`].
     pub fn extract(&self, source: SourceFile<'_>) -> Result<ExtractionResult, ExtractionError> {
         let language = source.language;
@@ -144,13 +140,8 @@ impl Extractor {
             })?;
         let path = source.path.as_str();
 
-        let emit = Self::run_walker(path, source_str, language).map_err(|message| {
-            if message.starts_with("defer:") {
-                ExtractionError::Deferred { language, message }
-            } else {
-                ExtractionError::ExtractionFailed { language, message }
-            }
-        })?;
+        let emit = Self::run_walker(path, source_str, language)
+            .map_err(|message| ExtractionError::ExtractionFailed { language, message })?;
 
         let mut result = decode_buffers(&emit, path, language)?;
         // CfmlExtractor.extractBareScript stamps `language` on every ref of a
@@ -244,7 +235,7 @@ impl Extractor {
     /// # Errors
     ///
     /// Returns the selected walker’s grammar-installation, parser-setup,
-    /// null-tree, or typed `defer:` failure without changing its message.
+    /// or null-tree failure without changing its message.
     fn run_walker(
         path: &str,
         source: &str,
@@ -380,6 +371,53 @@ mod tests {
             .extract(source(&path, &[0xff, 0xfe, 0x00], Language::Python))
             .unwrap_err();
         assert!(matches!(error, ExtractionError::SourceNotUtf8 { .. }));
+    }
+
+    /// Extracts `bytes` at `path` and returns every recovered declaration name.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the path is invalid or extraction fails.
+    fn recovered_names(path: &str, bytes: &[u8], language: Language) -> BTreeSet<String> {
+        let extractor = Extractor::new(ExtractionConfig::all_native()).unwrap();
+        let path = RelativePath::new(path).unwrap();
+        extractor
+            .extract(source(&path, bytes, language))
+            .expect("a syntax error keeps the recovered tree")
+            .nodes
+            .into_iter()
+            .map(|node| node.name)
+            .collect()
+    }
+
+    #[test]
+    /// A Rust attribute on a destructured field, which tree-sitter-rust
+    /// cannot parse, drops only that region; the declarations around it stay.
+    ///
+    /// # Panics
+    ///
+    /// Panics if extraction fails or a surrounding declaration is missing.
+    fn recovered_tree_keeps_rust_declarations_around_a_grammar_gap() {
+        let source = b"pub struct Boot { pub port: u16 }\n\npub fn start(boot: Boot) -> u16 {\n    let Boot {\n        #[cfg(feature = \"x\")]\n        port,\n    } = boot;\n    port\n}\n\npub fn stop() {}\n";
+        let names = recovered_names("src/boot/mod.rs", source, Language::Rust);
+        for name in ["Boot", "start", "stop"] {
+            assert!(names.contains(name), "missing `{name}` in {names:?}");
+        }
+    }
+
+    #[test]
+    /// A raw NUL byte inside a TypeScript string literal drops only that
+    /// region; the declarations around it stay.
+    ///
+    /// # Panics
+    ///
+    /// Panics if extraction fails or a surrounding declaration is missing.
+    fn recovered_tree_keeps_typescript_declarations_around_a_nul_byte() {
+        let source = b"export function before(): string {\n  return \"a\";\n}\n\nconst SEP = \"\x00\";\n\nexport function after(): string {\n  return SEP;\n}\n";
+        let names = recovered_names("src/lib/server/wyrd.ts", source, Language::Typescript);
+        for name in ["before", "after"] {
+            assert!(names.contains(name), "missing `{name}` in {names:?}");
+        }
     }
 }
 
