@@ -148,6 +148,66 @@ impl FakeGitHub {
         );
     }
 
+    /// Route the compare of `base` holding `old` with `head` holding `new`,
+    /// and the non-recursive listings of `tree`, the head's tree, whose
+    /// files all sit one directory deep.
+    fn compare(
+        &self,
+        (base, old): (&ObjectSha, &[(&str, &[u8])]),
+        (head, tree, new): (&ObjectSha, &ObjectSha, &[(&str, &[u8])]),
+    ) {
+        let blob = |files: &[(&str, &[u8])], path: &str| {
+            files
+                .iter()
+                .find(|(p, _)| *p == path)
+                .map(|(_, bytes)| blob_sha(bytes))
+        };
+        let mut files: Vec<_> = new
+            .iter()
+            .filter_map(|(path, bytes)| match blob(old, path) {
+                None => Some(json!({"filename": path, "status": "added"})),
+                Some(sha) if sha != blob_sha(bytes) => {
+                    Some(json!({"filename": path, "status": "modified"}))
+                }
+                Some(_) => None,
+            })
+            .collect();
+        files.extend(
+            old.iter()
+                .filter(|(path, _)| blob(new, path).is_none())
+                .map(|(path, _)| json!({"filename": path, "status": "removed"})),
+        );
+        self.0.json(
+            &format!("/compare/{base}...{head}"),
+            &json!({"status": "ahead", "base_commit": {"sha": base.as_str()},
+                    "commits": [{"sha": head.as_str()}], "files": files})
+            .to_string(),
+        );
+        let mut dirs: Vec<(&str, Vec<serde_json::Value>)> = Vec::new();
+        for (path, bytes) in new {
+            let (dir, name) = path.split_once('/').expect("one directory deep");
+            let entry = json!({"path": name, "mode": "100644", "type": "blob",
+                               "sha": blob_sha(bytes).as_str(), "size": bytes.len()});
+            match dirs.iter_mut().find(|(d, _)| *d == dir) {
+                Some((_, entries)) => entries.push(entry),
+                None => dirs.push((dir, vec![entry])),
+            }
+        }
+        let dir_sha = |dir: &str| blob_sha(format!("{tree}:{dir}").as_bytes());
+        let root: Vec<_> = dirs
+            .iter()
+            .map(|(dir, _)| json!({"path": dir, "mode": "040000", "type": "tree", "sha": dir_sha(dir).as_str()}))
+            .collect();
+        for (sha, entries) in std::iter::once((tree.clone(), root))
+            .chain(dirs.into_iter().map(|(d, e)| (dir_sha(d), e)))
+        {
+            self.0.json(
+                &format!("/git/trees/{sha}"),
+                &json!({"sha": sha.as_str(), "truncated": false, "tree": entries}).to_string(),
+            );
+        }
+    }
+
     /// Route PR [`PR`] based on `base`, whose head commit `h` has tree `8`
     /// holding `files`, changing `src/handler.ts` to [`PR_HANDLER`].
     fn pull_request(&self, base: &ObjectSha, files: &[(&str, &[u8])]) {
@@ -402,13 +462,21 @@ async fn cold_update_warm_review_and_read_compose() {
     assert_eq!(first.tree, sha('7'));
 
     github.push(&sha('d'), &sha('9'), &main_v2());
-    let before = client.calls().get(Operation::Archive);
+    github.compare((&sha('c'), &main_v1()), (&sha('d'), &sha('9'), &main_v2()));
+    let before = client.calls().snapshot();
     let updated = caps.update(&client).run(&caller).await.expect("update");
     let ColdBuildOutcome::Published(second) = updated.outcome else {
         panic!("update did not publish: {:?}", updated.outcome);
     };
     assert_eq!(second.tree, sha('9'));
-    assert_eq!(client.calls().get(Operation::Archive), before);
+    let calls = client.calls();
+    assert_eq!(calls.get(Operation::Archive), before[&Operation::Archive]);
+    assert_eq!(calls.get(Operation::Compare), 1);
+    assert_eq!(
+        calls.get(Operation::Tree) - before[&Operation::Tree],
+        2,
+        "non-recursive root and src listings, no tree re-listing"
+    );
     assert_eq!(
         (updated.ingest.fallback_blobs, updated.ingest.reused_files),
         (1, 2)
