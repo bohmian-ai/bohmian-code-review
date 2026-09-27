@@ -39,3 +39,18 @@ Keep recovered declarations inside tree-sitter `ERROR` regions. Keep clean fixtu
 4. Record the exact focused command for the new persisted-object regression and run it. Run `mise run test:pipeline`, `mise run test:symbolic-context:journey`, `mise run fmt:check`, `mise run lints`, and `git diff --check`; run `mise run test:extract` if extractor code or tests change. Keep the existing public journey and gate green.
 
 The correction write set includes the pipeline snapshot representation, ingest and reuse, publication/read/version scope, and focused tests, plus the facade/index projection seam if needed to make the indexed outcome carry the actual persisted declarations. Route directly to `$cr-implement`; the next review reassesses the cumulative candidate against original TASK-008.
+
+## Implementation evidence
+
+Commit `1bc6584`. `Snapshot` now stores `files: Vec<FileOutcome>` (`Indexed(IndexedFile)` | `Skipped(SkippedFile)`) plus `excluded`; `IndexedFile` has private fields, is built only when the facade's `export_file` projection carries a declaration, and deserializes through `try_from` that rejects empty declarations. `Snapshot::coverage()` and `Ingested::coverage()` derive from `Coverage::of(outcomes)`. `Ingest::settle` is the single classification point for fresh ingest, verified fallback, changed-tree reuse, and PR heads. `SNAPSHOT_FORMAT_VERSION` is 2. Removed: `SymbolicContext::has_declarations`, the parallel `Snapshot.facts`/`Snapshot.coverage` fields, and `Ingest.skipped`. No caller guards were added.
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| 1. Same-tree cold build with a prior-format indexed-empty pointer publishes a current-format result: one `NoFacts` for the blob, no indexed-empty record, declaration file indexed | `snapshot.rs` `SNAPSHOT_FORMAT_VERSION = 2`, `FileOutcome`, `Ingest::settle` | `prior_format_indexed_empty_snapshot_is_not_reused` | PASS |
+| 2. Same-tree update reaches that result; current-scope read rejects the old object; reuse and PR heads classify import-only consistently with no stale posting | `Snapshots::read`/`Snapshot::decode`, `Ingest::reuse`, `Ingest::ingest` | same test (update `Reused` of the new pointer, old bytes at current key → `Corrupt`); `import_only_file_is_no_facts_on_ingest_and_reuse` | PASS |
+| 3. Serialized form cannot encode an indexed file without a declaration; coverage derived from outcomes; normal, benign, and failure cases hold | `IndexedFile` `try_from`, `Coverage::of` | `indexed_outcome_without_declarations_does_not_decode`; existing cold-build, update, PR tests in `test:pipeline` | PASS |
+| 4. Commands | — | see below | PASS |
+
+Commands, all exit 0 in this session: `cargo test --all-features -p bohmian-code-review-pipeline --lib -- snapshot::tests::prior_format_indexed_empty_snapshot_is_not_reused snapshot::tests::indexed_outcome snapshot::tests::import_only`; `mise run test:pipeline`; `mise run test:pipeline:journey`; `mise run test:index`; `mise run test:symbolic-context:journey`; `mise run fmt:check`; `mise run lints`; `git diff --check`; `mise run gate`. `test:extract` not required: no extractor code changed.
+
+Non-goals held: no extractor, grammar, fixture, or golden change; error-region declarations kept; no new dependency. `Ingest.indexed` remains an in-flight counter for the PR overlay's scoped cap only; coverage never reads it.
