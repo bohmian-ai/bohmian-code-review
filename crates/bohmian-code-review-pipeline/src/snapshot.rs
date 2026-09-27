@@ -1493,6 +1493,33 @@ pub(crate) mod tests {
         assert_eq!(storage.keys().len(), 1);
     }
 
+    /// An executable (`100755`) root `.gitattributes` is policy like a
+    /// regular one: its `linguist-generated` rule excludes `generated/g.ts`.
+    #[tokio::test]
+    async fn executable_root_attributes_exclude_generated_files() {
+        let mut files = standard_files();
+        for f in files.iter_mut().filter(|f| f.path == ".gitattributes") {
+            f.mode = "100755";
+        }
+        let repo = FakeRepo::new(&files, &standard_archive());
+        let client = repo.client();
+        let result = ColdBuild::new(
+            &client,
+            &MemoryStorage::default(),
+            &MemorySnapshotStore::default(),
+            ColdBuildLimits::default(),
+        )
+        .run(&identity())
+        .await
+        .expect("cold build");
+        let coverage = &result.coverage;
+        assert_eq!(coverage.eligible, 6);
+        assert_eq!(
+            coverage.excluded.get(&ExclusionReason::GeneratedAttribute),
+            Some(&1)
+        );
+    }
+
     /// Scenario 2: a truncated tree, a parse failure, an exhausted fallback
     /// bound, and an exhausted expansion or compressed archive bound each
     /// yield an incomplete result with exact skips; nothing is written and a
