@@ -29,7 +29,7 @@ use flate2::write::GzDecoder;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::io::{self, Write};
-use std::time::SystemTime;
+use std::time::Duration;
 use thiserror::Error;
 
 /// Layout version of the serialized [`Snapshot`]; part of every snapshot key.
@@ -242,10 +242,10 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> Snapshots<'a, O, S> {
         Snapshots { storage, store }
     }
 
-    /// Read and validate the snapshot a pointer names for `identity`.
+    /// Read and validate the snapshot a pointer names in `scope`.
     ///
     /// The pointer's key must equal the key this library builds for
-    /// `identity`, the current versions, and the pointer's tree before
+    /// `scope` and the pointer's tree before
     /// storage is touched, so a pointer row leaked or copied from another
     /// tenant or installation can never read that identity's object.
     ///
@@ -258,10 +258,10 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> Snapshots<'a, O, S> {
     /// that identity and tree.
     pub async fn read(
         &self,
-        identity: &Identity,
+        scope: &SnapshotScope,
         pointer: &SnapshotPointer,
     ) -> Result<Snapshot, ColdBuildError> {
-        let expected = snapshot_key(identity, &pointer.tree);
+        let expected = snapshot_key(scope, &pointer.tree);
         if pointer.key != expected {
             return Err(ColdBuildError::ForeignKey {
                 key: pointer.key.clone(),
@@ -273,11 +273,12 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> Snapshots<'a, O, S> {
                 detail: "digest mismatch".to_owned(),
             });
         }
-        Snapshot::decode(&bytes, identity, &pointer.tree)
+        Snapshot::decode(&bytes, &scope.identity, &pointer.tree)
     }
 
     /// Delete every snapshot of `identity` that no pointer names and no
-    /// build touched since `older_than`, returning the deleted keys.
+    /// build touched within `grace` of the store's clock, returning the
+    /// deleted keys.
     ///
     /// The store claims each returned record as it selects it, so a build
     /// racing on the same key fails its record refresh with
@@ -286,10 +287,9 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> Snapshots<'a, O, S> {
     /// Each object is deleted before its record, so a failure part-way
     /// leaves a claimed record the next call retries rather than an
     /// untracked object; an already missing object deletes cleanly. Calls
-    /// for one identity must not overlap. The caller sets
-    /// `older_than` further back than its longest build so an in-flight
-    /// build's record, touched when it began publishing, is never
-    /// collected. Every key must be a snapshot key of `identity`, so a
+    /// for one identity must not overlap. The caller sets `grace` longer
+    /// than its longest build so an in-flight build's record, touched when
+    /// it began publishing, is never collected. Every key must be a snapshot key of `identity`, so a
     /// faulty store cannot steer deletion into another namespace.
     ///
     /// # Errors
@@ -300,10 +300,10 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> Snapshots<'a, O, S> {
     pub async fn collect(
         &self,
         identity: &Identity,
-        older_than: SystemTime,
+        grace: Duration,
     ) -> Result<Vec<ObjectKey>, ColdBuildError> {
         let mut deleted = Vec::new();
-        for key in self.store.unreferenced(identity, older_than).await? {
+        for key in self.store.unreferenced(identity, grace).await? {
             if !key.is_snapshot_of(identity) {
                 return Err(ColdBuildError::ForeignKey { key });
             }
@@ -315,7 +315,7 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> Snapshots<'a, O, S> {
     }
 
     /// Remove `identity`'s snapshot namespace: drop its pointers, then
-    /// collect every record touched before now, returning the deleted keys.
+    /// collect every record with zero grace, returning the deleted keys.
     ///
     /// A failure part-way leaves the remaining records for a retry. The
     /// caller invokes it only when no build for `identity` is running.
@@ -328,23 +328,30 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> Snapshots<'a, O, S> {
         identity: &Identity,
     ) -> Result<Vec<ObjectKey>, ColdBuildError> {
         self.store.remove_pointers(identity).await?;
-        self.collect(identity, SystemTime::now()).await
+        self.collect(identity, Duration::ZERO).await
     }
 }
 
-/// The pointer scope of `identity` under the current versions.
-pub(crate) fn snapshot_scope(identity: &Identity) -> SnapshotScope {
+/// The pointer scope of `identity` under the current versions and the
+/// caller's `max_file_bytes`.
+pub(crate) fn snapshot_scope(identity: &Identity, max_file_bytes: u64) -> SnapshotScope {
     SnapshotScope {
         identity: identity.clone(),
         extraction_version: EXTRACTION_VERSION.to_owned(),
         format_version: SNAPSHOT_FORMAT_VERSION,
+        max_file_bytes,
     }
 }
 
-/// The only key a snapshot of `tree` for `identity` may live at under the
-/// current extraction and format versions.
-fn snapshot_key(identity: &Identity, tree: &ObjectSha) -> ObjectKey {
-    ObjectKey::snapshot(identity, EXTRACTION_VERSION, SNAPSHOT_FORMAT_VERSION, tree)
+/// The only key a snapshot of `tree` in `scope` may live at.
+fn snapshot_key(scope: &SnapshotScope, tree: &ObjectSha) -> ObjectKey {
+    ObjectKey::snapshot(
+        &scope.identity,
+        &scope.extraction_version,
+        scope.format_version,
+        scope.max_file_bytes,
+        tree,
+    )
 }
 
 /// Why a complete attempt was not produced.
@@ -497,7 +504,7 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
     /// failures and an unusable archive never error; they appear in
     /// coverage and ingest stats.
     pub async fn run(&self, identity: &Identity) -> Result<ColdBuildResult, ColdBuildError> {
-        let scope = snapshot_scope(identity);
+        let scope = snapshot_scope(identity, self.limits.max_file_bytes);
         let current = self.store.snapshot_pointer(&scope).await?;
         let head = self.pin(identity).await?;
         self.build(&scope, current.as_ref(), &head).await
@@ -530,7 +537,7 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
         let identity = &scope.identity;
         if let Some(pointer) = current.filter(|pointer| pointer.tree == head.tree) {
             match Snapshots::new(self.storage, self.store)
-                .read(identity, pointer)
+                .read(scope, pointer)
                 .await
             {
                 Ok(snapshot) => {
@@ -693,13 +700,11 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
         snapshot: &Snapshot,
     ) -> Result<SnapshotPointer, ColdBuildError> {
         let identity = &scope.identity;
-        let key = snapshot_key(identity, &snapshot.tree);
+        let key = snapshot_key(scope, &snapshot.tree);
         let bytes = serde_json::to_vec(snapshot).map_err(|error| ColdBuildError::Corrupt {
             detail: error.to_string(),
         })?;
-        self.store
-            .upsert_record(identity, &key, SystemTime::now())
-            .await?;
+        self.store.upsert_record(identity, &key).await?;
         match self.storage.create(&key, &bytes).await {
             Ok(()) => {}
             Err(StorageError::AlreadyExists { .. }) => {
@@ -716,7 +721,6 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
             commit: commit.clone(),
             key,
             digest: ObjectDigest::of(&bytes),
-            published_at: SystemTime::now(),
         };
         let expected = current.map(|pointer| &pointer.tree);
         if !self
@@ -1033,8 +1037,13 @@ pub(crate) mod tests {
     use flate2::write::GzEncoder;
     use std::sync::Arc;
     use std::sync::atomic::Ordering;
-    use std::time::{Duration, UNIX_EPOCH};
+    use std::time::Duration;
     use tar::EntryType;
+
+    /// Pointer scope of `identity` under the default file ceiling.
+    pub(crate) fn scope(identity: &Identity) -> SnapshotScope {
+        snapshot_scope(identity, MAX_ELIGIBLE_FILE_BYTES)
+    }
 
     /// Declares `lookupUser` and `saveUser`.
     pub(crate) const USER: &[u8] = b"export interface User {\n  id: string;\n}\n\nexport function lookupUser(id: string): User {\n  return { id };\n}\n\nexport function saveUser(user: User): void {\n  console.log(user.id);\n}\n";
@@ -1350,6 +1359,7 @@ pub(crate) mod tests {
                 &identity,
                 EXTRACTION_VERSION,
                 SNAPSHOT_FORMAT_VERSION,
+                MAX_ELIGIBLE_FILE_BYTES,
                 &repo.tree
             )
         );
@@ -1429,14 +1439,15 @@ pub(crate) mod tests {
                 "src/user.ts"
             ]
         );
-        let scope = SnapshotScope {
+        let pointer_scope = SnapshotScope {
             identity: identity.clone(),
             extraction_version: EXTRACTION_VERSION.to_owned(),
             format_version: SNAPSHOT_FORMAT_VERSION,
+            max_file_bytes: MAX_ELIGIBLE_FILE_BYTES,
         };
         assert_eq!(
             persistence
-                .snapshot_pointer(&scope)
+                .snapshot_pointer(&pointer_scope)
                 .await
                 .expect("pointer")
                 .as_ref(),
@@ -1444,7 +1455,7 @@ pub(crate) mod tests {
         );
 
         let loaded = Snapshots::new(&storage, &persistence)
-            .read(&identity, pointer)
+            .read(&pointer_scope, pointer)
             .await
             .expect("read")
             .into_context()
@@ -1476,22 +1487,12 @@ pub(crate) mod tests {
     #[tokio::test]
     async fn incomplete_attempts_report_coverage_and_keep_the_prior_pointer() {
         let identity = identity();
-        let scope = SnapshotScope {
-            identity: identity.clone(),
-            extraction_version: EXTRACTION_VERSION.to_owned(),
-            format_version: SNAPSHOT_FORMAT_VERSION,
-        };
+        let scope = scope(&identity);
         let prior = SnapshotPointer {
             tree: sha('0'),
             commit: sha('1'),
-            key: ObjectKey::snapshot(
-                &identity,
-                EXTRACTION_VERSION,
-                SNAPSHOT_FORMAT_VERSION,
-                &sha('0'),
-            ),
+            key: snapshot_key(&scope, &sha('0')),
             digest: ObjectDigest::of(b""),
-            published_at: SystemTime::UNIX_EPOCH,
         };
         let run = async |repo: &FakeRepo, limits: ColdBuildLimits| {
             let client = repo.client();
@@ -1712,9 +1713,8 @@ pub(crate) mod tests {
         let prior = SnapshotPointer {
             tree: sha('0'),
             commit: sha('1'),
-            key: snapshot_key(&identity, &sha('0')),
+            key: snapshot_key(&scope(&identity), &sha('0')),
             digest: ObjectDigest::of(b""),
-            published_at: UNIX_EPOCH,
         };
         let build = async |max_file_bytes: u64| {
             let mut repo = FakeRepo::new(&files(), &[("src/a.ts", SMALL)]);
@@ -1724,7 +1724,7 @@ pub(crate) mod tests {
             let store = MemorySnapshotStore::default();
             assert!(
                 store
-                    .publish_snapshot_pointer(&snapshot_scope(&identity), None, &prior)
+                    .publish_snapshot_pointer(&scope(&identity), None, &prior)
                     .await
                     .expect("seed")
             );
@@ -1737,7 +1737,7 @@ pub(crate) mod tests {
                 .await
                 .expect("build");
             let pointer = store
-                .snapshot_pointer(&snapshot_scope(&identity))
+                .snapshot_pointer(&snapshot_scope(&identity, max_file_bytes))
                 .await
                 .expect("read");
             (result, pointer)
@@ -1820,13 +1820,12 @@ pub(crate) mod tests {
         let repo = FakeRepo::new(&standard_files(), &standard_archive());
         let client = repo.client();
         let identity = identity();
-        let key = snapshot_key(&identity, &repo.tree);
+        let key = snapshot_key(&scope(&identity), &repo.tree);
         let prior = SnapshotPointer {
             tree: sha('0'),
             commit: sha('1'),
-            key: snapshot_key(&identity, &sha('0')),
+            key: snapshot_key(&scope(&identity), &sha('0')),
             digest: ObjectDigest::of(b""),
-            published_at: UNIX_EPOCH,
         };
         type Stall = fn(&MemoryStorage, &MemorySnapshotStore);
         let steps: [(Stall, bool); 3] = [
@@ -1841,7 +1840,7 @@ pub(crate) mod tests {
                 if let Some(prior) = &prior {
                     assert!(
                         store
-                            .publish_snapshot_pointer(&snapshot_scope(&identity), None, prior)
+                            .publish_snapshot_pointer(&scope(&identity), None, prior)
                             .await
                             .expect("seed")
                     );
@@ -1852,7 +1851,7 @@ pub(crate) mod tests {
                     tokio::time::timeout(Duration::from_secs(60), build.run(&identity)).await;
                 assert!(dropped.is_err(), "the stalled build must be dropped");
                 let pointer = store
-                    .snapshot_pointer(&snapshot_scope(&identity))
+                    .snapshot_pointer(&scope(&identity))
                     .await
                     .expect("read");
                 assert_eq!(pointer, prior);
@@ -1873,14 +1872,14 @@ pub(crate) mod tests {
                 assert_eq!(store.records(), [(identity.clone(), key.clone())]);
                 assert_eq!(
                     store
-                        .snapshot_pointer(&snapshot_scope(&identity))
+                        .snapshot_pointer(&scope(&identity))
                         .await
                         .expect("read"),
                     Some(published.clone())
                 );
                 assert!(
                     Snapshots::new(&storage, &store)
-                        .read(&identity, &published)
+                        .read(&scope(&identity), &published)
                         .await
                         .is_ok()
                 );
@@ -1898,7 +1897,7 @@ pub(crate) mod tests {
         let storage = MemoryStorage::default();
         let store = MemorySnapshotStore::default();
         let identity = identity();
-        let key = snapshot_key(&identity, &repo.tree);
+        let key = snapshot_key(&scope(&identity), &repo.tree);
         storage
             .create(&key, b"{\"not\":\"a snapshot\"}")
             .await
@@ -1909,7 +1908,7 @@ pub(crate) mod tests {
         assert!(matches!(result, Err(ColdBuildError::Corrupt { .. })));
         assert_eq!(
             store
-                .snapshot_pointer(&snapshot_scope(&identity))
+                .snapshot_pointer(&scope(&identity))
                 .await
                 .expect("read"),
             None
@@ -1933,34 +1932,29 @@ pub(crate) mod tests {
             panic!("expected publication");
         };
         let snapshot = Snapshots::new(&storage, &store)
-            .read(&identity, &pointer)
+            .read(&scope(&identity), &pointer)
             .await
             .expect("read");
         let winner = SnapshotPointer {
             tree: sha('0'),
-            key: snapshot_key(&identity, &sha('0')),
+            key: snapshot_key(&scope(&identity), &sha('0')),
             ..pointer.clone()
         };
         assert!(
             store
-                .publish_snapshot_pointer(&snapshot_scope(&identity), Some(&pointer.tree), &winner)
+                .publish_snapshot_pointer(&scope(&identity), Some(&pointer.tree), &winner)
                 .await
                 .expect("winner")
         );
         assert_eq!(
             build
-                .publish(
-                    &snapshot_scope(&identity),
-                    Some(&pointer),
-                    &repo.commit,
-                    &snapshot
-                )
+                .publish(&scope(&identity), Some(&pointer), &repo.commit, &snapshot)
                 .await,
             Err(ColdBuildError::PointerConflict)
         );
         assert_eq!(
             store
-                .snapshot_pointer(&snapshot_scope(&identity))
+                .snapshot_pointer(&scope(&identity))
                 .await
                 .expect("read"),
             Some(winner)
@@ -1979,27 +1973,22 @@ pub(crate) mod tests {
         let repo = FakeRepo::new(&standard_files(), &standard_archive());
         let client = repo.client();
         let owner = identity();
-        let key = snapshot_key(&owner, &repo.tree);
+        let key = snapshot_key(&scope(&owner), &repo.tree);
         let recorded = || vec![(owner.clone(), key.clone())];
 
         let storage = MemoryStorage::default();
         let store = MemorySnapshotStore::default();
         let build = ColdBuild::new(&client, &storage, &store, ColdBuildLimits::default());
         let snapshots = Snapshots::new(&storage, &store);
-        store
-            .upsert_record(&owner, &key, UNIX_EPOCH)
-            .await
-            .expect("seed");
+        store.upsert_record(&owner, &key).await.expect("seed");
         storage.create(&key, b"stale").await.expect("seed");
+        store.clock.advance(Duration::from_secs(3600));
         storage.hold_deletes.store(true, Ordering::SeqCst);
         let (collected, raced) =
-            tokio::join!(snapshots.collect(&owner, SystemTime::now()), async {
+            tokio::join!(snapshots.collect(&owner, Duration::from_secs(60)), async {
                 let raced = build.run(&owner).await;
                 assert_eq!(
-                    store
-                        .snapshot_pointer(&snapshot_scope(&owner))
-                        .await
-                        .expect("read"),
+                    store.snapshot_pointer(&scope(&owner)).await.expect("read"),
                     None
                 );
                 assert_eq!(store.records(), recorded());
@@ -2021,27 +2010,21 @@ pub(crate) mod tests {
         };
         assert_eq!(pointer.key, key);
         assert_eq!(store.records(), recorded());
-        assert!(snapshots.read(&owner, &pointer).await.is_ok());
+        assert!(snapshots.read(&scope(&owner), &pointer).await.is_ok());
 
         let storage = MemoryStorage::default();
         let store = MemorySnapshotStore::default();
         let build = ColdBuild::new(&client, &storage, &store, ColdBuildLimits::default());
         let snapshots = Snapshots::new(&storage, &store);
-        store
-            .upsert_record(&owner, &key, UNIX_EPOCH)
-            .await
-            .expect("seed");
-        let older_than = SystemTime::now();
+        store.upsert_record(&owner, &key).await.expect("seed");
+        store.clock.advance(Duration::from_secs(3600));
         store.hold_swaps.store(true, Ordering::SeqCst);
         let (built, collected) = tokio::join!(build.run(&owner), async {
-            let collected = snapshots.collect(&owner, older_than).await;
+            let collected = snapshots.collect(&owner, Duration::from_secs(60)).await;
             assert_eq!(store.records(), recorded());
             assert_eq!(storage.keys(), std::slice::from_ref(&key));
             assert_eq!(
-                store
-                    .snapshot_pointer(&snapshot_scope(&owner))
-                    .await
-                    .expect("read"),
+                store.snapshot_pointer(&scope(&owner)).await.expect("read"),
                 None
             );
             store.hold_swaps.store(false, Ordering::SeqCst);
@@ -2053,13 +2036,13 @@ pub(crate) mod tests {
         };
         assert_eq!(
             snapshots
-                .collect(&owner, SystemTime::now())
+                .collect(&owner, Duration::ZERO)
                 .await
                 .expect("collect"),
             []
         );
         assert_eq!(store.records(), recorded());
-        assert!(snapshots.read(&owner, &pointer).await.is_ok());
+        assert!(snapshots.read(&scope(&owner), &pointer).await.is_ok());
     }
 
     /// A snapshot is a pure function of identity, versions, and tree: an
@@ -2137,14 +2120,14 @@ pub(crate) mod tests {
         for intruder in [&other_tenant, &other_installation] {
             assert_eq!(
                 store
-                    .snapshot_pointer(&snapshot_scope(intruder))
+                    .snapshot_pointer(&scope(intruder))
                     .await
                     .expect("read"),
                 None
             );
             assert_eq!(
                 Snapshots::new(&storage, &store)
-                    .read(intruder, &pointer)
+                    .read(&scope(intruder), &pointer)
                     .await,
                 Err(ColdBuildError::ForeignKey {
                     key: pointer.key.clone()
@@ -2157,17 +2140,14 @@ pub(crate) mod tests {
             };
             assert_ne!(own.key, pointer.key);
             assert_eq!(
-                store
-                    .snapshot_pointer(&snapshot_scope(&owner))
-                    .await
-                    .expect("read"),
+                store.snapshot_pointer(&scope(&owner)).await.expect("read"),
                 Some(pointer.clone())
             );
         }
         assert_eq!(storage.keys().len(), 3);
         assert!(
             Snapshots::new(&storage, &store)
-                .read(&owner, &pointer)
+                .read(&scope(&owner), &pointer)
                 .await
                 .is_ok()
         );
@@ -2193,10 +2173,10 @@ pub(crate) mod tests {
             installation: InstallationId::new(43).expect("installation"),
             ..owner.clone()
         };
-        let head = snapshot_key(&owner, &repo.tree);
-        let stale = snapshot_key(&owner, &sha('1'));
-        let gone = snapshot_key(&owner, &sha('2'));
-        let foreign = snapshot_key(&other, &sha('1'));
+        let head = snapshot_key(&scope(&owner), &repo.tree);
+        let stale = snapshot_key(&scope(&owner), &sha('1'));
+        let gone = snapshot_key(&scope(&owner), &sha('2'));
+        let foreign = snapshot_key(&scope(&other), &sha('1'));
         for (identity, key) in [
             (&owner, &head),
             (&owner, &stale),
@@ -2204,14 +2184,15 @@ pub(crate) mod tests {
             (&other, &foreign),
         ] {
             store
-                .upsert_record(identity, key, UNIX_EPOCH)
+                .upsert_record(identity, key)
                 .await
                 .expect("seed record");
         }
         storage.create(&stale, b"stale").await.expect("seed");
         storage.create(&foreign, b"foreign").await.expect("seed");
 
-        let older_than = SystemTime::now();
+        let grace = Duration::from_secs(60);
+        store.clock.advance(Duration::from_secs(3600));
         store.stall_before_swap();
         assert!(
             tokio::time::timeout(Duration::from_secs(60), build.run(&owner))
@@ -2220,15 +2201,12 @@ pub(crate) mod tests {
         );
         storage.fail_next_delete();
         assert!(matches!(
-            snapshots.collect(&owner, older_than).await,
+            snapshots.collect(&owner, grace).await,
             Err(ColdBuildError::Storage(StorageError::Backend { .. }))
         ));
         assert!(store.records().contains(&(owner.clone(), stale.clone())));
         assert_eq!(
-            snapshots
-                .collect(&owner, older_than)
-                .await
-                .expect("collect"),
+            snapshots.collect(&owner, grace).await.expect("collect"),
             [stale.clone(), gone.clone()]
         );
         assert_eq!(storage.keys(), [head.clone(), foreign.clone()]);
@@ -2244,9 +2222,14 @@ pub(crate) mod tests {
         else {
             panic!("expected publication");
         };
-        let later = SystemTime::now() + Duration::from_secs(3600);
-        assert_eq!(snapshots.collect(&owner, later).await.expect("collect"), []);
-        assert!(snapshots.read(&owner, &pointer).await.is_ok());
+        assert_eq!(
+            snapshots
+                .collect(&owner, Duration::ZERO)
+                .await
+                .expect("collect"),
+            []
+        );
+        assert!(snapshots.read(&scope(&owner), &pointer).await.is_ok());
 
         storage.delete(&head).await.expect("lose object");
         let ColdBuildOutcome::Published(rebuilt) =
@@ -2255,17 +2238,14 @@ pub(crate) mod tests {
             panic!("a missing pointed-to object is rebuilt");
         };
         assert_eq!(rebuilt.key, head);
-        assert!(snapshots.read(&owner, &rebuilt).await.is_ok());
+        assert!(snapshots.read(&scope(&owner), &rebuilt).await.is_ok());
 
         assert_eq!(
             snapshots.remove_repository(&owner).await.expect("remove"),
             [head]
         );
         assert_eq!(
-            store
-                .snapshot_pointer(&snapshot_scope(&owner))
-                .await
-                .expect("read"),
+            store.snapshot_pointer(&scope(&owner)).await.expect("read"),
             None
         );
         assert_eq!(storage.keys(), std::slice::from_ref(&foreign));
@@ -2283,15 +2263,15 @@ pub(crate) mod tests {
             tenant: TenantId::new("victim").expect("tenant"),
             ..owner.clone()
         };
-        let key = snapshot_key(&victim, &sha('1'));
+        let key = snapshot_key(&scope(&victim), &sha('1'));
         storage.create(&key, b"victim").await.expect("seed");
         store
-            .upsert_record(&owner, &key, UNIX_EPOCH)
+            .upsert_record(&owner, &key)
             .await
             .expect("forge record");
         assert_eq!(
             Snapshots::new(&storage, &store)
-                .collect(&owner, SystemTime::now())
+                .collect(&owner, Duration::ZERO)
                 .await,
             Err(ColdBuildError::ForeignKey { key: key.clone() })
         );
@@ -2310,7 +2290,7 @@ pub(crate) mod tests {
         let identity = identity();
         let build = ColdBuild::new(&client, &storage, &store, ColdBuildLimits::default());
         assert_send(build.run(&identity));
-        assert_send(Snapshots::new(&storage, &store).collect(&identity, SystemTime::now()));
+        assert_send(Snapshots::new(&storage, &store).collect(&identity, Duration::ZERO));
     }
 
     /// A listing entry at a non-canonical path is excluded as unsupported

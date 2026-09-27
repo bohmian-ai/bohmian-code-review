@@ -11,7 +11,7 @@ use crate::identity::{Identity, InvalidIdentity, ObjectSha, validate_name};
 use crate::storage::{ObjectDigest, ObjectKey};
 use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt;
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 use thiserror::Error;
 
 /// Why a persistence operation failed.
@@ -41,6 +41,8 @@ pub struct SnapshotScope {
     pub extraction_version: String,
     /// Snapshot object format version.
     pub format_version: u32,
+    /// Largest eligible file the facts were built under.
+    pub max_file_bytes: u64,
 }
 
 /// The current default-branch snapshot for one [`SnapshotScope`].
@@ -54,8 +56,6 @@ pub struct SnapshotPointer {
     pub key: ObjectKey,
     /// Digest of the snapshot bytes.
     pub digest: ObjectDigest,
-    /// When the pointer was published.
-    pub published_at: SystemTime,
 }
 
 /// Opaque identifier a caller hands to downstream workflows.
@@ -105,6 +105,9 @@ impl fmt::Display for ContextId {
 }
 
 /// Source-free metadata binding a [`ContextId`] to one context object.
+///
+/// It carries no time: the [`ContextStore`] stamps publication and expiry
+/// on its own clock.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ContextRecord {
     /// Published identifier.
@@ -119,10 +122,29 @@ pub struct ContextRecord {
     pub base: ObjectSha,
     /// Head commit the context was built against.
     pub head: ObjectSha,
-    /// When the record became visible.
+}
+
+/// When a [`ContextStore`] published a record and when it expires, both on
+/// the store's clock.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ContextLifetime {
+    /// When the store first recorded the context.
     pub published_at: SystemTime,
-    /// Reads at or after this instant are refused even if deletion lags.
+    /// `published_at` plus `CONTEXT_LIFETIME`; reads at or after it are
+    /// refused even if deletion lags.
     pub expires_at: SystemTime,
+}
+
+/// What a [`ContextStore`] holds for one exact `(identity, id)`, judged on
+/// its own clock.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ContextLookup {
+    /// No record.
+    Absent,
+    /// A record whose `expires_at` is at or before the store's now.
+    Expired,
+    /// A readable record.
+    Live(ContextRecord),
 }
 
 /// Snapshot metadata store a consumer implements: snapshot records and the
@@ -170,8 +192,8 @@ pub trait SnapshotStore: Send + Sync {
         pointer: &SnapshotPointer,
     ) -> impl Future<Output = Result<bool, PersistenceError>> + Send;
 
-    /// Insert the record of `key`, or set an existing unclaimed record's
-    /// `touched_at` to `touched_at`.
+    /// Insert the record of `key`, or refresh an existing unclaimed
+    /// record, stamping `touched_at` with the store's current time.
     ///
     /// # Errors
     ///
@@ -181,11 +203,11 @@ pub trait SnapshotStore: Send + Sync {
         &self,
         identity: &Identity,
         key: &ObjectKey,
-        touched_at: SystemTime,
     ) -> impl Future<Output = Result<(), PersistenceError>> + Send;
 
     /// Claim and return the keys of `identity`'s records that no pointer of
-    /// `identity` names and whose `touched_at` is before `older_than`.
+    /// `identity` names and whose `touched_at` is at or before the store's
+    /// current time minus `grace`.
     ///
     /// Selection and claim are one atomic step against record upserts and
     /// pointer swaps (for example one `UPDATE ... RETURNING`). A claimed
@@ -199,7 +221,7 @@ pub trait SnapshotStore: Send + Sync {
     fn unreferenced(
         &self,
         identity: &Identity,
-        older_than: SystemTime,
+        grace: Duration,
     ) -> impl Future<Output = Result<Vec<ObjectKey>, PersistenceError>> + Send;
 
     /// Delete the record of `key` under `identity`; deleting an absent
@@ -240,8 +262,10 @@ pub trait SnapshotStore: Send + Sync {
 /// Methods return `Send` futures and implementers may write `async fn`. The
 /// trait is not dyn-compatible, so facades take it as a generic parameter.
 pub trait ContextStore: Send + Sync {
-    /// Insert `record` for `identity`, or replace the existing record with
-    /// the same id, so a retried publication converges.
+    /// Insert `record` for `identity`, stamping `published_at` with the
+    /// store's current time and `expires_at` with that plus
+    /// `CONTEXT_LIFETIME`, and return the stamps. An existing record with
+    /// the same id keeps its stamps, so a repeated upsert converges.
     ///
     /// # Errors
     ///
@@ -250,9 +274,10 @@ pub trait ContextStore: Send + Sync {
         &self,
         identity: &Identity,
         record: &ContextRecord,
-    ) -> impl Future<Output = Result<(), PersistenceError>> + Send;
+    ) -> impl Future<Output = Result<ContextLifetime, PersistenceError>> + Send;
 
-    /// Exact lookup of `id` under `identity`; another identity's id is absent.
+    /// Exact lookup of `id` under `identity`, judging expiry on the store's
+    /// clock; another identity's id is absent.
     ///
     /// # Errors
     ///
@@ -261,19 +286,16 @@ pub trait ContextStore: Send + Sync {
         &self,
         identity: &Identity,
         id: &ContextId,
-    ) -> impl Future<Output = Result<Option<ContextRecord>, PersistenceError>> + Send;
+    ) -> impl Future<Output = Result<ContextLookup, PersistenceError>> + Send;
 
-    /// Up to `limit` records whose `expires_at` is at or before
-    /// `older_than`, across identities. `older_than` is the caller's
-    /// collection cutoff, which trails the current time by a grace longer
-    /// than its publication timeout, not the read expiry.
+    /// Up to `limit` records whose `expires_at` is at or before the store's
+    /// current time, across identities.
     ///
     /// # Errors
     ///
     /// Returns [`PersistenceError::Backend`] on backend failure.
     fn expired_contexts(
         &self,
-        older_than: SystemTime,
         limit: usize,
     ) -> impl Future<Output = Result<Vec<(Identity, ContextRecord)>, PersistenceError>> + Send;
 
@@ -306,7 +328,6 @@ mod tests {
     use super::*;
     use crate::identity::{InstallationId, RepositoryIdentity, TenantId};
     use crate::storage::tests::hostile_keys;
-    use std::time::UNIX_EPOCH;
 
     /// Context ids are single key-safe segments on construction and reload.
     #[test]
@@ -346,8 +367,6 @@ mod tests {
             pull_request: 1,
             base: sha.clone(),
             head: sha.clone(),
-            published_at: UNIX_EPOCH,
-            expires_at: UNIX_EPOCH,
         };
         let json = serde_json::to_string(&record).expect("serialize");
         assert_eq!(
@@ -361,10 +380,10 @@ mod tests {
                 &identity,
                 bohmian_code_review::EXTRACTION_VERSION,
                 1,
+                1024,
                 &record.base,
             ),
             digest: ObjectDigest::of(b""),
-            published_at: UNIX_EPOCH,
         };
         let pointer_json = serde_json::to_string(&pointer).expect("serialize");
         assert_eq!(

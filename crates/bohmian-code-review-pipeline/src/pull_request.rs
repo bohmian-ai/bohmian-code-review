@@ -22,7 +22,7 @@ use crate::github::{
     TreeEntry, TreeEntryMode, TreeListing,
 };
 use crate::identity::{Identity, ObjectSha};
-use crate::persistence::{ContextRecord, ContextStore, SnapshotStore};
+use crate::persistence::{ContextLifetime, ContextRecord, ContextStore, SnapshotStore};
 use crate::snapshot::{
     ColdBuildError, Ingest, Snapshot, SnapshotFile, Snapshots, root_attributes, snapshot_scope,
 };
@@ -34,7 +34,6 @@ use bohmian_code_review::{
     build_candidate_context, parse_hunks,
 };
 use std::collections::{BTreeMap, BTreeSet};
-use std::time::SystemTime;
 
 /// Ceilings for one PR-context invocation.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -80,8 +79,10 @@ impl Default for PrContextLimits {
 /// and the stored object.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PrContextResult {
-    /// Published metadata, including the context id and `expires_at`.
+    /// Published metadata, including the context id.
     pub record: ContextRecord,
+    /// When the context store published the record and when it expires.
+    pub lifetime: ContextLifetime,
     /// The object the id names.
     pub context: ReviewContext,
 }
@@ -301,12 +302,10 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
             },
             coverage,
         };
-        let record = self
-            .contexts
-            .publish(identity, &review, SystemTime::now())
-            .await?;
+        let (record, lifetime) = self.contexts.publish(identity, &review).await?;
         Ok(PrContextResult {
             record,
+            lifetime,
             context: review,
         })
     }
@@ -363,12 +362,12 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
     /// Returns persistence failures and snapshot errors other than a
     /// missing object.
     async fn snapshot(&self, identity: &Identity) -> Result<Option<Snapshot>, ContextError> {
-        let scope = snapshot_scope(identity);
+        let scope = snapshot_scope(identity, self.limits.max_file_bytes);
         let Some(pointer) = self.snapshot_store.snapshot_pointer(&scope).await? else {
             return Ok(None);
         };
         match Snapshots::new(self.snapshot_storage, self.snapshot_store)
-            .read(identity, &pointer)
+            .read(&scope, &pointer)
             .await
         {
             Ok(snapshot) => Ok(Some(snapshot)),
@@ -897,18 +896,20 @@ mod tests {
 
         let before = client.calls().snapshot();
         let contexts = stores.contexts();
-        let now = one.record.published_at;
         for _ in 0..2 {
             assert_eq!(
-                contexts.read(&identity(), &one.record.id, now).await,
+                contexts.read(&identity(), &one.record.id).await,
                 Ok(one.context.clone())
             );
         }
         assert_eq!(client.calls().snapshot(), before);
         assert_eq!(
-            contexts
-                .read(&identity(), &one.record.id, now + CONTEXT_LIFETIME)
-                .await,
+            one.lifetime.expires_at,
+            one.lifetime.published_at + CONTEXT_LIFETIME
+        );
+        stores.context_store.clock.advance(CONTEXT_LIFETIME);
+        assert_eq!(
+            contexts.read(&identity(), &one.record.id).await,
             Err(ContextError::Expired {
                 id: one.record.id.clone()
             })
@@ -1511,10 +1512,7 @@ mod tests {
                 stores.context_storage.keys().len(),
                 usize::from(object_written)
             );
-            let read = stores
-                .contexts()
-                .read(&identity(), id, SystemTime::now())
-                .await;
+            let read = stores.contexts().read(&identity(), id).await;
             if !object_written {
                 assert_eq!(read, Err(ContextError::NotFound { id: id.clone() }));
             }
@@ -1527,10 +1525,7 @@ mod tests {
                 1 + usize::from(object_written)
             );
             assert_eq!(
-                stores
-                    .contexts()
-                    .read(&identity(), &retry.record.id, SystemTime::now())
-                    .await,
+                stores.contexts().read(&identity(), &retry.record.id).await,
                 Ok(retry.context)
             );
         }

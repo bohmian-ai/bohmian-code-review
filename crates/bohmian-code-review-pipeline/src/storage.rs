@@ -59,17 +59,20 @@ impl ObjectKey {
         )
     }
 
-    /// Key for a snapshot of `tree` produced under one extraction and format version.
+    /// Key for a snapshot of `tree` produced under one extraction version,
+    /// format version, and file-size ceiling, so facts built under another
+    /// ceiling are never reused.
     ///
     /// The extraction version is hex-encoded because it is free text.
     pub fn snapshot(
         identity: &Identity,
         extraction_version: &str,
         format_version: u32,
+        max_file_bytes: u64,
         tree: &ObjectSha,
     ) -> ObjectKey {
         ObjectKey(format!(
-            "{}/snapshots/{}/{format_version}/{tree}",
+            "{}/snapshots/{}/{format_version}/{max_file_bytes}/{tree}",
             ObjectKey::prefix(identity),
             hex(extraction_version.as_bytes())
         ))
@@ -124,7 +127,7 @@ impl ObjectKey {
             repository.parse::<NonZeroU64>().ok()?
         );
         match rest {
-            ["snapshots", version, format_version, tree] => {
+            ["snapshots", version, format_version, max_file_bytes, tree] => {
                 let version_is_hex = !version.is_empty()
                     && version.len() % 2 == 0
                     && version
@@ -134,8 +137,9 @@ impl ObjectKey {
                     return None;
                 }
                 Some(format!(
-                    "{prefix}/snapshots/{version}/{}/{}",
+                    "{prefix}/snapshots/{version}/{}/{}/{}",
                     format_version.parse::<u32>().ok()?,
+                    max_file_bytes.parse::<u64>().ok()?,
                     ObjectSha::new(tree).ok()?
                 ))
             }
@@ -145,7 +149,7 @@ impl ObjectKey {
     }
 
     /// Whether this is a snapshot key of `identity` under any extraction
-    /// version, format version, or tree.
+    /// version, format version, file ceiling, or tree.
     ///
     /// Keys only exist in the two validated layouts, so a prefix check is
     /// exact.
@@ -261,10 +265,12 @@ pub(crate) mod tests {
             "tenants/a/installations/0/repositories/7/contexts/c".to_owned(),
             "tenants/a/installations/1/repositories/0/contexts/c".to_owned(),
             "tenants/a/installations/01/repositories/7/contexts/c".to_owned(),
-            format!("{snapshots}/zz/1/{tree}"),
-            format!("{snapshots}/763/1/{tree}"),
-            format!("{snapshots}/7631/1/nothex"),
-            format!("{snapshots}/7631/1/{tree}/extra"),
+            format!("{snapshots}/zz/1/1024/{tree}"),
+            format!("{snapshots}/763/1/1024/{tree}"),
+            format!("{snapshots}/7631/1/1024/nothex"),
+            format!("{snapshots}/7631/1/01024/{tree}"),
+            format!("{snapshots}/7631/1/{tree}"),
+            format!("{snapshots}/7631/1/1024/{tree}/extra"),
             "tenants/a/installations/1/repositories/7/contexts/c/extra".to_owned(),
             "tenants/b/installations/9/repositories/3/contexts/../x".to_owned(),
             "tenants/b/installations/9/repositories/3/contexts/./x".to_owned(),
@@ -287,18 +293,21 @@ pub(crate) mod tests {
         }
     }
 
-    /// Keys embed identity, version, and tree so scopes never collide.
+    /// Keys embed identity, versions, file ceiling, and tree so scopes
+    /// never collide.
     #[test]
     fn keys_are_scoped_by_identity_and_version() {
         let tree = ObjectSha::new(&"b".repeat(40)).expect("sha");
-        let a = ObjectKey::snapshot(&identity("a"), "v1", 1, &tree);
-        let b = ObjectKey::snapshot(&identity("b"), "v1", 1, &tree);
-        let a2 = ObjectKey::snapshot(&identity("a"), "v2", 1, &tree);
+        let a = ObjectKey::snapshot(&identity("a"), "v1", 1, 1024, &tree);
+        let b = ObjectKey::snapshot(&identity("b"), "v1", 1, 1024, &tree);
+        let a2 = ObjectKey::snapshot(&identity("a"), "v2", 1, 1024, &tree);
+        let a_larger = ObjectKey::snapshot(&identity("a"), "v1", 1, 2048, &tree);
         assert_ne!(a, b);
         assert_ne!(a, a2);
+        assert_ne!(a, a_larger);
         assert_eq!(
             a.as_str(),
-            format!("tenants/a/installations/42/repositories/7/snapshots/7631/1/{tree}")
+            format!("tenants/a/installations/42/repositories/7/snapshots/7631/1/1024/{tree}")
         );
         let context = ObjectKey::context(&identity("a"), &ContextId::new("ctx1").expect("id"));
         assert_eq!(
@@ -312,7 +321,7 @@ pub(crate) mod tests {
     #[test]
     fn keys_are_revalidated_on_deserialization() {
         let tree = ObjectSha::new(&"b".repeat(40)).expect("sha");
-        let key = ObjectKey::snapshot(&identity("a"), "v1", 1, &tree);
+        let key = ObjectKey::snapshot(&identity("a"), "v1", 1, 1024, &tree);
         let json = serde_json::to_string(&key).expect("serialize");
         assert_eq!(json, format!("\"{key}\""));
         assert_eq!(
@@ -333,7 +342,13 @@ pub(crate) mod tests {
     fn long_constructor_segments_round_trip() {
         let tree = ObjectSha::new(&"b".repeat(40)).expect("sha");
         let identity = identity(&"t".repeat(128));
-        let key = ObjectKey::snapshot(&identity, bohmian_code_review::EXTRACTION_VERSION, 1, &tree);
+        let key = ObjectKey::snapshot(
+            &identity,
+            bohmian_code_review::EXTRACTION_VERSION,
+            1,
+            1024,
+            &tree,
+        );
         let json = serde_json::to_string(&key).expect("serialize");
         assert_eq!(
             serde_json::from_str::<ObjectKey>(&json).expect("round trip"),

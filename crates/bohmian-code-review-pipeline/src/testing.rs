@@ -5,19 +5,20 @@
 //! These prove publication order, retry convergence, and isolation without
 //! a network, disk, or database. They are compiled only for tests.
 
+use crate::context::CONTEXT_LIFETIME;
 use crate::github::{
     BoxFuture, HttpBody, HttpRequest, HttpResponse, HttpTransport, TransportError,
 };
 use crate::identity::{Identity, ObjectSha};
 use crate::persistence::{
-    ContextId, ContextRecord, ContextStore, PersistenceError, SnapshotPointer, SnapshotScope,
-    SnapshotStore,
+    ContextId, ContextLifetime, ContextLookup, ContextRecord, ContextStore, PersistenceError,
+    SnapshotPointer, SnapshotScope, SnapshotStore,
 };
 use crate::storage::{ObjectKey, ObjectStorage, StorageError};
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 /// Response body delivered as one chunk, then end of body.
 pub(crate) struct FixedBody(Option<Vec<u8>>);
@@ -128,14 +129,12 @@ async fn hold(held: &AtomicBool) {
 }
 
 /// Create-if-absent in-memory storage with a one-shot stall after a create,
-/// a one-shot delete failure, and releasable holds before creates and
-/// deletes.
+/// a one-shot delete failure, and a releasable hold before deletes.
 #[derive(Default)]
 pub(crate) struct MemoryStorage {
     objects: Mutex<BTreeMap<ObjectKey, Vec<u8>>>,
     stall_after_create: AtomicBool,
     fail_next_delete: AtomicBool,
-    pub(crate) hold_creates: AtomicBool,
     pub(crate) hold_deletes: AtomicBool,
 }
 
@@ -162,14 +161,12 @@ impl MemoryStorage {
 }
 
 impl ObjectStorage for MemoryStorage {
-    /// Refuses overwrites; honours the hold before storing and the stall
-    /// switch after.
+    /// Refuses overwrites; honours the stall switch after storing.
     ///
     /// # Errors
     ///
     /// `AlreadyExists` for a taken key.
     async fn create(&self, key: &ObjectKey, bytes: &[u8]) -> Result<(), StorageError> {
-        hold(&self.hold_creates).await;
         {
             let mut objects = self.objects.lock().expect("objects lock");
             if objects.contains_key(key) {
@@ -212,8 +209,26 @@ impl ObjectStorage for MemoryStorage {
     }
 }
 
+/// A store-owned clock that starts at the Unix epoch and moves only when a
+/// test advances it, standing in for a database clock.
+#[derive(Default)]
+pub(crate) struct ManualClock(Mutex<Duration>);
+
+impl ManualClock {
+    /// The store's current time.
+    fn now(&self) -> SystemTime {
+        UNIX_EPOCH + *self.0.lock().expect("clock lock")
+    }
+
+    /// Move the clock forward by `by`.
+    pub(crate) fn advance(&self, by: Duration) {
+        *self.0.lock().expect("clock lock") += by;
+    }
+}
+
 /// In-memory snapshot store: pointers by scope with compare-and-swap, and
-/// records keyed by identity with `touched_at` and a collection claim, with
+/// records keyed by identity with `touched_at` and a collection claim, all
+/// timed by its own [`ManualClock`], with
 /// one-shot stalls after a record upsert and before a swap and a
 /// releasable hold before swaps.
 #[derive(Default)]
@@ -223,6 +238,7 @@ pub(crate) struct MemorySnapshotStore {
     stall_after_upsert: AtomicBool,
     stall_before_swap: AtomicBool,
     pub(crate) hold_swaps: AtomicBool,
+    pub(crate) clock: ManualClock,
 }
 
 impl MemorySnapshotStore {
@@ -287,8 +303,8 @@ impl SnapshotStore for MemorySnapshotStore {
         Ok(true)
     }
 
-    /// Insert or re-touch an unclaimed record; honours the stall switch
-    /// after writing.
+    /// Insert or re-touch an unclaimed record at the store's now; honours
+    /// the stall switch after writing.
     ///
     /// # Errors
     ///
@@ -297,8 +313,8 @@ impl SnapshotStore for MemorySnapshotStore {
         &self,
         identity: &Identity,
         key: &ObjectKey,
-        touched_at: SystemTime,
     ) -> Result<(), PersistenceError> {
+        let touched_at = self.clock.now();
         {
             let mut records = self.records.lock().expect("records lock");
             let record = records
@@ -313,8 +329,9 @@ impl SnapshotStore for MemorySnapshotStore {
         Ok(())
     }
 
-    /// Claim `identity`'s records touched before `older_than` that none of
-    /// its pointers names, in key order, under both locks.
+    /// Claim `identity`'s records touched at or before the store's now
+    /// minus `grace` that none of its pointers names, in key order, under
+    /// both locks.
     ///
     /// # Errors
     ///
@@ -322,8 +339,9 @@ impl SnapshotStore for MemorySnapshotStore {
     async fn unreferenced(
         &self,
         identity: &Identity,
-        older_than: SystemTime,
+        grace: Duration,
     ) -> Result<Vec<ObjectKey>, PersistenceError> {
+        let now = self.clock.now();
         let pointers = self.pointers.lock().expect("pointers lock");
         let referenced = |key: &ObjectKey| {
             pointers
@@ -334,7 +352,7 @@ impl SnapshotStore for MemorySnapshotStore {
         for ((owner, key), (touched_at, claim)) in
             self.records.lock().expect("records lock").iter_mut()
         {
-            if owner == identity && *touched_at < older_than && !referenced(key) {
+            if owner == identity && *touched_at + grace <= now && !referenced(key) {
                 *claim = true;
                 claimed.push(key.clone());
             }
@@ -373,12 +391,14 @@ impl SnapshotStore for MemorySnapshotStore {
     }
 }
 
-/// In-memory context store keyed by exact identity and id, with a one-shot
-/// stall after an upsert.
+/// In-memory context store keyed by exact identity and id, stamping and
+/// judging expiry on its own [`ManualClock`], with a one-shot stall after
+/// an upsert.
 #[derive(Default)]
 pub(crate) struct MemoryContextStore {
-    records: Mutex<BTreeMap<(Identity, ContextId), ContextRecord>>,
+    records: Mutex<BTreeMap<(Identity, ContextId), (ContextRecord, ContextLifetime)>>,
     stall_after_upsert: AtomicBool,
+    pub(crate) clock: ManualClock,
 }
 
 impl MemoryContextStore {
@@ -399,7 +419,8 @@ impl MemoryContextStore {
 }
 
 impl ContextStore for MemoryContextStore {
-    /// Insert or replace; honours the stall switch after writing.
+    /// Insert stamped at the store's now, or keep an existing record's
+    /// stamps; honours the stall switch after writing.
     ///
     /// # Errors
     ///
@@ -408,16 +429,27 @@ impl ContextStore for MemoryContextStore {
         &self,
         identity: &Identity,
         record: &ContextRecord,
-    ) -> Result<(), PersistenceError> {
-        self.records
+    ) -> Result<ContextLifetime, PersistenceError> {
+        let published_at = self.clock.now();
+        let lifetime = self
+            .records
             .lock()
             .expect("records lock")
-            .insert((identity.clone(), record.id.clone()), record.clone());
+            .entry((identity.clone(), record.id.clone()))
+            .or_insert_with(|| {
+                let lifetime = ContextLifetime {
+                    published_at,
+                    expires_at: published_at + CONTEXT_LIFETIME,
+                };
+                (record.clone(), lifetime)
+            })
+            .1;
         stall(&self.stall_after_upsert).await;
-        Ok(())
+        Ok(lifetime)
     }
 
-    /// Exact `(identity, id)` lookup; another identity's id is absent.
+    /// Exact `(identity, id)` lookup, expired at or after `expires_at` on
+    /// the store's clock; another identity's id is absent.
     ///
     /// # Errors
     ///
@@ -426,33 +458,41 @@ impl ContextStore for MemoryContextStore {
         &self,
         identity: &Identity,
         id: &ContextId,
-    ) -> Result<Option<ContextRecord>, PersistenceError> {
-        Ok(self
-            .records
-            .lock()
-            .expect("records lock")
-            .get(&(identity.clone(), id.clone()))
-            .cloned())
+    ) -> Result<ContextLookup, PersistenceError> {
+        let now = self.clock.now();
+        Ok(
+            match self
+                .records
+                .lock()
+                .expect("records lock")
+                .get(&(identity.clone(), id.clone()))
+            {
+                None => ContextLookup::Absent,
+                Some((_, lifetime)) if now >= lifetime.expires_at => ContextLookup::Expired,
+                Some((record, _)) => ContextLookup::Live(record.clone()),
+            },
+        )
     }
 
-    /// Up to `limit` records expired at or before `older_than`, in key order.
+    /// Up to `limit` records expired at or before the store's now, in key
+    /// order.
     ///
     /// # Errors
     ///
     /// Never.
     async fn expired_contexts(
         &self,
-        older_than: SystemTime,
         limit: usize,
     ) -> Result<Vec<(Identity, ContextRecord)>, PersistenceError> {
+        let now = self.clock.now();
         Ok(self
             .records
             .lock()
             .expect("records lock")
             .iter()
-            .filter(|(_, record)| record.expires_at <= older_than)
+            .filter(|(_, (_, lifetime))| lifetime.expires_at <= now)
             .take(limit)
-            .map(|((identity, _), record)| (identity.clone(), record.clone()))
+            .map(|((identity, _), (record, _))| (identity.clone(), record.clone()))
             .collect())
     }
 
@@ -486,7 +526,7 @@ impl ContextStore for MemoryContextStore {
         let keys = records
             .iter()
             .filter(|((owner, _), _)| owner == identity)
-            .map(|(_, record)| record.key.clone())
+            .map(|(_, (record, _))| record.key.clone())
             .collect();
         records.retain(|(owner, _), _| owner != identity);
         Ok(keys)

@@ -2,30 +2,34 @@
 //! context id, and expiry cleanup.
 //!
 //! A [`ReviewContext`] is the only source-bearing object the library
-//! persists. Its id is the digest of its bytes plus its publication time,
-//! so each publication has its own record, key, and lifetime while a
-//! record's digest still checks the object's bytes. Publication upserts the
-//! record, carrying `expires_at`, before creating the object if absent, so
-//! every object has a record; a reader treats a record whose object is
-//! absent as not found. Reads require the caller's tenant and installation
-//! and are refused at or after `expires_at`, and cleanup deletes each
-//! expired object before its record.
+//! persists. Its id is the digest of its bytes plus a random value, so each
+//! publication has its own record, key, and lifetime while a record's
+//! digest still checks the object's bytes. Publication upserts the record,
+//! which the context store stamps with `published_at` and `expires_at` on
+//! its own clock, before creating the object if absent, so every object has
+//! a record; a reader treats a record whose object is absent as not found.
+//! Reads require the caller's tenant and installation and are refused once
+//! the store judges the record expired, and cleanup deletes each expired
+//! object before its record.
 
 use crate::github::GitHubError;
 use crate::identity::{Identity, ObjectSha};
-use crate::persistence::{ContextId, ContextRecord, ContextStore, PersistenceError};
+use crate::persistence::{
+    ContextId, ContextLifetime, ContextLookup, ContextRecord, ContextStore, PersistenceError,
+};
 use crate::snapshot::{ColdBuildError, Coverage};
-use crate::storage::{ObjectDigest, ObjectKey, ObjectStorage, StorageError};
+use crate::storage::{ObjectDigest, ObjectKey, ObjectStorage, StorageError, hex};
 use bohmian_code_review::Error as SymbolicError;
 use bohmian_code_review::RelativePath;
 use serde::{Deserialize, Serialize};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 use thiserror::Error;
 
 /// Layout version of the serialized [`ReviewContext`].
 pub const CONTEXT_FORMAT_VERSION: u32 = 1;
 
-/// How long a published context stays readable.
+/// How long a published context stays readable; a [`ContextStore`] stamps
+/// `expires_at` this long after `published_at`.
 pub const CONTEXT_LIFETIME: Duration = Duration::from_secs(24 * 60 * 60);
 
 /// Whether the index covered the whole PR head tree or only files near the
@@ -258,6 +262,13 @@ pub enum ContextError {
         /// What failed validation; never source text.
         detail: String,
     },
+    /// The operating system's random source failed while minting a context
+    /// id; nothing was written.
+    #[error("random context id unavailable: {detail}")]
+    Random {
+        /// Operating system error.
+        detail: String,
+    },
 }
 
 /// Outcome of one expiry sweep.
@@ -282,37 +293,31 @@ impl<'a, O: ObjectStorage, C: ContextStore> Contexts<'a, O, C> {
         Contexts { storage, store }
     }
 
-    /// Publish `context` for `identity` at `now`, readable until
-    /// `now + CONTEXT_LIFETIME`.
+    /// Publish `context` for `identity`, readable until the `expires_at`
+    /// the context store stamps.
     ///
     /// Upserts the record, then creates the object if absent. The id joins
-    /// the object digest and `now`, so a later publication of identical
-    /// bytes gets its own id, key, and expiry, and cleanup of one never
-    /// touches another. An object already at the key is adopted only when
-    /// it holds exactly these bytes. Dropped after the upsert, the record
-    /// names an absent object that reads treat as not found; a retry
-    /// publishes a new readable id.
+    /// the object digest and a random value, so a later publication of
+    /// identical bytes gets its own id, key, and expiry, and cleanup of one
+    /// never touches another. Dropped after the upsert, the record names an
+    /// absent object that reads treat as not found; a retry publishes a new
+    /// readable id.
     ///
     /// # Errors
     ///
-    /// Returns persistence and storage failures, and `Corrupt` if the
-    /// context does not serialize or an existing object at the key differs.
+    /// Returns `Random` when no id can be minted, `Corrupt` if the context
+    /// does not serialize, and persistence and storage failures, including
+    /// `AlreadyExists` should the fresh key already hold an object.
     pub(crate) async fn publish(
         &self,
         identity: &Identity,
         context: &ReviewContext,
-        now: SystemTime,
-    ) -> Result<ContextRecord, ContextError> {
+    ) -> Result<(ContextRecord, ContextLifetime), ContextError> {
         let bytes = serde_json::to_vec(context).map_err(|error| ContextError::Corrupt {
             detail: error.to_string(),
         })?;
         let digest = ObjectDigest::of(&bytes);
-        let published = now.duration_since(UNIX_EPOCH).unwrap_or_default();
-        let id = ContextId::new(&format!("{}-{}", digest.as_str(), published.as_nanos())).map_err(
-            |error| ContextError::Corrupt {
-                detail: error.to_string(),
-            },
-        )?;
+        let id = context_id(&digest)?;
         let record = ContextRecord {
             key: ObjectKey::context(identity, &id),
             id,
@@ -320,25 +325,14 @@ impl<'a, O: ObjectStorage, C: ContextStore> Contexts<'a, O, C> {
             pull_request: context.pull_request,
             base: context.base.clone(),
             head: context.head.clone(),
-            published_at: now,
-            expires_at: now + CONTEXT_LIFETIME,
         };
-        self.store.upsert_context(identity, &record).await?;
-        match self.storage.create(&record.key, &bytes).await {
-            Ok(()) => {}
-            Err(StorageError::AlreadyExists { .. }) => {
-                if self.storage.read(&record.key).await? != bytes {
-                    return Err(ContextError::Corrupt {
-                        detail: "existing object differs from the published context".to_owned(),
-                    });
-                }
-            }
-            Err(error) => return Err(error.into()),
-        }
-        Ok(record)
+        let lifetime = self.store.upsert_context(identity, &record).await?;
+        self.storage.create(&record.key, &bytes).await?;
+        Ok((record, lifetime))
     }
 
-    /// Read the context `id` published for `identity`, as of `now`.
+    /// Read the context `id` published for `identity`, if the context store
+    /// still judges it live.
     ///
     /// Only an exact `(identity, id)` record is used; its key must be the
     /// caller's own context key before storage is touched. The object is
@@ -347,29 +341,24 @@ impl<'a, O: ObjectStorage, C: ContextStore> Contexts<'a, O, C> {
     ///
     /// # Errors
     ///
-    /// Returns `NotFound` without a record or object, `Expired` at or after
-    /// `expires_at`, `ForeignKey` for a record naming another key,
+    /// Returns `NotFound` without a record or object, `Expired` once the
+    /// store's clock reaches `expires_at`, `ForeignKey` for a record naming another key,
     /// `Corrupt` when the bytes do not match the record, and persistence or
     /// storage backend failures.
     pub async fn read(
         &self,
         identity: &Identity,
         id: &ContextId,
-        now: SystemTime,
     ) -> Result<ReviewContext, ContextError> {
         let not_found = || ContextError::NotFound { id: id.clone() };
-        let record = self
-            .store
-            .context(identity, id)
-            .await?
-            .filter(|record| record.id == *id)
-            .ok_or_else(not_found)?;
+        let record = match self.store.context(identity, id).await? {
+            ContextLookup::Live(record) if record.id == *id => record,
+            ContextLookup::Expired => return Err(ContextError::Expired { id: id.clone() }),
+            _ => return Err(not_found()),
+        };
         let key = ObjectKey::context(identity, id);
         if record.key != key {
             return Err(ContextError::ForeignKey { key: record.key });
-        }
-        if now >= record.expires_at {
-            return Err(ContextError::Expired { id: id.clone() });
         }
         let bytes = match self.storage.read(&key).await {
             Ok(bytes) => bytes,
@@ -394,15 +383,9 @@ impl<'a, O: ObjectStorage, C: ContextStore> Contexts<'a, O, C> {
         Ok(context)
     }
 
-    /// Delete up to `limit` contexts whose `expires_at` is at or before
-    /// `older_than`: each object, where a missing object is success, then
-    /// its record.
-    ///
-    /// Reads stop at `expires_at` whatever the cutoff. A publication may
-    /// still create its object after its record's expiry when the caller's
-    /// timeout is longer than the context lifetime, so the caller passes
-    /// `now` minus a grace longer than its PR-context timeout; a record
-    /// inside that grace is left for a later sweep.
+    /// Delete up to `limit` contexts the context store reports expired on
+    /// its clock: each object, where a missing object is success, then its
+    /// record.
     ///
     /// A failed object delete, or a record naming another identity's key,
     /// keeps the record and is reported as lag for the next sweep; the
@@ -411,13 +394,9 @@ impl<'a, O: ObjectStorage, C: ContextStore> Contexts<'a, O, C> {
     /// # Errors
     ///
     /// Returns the persistence failure listing expired records.
-    pub async fn collect_expired(
-        &self,
-        older_than: SystemTime,
-        limit: usize,
-    ) -> Result<ContextCleanup, ContextError> {
+    pub async fn collect_expired(&self, limit: usize) -> Result<ContextCleanup, ContextError> {
         let mut cleanup = ContextCleanup::default();
-        for (identity, record) in self.store.expired_contexts(older_than, limit).await? {
+        for (identity, record) in self.store.expired_contexts(limit).await? {
             let deleted = if record.key != ObjectKey::context(&identity, &record.id) {
                 Err(format!("record names a foreign key: {}", record.key))
             } else {
@@ -437,6 +416,23 @@ impl<'a, O: ObjectStorage, C: ContextStore> Contexts<'a, O, C> {
         }
         Ok(cleanup)
     }
+}
+
+/// A fresh context id: `digest`, a dash, and 128 random bits in hex.
+///
+/// # Errors
+///
+/// Returns `Random` when the operating system's random source fails.
+fn context_id(digest: &ObjectDigest) -> Result<ContextId, ContextError> {
+    let mut random = [0u8; 16];
+    getrandom::fill(&mut random).map_err(|error| ContextError::Random {
+        detail: error.to_string(),
+    })?;
+    ContextId::new(&format!("{}-{}", digest.as_str(), hex(&random))).map_err(|error| {
+        ContextError::Corrupt {
+            detail: error.to_string(),
+        }
+    })
 }
 
 #[cfg(test)]
@@ -505,9 +501,9 @@ mod tests {
     }
 
     /// Scenarios 14–15: repeated reads before expiry return the same
-    /// context; a read at or after `expires_at`, or by another tenant or
-    /// installation, fails; identical content under two identities lives
-    /// at separate keys; the record carries no source text.
+    /// context; once the store's clock reaches `expires_at`, or for another
+    /// tenant or installation, a read fails; identical content under two
+    /// identities lives at separate keys; the record carries no source text.
     #[tokio::test]
     async fn reads_are_identity_scoped_and_expire() {
         let storage = MemoryStorage::default();
@@ -518,37 +514,40 @@ mod tests {
             identity("zeta", 1),
             identity("acme", 2),
         );
-        let now = UNIX_EPOCH + Duration::from_secs(1_000_000);
-        let record = contexts
-            .publish(&acme, &context(&acme), now)
+        store.clock.advance(Duration::from_secs(1_000_000));
+        let (record, lifetime) = contexts
+            .publish(&acme, &context(&acme))
             .await
             .expect("publish");
-        assert_eq!(record.expires_at, now + CONTEXT_LIFETIME);
-        let first = contexts.read(&acme, &record.id, now).await.expect("read");
-        let later = now + CONTEXT_LIFETIME - Duration::from_secs(1);
         assert_eq!(
-            contexts.read(&acme, &record.id, later).await,
-            Ok(first.clone())
+            lifetime.expires_at,
+            lifetime.published_at + CONTEXT_LIFETIME
         );
+        let first = contexts.read(&acme, &record.id).await.expect("read");
+        store
+            .clock
+            .advance(CONTEXT_LIFETIME - Duration::from_secs(1));
+        assert_eq!(contexts.read(&acme, &record.id).await, Ok(first.clone()));
         assert_eq!(first, context(&acme));
-        for at in [now + CONTEXT_LIFETIME, now + 2 * CONTEXT_LIFETIME] {
-            assert_eq!(
-                contexts.read(&acme, &record.id, at).await,
-                Err(ContextError::Expired {
-                    id: record.id.clone()
-                })
-            );
-        }
         for stranger in [&other_tenant, &other_installation] {
             assert_eq!(
-                contexts.read(stranger, &record.id, now).await,
+                contexts.read(stranger, &record.id).await,
                 Err(ContextError::NotFound {
                     id: record.id.clone()
                 })
             );
         }
-        let theirs = contexts
-            .publish(&other_tenant, &context(&other_tenant), now)
+        for step in [Duration::from_secs(1), CONTEXT_LIFETIME] {
+            store.clock.advance(step);
+            assert_eq!(
+                contexts.read(&acme, &record.id).await,
+                Err(ContextError::Expired {
+                    id: record.id.clone()
+                })
+            );
+        }
+        let (theirs, _) = contexts
+            .publish(&other_tenant, &context(&other_tenant))
             .await
             .expect("publish");
         assert_ne!(theirs.key, record.key);
@@ -566,99 +565,63 @@ mod tests {
         let store = MemoryContextStore::default();
         let contexts = Contexts::new(&storage, &store);
         let acme = identity("acme", 1);
-        let now = UNIX_EPOCH;
-        let record = contexts
-            .publish(&acme, &context(&acme), now)
+        let (record, _) = contexts
+            .publish(&acme, &context(&acme))
             .await
             .expect("publish");
         storage.delete(&record.key).await.expect("delete");
         assert_eq!(
-            contexts.read(&acme, &record.id, now).await,
+            contexts.read(&acme, &record.id).await,
             Err(ContextError::NotFound {
                 id: record.id.clone()
             })
         );
         storage.create(&record.key, b"{}").await.expect("corrupt");
         assert!(matches!(
-            contexts.read(&acme, &record.id, now).await,
+            contexts.read(&acme, &record.id).await,
             Err(ContextError::Corrupt { .. })
         ));
         let other = identity("zeta", 1);
+        let foreign_id = ContextId::new("foreign").expect("id");
         let foreign = ContextRecord {
-            key: ObjectKey::context(&other, &record.id),
+            id: foreign_id.clone(),
+            key: ObjectKey::context(&other, &foreign_id),
             ..record.clone()
         };
         store.upsert_context(&acme, &foreign).await.expect("seed");
         assert_eq!(
-            contexts.read(&acme, &record.id, now).await,
+            contexts.read(&acme, &foreign_id).await,
             Err(ContextError::ForeignKey { key: foreign.key })
         );
         let unknown = ContextId::new("unknown").expect("id");
         assert_eq!(
-            contexts.read(&acme, &unknown, now).await,
+            contexts.read(&acme, &unknown).await,
             Err(ContextError::NotFound { id: unknown })
         );
     }
 
-    /// An object already at the publication key is adopted only when its
-    /// bytes equal the context's: different bytes fail as `Corrupt`, equal
-    /// bytes publish an id that reads back.
-    #[tokio::test]
-    async fn existing_object_is_adopted_only_when_identical() {
-        let acme = identity("acme", 1);
-        let now = UNIX_EPOCH;
-        let (storage, store) = (MemoryStorage::default(), MemoryContextStore::default());
-        let record = Contexts::new(&storage, &store)
-            .publish(&acme, &context(&acme), now)
-            .await
-            .expect("publish");
-        let bytes = storage.read(&record.key).await.expect("object");
-
-        let (storage, store) = (MemoryStorage::default(), MemoryContextStore::default());
-        storage.create(&record.key, b"{}").await.expect("seed");
-        assert!(matches!(
-            Contexts::new(&storage, &store)
-                .publish(&acme, &context(&acme), now)
-                .await,
-            Err(ContextError::Corrupt { .. })
-        ));
-
-        let (storage, store) = (MemoryStorage::default(), MemoryContextStore::default());
-        storage.create(&record.key, &bytes).await.expect("seed");
-        let contexts = Contexts::new(&storage, &store);
-        let adopted = contexts
-            .publish(&acme, &context(&acme), now)
-            .await
-            .expect("adopt");
-        assert_eq!(adopted, record);
-        assert_eq!(
-            contexts.read(&acme, &adopted.id, now).await,
-            Ok(context(&acme))
-        );
-    }
-
-    /// Identical content published at two times gets two ids, each with
-    /// its own cutoff; a sweep that listed the first before the second was
-    /// published removes only the first.
+    /// Identical content published twice gets two random ids, each with
+    /// its own store-stamped expiry; a sweep that listed the first before
+    /// the second was published removes only the first.
     #[tokio::test]
     async fn identical_publications_expire_and_clean_up_independently() {
         let storage = MemoryStorage::default();
         let store = MemoryContextStore::default();
         let contexts = Contexts::new(&storage, &store);
         let acme = identity("acme", 1);
-        let first = contexts
-            .publish(&acme, &context(&acme), UNIX_EPOCH)
+        let (first, _) = contexts
+            .publish(&acme, &context(&acme))
             .await
             .expect("publish");
-        let later = UNIX_EPOCH + CONTEXT_LIFETIME;
+        store.clock.advance(CONTEXT_LIFETIME);
         storage.hold_deletes.store(true, Ordering::SeqCst);
-        let (sweep, second) = tokio::join!(contexts.collect_expired(later, 10), async {
-            let second = contexts
-                .publish(&acme, &context(&acme), later)
+        let (sweep, second) = tokio::join!(contexts.collect_expired(10), async {
+            let (second, _) = contexts
+                .publish(&acme, &context(&acme))
                 .await
                 .expect("publish");
             assert_eq!(
-                contexts.read(&acme, &first.id, later).await,
+                contexts.read(&acme, &first.id).await,
                 Err(ContextError::Expired {
                     id: first.id.clone()
                 })
@@ -674,15 +637,12 @@ mod tests {
             [(acme.clone(), first.id.clone())]
         );
         assert_eq!(
-            contexts.read(&acme, &first.id, later).await,
+            contexts.read(&acme, &first.id).await,
             Err(ContextError::NotFound {
                 id: first.id.clone()
             })
         );
-        assert_eq!(
-            contexts.read(&acme, &second.id, later).await,
-            Ok(context(&acme))
-        );
+        assert_eq!(contexts.read(&acme, &second.id).await, Ok(context(&acme)));
         assert_eq!(store.ids(), [(acme.clone(), second.id.clone())]);
         assert_eq!(storage.keys(), [second.key]);
     }
@@ -696,25 +656,25 @@ mod tests {
         let store = MemoryContextStore::default();
         let contexts = Contexts::new(&storage, &store);
         let (acme, zeta) = (identity("acme", 1), identity("zeta", 1));
-        let old = contexts
-            .publish(&acme, &context(&acme), UNIX_EPOCH)
+        let (old, _) = contexts
+            .publish(&acme, &context(&acme))
             .await
             .expect("publish");
-        let missing = contexts
-            .publish(&zeta, &context(&zeta), UNIX_EPOCH)
+        let (missing, _) = contexts
+            .publish(&zeta, &context(&zeta))
             .await
             .expect("publish");
         storage.delete(&missing.key).await.expect("delete");
-        let fresh_at = UNIX_EPOCH + CONTEXT_LIFETIME;
+        store.clock.advance(CONTEXT_LIFETIME);
         let mut fresh_context = context(&acme);
         fresh_context.pull_request = 6;
-        let fresh = contexts
-            .publish(&acme, &fresh_context, fresh_at)
+        let (fresh, _) = contexts
+            .publish(&acme, &fresh_context)
             .await
             .expect("publish");
 
         storage.fail_next_delete();
-        let sweep = contexts.collect_expired(fresh_at, 10).await.expect("sweep");
+        let sweep = contexts.collect_expired(10).await.expect("sweep");
         assert_eq!(sweep.deleted, [(zeta.clone(), missing.id.clone())]);
         assert_eq!(sweep.lagging.len(), 1);
         assert_eq!((&sweep.lagging[0].0, &sweep.lagging[0].1), (&acme, &old.id));
@@ -726,67 +686,10 @@ mod tests {
         recorded.sort();
         assert_eq!(store.ids(), recorded);
 
-        let retry = contexts.collect_expired(fresh_at, 10).await.expect("retry");
+        let retry = contexts.collect_expired(10).await.expect("retry");
         assert_eq!(retry.deleted, [(acme.clone(), old.id.clone())]);
         assert!(retry.lagging.is_empty());
         assert_eq!(store.ids(), [(acme.clone(), fresh.id.clone())]);
         assert_eq!(storage.keys(), [fresh.key]);
-    }
-
-    /// A sweep whose cutoff trails `now` by a grace longer than the
-    /// publication timeout keeps a record whose object create is still in
-    /// flight past read expiry, so the resumed publication is never
-    /// orphaned; once the grace passes, cleanup removes object then record.
-    /// A publication dropped after its upsert is cleaned up the same way.
-    #[tokio::test(start_paused = true)]
-    async fn cleanup_cutoff_spares_in_flight_publication() {
-        let storage = MemoryStorage::default();
-        let store = MemoryContextStore::default();
-        let contexts = Contexts::new(&storage, &store);
-        let acme = identity("acme", 1);
-        let grace = Duration::from_secs(3600);
-        let expired = UNIX_EPOCH + CONTEXT_LIFETIME;
-        let review = context(&acme);
-        storage.hold_creates.store(true, Ordering::SeqCst);
-        let (published, (sweep, read)) =
-            tokio::join!(contexts.publish(&acme, &review, UNIX_EPOCH), async {
-                while store.ids().is_empty() {
-                    tokio::task::yield_now().await;
-                }
-                let sweep = contexts.collect_expired(expired - grace, 10).await;
-                let id = store.ids()[0].1.clone();
-                let read = contexts.read(&acme, &id, expired).await;
-                storage.hold_creates.store(false, Ordering::SeqCst);
-                (sweep, read)
-            });
-        let record = published.expect("publish");
-        assert_eq!(sweep.expect("sweep"), ContextCleanup::default());
-        assert_eq!(
-            read,
-            Err(ContextError::Expired {
-                id: record.id.clone()
-            })
-        );
-        assert_eq!(store.ids(), [(acme.clone(), record.id.clone())]);
-        assert_eq!(storage.keys(), std::slice::from_ref(&record.key));
-
-        let later = expired + Duration::from_secs(1);
-        store.stall_after_upsert();
-        let dropped = tokio::time::timeout(
-            Duration::from_secs(1),
-            contexts.publish(&acme, &review, later - CONTEXT_LIFETIME),
-        )
-        .await;
-        assert!(dropped.is_err());
-        assert_eq!(storage.keys().len(), 1, "dropped before its create");
-
-        let sweep = contexts
-            .collect_expired(later, 10)
-            .await
-            .expect("late sweep");
-        assert_eq!(sweep.deleted.len(), 2);
-        assert!(sweep.lagging.is_empty());
-        assert!(store.ids().is_empty());
-        assert!(storage.keys().is_empty());
     }
 }

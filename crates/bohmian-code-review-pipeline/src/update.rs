@@ -69,14 +69,14 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> Update<'a, O, S> {
     /// error but an `Incomplete` outcome leaving the pointer in place.
     pub async fn run(&self, identity: &Identity) -> Result<ColdBuildResult, ColdBuildError> {
         let cold = &self.cold;
-        let scope = snapshot_scope(identity);
+        let scope = snapshot_scope(identity, cold.limits.max_file_bytes);
         let current = cold.store.snapshot_pointer(&scope).await?;
         let head = cold.pin(identity).await?;
         let Some(pointer) = current.as_ref().filter(|pointer| pointer.tree != head.tree) else {
             return cold.build(&scope, current.as_ref(), &head).await;
         };
         let prior = match Snapshots::new(cold.storage, cold.store)
-            .read(identity, pointer)
+            .read(&scope, pointer)
             .await
         {
             Ok(prior) => prior,
@@ -113,7 +113,7 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> Update<'a, O, S> {
         let pointer = self
             .cold
             .store
-            .snapshot_pointer(&snapshot_scope(identity))
+            .snapshot_pointer(&snapshot_scope(identity, self.cold.limits.max_file_bytes))
             .await?;
         let head = self.cold.pin(identity).await?;
         Ok(match pointer {
@@ -132,15 +132,15 @@ mod tests {
     use crate::github::{GitHubError, Operation};
     use crate::persistence::SnapshotScope;
     use crate::snapshot::tests::{
-        FakeRepo, File, HANDLER, LFS, OMITTED, SUBSTITUTED, bad_sha, blob_sha, file, identity, sha,
-        standard_archive, standard_files,
+        FakeRepo, File, HANDLER, LFS, OMITTED, SUBSTITUTED, bad_sha, blob_sha, file, identity,
+        scope, sha, standard_archive, standard_files,
     };
     use crate::snapshot::{ColdBuildOutcome, IncompleteReason, SkipReason};
     use crate::storage::ObjectKey;
     use crate::testing::{MemorySnapshotStore, MemoryStorage};
     use bohmian_code_review::EXTRACTION_VERSION;
     use std::sync::atomic::Ordering;
-    use std::time::{Duration, UNIX_EPOCH};
+    use std::time::Duration;
 
     /// `src/user.ts` after the push: `saveUser` removed, `renameUser` added.
     const USER_V2: &[u8] = b"export function lookupUser(id: string): string {\n  return id;\n}\n\nexport function renameUser(id: string): string {\n  return id;\n}\n";
@@ -184,7 +184,7 @@ mod tests {
     /// Current pointer of `identity`.
     async fn pointer(store: &MemorySnapshotStore, identity: &Identity) -> Option<SnapshotPointer> {
         store
-            .snapshot_pointer(&snapshot_scope(identity))
+            .snapshot_pointer(&scope(identity))
             .await
             .expect("pointer")
     }
@@ -218,6 +218,7 @@ mod tests {
             &identity(),
             EXTRACTION_VERSION,
             crate::snapshot::SNAPSHOT_FORMAT_VERSION,
+            crate::eligibility::MAX_ELIGIBLE_FILE_BYTES,
             tree,
         )
     }
@@ -274,7 +275,7 @@ mod tests {
         assert!(coverage.is_complete());
         assert_eq!((coverage.eligible, coverage.indexed), (4, 3));
         let context = Snapshots::new(&storage, &store)
-            .read(&identity, new)
+            .read(&scope(&identity), new)
             .await
             .expect("read")
             .into_context()
@@ -419,7 +420,7 @@ mod tests {
             assert_eq!(pointer(&store, &identity).await, Some(published.clone()));
             assert!(
                 Snapshots::new(&storage, &store)
-                    .read(&identity, &published)
+                    .read(&scope(&identity), &published)
                     .await
                     .is_ok()
             );
@@ -518,14 +519,19 @@ mod tests {
         let identity = identity();
         let old_scope = SnapshotScope {
             extraction_version: "0-previous".to_owned(),
-            ..snapshot_scope(&identity)
+            ..scope(&identity)
         };
         let old = SnapshotPointer {
             tree: repo.tree.clone(),
             commit: repo.commit.clone(),
-            key: ObjectKey::snapshot(&identity, "0-previous", 1, &repo.tree),
+            key: ObjectKey::snapshot(
+                &identity,
+                "0-previous",
+                1,
+                crate::eligibility::MAX_ELIGIBLE_FILE_BYTES,
+                &repo.tree,
+            ),
             digest: crate::storage::ObjectDigest::of(b"old"),
-            published_at: UNIX_EPOCH,
         };
         assert!(
             store

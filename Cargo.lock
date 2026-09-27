@@ -131,6 +131,7 @@ version = "0.1.0"
 dependencies = [
  "bohmian-code-review",
  "flate2",
+ "getrandom 0.4.3",
  "reqwest",
  "serde",
  "serde_json",

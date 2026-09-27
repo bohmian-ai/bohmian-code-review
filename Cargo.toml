@@ -35,6 +35,7 @@ sha1 = "0.10"
 reqwest = { version = "0.13", default-features = false, features = ["rustls"] }
 tokio = { version = "1", default-features = false }
 flate2 = "1"
+getrandom = "0.4"
 tar = { version = "0.4", default-features = false }
 
 # Grammar pins are copied exactly from the donor extractor. A bump changes
