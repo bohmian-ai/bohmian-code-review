@@ -79,3 +79,20 @@ Stop if a language's recovered tree makes a `match` fixture differ from its gold
 ## Authority Links
 
 [Revision 14 spec](../spec.md) (REQ-002, Complete snapshot), [AGENTS.md](../../../../AGENTS.md), [library design](../../../../architecture/bohmian-code-review-design.md).
+
+## Implementation Evidence
+
+Environment: macOS 15 (Darwin 24.6.0), Apple silicon, 2026-09-27. The live run used a read-only `gh` user token and only read GitHub. The [report](../evidence/TASK-008/s20-wyrd-pr1.json) carries paths, ranges and identities, never source text.
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| Syntax-error files in every ported language return recovered facts, not a deferral; valid-file fixtures and goldens unchanged | `has_error()` rejection deleted from all 25 walkers; `ExtractionError::Deferred` and `CANONICAL_DEFER_MESSAGE` removed; `extractor.rs` `recovered_tree_*` tests (Rust destructured-field attribute, TypeScript NUL in string); the 21 malformed corpus fixtures are now `recover` entries (`manifest.json`), and `recover_fixtures_keep_valid_regions_per_fixture` asserts that native extraction keeps each fixture's valid-region declarations. No golden or `match` fixture changed | `cargo test ... recovered_tree` failed with `Deferred` before the change; `mise run test:extract` (142 + 27 passed) | PASS |
+| `EXTRACTION_VERSION` differs from the prior value; old-version facts are rejected | `lib.rs` → `codegraph-kernel-572d22bf.tree-sitter-0.25.10.recovered-tree.facts-2`; journey loads facts stamped `…facts-1` and expects `ExtractionVersionMismatch` | `mise run test:symbolic-context:journey` failed before the bump and passed after it (6 passed) | PASS |
+| No-facts file is a recorded skip with blob identity and does not block a complete snapshot; fetch/verification skips still block | `SkipReason::NoFacts`, added to the single `is_benign` set; `Ingest::ingest` removes a file-node-only upsert and records the skip. Cold build, update, and PR overlay share that path. `no_facts_file_is_a_recorded_skip_in_a_published_build`; Scenario 2's broken-file segment now asserts publication with a `NoFacts` skip; `NotFetched`/`FetchFailed` incompleteness assertions unchanged | `cargo test ... --lib no_facts` failed before the change; `mise run test:pipeline` (68 + 2 passed) | PASS |
+| Live cold build of `bohmian-ai/wyrd` indexes `crates/wyrd/wyrd-server/src/boot/mod.rs` and `wyrd-ui/src/lib/server/wyrd.ts` | `examples/live_pr.rs` now reports the cold build's skipped files, not just a count | `mise run live:pr` with `BCR_REPO_ID=1383739221 BCR_PR=1`: commit `2855eac`, eligible 1,681, indexed 1,538, skipped 143 (all `NoFacts`; 31 are the empty blob, the rest are `mod`/re-export-only Rust, key-less YAML and empty `__init__.py`), outcome `Published`. Neither named file is skipped. PR context: `full_coverage: true`, 50 spans, `read_back_equal: true`, exit 0, 29.0 s, 135 MB peak RSS | PASS |
+
+Before this change, the TASK-007 run on the same commit indexed 1,678 files and left 3 files unindexed (`Incomplete`). The 140 files that now show as `NoFacts` were counted as indexed before even though they held only a file node. Under the revision 14 Complete-snapshot term they are content skips. PR #91 still exhausts its review budget, which is unrelated to this task.
+
+Non-goals stayed excluded: no grammar pin, vendored C, `match` fixture or golden changed. No facts come from outside the recovered tree, and fetch, verification and extractor failures remain blocking. The only public additions are the `NodeKind` re-export on the facade (already reachable through `Node::kind`) and `SkipReason::NoFacts`.
+
+Commands: `mise run test:extract`, `mise run test:symbolic-context:journey`, `mise run test:pipeline`, `mise run fmt:check`, `mise run lints`, `mise run live:pr`, `mise run gate`, `git diff --check`.

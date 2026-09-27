@@ -1,0 +1,4572 @@
+{
+  "base": "f7c61336ae824029b55e44c870a96997010d35fd",
+  "budget": {
+    "context_allowance": 28310,
+    "diff_tokens": 31594,
+    "exhausted": false,
+    "prompt_reserve": 4096,
+    "review_tokens": 64000,
+    "selected_tokens": 2843
+  },
+  "calls": {
+    "Archive": 2,
+    "Blob": 137,
+    "BranchHead": 1,
+    "Commit": 1,
+    "PullRequest": 2,
+    "PullRequestFiles": 1,
+    "Repository": 1,
+    "Tree": 2
+  },
+  "cold_build": {
+    "archive_entries": 1681,
+    "archive_error": null,
+    "commit": "2855eac00a15581cede6e29ec5a0dde0b8bc4d48",
+    "eligible": 1681,
+    "excluded": "{Unsupported: 937, GeneratedAttribute: 3}",
+    "fallback_blobs": 0,
+    "indexed": 1538,
+    "outcome": "Published(SnapshotPointer { tree: ObjectSha(\"e52bce5c1a1c5188ed698d541f8128f90474f2bc\"), commit: ObjectSha(\"2855eac00a15581cede6e29ec5a0dde0b8bc4d48\"), key: ObjectKey(\"tenants/live/installations/1/repositories/1383739221/snapshots/636f646567726170682d6b65726e656c2d35373264323262662e747265652d7369747465722d302e32352e31302e7265636f76657265642d747265652e66616374732d32/1/1048576/e52bce5c1a1c5188ed698d541f8128f90474f2bc\"), digest: ObjectDigest(\"f12a1a6f1a39a6ff4c079b57e18c14a07755d9c7c072eaca9197ab1d0a264e06\") })",
+    "peak_verified_bytes": 379252,
+    "skipped": [
+      {
+        "blob": "3dddcaf0d49a251b1922094fefd163e9b1951d92",
+        "path": ".agents/skills/wyrd-advise/agents/openai.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "8c5d3dff403096028bef77a619421836f26a9114",
+        "path": ".agents/skills/wyrd-change-review/agents/openai.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "86bb062aaa0b76454d03865bd3d171e8824360e2",
+        "path": ".agents/skills/wyrd-complete/agents/openai.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "ef475c8e64bc18b422b3806a30a18e098fb6d081",
+        "path": ".agents/skills/wyrd-implement/agents/openai.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "82eb55d913306599ddbe38ab2966af919de0fd66",
+        "path": ".agents/skills/wyrd-plan/agents/openai.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "0cacf905590e2c3b9338d80a696e728bb04a98c7",
+        "path": ".agents/skills/wyrd-spec/agents/openai.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "8acf662d2646a2ccc1d19c3752c8f936e7ea3943",
+        "path": ".agents/skills/wyrd-task-review/agents/openai.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "833e85f744683dd81f9cb55090ca1d57a002dea2",
+        "path": ".agents/skills/wyrd-ui/agents/openai.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "016a61e7a96709aa4914a9cd4335a8eeedca2baf",
+        "path": ".github/actions/setup-rust-ci/action.yml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "2f4ce3e82da34a10c20508ff7e0decb23ed95bad",
+        "path": ".github/workflows/identity-e2e.yml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "fa8cfd9be051e9e63d767b18d1628538ff636bdf",
+        "path": ".github/workflows/lints-test.yml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "466efabf9722dd4e1aae13358ff43a98c7eb6c7d",
+        "path": ".github/workflows/nightly.yml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "4d35f837eebfd8e4d8d5e11e851612fc14257f85",
+        "path": ".github/workflows/performance.yml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "5ac8ca08a585b88bd3839c0a4fce9c362aab8791",
+        "path": ".github/workflows/publish-docs.yml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "370df5064d2c05199e83f10de9b7fcbcc725de21",
+        "path": ".github/workflows/release.yml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "f8aebba006f7dd436b95bc6ba6c2dc565568f083",
+        "path": ".github/workflows/storage-integration-cloud.yml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "2f9cf40468ac8aba1b5a2428713f356aa2fbd2e5",
+        "path": ".github/workflows/storage-integration-emulator.yml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "112e9617743c4536d355ca9dc636ff417aa7854f",
+        "path": "crates/shared/workspace-hack/src/lib.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "53bf986d20605aba17aba6783634349bda1c32d1",
+        "path": "crates/shared/wyrd-client/tests/transport.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "4f89abefe3fd1e99a560d46c922ce39af66a93ac",
+        "path": "crates/shared/wyrd-dev-fixtures/src/lib.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "b3651a5c3996fb959f529bbda72ba00b20a065bd",
+        "path": "crates/skald/skald-agent/tests/fixtures/agent_planner_v0.3.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/catalog/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/immutable_tier_retention.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/maintenance.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/mitari_rewrite_api.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "c7ecc2980129f4dadd30f46ccd33d0c1da09b10d",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/replay.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/retention.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/scheduler.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/staging.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/streaming_rewrite.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/worker.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/worker_lifecycle.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "53fbbfe1388b5874175389ce9990cc1ffb684097",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/main.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/oracle/decoder.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/oracle/distributed.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "37b60ace8dc9eff301792ff6c5d19050c6661386",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/oracle/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/oracle/resource_release.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/oracle/semantics.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/oracle/spill.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/oracle/support.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/atomicity.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/bounds.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/commit_hints.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/governor_gauges.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/idempotent.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "b6d5c456dae4ba34c10a2e5ad47f2d8ccba4423c",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/ordering.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/persistence_support.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/registry.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/replay.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/seal.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/support.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "b95931d191fe2bbc422e7a0c9c3517e3383a35d5",
+        "path": "crates/vala/vala-core/src/alert_router/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "3a5134fc12048e1690bc1e141dcd5497a64f354f",
+        "path": "crates/vala/vala-core/src/lib.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "6b1a8c610fa7f6a1a514c6094bd87ec71259aa37",
+        "path": "crates/vala/vala-sql/src/queries/alerts.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "51600dbfbef82de4b9b9ce23536930b4fcfa5269",
+        "path": "crates/vala/vala-sql/src/queries/anchors.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "4a42c5d1e34311c571bbc3a456440df895525f95",
+        "path": "crates/vala/vala-sql/src/queries/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "7c61478c8a33a1d93ba707baf13bcd3430dc270a",
+        "path": "crates/vala/vala-sql/src/queries/monitor.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "1dfb935ac138f0eff6cafd9d899181379e6be2e7",
+        "path": "crates/vala/vala-sql/src/queries/profiles.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "3efe0c7248ab197687940680168ce350d29b974c",
+        "path": "crates/vala/vala-sql/src/queries/queues.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "4de99a4096d4535f1b202f2f6ef96e3756ff94fc",
+        "path": "crates/vala/vala-sql/src/row_types/anchors.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "92a8c1d221eba97aed746a07c896096696e7d32d",
+        "path": "crates/vala/vala-sql/src/row_types/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "faadbcfa0a181d3ce336c2428a39dc804d9f02f8",
+        "path": "crates/vala/vala-sql/src/row_types/monitor.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "1871263daeaa45c8cd16ad43972a1117a39f5571",
+        "path": "crates/vala/vala-sql/src/row_types/profiles.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "99443996c222edad59efe0b39fa48ad34e00f6c2",
+        "path": "crates/vala/vala-sql/src/row_types/queues.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "1241fe4b514e9f7dd04d544f86476da1c925fe64",
+        "path": "crates/wyrd-spec/src/format/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "2066636cab0a5dc866cfd048b6d733339054953c",
+        "path": "crates/wyrd-spec/src/vala/dev/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "2066636cab0a5dc866cfd048b6d733339054953c",
+        "path": "crates/wyrd-spec/src/vala/drift/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "2066636cab0a5dc866cfd048b6d733339054953c",
+        "path": "crates/wyrd-spec/src/vala/logs/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "2066636cab0a5dc866cfd048b6d733339054953c",
+        "path": "crates/wyrd-spec/src/vala/metrics/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e114dcdc82b394bccf289d8450f5ecd35378195e",
+        "path": "crates/wyrd-spec/tests/fixtures/operator-remediation.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e7bafec40679c1c4783ec94209250d099e3c9568",
+        "path": "crates/wyrd-spec/tests/fixtures/service-with-runtime-policy.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "aa9dd8e86db1d1b53a6cdc9855ade855efda2311",
+        "path": "crates/wyrd-spec/tests/fixtures/source-logs-loki.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "6c87c80a17377cae62a0f1b17bf4abbe9715e6d6",
+        "path": "crates/wyrd-spec/tests/fixtures/source-metrics-datadog.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "2c85d6dbfbc726a116293d60a56913a13374473f",
+        "path": "crates/wyrd-spec/tests/fixtures/source-object-store-gcs.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "532b243f70498a4442ea18b777b53715e3002dd7",
+        "path": "crates/wyrd-spec/tests/fixtures/source-sql-warehouse.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "4be002cdfd9ab3657ef327facf4bc4794e8ca217",
+        "path": "crates/wyrd-spec/tests/fixtures/source-traces-tempo.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "6715907a22bbdd1117d721757a04bf01e97e8058",
+        "path": "crates/wyrd-spec/tests/fixtures/trigger-on-drift.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "ef1308b29a233b607f58e226255f0a0f6a2231ac",
+        "path": "crates/wyrd/wyrd-cli/src/eval/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "0a2e943d749fa1aa4a15039e00348f69ba120092",
+        "path": "crates/wyrd/wyrd-cli/src/load/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "9d140b55405b7d024d877eae695fa4dd3cc4a08b",
+        "path": "crates/wyrd/wyrd-cli/tests/cli.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "ca9bd90106392592203a752c5981e581dd65fcf2",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/agent-inline.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "1e976c3f86369b18cc77452b761cb0e9f860486e",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/agent-triage.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e084415f019fb7e63507cb9ffd4f99057c6f45dc",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/model-drift.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "0b15c00698ff5a3732365986f9d6db52f4291b1b",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/model-primary.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "ddd485bb347f506e66302119e08b72f85167c553",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/model-shadow.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e8656a20c3545a7dc4c6ef357b6ef73663b6c40d",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/quality.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "abee5b79084dec36fb85d19fc60fff8482797369",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/runtime.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "4959470eaca3918f137ff03a01a1510785761668",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/training.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "3188d835c3cfe3de056a92d63b417e2436d88be6",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/triage-prompt.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "b34a9408138ef762bb64e2cf98bd486665fa826b",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/typed-service.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "a44176c71db13a16c11edf94337ef9a2c1f59734",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/config_defaults/service.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "48572a4e791206635dacbb2ae8cf7727b8d22805",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/agent1/agent.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "ed04562fcebf187e10099e9c59065df5ab91bc36",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/agent1/eval.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "6947067b0ca23ba4f7606f6aefc64dbbbfcaeaca",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/agent1/judge-prompt.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "2ee6ffa584ded6c79ee562887702d0cf8becf00e",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/agent1/prompt.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "332b5d9f7b9896547a683050219769baa07c4220",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/agent2/agent.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "9c1fa8d8ab41e7a220badd7abb74773a03d40a16",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/model/card.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "49f2af4d8651f34bcaec31a957d88973c79aa958",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/model/drift.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "66ca04907f2d0eaa72378d4318b8bf1475d07ebe",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/ops/operator-slack.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "2205c1504cfde276c226ce76f237a5d393e7e460",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/ops/trigger-drift-alert.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "a2ea60b7d2366412f271c9bf8a79dc2e932cba84",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/ops/trigger-eval-fail.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e01bc2a2cd92247f90ebae8a85746d8f1afd0d4f",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/service.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e689fe34483461e7acf9d24486e951c218d08e13",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end_prerequisites/churn-classifier-data.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e0058970ac08f1dcdf95916f292727c7b55c905d",
+        "path": "crates/wyrd/wyrd-cli/tests/loader.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "179ef23ebe4c03ed2f7e7295d1c4e615a1782a7c",
+        "path": "crates/wyrd/wyrd-mcp/src/lib.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "bd87440af1f3352d4b6052af4e5534c404ee57b4",
+        "path": "crates/wyrd/wyrd-mcp/tests/bifrost/mcp/main.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "4d5cfbc70e1d35aadf2fe96a85bc4894797b8716",
+        "path": "crates/wyrd/wyrd-server/src/bifrost/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "433889b35a31a680bdcd73298df59d71038904a7",
+        "path": "crates/wyrd/wyrd-server/src/components/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "df8f02ec46185fe7407d60e7153e55879a13ca31",
+        "path": "crates/wyrd/wyrd-server/src/http/middleware/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "5fba9b5822e16b4aed4860ad471f5ae3bf777f53",
+        "path": "crates/wyrd/wyrd-server/src/query/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "1de28063fcb6260953f16905d5c64ee363972bf5",
+        "path": "crates/wyrd/wyrd-sql/src/queries/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "ca1e6c3812e3ff199d79be9b8b33a16806debfb4",
+        "path": "crates/wyrd/wyrd-sql/src/queries/platform/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "40b45dfa92e70035168284dc0e0012c3db1edc10",
+        "path": "crates/wyrd/wyrd-sql/src/queries/storage/admin/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e37ad57b620bdc2d1be02b71e25a3e7425c4c37b",
+        "path": "crates/wyrd/wyrd-sql/src/queries/storage/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "71e8a13816895d24e09740b13391298ec22e7d58",
+        "path": "crates/wyrd/wyrd-sql/src/row_types/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "65bf782df4b732a403dd162655f616a8adad5b33",
+        "path": "crates/wyrd/wyrd-storage/docker/docker-compose.yml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "c09773cd099e28d2e86549d12771cd1afe62a313",
+        "path": "crates/wyrd/wyrd-testing/tests/bifrost/forge/main.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "9f7387b3464433dc08c8f39406d1c184f25bdf2d",
+        "path": "crates/wyrd/wyrd-testing/tests/bifrost/oracle/main.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "91aadd6015c055dd4f57277c8c4da8b79b176ace",
+        "path": "crates/wyrd/wyrd-testing/tests/bifrost/oracle/peer_network/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "27e34ac077de4dfe412afedafc0b3ff828f61567",
+        "path": "crates/wyrd/wyrd-testing/tests/bifrost/otlp/main.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "9ef22be9a56c7cee238d140402df8e4397537cd6",
+        "path": "crates/wyrd/wyrd-testing/tests/bifrost/scribe/main.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e72d36a65c90a1e81925b3b77b6dfe22b11f8b73",
+        "path": "crates/wyrd/wyrd-testing/tests/bifrost/server/main.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "1644febb272c16adc9163ddd9b46bfd0efa2fb02",
+        "path": "crates/wyrd/wyrd-testing/tests/gateway/main.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "530b6d4a44f1753a4c0eea0019990e42cfb5bdb7",
+        "path": "deploy/kubernetes/bifrost/deployment-mixed.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "beae0418d858ada8702d71910c4f7fb9bbdd72ef",
+        "path": "deploy/kubernetes/bifrost/deployment-role-separated.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "503bce1179958ac1f3582f877bb8ad553b7d3ad8",
+        "path": "deploy/kubernetes/bifrost/rollback-mixed.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "60414934c2b59c223e2a5f1f178345b47dfd9f1f",
+        "path": "docker-compose.yml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "dd006df0b7cc59a2cb467e82f4b67263bc42a2a9",
+        "path": "docker/jaeger/docker-compose.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "ccbac807c176090b389adb6d98b64fe158f393cd",
+        "path": "docs/pnpm-workspace.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "af4d7837a5e3d027718674d74b456de12ce32ee5",
+        "path": "docs/src/app.d.ts",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "5e64a33b72f41a199a45e2d777f15db682b0143e",
+        "path": "docs/src/lib/mdsvex/components.js",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "c7d935227ed1d397c78f2e9c7e98083c0468175b",
+        "path": "examples/rust/workflows/research.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "fbdc6aaca199282776ad045720e9b4c22f858f4b",
+        "path": "sdks/wyrd-sdk-python/examples/workflows/research.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "0cbcad8b3dd8d5044272dc08083230622eed3b8a",
+        "path": "sdks/wyrd-sdk-python/tests/__init__.py",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "sdks/wyrd-sdk-python/tests/integration/__init__.py",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "sdks/wyrd-sdk-python/tests/integration/gateway/__init__.py",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "9c989c7d817556633c8f8d4d5bc2805e0000f270",
+        "path": "sdks/wyrd-sdk-python/tests/unit/__init__.py",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "sdks/wyrd-sdk-python/tests/unit/config/__init__.py",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "d559bcccbf765e05410c1c451e2911f4289866d6",
+        "path": "sdks/wyrd-sdk-python/tests/unit/state/__init__.py",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "28a92c1d537ff67f484b7ae376fe7724c2b6e549",
+        "path": "sdks/wyrd-sdk-ts/pnpm-workspace.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "b33cb98bdb787ce5b217486179c1963835c29096",
+        "path": "tests/fixtures/identity/dex-config.yaml",
+        "reason": "NoFacts"
+      }
+    ],
+    "snapshot_bytes": 7740100,
+    "tree": "e52bce5c1a1c5188ed698d541f8128f90474f2bc"
+  },
+  "context_id": "80da538def3c4dcff849637b8c94181183eb68ff17c0703eef15df51ae4102a1-d0ab94d4de9ae6cf2d25f45c68d33347",
+  "coverage": {
+    "files": {
+      "eligible": 1612,
+      "excluded": {
+        "GeneratedAttribute": 3,
+        "Unsupported": 894
+      },
+      "indexed": 1471,
+      "skipped": [
+        {
+          "blob": "3dddcaf0d49a251b1922094fefd163e9b1951d92",
+          "path": ".agents/skills/wyrd-advise/agents/openai.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "8c5d3dff403096028bef77a619421836f26a9114",
+          "path": ".agents/skills/wyrd-change-review/agents/openai.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "86bb062aaa0b76454d03865bd3d171e8824360e2",
+          "path": ".agents/skills/wyrd-complete/agents/openai.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "ef475c8e64bc18b422b3806a30a18e098fb6d081",
+          "path": ".agents/skills/wyrd-implement/agents/openai.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "82eb55d913306599ddbe38ab2966af919de0fd66",
+          "path": ".agents/skills/wyrd-plan/agents/openai.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "0cacf905590e2c3b9338d80a696e728bb04a98c7",
+          "path": ".agents/skills/wyrd-spec/agents/openai.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "8acf662d2646a2ccc1d19c3752c8f936e7ea3943",
+          "path": ".agents/skills/wyrd-task-review/agents/openai.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "833e85f744683dd81f9cb55090ca1d57a002dea2",
+          "path": ".agents/skills/wyrd-ui/agents/openai.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "016a61e7a96709aa4914a9cd4335a8eeedca2baf",
+          "path": ".github/actions/setup-rust-ci/action.yml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "2f4ce3e82da34a10c20508ff7e0decb23ed95bad",
+          "path": ".github/workflows/identity-e2e.yml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "fa8cfd9be051e9e63d767b18d1628538ff636bdf",
+          "path": ".github/workflows/lints-test.yml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "466efabf9722dd4e1aae13358ff43a98c7eb6c7d",
+          "path": ".github/workflows/nightly.yml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "4d35f837eebfd8e4d8d5e11e851612fc14257f85",
+          "path": ".github/workflows/performance.yml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "5ac8ca08a585b88bd3839c0a4fce9c362aab8791",
+          "path": ".github/workflows/publish-docs.yml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "370df5064d2c05199e83f10de9b7fcbcc725de21",
+          "path": ".github/workflows/release.yml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "f8aebba006f7dd436b95bc6ba6c2dc565568f083",
+          "path": ".github/workflows/storage-integration-cloud.yml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "2f9cf40468ac8aba1b5a2428713f356aa2fbd2e5",
+          "path": ".github/workflows/storage-integration-emulator.yml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "112e9617743c4536d355ca9dc636ff417aa7854f",
+          "path": "crates/shared/workspace-hack/src/lib.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "53bf986d20605aba17aba6783634349bda1c32d1",
+          "path": "crates/shared/wyrd-client/tests/transport.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "4f89abefe3fd1e99a560d46c922ce39af66a93ac",
+          "path": "crates/shared/wyrd-dev-fixtures/src/lib.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "b3651a5c3996fb959f529bbda72ba00b20a065bd",
+          "path": "crates/skald/skald-agent/tests/fixtures/agent_planner_v0.3.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/catalog/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/immutable_tier_retention.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/maintenance.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/mitari_rewrite_api.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "c7ecc2980129f4dadd30f46ccd33d0c1da09b10d",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/replay.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/retention.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/scheduler.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/staging.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/streaming_rewrite.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/worker.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/worker_lifecycle.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "53fbbfe1388b5874175389ce9990cc1ffb684097",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/main.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/oracle/decoder.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/oracle/distributed.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "37b60ace8dc9eff301792ff6c5d19050c6661386",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/oracle/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/oracle/resource_release.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/oracle/semantics.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/oracle/spill.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/oracle/support.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/atomicity.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/bounds.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/commit_hints.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/governor_gauges.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/idempotent.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "b6d5c456dae4ba34c10a2e5ad47f2d8ccba4423c",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/ordering.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/persistence_support.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/registry.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/replay.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/seal.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/support.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "b95931d191fe2bbc422e7a0c9c3517e3383a35d5",
+          "path": "crates/vala/vala-core/src/alert_router/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "3a5134fc12048e1690bc1e141dcd5497a64f354f",
+          "path": "crates/vala/vala-core/src/lib.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "6b1a8c610fa7f6a1a514c6094bd87ec71259aa37",
+          "path": "crates/vala/vala-sql/src/queries/alerts.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "51600dbfbef82de4b9b9ce23536930b4fcfa5269",
+          "path": "crates/vala/vala-sql/src/queries/anchors.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "4a42c5d1e34311c571bbc3a456440df895525f95",
+          "path": "crates/vala/vala-sql/src/queries/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "7c61478c8a33a1d93ba707baf13bcd3430dc270a",
+          "path": "crates/vala/vala-sql/src/queries/monitor.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "1dfb935ac138f0eff6cafd9d899181379e6be2e7",
+          "path": "crates/vala/vala-sql/src/queries/profiles.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "3efe0c7248ab197687940680168ce350d29b974c",
+          "path": "crates/vala/vala-sql/src/queries/queues.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "4de99a4096d4535f1b202f2f6ef96e3756ff94fc",
+          "path": "crates/vala/vala-sql/src/row_types/anchors.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "92a8c1d221eba97aed746a07c896096696e7d32d",
+          "path": "crates/vala/vala-sql/src/row_types/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "faadbcfa0a181d3ce336c2428a39dc804d9f02f8",
+          "path": "crates/vala/vala-sql/src/row_types/monitor.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "1871263daeaa45c8cd16ad43972a1117a39f5571",
+          "path": "crates/vala/vala-sql/src/row_types/profiles.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "99443996c222edad59efe0b39fa48ad34e00f6c2",
+          "path": "crates/vala/vala-sql/src/row_types/queues.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "1241fe4b514e9f7dd04d544f86476da1c925fe64",
+          "path": "crates/wyrd-spec/src/format/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "2066636cab0a5dc866cfd048b6d733339054953c",
+          "path": "crates/wyrd-spec/src/vala/dev/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "2066636cab0a5dc866cfd048b6d733339054953c",
+          "path": "crates/wyrd-spec/src/vala/drift/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "2066636cab0a5dc866cfd048b6d733339054953c",
+          "path": "crates/wyrd-spec/src/vala/logs/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "2066636cab0a5dc866cfd048b6d733339054953c",
+          "path": "crates/wyrd-spec/src/vala/metrics/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e114dcdc82b394bccf289d8450f5ecd35378195e",
+          "path": "crates/wyrd-spec/tests/fixtures/operator-remediation.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e7bafec40679c1c4783ec94209250d099e3c9568",
+          "path": "crates/wyrd-spec/tests/fixtures/service-with-runtime-policy.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "aa9dd8e86db1d1b53a6cdc9855ade855efda2311",
+          "path": "crates/wyrd-spec/tests/fixtures/source-logs-loki.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "6c87c80a17377cae62a0f1b17bf4abbe9715e6d6",
+          "path": "crates/wyrd-spec/tests/fixtures/source-metrics-datadog.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "2c85d6dbfbc726a116293d60a56913a13374473f",
+          "path": "crates/wyrd-spec/tests/fixtures/source-object-store-gcs.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "532b243f70498a4442ea18b777b53715e3002dd7",
+          "path": "crates/wyrd-spec/tests/fixtures/source-sql-warehouse.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "4be002cdfd9ab3657ef327facf4bc4794e8ca217",
+          "path": "crates/wyrd-spec/tests/fixtures/source-traces-tempo.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "6715907a22bbdd1117d721757a04bf01e97e8058",
+          "path": "crates/wyrd-spec/tests/fixtures/trigger-on-drift.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "ef1308b29a233b607f58e226255f0a0f6a2231ac",
+          "path": "crates/wyrd/wyrd-cli/src/eval/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "0a2e943d749fa1aa4a15039e00348f69ba120092",
+          "path": "crates/wyrd/wyrd-cli/src/load/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "b7414eb3c873cd15896fa1d3cc4b717dd29198f0",
+          "path": "crates/wyrd/wyrd-cli/tests/cli.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "ca9bd90106392592203a752c5981e581dd65fcf2",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/agent-inline.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "1e976c3f86369b18cc77452b761cb0e9f860486e",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/agent-triage.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e084415f019fb7e63507cb9ffd4f99057c6f45dc",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/model-drift.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "0b15c00698ff5a3732365986f9d6db52f4291b1b",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/model-primary.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "ddd485bb347f506e66302119e08b72f85167c553",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/model-shadow.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e8656a20c3545a7dc4c6ef357b6ef73663b6c40d",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/quality.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "abee5b79084dec36fb85d19fc60fff8482797369",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/runtime.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "4959470eaca3918f137ff03a01a1510785761668",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/training.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "3188d835c3cfe3de056a92d63b417e2436d88be6",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/triage-prompt.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "b34a9408138ef762bb64e2cf98bd486665fa826b",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/typed-service.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "a44176c71db13a16c11edf94337ef9a2c1f59734",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/config_defaults/service.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "48572a4e791206635dacbb2ae8cf7727b8d22805",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/agent1/agent.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "ed04562fcebf187e10099e9c59065df5ab91bc36",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/agent1/eval.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "6947067b0ca23ba4f7606f6aefc64dbbbfcaeaca",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/agent1/judge-prompt.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "2ee6ffa584ded6c79ee562887702d0cf8becf00e",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/agent1/prompt.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "332b5d9f7b9896547a683050219769baa07c4220",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/agent2/agent.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "9c1fa8d8ab41e7a220badd7abb74773a03d40a16",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/model/card.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "49f2af4d8651f34bcaec31a957d88973c79aa958",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/model/drift.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "66ca04907f2d0eaa72378d4318b8bf1475d07ebe",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/ops/operator-slack.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "2205c1504cfde276c226ce76f237a5d393e7e460",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/ops/trigger-drift-alert.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "a2ea60b7d2366412f271c9bf8a79dc2e932cba84",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/ops/trigger-eval-fail.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e01bc2a2cd92247f90ebae8a85746d8f1afd0d4f",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/service.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e689fe34483461e7acf9d24486e951c218d08e13",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end_prerequisites/churn-classifier-data.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e0058970ac08f1dcdf95916f292727c7b55c905d",
+          "path": "crates/wyrd/wyrd-cli/tests/loader.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "179ef23ebe4c03ed2f7e7295d1c4e615a1782a7c",
+          "path": "crates/wyrd/wyrd-mcp/src/lib.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "b51653e5d460b6004ef472b0bdd90f2f2fb52533",
+          "path": "crates/wyrd/wyrd-mcp/tests/bifrost/mcp/main.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "4d5cfbc70e1d35aadf2fe96a85bc4894797b8716",
+          "path": "crates/wyrd/wyrd-server/src/bifrost/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "2b941528a876310945c8f09378f74944f526f630",
+          "path": "crates/wyrd/wyrd-server/src/components/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "df8f02ec46185fe7407d60e7153e55879a13ca31",
+          "path": "crates/wyrd/wyrd-server/src/http/middleware/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "5fba9b5822e16b4aed4860ad471f5ae3bf777f53",
+          "path": "crates/wyrd/wyrd-server/src/query/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "afc21072b25742520e343f02fc3a700f7dd60e41",
+          "path": "crates/wyrd/wyrd-sql/src/queries/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "ca1e6c3812e3ff199d79be9b8b33a16806debfb4",
+          "path": "crates/wyrd/wyrd-sql/src/queries/platform/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "40b45dfa92e70035168284dc0e0012c3db1edc10",
+          "path": "crates/wyrd/wyrd-sql/src/queries/storage/admin/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e37ad57b620bdc2d1be02b71e25a3e7425c4c37b",
+          "path": "crates/wyrd/wyrd-sql/src/queries/storage/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "a3d2cf2ad9f7b56ed600eefe0bfabe8f14f94d06",
+          "path": "crates/wyrd/wyrd-sql/src/row_types/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "65bf782df4b732a403dd162655f616a8adad5b33",
+          "path": "crates/wyrd/wyrd-storage/docker/docker-compose.yml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "c09773cd099e28d2e86549d12771cd1afe62a313",
+          "path": "crates/wyrd/wyrd-testing/tests/bifrost/forge/main.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "9f7387b3464433dc08c8f39406d1c184f25bdf2d",
+          "path": "crates/wyrd/wyrd-testing/tests/bifrost/oracle/main.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "91aadd6015c055dd4f57277c8c4da8b79b176ace",
+          "path": "crates/wyrd/wyrd-testing/tests/bifrost/oracle/peer_network/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "27e34ac077de4dfe412afedafc0b3ff828f61567",
+          "path": "crates/wyrd/wyrd-testing/tests/bifrost/otlp/main.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "9ef22be9a56c7cee238d140402df8e4397537cd6",
+          "path": "crates/wyrd/wyrd-testing/tests/bifrost/scribe/main.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e72d36a65c90a1e81925b3b77b6dfe22b11f8b73",
+          "path": "crates/wyrd/wyrd-testing/tests/bifrost/server/main.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "530b6d4a44f1753a4c0eea0019990e42cfb5bdb7",
+          "path": "deploy/kubernetes/bifrost/deployment-mixed.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "beae0418d858ada8702d71910c4f7fb9bbdd72ef",
+          "path": "deploy/kubernetes/bifrost/deployment-role-separated.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "503bce1179958ac1f3582f877bb8ad553b7d3ad8",
+          "path": "deploy/kubernetes/bifrost/rollback-mixed.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "60414934c2b59c223e2a5f1f178345b47dfd9f1f",
+          "path": "docker-compose.yml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "dd006df0b7cc59a2cb467e82f4b67263bc42a2a9",
+          "path": "docker/jaeger/docker-compose.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "ccbac807c176090b389adb6d98b64fe158f393cd",
+          "path": "docs/pnpm-workspace.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "af4d7837a5e3d027718674d74b456de12ce32ee5",
+          "path": "docs/src/app.d.ts",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "5e64a33b72f41a199a45e2d777f15db682b0143e",
+          "path": "docs/src/lib/mdsvex/components.js",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "c7d935227ed1d397c78f2e9c7e98083c0468175b",
+          "path": "examples/rust/workflows/research.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "fbdc6aaca199282776ad045720e9b4c22f858f4b",
+          "path": "sdks/wyrd-sdk-python/examples/workflows/research.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "0cbcad8b3dd8d5044272dc08083230622eed3b8a",
+          "path": "sdks/wyrd-sdk-python/tests/__init__.py",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "sdks/wyrd-sdk-python/tests/integration/__init__.py",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "9c989c7d817556633c8f8d4d5bc2805e0000f270",
+          "path": "sdks/wyrd-sdk-python/tests/unit/__init__.py",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "sdks/wyrd-sdk-python/tests/unit/config/__init__.py",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "d559bcccbf765e05410c1c451e2911f4289866d6",
+          "path": "sdks/wyrd-sdk-python/tests/unit/state/__init__.py",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "28a92c1d537ff67f484b7ae376fe7724c2b6e549",
+          "path": "sdks/wyrd-sdk-ts/pnpm-workspace.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "b33cb98bdb787ce5b217486179c1963835c29096",
+          "path": "tests/fixtures/identity/dex-config.yaml",
+          "reason": "NoFacts"
+        }
+      ],
+      "truncated_tree": false
+    },
+    "overlay_complete": true,
+    "pr_files_rejected": 0,
+    "pr_files_truncated": false,
+    "scope": "Repository",
+    "snapshot_complete": true,
+    "snapshot_tree": "e52bce5c1a1c5188ed698d541f8128f90474f2bc"
+  },
+  "elapsed_ms": {
+    "cold_build": 4010,
+    "pr_context": 24250,
+    "read": 0,
+    "warm_p50": null,
+    "warm_p95": null,
+    "warm_runs": 0
+  },
+  "full_coverage": true,
+  "head": "9e8d2a108865ac4a8fed0a55baa8896d70f842cd",
+  "not_analyzed": [
+    {
+      "path": ".config/nextest.toml",
+      "reason": "NotEligible"
+    },
+    {
+      "path": ".github/scripts/detect-changes.sh",
+      "reason": "NotEligible"
+    },
+    {
+      "path": ".github/scripts/tests/test-detect-changes.sh",
+      "reason": "NotEligible"
+    },
+    {
+      "path": ".github/scripts/verify-release-artifacts.sh",
+      "reason": "NotEligible"
+    },
+    {
+      "path": "TESTING.md",
+      "reason": "NotEligible"
+    },
+    {
+      "path": "changes/active/affected-monorepo-ci/spec.md",
+      "reason": "NotEligible"
+    },
+    {
+      "path": "changes/active/affected-monorepo-ci/tasks/TASK-001-dependency-aware-ci-and-release.md",
+      "reason": "NotEligible"
+    },
+    {
+      "path": "scripts/run-family-tests.sh",
+      "reason": "NotEligible"
+    }
+  ],
+  "object_digest": "80da538def3c4dcff849637b8c94181183eb68ff17c0703eef15df51ae4102a1",
+  "object_key": "tenants/live/installations/1/repositories/1383739221/contexts/80da538def3c4dcff849637b8c94181183eb68ff17c0703eef15df51ae4102a1-d0ab94d4de9ae6cf2d25f45c68d33347",
+  "omissions": [
+    {
+      "end": 192,
+      "names": [
+        "column"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/catalog/layout.rs",
+      "reason": "FileLimit",
+      "start": 190
+    },
+    {
+      "end": 308,
+      "names": [
+        "column"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/catalog/layout.rs",
+      "reason": "FileLimit",
+      "start": 306
+    },
+    {
+      "end": 771,
+      "names": [
+        "TimePartition"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/catalog/layout.rs",
+      "reason": "FileLimit",
+      "start": 766
+    },
+    {
+      "end": 1361,
+      "names": [
+        "join"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/oracle/admission.rs",
+      "reason": "FileLimit",
+      "start": 1351
+    },
+    {
+      "end": 1812,
+      "names": [
+        "owner"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/oracle/admission.rs",
+      "reason": "FileLimit",
+      "start": 1786
+    },
+    {
+      "end": 83,
+      "names": [
+        "next"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/oracle/attempt.rs",
+      "reason": "FileLimit",
+      "start": 59
+    },
+    {
+      "end": 108,
+      "names": [
+        "Schema"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/oracle/attempt.rs",
+      "reason": "FileLimit",
+      "start": 108
+    },
+    {
+      "end": 144,
+      "names": [
+        "open"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/claim_merge.rs",
+      "reason": "FileLimit",
+      "start": 98
+    },
+    {
+      "end": 336,
+      "names": [
+        "next"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/claim_merge.rs",
+      "reason": "FileLimit",
+      "start": 334
+    },
+    {
+      "end": 164,
+      "names": [
+        "get"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/contention.rs",
+      "reason": "FileLimit",
+      "start": 162
+    },
+    {
+      "end": 169,
+      "names": [
+        "set"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/contention.rs",
+      "reason": "FileLimit",
+      "start": 167
+    },
+    {
+      "end": 599,
+      "names": [
+        "read"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/storage/mod.rs",
+      "reason": "FileLimit",
+      "start": 591
+    },
+    {
+      "end": 1108,
+      "names": [
+        "owner"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/storage/mod.rs",
+      "reason": "FileLimit",
+      "start": 1098
+    },
+    {
+      "end": 158,
+      "names": [
+        "open"
+      ],
+      "path": "crates/vala/vala-eval/src/orchestrator/state.rs",
+      "reason": "FileLimit",
+      "start": 139
+    },
+    {
+      "end": 229,
+      "names": [
+        "next"
+      ],
+      "path": "crates/vala/vala-eval/src/orchestrator/state.rs",
+      "reason": "FileLimit",
+      "start": 166
+    },
+    {
+      "end": 126,
+      "names": [
+        "get"
+      ],
+      "path": "crates/vala/vala-eval/src/store.rs",
+      "reason": "FileLimit",
+      "start": 124
+    },
+    {
+      "end": 153,
+      "names": [
+        "len"
+      ],
+      "path": "crates/vala/vala-eval/src/store.rs",
+      "reason": "FileLimit",
+      "start": 151
+    },
+    {
+      "end": 50,
+      "names": [
+        "len"
+      ],
+      "path": "crates/wyrd-spec/src/auth/card_scope.rs",
+      "reason": "FileLimit",
+      "start": 48
+    },
+    {
+      "end": 55,
+      "names": [
+        "iter"
+      ],
+      "path": "crates/wyrd-spec/src/auth/card_scope.rs",
+      "reason": "FileLimit",
+      "start": 53
+    },
+    {
+      "end": 155,
+      "names": [
+        "DataTenantId::new_v7"
+      ],
+      "path": "crates/wyrd-spec/src/ids.rs",
+      "reason": "FileLimit",
+      "start": 153
+    },
+    {
+      "end": 183,
+      "names": [
+        "Err"
+      ],
+      "path": "crates/wyrd-spec/src/ids.rs",
+      "reason": "FileLimit",
+      "start": 183
+    },
+    {
+      "end": 155,
+      "names": [
+        "open"
+      ],
+      "path": "crates/wyrd/wyrd-server/src/components/eval/routes.rs",
+      "reason": "FileLimit",
+      "start": 86
+    },
+    {
+      "end": 225,
+      "names": [
+        "next"
+      ],
+      "path": "crates/wyrd/wyrd-server/src/components/eval/routes.rs",
+      "reason": "FileLimit",
+      "start": 179
+    },
+    {
+      "end": 469,
+      "names": [
+        "iter"
+      ],
+      "path": "crates/wyrd/wyrd-server/src/config.rs",
+      "reason": "FileLimit",
+      "start": 467
+    },
+    {
+      "end": 475,
+      "names": [
+        "len"
+      ],
+      "path": "crates/wyrd/wyrd-server/src/config.rs",
+      "reason": "FileLimit",
+      "start": 473
+    },
+    {
+      "end": 7,
+      "names": [
+        "owner"
+      ],
+      "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/features/changes/types.ts",
+      "reason": "FileLimit",
+      "start": 7
+    },
+    {
+      "end": 11,
+      "names": [
+        "closure"
+      ],
+      "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/features/changes/types.ts",
+      "reason": "FileLimit",
+      "start": 11
+    },
+    {
+      "end": 121,
+      "names": [
+        "owner"
+      ],
+      "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/features/changes/types.ts",
+      "reason": "FileLimit",
+      "start": 121
+    },
+    {
+      "end": 186,
+      "names": [
+        "read"
+      ],
+      "path": "crates/wyrd/wyrd-storage/src/telemetry.rs",
+      "reason": "FileLimit",
+      "start": 170
+    },
+    {
+      "end": 297,
+      "names": [
+        "read"
+      ],
+      "path": "crates/wyrd/wyrd-storage/src/telemetry.rs",
+      "reason": "FileLimit",
+      "start": 289
+    },
+    {
+      "end": 386,
+      "names": [
+        "next"
+      ],
+      "path": "crates/wyrd/wyrd-storage/src/telemetry.rs",
+      "reason": "FileLimit",
+      "start": 378
+    },
+    {
+      "end": 408,
+      "names": [
+        "set"
+      ],
+      "path": "crates/wyrd/wyrd-testing/src/bifrost/cluster.rs",
+      "reason": "FileLimit",
+      "start": 404
+    },
+    {
+      "end": 896,
+      "names": [
+        "next"
+      ],
+      "path": "crates/wyrd/wyrd-testing/src/bifrost/cluster.rs",
+      "reason": "FileLimit",
+      "start": 892
+    },
+    {
+      "end": 9,
+      "names": [
+        "Result"
+      ],
+      "path": "docs/src/lib/components/Search.svelte",
+      "reason": "FileLimit",
+      "start": 9
+    },
+    {
+      "end": 11,
+      "names": [
+        "open"
+      ],
+      "path": "docs/src/lib/components/Search.svelte",
+      "reason": "FileLimit",
+      "start": 11
+    },
+    {
+      "end": 23,
+      "names": [
+        "read"
+      ],
+      "path": "docs/src/lib/lang.svelte.ts",
+      "reason": "FileLimit",
+      "start": 15
+    },
+    {
+      "end": 47,
+      "names": [
+        "set"
+      ],
+      "path": "docs/src/lib/lang.svelte.ts",
+      "reason": "FileLimit",
+      "start": 38
+    },
+    {
+      "end": 13,
+      "names": [
+        "__init__"
+      ],
+      "path": "sdks/wyrd-sdk-python/examples/with_observer.py",
+      "reason": "FileLimit",
+      "start": 9
+    },
+    {
+      "end": 52,
+      "names": [
+        "main"
+      ],
+      "path": "sdks/wyrd-sdk-python/examples/with_observer.py",
+      "reason": "FileLimit",
+      "start": 32
+    },
+    {
+      "end": 40,
+      "names": [
+        "__init__"
+      ],
+      "path": "sdks/wyrd-sdk-python/python/wyrd/bifrost/__init__.py",
+      "reason": "FileLimit",
+      "start": 37
+    },
+    {
+      "end": 210,
+      "names": [
+        "__init__"
+      ],
+      "path": "sdks/wyrd-sdk-python/python/wyrd/bifrost/__init__.py",
+      "reason": "FileLimit",
+      "start": 197
+    },
+    {
+      "end": 294,
+      "names": [
+        "__init__"
+      ],
+      "path": "sdks/wyrd-sdk-python/python/wyrd/bifrost/__init__.py",
+      "reason": "FileLimit",
+      "start": 293
+    },
+    {
+      "end": 340,
+      "names": [
+        "__init__"
+      ],
+      "path": "sdks/wyrd-sdk-python/python/wyrd/bifrost/__init__.py",
+      "reason": "FileLimit",
+      "start": 337
+    },
+    {
+      "end": 435,
+      "names": [
+        "__init__"
+      ],
+      "path": "sdks/wyrd-sdk-python/python/wyrd/bifrost/__init__.py",
+      "reason": "FileLimit",
+      "start": 396
+    },
+    {
+      "end": 566,
+      "names": [
+        "stream"
+      ],
+      "path": "sdks/wyrd-sdk-python/python/wyrd/bifrost/__init__.py",
+      "reason": "FileLimit",
+      "start": 556
+    },
+    {
+      "end": 669,
+      "names": [
+        "stream"
+      ],
+      "path": "sdks/wyrd-sdk-python/python/wyrd/bifrost/__init__.py",
+      "reason": "FileLimit",
+      "start": 652
+    },
+    {
+      "end": 9,
+      "names": [
+        "__init__"
+      ],
+      "path": "sdks/wyrd-sdk-python/tests/unit/runtime/test_session.py",
+      "reason": "FileLimit",
+      "start": 6
+    },
+    {
+      "end": 16,
+      "names": [
+        "append"
+      ],
+      "path": "sdks/wyrd-sdk-python/tests/unit/runtime/test_session.py",
+      "reason": "FileLimit",
+      "start": 15
+    },
+    {
+      "end": 94,
+      "names": [
+        "get"
+      ],
+      "path": "sdks/wyrd-sdk-ts/native/src/cards.rs",
+      "reason": "FileLimit",
+      "start": 88
+    },
+    {
+      "end": 273,
+      "names": [
+        "read"
+      ],
+      "path": "sdks/wyrd-sdk-ts/native/src/cards.rs",
+      "reason": "FileLimit",
+      "start": 265
+    },
+    {
+      "end": 5,
+      "names": [
+        "main"
+      ],
+      "path": "crates/shared/workspace-hack/build.rs",
+      "reason": "FileLimit",
+      "start": 5
+    },
+    {
+      "end": 234,
+      "names": [
+        "get"
+      ],
+      "path": "crates/shared/wyrd-auth-oidc/src/registry.rs",
+      "reason": "FileLimit",
+      "start": 232
+    },
+    {
+      "end": 372,
+      "names": [
+        "set"
+      ],
+      "path": "crates/shared/wyrd-bench/src/recorder.rs",
+      "reason": "FileLimit",
+      "start": 369
+    },
+    {
+      "end": 34,
+      "names": [
+        "main"
+      ],
+      "path": "crates/shared/wyrd-client/examples/gen_schemas.rs",
+      "reason": "FileLimit",
+      "start": 20
+    },
+    {
+      "end": 481,
+      "names": [
+        "stream"
+      ],
+      "path": "crates/shared/wyrd-client/src/bifrost/facade.rs",
+      "reason": "FileLimit",
+      "start": 473
+    },
+    {
+      "end": 2222,
+      "names": [
+        "open"
+      ],
+      "path": "crates/shared/wyrd-client/src/bifrost/query.rs",
+      "reason": "FileLimit",
+      "start": 2217
+    },
+    {
+      "end": 279,
+      "names": [
+        "get"
+      ],
+      "path": "crates/shared/wyrd-client/src/cards/handle.rs",
+      "reason": "FileLimit",
+      "start": 275
+    },
+    {
+      "end": 114,
+      "names": [
+        "next"
+      ],
+      "path": "crates/shared/wyrd-client/src/cards/hydrate/graph.rs",
+      "reason": "FileLimit",
+      "start": 112
+    },
+    {
+      "end": 26,
+      "names": [
+        "get"
+      ],
+      "path": "crates/shared/wyrd-client/src/cards/reads/get.rs",
+      "reason": "FileLimit",
+      "start": 21
+    },
+    {
+      "end": 82,
+      "names": [
+        "open"
+      ],
+      "path": "crates/shared/wyrd-client/src/eval/handle.rs",
+      "reason": "FileLimit",
+      "start": 72
+    },
+    {
+      "end": 105,
+      "names": [
+        "open"
+      ],
+      "path": "crates/shared/wyrd-client/src/storage/upload/mod.rs",
+      "reason": "FileLimit",
+      "start": 98
+    },
+    {
+      "end": 103,
+      "names": [
+        "stream"
+      ],
+      "path": "crates/shared/wyrd-client/src/storage/upload/reader.rs",
+      "reason": "FileLimit",
+      "start": 91
+    },
+    {
+      "end": 93,
+      "names": [
+        "len"
+      ],
+      "path": "crates/shared/wyrd-queue/src/batch_builder.rs",
+      "reason": "FileLimit",
+      "start": 91
+    },
+    {
+      "end": 129,
+      "names": [
+        "Err"
+      ],
+      "path": "crates/shared/wyrd-runtime/src/principal.rs",
+      "reason": "FileLimit",
+      "start": 129
+    },
+    {
+      "end": 146,
+      "names": [
+        "Err"
+      ],
+      "path": "crates/shared/wyrd-semver/src/block.rs",
+      "reason": "FileLimit",
+      "start": 146
+    },
+    {
+      "end": 92,
+      "names": [
+        "lower"
+      ],
+      "path": "crates/shared/wyrd-semver/src/bounds.rs",
+      "reason": "FileLimit",
+      "start": 90
+    },
+    {
+      "end": 155,
+      "names": [
+        "Err"
+      ],
+      "path": "crates/shared/wyrd-semver/src/range.rs",
+      "reason": "FileLimit",
+      "start": 155
+    },
+    {
+      "end": 110,
+      "names": [
+        "Err"
+      ],
+      "path": "crates/shared/wyrd-semver/src/spec.rs",
+      "reason": "FileLimit",
+      "start": 110
+    },
+    {
+      "end": 89,
+      "names": [
+        "Ok"
+      ],
+      "path": "crates/shared/wyrd-telemetry/src/lib.rs",
+      "reason": "FileLimit",
+      "start": 89
+    },
+    {
+      "end": 215,
+      "names": [
+        "read"
+      ],
+      "path": "crates/shared/wyrd-utils/src/fs.rs",
+      "reason": "FileLimit",
+      "start": 213
+    },
+    {
+      "end": 119,
+      "names": [
+        "Err"
+      ],
+      "path": "crates/shared/wyrd-version/src/version.rs",
+      "reason": "FileLimit",
+      "start": 119
+    },
+    {
+      "end": 88,
+      "names": [
+        "append"
+      ],
+      "path": "crates/skald/skald-agent/src/journal.rs",
+      "reason": "FileLimit",
+      "start": 88
+    },
+    {
+      "end": 98,
+      "names": [
+        "append"
+      ],
+      "path": "crates/skald/skald-agent/src/journal.rs",
+      "reason": "FileLimit",
+      "start": 96
+    },
+    {
+      "end": 710,
+      "names": [
+        "append"
+      ],
+      "path": "crates/skald/skald-agent/src/python.rs",
+      "reason": "FileLimit",
+      "start": 700
+    },
+    {
+      "end": 74,
+      "names": [
+        "append"
+      ],
+      "path": "crates/skald/skald-agent/src/session.rs",
+      "reason": "FileLimit",
+      "start": 74
+    },
+    {
+      "end": 96,
+      "names": [
+        "append"
+      ],
+      "path": "crates/skald/skald-agent/src/session.rs",
+      "reason": "FileLimit",
+      "start": 90
+    },
+    {
+      "end": 394,
+      "names": [
+        "stream"
+      ],
+      "path": "crates/skald/skald-agent/tests/callbacks.rs",
+      "reason": "FileLimit",
+      "start": 389
+    },
+    {
+      "end": 299,
+      "names": [
+        "stream"
+      ],
+      "path": "crates/skald/skald-agent/tests/loop_conversation.rs",
+      "reason": "FileLimit",
+      "start": 294
+    },
+    {
+      "end": 109,
+      "names": [
+        "count"
+      ],
+      "path": "crates/skald/skald-observer/src/scoped.rs",
+      "reason": "FileLimit",
+      "start": 107
+    },
+    {
+      "end": 68,
+      "names": [
+        "stream"
+      ],
+      "path": "crates/skald/skald-prompt/src/python/anthropic.rs",
+      "reason": "FileLimit",
+      "start": 66
+    },
+    {
+      "end": 83,
+      "names": [
+        "stream"
+      ],
+      "path": "crates/skald/skald-prompt/src/python/openai_chat_request.rs",
+      "reason": "FileLimit",
+      "start": 81
+    },
+    {
+      "end": 105,
+      "names": [
+        "stream"
+      ],
+      "path": "crates/skald/skald-prompt/src/python/openai_responses.rs",
+      "reason": "FileLimit",
+      "start": 103
+    },
+    {
+      "end": 120,
+      "names": [
+        "stream"
+      ],
+      "path": "crates/skald/skald-providers/src/clients/anthropic.rs",
+      "reason": "FileLimit",
+      "start": 96
+    },
+    {
+      "end": 143,
+      "names": [
+        "stream"
+      ],
+      "path": "crates/skald/skald-providers/src/clients/google.rs",
+      "reason": "FileLimit",
+      "start": 115
+    },
+    {
+      "end": 158,
+      "names": [
+        "stream"
+      ],
+      "path": "crates/skald/skald-providers/src/clients/openai.rs",
+      "reason": "FileLimit",
+      "start": 117
+    },
+    {
+      "end": 130,
+      "names": [
+        "stream"
+      ],
+      "path": "crates/skald/skald-providers/src/clients/vertex.rs",
+      "reason": "FileLimit",
+      "start": 106
+    },
+    {
+      "end": 31,
+      "names": [
+        "stream"
+      ],
+      "path": "crates/skald/skald-providers/src/trait_.rs",
+      "reason": "FileLimit",
+      "start": 31
+    },
+    {
+      "end": 171,
+      "names": [
+        "stream"
+      ],
+      "path": "crates/skald/skald-runtime/src/mock.rs",
+      "reason": "FileLimit",
+      "start": 167
+    },
+    {
+      "end": 82,
+      "names": [
+        "stream"
+      ],
+      "path": "crates/skald/skald-runtime/src/runtime.rs",
+      "reason": "FileLimit",
+      "start": 80
+    },
+    {
+      "end": 245,
+      "names": [
+        "len"
+      ],
+      "path": "crates/skald/skald-workflow/src/tasklist.rs",
+      "reason": "FileLimit",
+      "start": 243
+    },
+    {
+      "end": 69,
+      "names": [
+        "stream"
+      ],
+      "path": "crates/skald/skald-workflow/tests/parameter_injection.rs",
+      "reason": "FileLimit",
+      "start": 64
+    },
+    {
+      "end": 52,
+      "names": [
+        "stream"
+      ],
+      "path": "crates/skald/skald-workflow/tests/workflow_observers.rs",
+      "reason": "FileLimit",
+      "start": 47
+    },
+    {
+      "end": 207,
+      "names": [
+        "read"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/catalog/iceberg_storage.rs",
+      "reason": "FileLimit",
+      "start": 201
+    },
+    {
+      "end": 325,
+      "names": [
+        "read"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/catalog/iceberg_storage.rs",
+      "reason": "FileLimit",
+      "start": 320
+    },
+    {
+      "end": 1055,
+      "names": [
+        "read"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/catalog/iceberg_storage.rs",
+      "reason": "FileLimit",
+      "start": 1050
+    },
+    {
+      "end": 1155,
+      "names": [
+        "read"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/catalog/iceberg_storage.rs",
+      "reason": "FileLimit",
+      "start": 1150
+    },
+    {
+      "end": 50,
+      "names": [
+        "TableRef::new"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/catalog/table_ref.rs",
+      "reason": "FileLimit",
+      "start": 45
+    },
+    {
+      "end": 321,
+      "names": [
+        "ScribeError"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/contracts.rs",
+      "reason": "FileLimit",
+      "start": 236
+    },
+    {
+      "end": 122,
+      "names": [
+        "set"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/forge/clock.rs",
+      "reason": "FileLimit",
+      "start": 103
+    },
+    {
+      "end": 290,
+      "names": [
+        "read"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/forge/compact.rs",
+      "reason": "FileLimit",
+      "start": 290
+    },
+    {
+      "end": 449,
+      "names": [
+        "read"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/forge/compact.rs",
+      "reason": "FileLimit",
+      "start": 447
+    },
+    {
+      "end": 65,
+      "names": [
+        "Schema"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/forge/error.rs",
+      "reason": "FileLimit",
+      "start": 65
+    },
+    {
+      "end": 475,
+      "names": [
+        "len"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/oracle/analytical.rs",
+      "reason": "FileLimit",
+      "start": 472
+    },
+    {
+      "end": 594,
+      "names": [
+        "read"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/oracle/analytical_transport.rs",
+      "reason": "FileLimit",
+      "start": 562
+    },
+    {
+      "end": 1674,
+      "names": [
+        "Schema"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/oracle/dispatcher.rs",
+      "reason": "FileLimit",
+      "start": 1674
+    },
+    {
+      "end": 2314,
+      "names": [
+        "read"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/oracle/exec.rs",
+      "reason": "FileLimit",
+      "start": 2302
+    },
+    {
+      "end": 4721,
+      "names": [
+        "read"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/oracle/exec.rs",
+      "reason": "FileLimit",
+      "start": 4710
+    },
+    {
+      "end": 702,
+      "names": [
+        "stream"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/oracle/follower.rs",
+      "reason": "FileLimit",
+      "start": 702
+    },
+    {
+      "end": 718,
+      "names": [
+        "stream"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/oracle/follower.rs",
+      "reason": "FileLimit",
+      "start": 716
+    },
+    {
+      "end": 2026,
+      "names": [
+        "stream"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/oracle/follower.rs",
+      "reason": "FileLimit",
+      "start": 2024
+    },
+    {
+      "end": 994,
+      "names": [
+        "get"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/oracle/mod.rs",
+      "reason": "FileLimit",
+      "start": 989
+    },
+    {
+      "end": 1009,
+      "names": [
+        "len"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/oracle/peer.rs",
+      "reason": "FileLimit",
+      "start": 1005
+    },
+    {
+      "end": 252,
+      "names": [
+        "get"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/oracle/running.rs",
+      "reason": "FileLimit",
+      "start": 242
+    },
+    {
+      "end": 262,
+      "names": [
+        "StagedMemberId::new"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/assembly.rs",
+      "reason": "FileLimit",
+      "start": 260
+    },
+    {
+      "end": 82,
+      "names": [
+        "count"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/fixed_ipc.rs",
+      "reason": "FileLimit",
+      "start": 75
+    },
+    {
+      "end": 220,
+      "names": [
+        "count"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/fixed_ipc.rs",
+      "reason": "FileLimit",
+      "start": 198
+    },
+    {
+      "end": 564,
+      "names": [
+        "append"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/replay.rs",
+      "reason": "FileLimit",
+      "start": 466
+    },
+    {
+      "end": 101,
+      "names": [
+        "read"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/staged_tail.rs",
+      "reason": "FileLimit",
+      "start": 89
+    },
+    {
+      "end": 162,
+      "names": [
+        "with_hot_sources"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/staging_runtime.rs",
+      "reason": "FileLimit",
+      "start": 155
+    },
+    {
+      "end": 73,
+      "names": [
+        "Schema"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/tables/audit/projection.rs",
+      "reason": "FileLimit",
+      "start": 73
+    },
+    {
+      "end": 136,
+      "names": [
+        "column"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/tables/logs/mod.rs",
+      "reason": "FileLimit",
+      "start": 131
+    },
+    {
+      "end": 89,
+      "names": [
+        "column"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/tables/metrics/mod.rs",
+      "reason": "FileLimit",
+      "start": 84
+    },
+    {
+      "end": 168,
+      "names": [
+        "column"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/tables/traces/mod.rs",
+      "reason": "FileLimit",
+      "start": 163
+    },
+    {
+      "end": 729,
+      "names": [
+        "read"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/rewrite_support.rs",
+      "reason": "FileLimit",
+      "start": 727
+    },
+    {
+      "end": 258,
+      "names": [
+        "read"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/support.rs",
+      "reason": "FileLimit",
+      "start": 255
+    },
+    {
+      "end": 32,
+      "names": [
+        "main"
+      ],
+      "path": "crates/vala/vala-core/examples/gen_schemas.rs",
+      "reason": "FileLimit",
+      "start": 20
+    },
+    {
+      "end": 35,
+      "names": [
+        "get"
+      ],
+      "path": "crates/vala/vala-eval/src/tasks/media.rs",
+      "reason": "FileLimit",
+      "start": 33
+    },
+    {
+      "end": 235,
+      "names": [
+        "stream"
+      ],
+      "path": "crates/vala/vala-eval/tests/orchestrator_judge_skald.rs",
+      "reason": "FileLimit",
+      "start": 233
+    },
+    {
+      "end": 639,
+      "names": [
+        "read"
+      ],
+      "path": "crates/vala/vala-sql/src/queries/oracle_reader_authority.rs",
+      "reason": "FileLimit",
+      "start": 618
+    },
+    {
+      "end": 753,
+      "names": [
+        "read"
+      ],
+      "path": "crates/vala/vala-sql/src/queries/oracle_reader_authority.rs",
+      "reason": "FileLimit",
+      "start": 745
+    },
+    {
+      "end": 72,
+      "names": [
+        "Err"
+      ],
+      "path": "crates/vala/vala-sql/src/row_types/forge_operations.rs",
+      "reason": "FileLimit",
+      "start": 72
+    },
+    {
+      "end": 119,
+      "names": [
+        "Err"
+      ],
+      "path": "crates/vala/vala-sql/src/row_types/forge_operations.rs",
+      "reason": "FileLimit",
+      "start": 119
+    },
+    {
+      "end": 965,
+      "names": [
+        "Err"
+      ],
+      "path": "crates/vala/vala-sql/src/row_types/forge_tasks.rs",
+      "reason": "FileLimit",
+      "start": 965
+    },
+    {
+      "end": 1389,
+      "names": [
+        "Err"
+      ],
+      "path": "crates/vala/vala-sql/src/row_types/forge_tasks.rs",
+      "reason": "FileLimit",
+      "start": 1389
+    },
+    {
+      "end": 1493,
+      "names": [
+        "Err"
+      ],
+      "path": "crates/vala/vala-sql/src/row_types/forge_tasks.rs",
+      "reason": "FileLimit",
+      "start": 1493
+    },
+    {
+      "end": 58,
+      "names": [
+        "append"
+      ],
+      "path": "crates/vala/vala-sql/tests/pg_audit_staging.rs",
+      "reason": "FileLimit",
+      "start": 51
+    },
+    {
+      "end": 268,
+      "names": [
+        "main"
+      ],
+      "path": "crates/wyrd-spec/examples/gen_schemas.rs",
+      "reason": "FileLimit",
+      "start": 80
+    },
+    {
+      "end": 43,
+      "names": [
+        "Err"
+      ],
+      "path": "crates/wyrd-spec/src/auth/oidc.rs",
+      "reason": "FileLimit",
+      "start": 43
+    },
+    {
+      "end": 126,
+      "names": [
+        "Err"
+      ],
+      "path": "crates/wyrd-spec/src/auth/oidc.rs",
+      "reason": "FileLimit",
+      "start": 126
+    },
+    {
+      "end": 55,
+      "names": [
+        "Schema"
+      ],
+      "path": "crates/wyrd-spec/src/auth/permission_scope.rs",
+      "reason": "FileLimit",
+      "start": 55
+    },
+    {
+      "end": 42,
+      "names": [
+        "Err"
+      ],
+      "path": "crates/wyrd-spec/src/auth/principal_id.rs",
+      "reason": "FileLimit",
+      "start": 42
+    },
+    {
+      "end": 259,
+      "names": [
+        "column"
+      ],
+      "path": "crates/wyrd-spec/src/card/data.rs",
+      "reason": "FileLimit",
+      "start": 257
+    },
+    {
+      "end": 294,
+      "names": [
+        "column"
+      ],
+      "path": "crates/wyrd-spec/src/card/data.rs",
+      "reason": "FileLimit",
+      "start": 289
+    },
+    {
+      "end": 76,
+      "names": [
+        "Err"
+      ],
+      "path": "crates/wyrd-spec/src/envelope.rs",
+      "reason": "FileLimit",
+      "start": 76
+    },
+    {
+      "end": 57,
+      "names": [
+        "Err"
+      ],
+      "path": "crates/wyrd-spec/src/origin.rs",
+      "reason": "FileLimit",
+      "start": 57
+    },
+    {
+      "end": 54,
+      "names": [
+        "Err"
+      ],
+      "path": "crates/wyrd-spec/src/request_id.rs",
+      "reason": "FileLimit",
+      "start": 54
+    },
+    {
+      "end": 43,
+      "names": [
+        "Err"
+      ],
+      "path": "crates/wyrd-spec/src/storage/backend.rs",
+      "reason": "FileLimit",
+      "start": 43
+    },
+    {
+      "end": 56,
+      "names": [
+        "Err"
+      ],
+      "path": "crates/wyrd-spec/src/storage/ids.rs",
+      "reason": "FileLimit",
+      "start": 56
+    },
+    {
+      "end": 41,
+      "names": [
+        "Err"
+      ],
+      "path": "crates/wyrd-spec/src/storage/protocol.rs",
+      "reason": "FileLimit",
+      "start": 41
+    },
+    {
+      "end": 668,
+      "names": [
+        "Schema"
+      ],
+      "path": "crates/wyrd-spec/src/vala/api.rs",
+      "reason": "FileLimit",
+      "start": 668
+    },
+    {
+      "end": 2388,
+      "names": [
+        "Schema"
+      ],
+      "path": "crates/wyrd-spec/src/vala/api.rs",
+      "reason": "FileLimit",
+      "start": 2388
+    },
+    {
+      "end": 120,
+      "names": [
+        "column"
+      ],
+      "path": "crates/wyrd-spec/src/vala/assignment_authority.rs",
+      "reason": "FileLimit",
+      "start": 109
+    },
+    {
+      "end": 49,
+      "names": [
+        "Err"
+      ],
+      "path": "crates/wyrd-spec/src/vala/eval/ids.rs",
+      "reason": "FileLimit",
+      "start": 49
+    },
+    {
+      "end": 113,
+      "names": [
+        "Err"
+      ],
+      "path": "crates/wyrd-spec/src/vala/eval/ids.rs",
+      "reason": "FileLimit",
+      "start": 113
+    },
+    {
+      "end": 235,
+      "names": [
+        "Err"
+      ],
+      "path": "crates/wyrd-spec/src/vala/eval/ids.rs",
+      "reason": "FileLimit",
+      "start": 235
+    },
+    {
+      "end": 733,
+      "names": [
+        "Err"
+      ],
+      "path": "crates/wyrd-spec/src/vala/eval/operator.rs",
+      "reason": "FileLimit",
+      "start": 733
+    },
+    {
+      "end": 171,
+      "names": [
+        "Err"
+      ],
+      "path": "crates/wyrd-spec/src/vala/ids.rs",
+      "reason": "FileLimit",
+      "start": 171
+    },
+    {
+      "end": 250,
+      "names": [
+        "Err"
+      ],
+      "path": "crates/wyrd-spec/src/vala/ids.rs",
+      "reason": "FileLimit",
+      "start": 250
+    },
+    {
+      "end": 409,
+      "names": [
+        "Err"
+      ],
+      "path": "crates/wyrd-spec/src/vala/ids.rs",
+      "reason": "FileLimit",
+      "start": 409
+    },
+    {
+      "end": 540,
+      "names": [
+        "Err"
+      ],
+      "path": "crates/wyrd-spec/src/vala/ids.rs",
+      "reason": "FileLimit",
+      "start": 540
+    },
+    {
+      "end": 200,
+      "names": [
+        "Ok"
+      ],
+      "path": "crates/wyrd-spec/src/vala/trace/span.rs",
+      "reason": "FileLimit",
+      "start": 200
+    },
+    {
+      "end": 71,
+      "names": [
+        "main"
+      ],
+      "path": "crates/wyrd/wyrd-cli/examples/registration_progress.rs",
+      "reason": "FileLimit",
+      "start": 11
+    },
+    {
+      "end": 18,
+      "names": [
+        "main"
+      ],
+      "path": "crates/wyrd/wyrd-cli/src/main.rs",
+      "reason": "FileLimit",
+      "start": 4
+    },
+    {
+      "end": 44,
+      "names": [
+        "Schema"
+      ],
+      "path": "crates/wyrd/wyrd-config/src/error.rs",
+      "reason": "FileLimit",
+      "start": 39
+    },
+    {
+      "end": 64,
+      "names": [
+        "__init__"
+      ],
+      "path": "crates/wyrd/wyrd-interfaces/src/data/interfaces/base.rs",
+      "reason": "FileLimit",
+      "start": 62
+    },
+    {
+      "end": 211,
+      "names": [
+        "column"
+      ],
+      "path": "crates/wyrd/wyrd-interfaces/src/data/schema.rs",
+      "reason": "FileLimit",
+      "start": 208
+    },
+    {
+      "end": 151,
+      "names": [
+        "column"
+      ],
+      "path": "crates/wyrd/wyrd-interfaces/src/data/split.rs",
+      "reason": "FileLimit",
+      "start": 135
+    },
+    {
+      "end": 38,
+      "names": [
+        "__init__"
+      ],
+      "path": "crates/wyrd/wyrd-interfaces/src/model/interfaces/base.rs",
+      "reason": "FileLimit",
+      "start": 36
+    },
+    {
+      "end": 106,
+      "names": [
+        "read"
+      ],
+      "path": "crates/wyrd/wyrd-server/src/boot/mod.rs",
+      "reason": "FileLimit",
+      "start": 104
+    },
+    {
+      "end": 39,
+      "names": [
+        "Ok"
+      ],
+      "path": "crates/wyrd/wyrd-server/src/components/health/mod.rs",
+      "reason": "FileLimit",
+      "start": 39
+    },
+    {
+      "end": 108,
+      "names": [
+        "read"
+      ],
+      "path": "crates/wyrd/wyrd-server/src/grpc/mod.rs",
+      "reason": "FileLimit",
+      "start": 93
+    },
+    {
+      "end": 74,
+      "names": [
+        "main"
+      ],
+      "path": "crates/wyrd/wyrd-server/src/main.rs",
+      "reason": "FileLimit",
+      "start": 52
+    },
+    {
+      "end": 210,
+      "names": [
+        "get"
+      ],
+      "path": "crates/wyrd/wyrd-server/src/oracle/lifecycle_controls.rs",
+      "reason": "FileLimit",
+      "start": 179
+    },
+    {
+      "end": 142,
+      "names": [
+        "get"
+      ],
+      "path": "crates/wyrd/wyrd-server/src/oracle/lifecycle_transport.rs",
+      "reason": "FileLimit",
+      "start": 124
+    },
+    {
+      "end": 191,
+      "names": [
+        "next"
+      ],
+      "path": "crates/wyrd/wyrd-server/src/otlp_decode.rs",
+      "reason": "FileLimit",
+      "start": 157
+    },
+    {
+      "end": 2153,
+      "names": [
+        "bool"
+      ],
+      "path": "crates/wyrd/wyrd-server/src/otlp_json.rs",
+      "reason": "FileLimit",
+      "start": 2145
+    },
+    {
+      "end": 188,
+      "names": [
+        "next"
+      ],
+      "path": "crates/wyrd/wyrd-server/src/otlp_logs_decode.rs",
+      "reason": "FileLimit",
+      "start": 154
+    },
+    {
+      "end": 214,
+      "names": [
+        "next"
+      ],
+      "path": "crates/wyrd/wyrd-server/src/otlp_metrics_decode.rs",
+      "reason": "FileLimit",
+      "start": 177
+    },
+    {
+      "end": 181,
+      "names": [
+        "append"
+      ],
+      "path": "crates/wyrd/wyrd-server/src/query/service.rs",
+      "reason": "FileLimit",
+      "start": 167
+    },
+    {
+      "end": 6,
+      "names": [
+        "Option"
+      ],
+      "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/components/Select.svelte",
+      "reason": "FileLimit",
+      "start": 6
+    },
+    {
+      "end": 36,
+      "names": [
+        "count"
+      ],
+      "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/components/charts/Line.svelte",
+      "reason": "FileLimit",
+      "start": 36
+    },
+    {
+      "end": 61,
+      "names": [
+        "get"
+      ],
+      "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/features/cards/core/CardDetail.test.ts",
+      "reason": "FileLimit",
+      "start": 59
+    },
+    {
+      "end": 62,
+      "names": [
+        "get"
+      ],
+      "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/features/cards/core/CardsInventory.test.ts",
+      "reason": "FileLimit",
+      "start": 60
+    },
+    {
+      "end": 40,
+      "names": [
+        "owner"
+      ],
+      "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/features/cards/core/types.ts",
+      "reason": "FileLimit",
+      "start": 40
+    },
+    {
+      "end": 63,
+      "names": [
+        "get"
+      ],
+      "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/features/cards/workspaces/service/ServiceWorkspace.test.ts",
+      "reason": "FileLimit",
+      "start": 59
+    },
+    {
+      "end": 62,
+      "names": [
+        "get"
+      ],
+      "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/features/changes/ChangesJourney.test.ts",
+      "reason": "FileLimit",
+      "start": 60
+    },
+    {
+      "end": 59,
+      "names": [
+        "get"
+      ],
+      "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/features/observe/core/ObserveJourney.test.ts",
+      "reason": "FileLimit",
+      "start": 57
+    },
+    {
+      "end": 106,
+      "names": [
+        "read"
+      ],
+      "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/server/auth/session.ts",
+      "reason": "FileLimit",
+      "start": 95
+    },
+    {
+      "end": 70,
+      "names": [
+        "get"
+      ],
+      "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/server/mock/changes/store.ts",
+      "reason": "FileLimit",
+      "start": 61
+    },
+    {
+      "end": 178,
+      "names": [
+        "get"
+      ],
+      "path": "crates/wyrd/wyrd-sql/src/queries/storage/artifact_metadata.rs",
+      "reason": "FileLimit",
+      "start": 152
+    },
+    {
+      "end": 106,
+      "names": [
+        "get"
+      ],
+      "path": "crates/wyrd/wyrd-sql/src/queries/storage/idempotency.rs",
+      "reason": "FileLimit",
+      "start": 68
+    },
+    {
+      "end": 41,
+      "names": [
+        "Err"
+      ],
+      "path": "crates/wyrd/wyrd-sql/src/queries/storage/multipart_uploads.rs",
+      "reason": "FileLimit",
+      "start": 41
+    },
+    {
+      "end": 250,
+      "names": [
+        "column"
+      ],
+      "path": "crates/wyrd/wyrd-testing/src/bifrost/canonical_signals.rs",
+      "reason": "FileLimit",
+      "start": 140
+    },
+    {
+      "end": 994,
+      "names": [
+        "read"
+      ],
+      "path": "crates/wyrd/wyrd-testing/src/bifrost/forge_harness.rs",
+      "reason": "FileLimit",
+      "start": 990
+    },
+    {
+      "end": 409,
+      "names": [
+        "Path"
+      ],
+      "path": "crates/wyrd/wyrd-testing/src/bifrost/process_cluster.rs",
+      "reason": "FileLimit",
+      "start": 409
+    },
+    {
+      "end": 486,
+      "names": [
+        "join"
+      ],
+      "path": "crates/wyrd/wyrd-testing/src/bifrost/process_cluster/child.rs",
+      "reason": "FileLimit",
+      "start": 480
+    },
+    {
+      "end": 140,
+      "names": [
+        "Append"
+      ],
+      "path": "crates/wyrd/wyrd-testing/src/bifrost/scribe_workload.rs",
+      "reason": "FileLimit",
+      "start": 131
+    },
+    {
+      "end": 10,
+      "names": [
+        "main"
+      ],
+      "path": "crates/wyrd/wyrd-testing/src/bin/bifrost_peer_test_node.rs",
+      "reason": "FileLimit",
+      "start": 8
+    },
+    {
+      "end": 50,
+      "names": [
+        "count"
+      ],
+      "path": "crates/wyrd/wyrd-testing/src/load/assertions.rs",
+      "reason": "FileLimit",
+      "start": 48
+    },
+    {
+      "end": 592,
+      "names": [
+        "column"
+      ],
+      "path": "crates/wyrd/wyrd-testing/tests/bifrost/oracle/analytical_activation.rs",
+      "reason": "FileLimit",
+      "start": 582
+    },
+    {
+      "end": 1163,
+      "names": [
+        "column"
+      ],
+      "path": "crates/wyrd/wyrd-testing/tests/bifrost/otlp/support.rs",
+      "reason": "FileLimit",
+      "start": 1150
+    },
+    {
+      "end": 419,
+      "names": [
+        "until_admitted"
+      ],
+      "path": "crates/wyrd/wyrd-testing/tests/bifrost/scribe/support.rs",
+      "reason": "FileLimit",
+      "start": 395
+    },
+    {
+      "end": 46,
+      "names": [
+        "main"
+      ],
+      "path": "crates/wyrd/wyrd-tonic/build.rs",
+      "reason": "FileLimit",
+      "start": 14
+    },
+    {
+      "end": 250,
+      "names": [
+        "main"
+      ],
+      "path": "docs/scripts/check_a11y.py",
+      "reason": "FileLimit",
+      "start": 212
+    },
+    {
+      "end": 62,
+      "names": [
+        "main"
+      ],
+      "path": "docs/scripts/check_commands.py",
+      "reason": "FileLimit",
+      "start": 36
+    },
+    {
+      "end": 98,
+      "names": [
+        "main"
+      ],
+      "path": "docs/scripts/check_links.py",
+      "reason": "FileLimit",
+      "start": 82
+    },
+    {
+      "end": 216,
+      "names": [
+        "main"
+      ],
+      "path": "docs/scripts/generate_api_docs.py",
+      "reason": "FileLimit",
+      "start": 212
+    },
+    {
+      "end": 232,
+      "names": [
+        "main"
+      ],
+      "path": "docs/scripts/generate_card_docs.py",
+      "reason": "FileLimit",
+      "start": 226
+    },
+    {
+      "end": 303,
+      "names": [
+        "main"
+      ],
+      "path": "docs/scripts/generate_llms_txt.py",
+      "reason": "FileLimit",
+      "start": 300
+    },
+    {
+      "end": 13,
+      "names": [
+        "lane"
+      ],
+      "path": "docs/src/lib/components/CardTileGrid.svelte",
+      "reason": "FileLimit",
+      "start": 13
+    },
+    {
+      "end": 29,
+      "names": [
+        "open"
+      ],
+      "path": "docs/src/lib/components/ZoomableFigure.svelte",
+      "reason": "FileLimit",
+      "start": 26
+    },
+    {
+      "end": 43,
+      "names": [
+        "main"
+      ],
+      "path": "examples/python/datacard_local_workflow.py",
+      "reason": "FileLimit",
+      "start": 10
+    },
+    {
+      "end": 48,
+      "names": [
+        "main"
+      ],
+      "path": "examples/python/workflow_anthropic.py",
+      "reason": "FileLimit",
+      "start": 13
+    },
+    {
+      "end": 41,
+      "names": [
+        "main"
+      ],
+      "path": "examples/python/workflow_gateway.py",
+      "reason": "FileLimit",
+      "start": 10
+    },
+    {
+      "end": 48,
+      "names": [
+        "main"
+      ],
+      "path": "examples/python/workflow_gemini.py",
+      "reason": "FileLimit",
+      "start": 13
+    },
+    {
+      "end": 48,
+      "names": [
+        "main"
+      ],
+      "path": "examples/python/workflow_openai.py",
+      "reason": "FileLimit",
+      "start": 13
+    },
+    {
+      "end": 34,
+      "names": [
+        "main"
+      ],
+      "path": "examples/rust/agent_openai.rs",
+      "reason": "FileLimit",
+      "start": 7
+    },
+    {
+      "end": 37,
+      "names": [
+        "main"
+      ],
+      "path": "examples/rust/agent_smoke.rs",
+      "reason": "FileLimit",
+      "start": 8
+    },
+    {
+      "end": 40,
+      "names": [
+        "main"
+      ],
+      "path": "examples/rust/client_request.rs",
+      "reason": "FileLimit",
+      "start": 17
+    },
+    {
+      "end": 24,
+      "names": [
+        "main"
+      ],
+      "path": "examples/rust/tracing_stdout.rs",
+      "reason": "FileLimit",
+      "start": 5
+    },
+    {
+      "end": 40,
+      "names": [
+        "main"
+      ],
+      "path": "examples/rust/transport_grpc.rs",
+      "reason": "FileLimit",
+      "start": 9
+    },
+    {
+      "end": 37,
+      "names": [
+        "main"
+      ],
+      "path": "examples/rust/transport_http.rs",
+      "reason": "FileLimit",
+      "start": 9
+    },
+    {
+      "end": 24,
+      "names": [
+        "main"
+      ],
+      "path": "examples/rust/transport_mock.rs",
+      "reason": "FileLimit",
+      "start": 8
+    },
+    {
+      "end": 43,
+      "names": [
+        "main"
+      ],
+      "path": "examples/rust/transport_secrets.rs",
+      "reason": "FileLimit",
+      "start": 12
+    },
+    {
+      "end": 88,
+      "names": [
+        "main"
+      ],
+      "path": "examples/rust/workflow_anthropic.rs",
+      "reason": "FileLimit",
+      "start": 35
+    },
+    {
+      "end": 37,
+      "names": [
+        "main"
+      ],
+      "path": "examples/rust/workflow_from_builder.rs",
+      "reason": "FileLimit",
+      "start": 12
+    },
+    {
+      "end": 17,
+      "names": [
+        "main"
+      ],
+      "path": "examples/rust/workflow_from_yaml.rs",
+      "reason": "FileLimit",
+      "start": 5
+    },
+    {
+      "end": 49,
+      "names": [
+        "main"
+      ],
+      "path": "examples/rust/workflow_gateway.rs",
+      "reason": "FileLimit",
+      "start": 9
+    },
+    {
+      "end": 88,
+      "names": [
+        "main"
+      ],
+      "path": "examples/rust/workflow_gemini.rs",
+      "reason": "FileLimit",
+      "start": 35
+    },
+    {
+      "end": 88,
+      "names": [
+        "main"
+      ],
+      "path": "examples/rust/workflow_openai.rs",
+      "reason": "FileLimit",
+      "start": 35
+    },
+    {
+      "end": 40,
+      "names": [
+        "main"
+      ],
+      "path": "examples/rust/workflow_parallel.rs",
+      "reason": "FileLimit",
+      "start": 12
+    },
+    {
+      "end": 51,
+      "names": [
+        "main"
+      ],
+      "path": "examples/rust/workflow_structured_output.rs",
+      "reason": "FileLimit",
+      "start": 11
+    },
+    {
+      "end": 90,
+      "names": [
+        "main"
+      ],
+      "path": "examples/rust/workflow_with_observer.rs",
+      "reason": "FileLimit",
+      "start": 61
+    },
+    {
+      "end": 75,
+      "names": [
+        "main"
+      ],
+      "path": "scripts/add_justification.py",
+      "reason": "FileLimit",
+      "start": 67
+    },
+    {
+      "end": 235,
+      "names": [
+        "main"
+      ],
+      "path": "scripts/check_clippy_allow.py",
+      "reason": "FileLimit",
+      "start": 210
+    },
+    {
+      "end": 136,
+      "names": [
+        "main"
+      ],
+      "path": "scripts/check_tenant_isolation.py",
+      "reason": "FileLimit",
+      "start": 118
+    },
+    {
+      "end": 81,
+      "names": [
+        "main"
+      ],
+      "path": "scripts/check_test_contracts.py",
+      "reason": "FileLimit",
+      "start": 57
+    },
+    {
+      "end": 239,
+      "names": [
+        "main"
+      ],
+      "path": "scripts/check_unwrap_audit.py",
+      "reason": "FileLimit",
+      "start": 223
+    },
+    {
+      "end": 20,
+      "names": [
+        "main"
+      ],
+      "path": "sdks/wyrd-sdk-python/examples/agent_smoke.py",
+      "reason": "FileLimit",
+      "start": 6
+    },
+    {
+      "end": 35,
+      "names": [
+        "main"
+      ],
+      "path": "sdks/wyrd-sdk-python/examples/from_builder.py",
+      "reason": "FileLimit",
+      "start": 12
+    },
+    {
+      "end": 11,
+      "names": [
+        "main"
+      ],
+      "path": "sdks/wyrd-sdk-python/examples/from_yaml.py",
+      "reason": "FileLimit",
+      "start": 8
+    },
+    {
+      "end": 39,
+      "names": [
+        "main"
+      ],
+      "path": "sdks/wyrd-sdk-python/examples/parallel.py",
+      "reason": "FileLimit",
+      "start": 6
+    },
+    {
+      "end": 41,
+      "names": [
+        "main"
+      ],
+      "path": "sdks/wyrd-sdk-python/examples/structured_pipeline.py",
+      "reason": "FileLimit",
+      "start": 22
+    },
+    {
+      "end": 50,
+      "names": [
+        "main"
+      ],
+      "path": "sdks/wyrd-sdk-python/examples/tracing_jaeger.py",
+      "reason": "FileLimit",
+      "start": 33
+    },
+    {
+      "end": 51,
+      "names": [
+        "main"
+      ],
+      "path": "sdks/wyrd-sdk-python/examples/transport_grpc.py",
+      "reason": "FileLimit",
+      "start": 27
+    },
+    {
+      "end": 51,
+      "names": [
+        "main"
+      ],
+      "path": "sdks/wyrd-sdk-python/examples/transport_http.py",
+      "reason": "FileLimit",
+      "start": 27
+    },
+    {
+      "end": 25,
+      "names": [
+        "main"
+      ],
+      "path": "sdks/wyrd-sdk-python/examples/transport_mock.py",
+      "reason": "FileLimit",
+      "start": 12
+    },
+    {
+      "end": 42,
+      "names": [
+        "main"
+      ],
+      "path": "sdks/wyrd-sdk-python/examples/transport_secrets.py",
+      "reason": "FileLimit",
+      "start": 20
+    },
+    {
+      "end": 38,
+      "names": [
+        "main"
+      ],
+      "path": "sdks/wyrd-sdk-python/python/examples/workflow_structured_output.py",
+      "reason": "FileLimit",
+      "start": 15
+    },
+    {
+      "end": 28,
+      "names": [
+        "append"
+      ],
+      "path": "sdks/wyrd-sdk-python/python/wyrd/agent/__init__.py",
+      "reason": "FileLimit",
+      "start": 28
+    },
+    {
+      "end": 38,
+      "names": [
+        "append"
+      ],
+      "path": "sdks/wyrd-sdk-python/python/wyrd/agent/__init__.py",
+      "reason": "FileLimit",
+      "start": 37
+    },
+    {
+      "end": 35,
+      "names": [
+        "__init__"
+      ],
+      "path": "sdks/wyrd-sdk-python/python/wyrd/agent/tool.py",
+      "reason": "FileLimit",
+      "start": 23
+    },
+    {
+      "end": 42,
+      "names": [
+        "__init__"
+      ],
+      "path": "sdks/wyrd-sdk-python/python/wyrd/otel.py",
+      "reason": "FileLimit",
+      "start": 18
+    },
+    {
+      "end": 17,
+      "names": [
+        "main"
+      ],
+      "path": "sdks/wyrd-sdk-python/scripts/run_unit_tests.py",
+      "reason": "FileLimit",
+      "start": 8
+    },
+    {
+      "end": 464,
+      "names": [
+        "stream"
+      ],
+      "path": "sdks/wyrd-sdk-python/src/bifrost/mod.rs",
+      "reason": "FileLimit",
+      "start": 439
+    },
+    {
+      "end": 2166,
+      "names": [
+        "get"
+      ],
+      "path": "sdks/wyrd-sdk-python/src/state/mod.rs",
+      "reason": "FileLimit",
+      "start": 2124
+    },
+    {
+      "end": 2350,
+      "names": [
+        "get"
+      ],
+      "path": "sdks/wyrd-sdk-python/src/state/mod.rs",
+      "reason": "FileLimit",
+      "start": 2308
+    },
+    {
+      "end": 2481,
+      "names": [
+        "get"
+      ],
+      "path": "sdks/wyrd-sdk-python/src/state/mod.rs",
+      "reason": "FileLimit",
+      "start": 2468
+    },
+    {
+      "end": 41,
+      "names": [
+        "__init__"
+      ],
+      "path": "sdks/wyrd-sdk-python/tests/integration/cards/test_cards_crud.py",
+      "reason": "FileLimit",
+      "start": 36
+    },
+    {
+      "end": 71,
+      "names": [
+        "__init__"
+      ],
+      "path": "sdks/wyrd-sdk-python/tests/integration/cards/test_cards_crud.py",
+      "reason": "FileLimit",
+      "start": 69
+    },
+    {
+      "end": 93,
+      "names": [
+        "__init__"
+      ],
+      "path": "sdks/wyrd-sdk-python/tests/integration/cards/test_cards_crud.py",
+      "reason": "FileLimit",
+      "start": 89
+    },
+    {
+      "end": 14,
+      "names": [
+        "__init__"
+      ],
+      "path": "sdks/wyrd-sdk-python/tests/unit/cards/data/test_datacard_custom_subclass.py",
+      "reason": "FileLimit",
+      "start": 11
+    },
+    {
+      "end": 190,
+      "names": [
+        "__init__"
+      ],
+      "path": "sdks/wyrd-sdk-python/tests/unit/cards/data/test_datacard_interface.py",
+      "reason": "FileLimit",
+      "start": 188
+    },
+    {
+      "end": 83,
+      "names": [
+        "__init__"
+      ],
+      "path": "sdks/wyrd-sdk-python/tests/unit/cards/data/test_datacard_interfaces_explicit.py",
+      "reason": "FileLimit",
+      "start": 81
+    },
+    {
+      "end": 38,
+      "names": [
+        "__init__"
+      ],
+      "path": "sdks/wyrd-sdk-python/tests/unit/cards/data/test_datacard_save_load.py",
+      "reason": "FileLimit",
+      "start": 36
+    },
+    {
+      "end": 237,
+      "names": [
+        "__init__"
+      ],
+      "path": "sdks/wyrd-sdk-python/tests/unit/cards/model/test_modelcard_save_load.py",
+      "reason": "FileLimit",
+      "start": 235
+    },
+    {
+      "end": 278,
+      "names": [
+        "__init__"
+      ],
+      "path": "sdks/wyrd-sdk-python/tests/unit/cards/model/test_modelcard_save_load.py",
+      "reason": "FileLimit",
+      "start": 276
+    },
+    {
+      "end": 308,
+      "names": [
+        "__init__"
+      ],
+      "path": "sdks/wyrd-sdk-python/tests/unit/cards/model/test_modelcard_save_load.py",
+      "reason": "FileLimit",
+      "start": 306
+    },
+    {
+      "end": 137,
+      "names": [
+        "__init__"
+      ],
+      "path": "sdks/wyrd-sdk-python/tests/unit/runtime/agent/test_agent_parsed_output.py",
+      "reason": "FileLimit",
+      "start": 136
+    },
+    {
+      "end": 81,
+      "names": [
+        "__init__"
+      ],
+      "path": "sdks/wyrd-sdk-python/tests/unit/runtime/test_observer.py",
+      "reason": "FileLimit",
+      "start": 79
+    },
+    {
+      "end": 13,
+      "names": [
+        "__init__"
+      ],
+      "path": "sdks/wyrd-sdk-python/tests/unit/runtime/workflow/test_workflow_observers.py",
+      "reason": "FileLimit",
+      "start": 10
+    },
+    {
+      "end": 40,
+      "names": [
+        "__init__"
+      ],
+      "path": "sdks/wyrd-sdk-python/tests/unit/state/support.py",
+      "reason": "FileLimit",
+      "start": 29
+    },
+    {
+      "end": 95,
+      "names": [
+        "__init__"
+      ],
+      "path": "sdks/wyrd-sdk-python/tests/unit/state/support.py",
+      "reason": "FileLimit",
+      "start": 85
+    },
+    {
+      "end": 6,
+      "names": [
+        "main"
+      ],
+      "path": "sdks/wyrd-sdk-ts/native-testing/build.rs",
+      "reason": "FileLimit",
+      "start": 4
+    },
+    {
+      "end": 6,
+      "names": [
+        "main"
+      ],
+      "path": "sdks/wyrd-sdk-ts/native/build.rs",
+      "reason": "FileLimit",
+      "start": 4
+    },
+    {
+      "end": 938,
+      "names": [
+        "next"
+      ],
+      "path": "sdks/wyrd-sdk-ts/native/src/lib.rs",
+      "reason": "FileLimit",
+      "start": 845
+    },
+    {
+      "end": 76,
+      "names": [
+        "values"
+      ],
+      "path": "sdks/wyrd-sdk-ts/wyrd/tests/integration/otel-export.test.ts",
+      "reason": "FileLimit",
+      "start": 72
+    }
+  ],
+  "pull_request": "https://github.com/bohmian-ai/wyrd/pull/1",
+  "read_back_equal": true,
+  "spans": [
+    {
+      "blob": "4e15c3b50f35ca1e59a92624e99bbce3d382f011",
+      "end": 45,
+      "names": [
+        "GenerationOrdinal"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/hot_source.rs",
+      "score": 5,
+      "start": 40,
+      "tokens": 48
+    },
+    {
+      "blob": "4e15c3b50f35ca1e59a92624e99bbce3d382f011",
+      "end": 58,
+      "names": [
+        "get"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/hot_source.rs",
+      "score": 5,
+      "start": 56,
+      "tokens": 17
+    },
+    {
+      "blob": "4e15c3b50f35ca1e59a92624e99bbce3d382f011",
+      "end": 96,
+      "names": [
+        "StagedRun"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/hot_source.rs",
+      "score": 5,
+      "start": 87,
+      "tokens": 99
+    },
+    {
+      "blob": "4e15c3b50f35ca1e59a92624e99bbce3d382f011",
+      "end": 282,
+      "names": [
+        "ScribeHotSourceRegistry"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/hot_source.rs",
+      "score": 5,
+      "start": 277,
+      "tokens": 59
+    },
+    {
+      "blob": "4e15c3b50f35ca1e59a92624e99bbce3d382f011",
+      "end": 289,
+      "names": [
+        "ScribeHotSourceRegistry::new"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/hot_source.rs",
+      "score": 5,
+      "start": 287,
+      "tokens": 15
+    },
+    {
+      "blob": "83bd06c136c873a5c02841abb6ae4c8cb608653d",
+      "end": 116,
+      "names": [
+        "WalLsn::new"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/wal.rs",
+      "score": 4,
+      "start": 114,
+      "tokens": 18
+    },
+    {
+      "blob": "83bd06c136c873a5c02841abb6ae4c8cb608653d",
+      "end": 1905,
+      "names": [
+        "open"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/wal.rs",
+      "score": 4,
+      "start": 1881,
+      "tokens": 209
+    },
+    {
+      "blob": "83bd06c136c873a5c02841abb6ae4c8cb608653d",
+      "end": 1936,
+      "names": [
+        "append"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/wal.rs",
+      "score": 4,
+      "start": 1914,
+      "tokens": 249
+    },
+    {
+      "blob": "83bd06c136c873a5c02841abb6ae4c8cb608653d",
+      "end": 3940,
+      "names": [
+        "ScribeAppendMeta"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/wal.rs",
+      "score": 4,
+      "start": 3915,
+      "tokens": 266
+    },
+    {
+      "blob": "26e3e3242af151e48d79e451f1c94d5db687a17a",
+      "end": 644,
+      "names": [
+        "Err"
+      ],
+      "path": "crates/shared/wyrd-runtime/src/permission.rs",
+      "score": 3,
+      "start": 644,
+      "tokens": 10
+    },
+    {
+      "blob": "26e3e3242af151e48d79e451f1c94d5db687a17a",
+      "end": 782,
+      "names": [
+        "iter"
+      ],
+      "path": "crates/shared/wyrd-runtime/src/permission.rs",
+      "score": 3,
+      "start": 780,
+      "tokens": 23
+    },
+    {
+      "blob": "26e3e3242af151e48d79e451f1c94d5db687a17a",
+      "end": 788,
+      "names": [
+        "len"
+      ],
+      "path": "crates/shared/wyrd-runtime/src/permission.rs",
+      "score": 3,
+      "start": 786,
+      "tokens": 15
+    },
+    {
+      "blob": "3f84c26f03bfa0ee9bb8b1d684a5494e710e80e1",
+      "end": 273,
+      "names": [
+        "set"
+      ],
+      "path": "crates/skald/skald-agent/tests/observer_timeout.rs",
+      "score": 3,
+      "start": 271,
+      "tokens": 22
+    },
+    {
+      "blob": "3f84c26f03bfa0ee9bb8b1d684a5494e710e80e1",
+      "end": 619,
+      "names": [
+        "append"
+      ],
+      "path": "crates/skald/skald-agent/tests/observer_timeout.rs",
+      "score": 3,
+      "start": 613,
+      "tokens": 64
+    },
+    {
+      "blob": "3f84c26f03bfa0ee9bb8b1d684a5494e710e80e1",
+      "end": 655,
+      "names": [
+        "stream"
+      ],
+      "path": "crates/skald/skald-agent/tests/observer_timeout.rs",
+      "score": 3,
+      "start": 650,
+      "tokens": 58
+    },
+    {
+      "blob": "006a88c1f17fa6345aa4d82c409cf5c392a3c558",
+      "end": 460,
+      "names": [
+        "Append"
+      ],
+      "path": "crates/skald/skald-agent/tests/session_journal.rs",
+      "score": 3,
+      "start": 460,
+      "tokens": 7
+    },
+    {
+      "blob": "006a88c1f17fa6345aa4d82c409cf5c392a3c558",
+      "end": 564,
+      "names": [
+        "append"
+      ],
+      "path": "crates/skald/skald-agent/tests/session_journal.rs",
+      "score": 3,
+      "start": 551,
+      "tokens": 129
+    },
+    {
+      "blob": "006a88c1f17fa6345aa4d82c409cf5c392a3c558",
+      "end": 593,
+      "names": [
+        "append"
+      ],
+      "path": "crates/skald/skald-agent/tests/session_journal.rs",
+      "score": 3,
+      "start": 587,
+      "tokens": 64
+    },
+    {
+      "blob": "006a88c1f17fa6345aa4d82c409cf5c392a3c558",
+      "end": 629,
+      "names": [
+        "stream"
+      ],
+      "path": "crates/skald/skald-agent/tests/session_journal.rs",
+      "score": 3,
+      "start": 624,
+      "tokens": 58
+    },
+    {
+      "blob": "fb08cec9d414fd00a9788d4eb4b230fb99061279",
+      "end": 30,
+      "names": [
+        "stream"
+      ],
+      "path": "crates/skald/skald-runtime/src/provider.rs",
+      "score": 3,
+      "start": 30,
+      "tokens": 24
+    },
+    {
+      "blob": "fb08cec9d414fd00a9788d4eb4b230fb99061279",
+      "end": 108,
+      "names": [
+        "get"
+      ],
+      "path": "crates/skald/skald-runtime/src/provider.rs",
+      "score": 3,
+      "start": 106,
+      "tokens": 32
+    },
+    {
+      "blob": "fb08cec9d414fd00a9788d4eb4b230fb99061279",
+      "end": 118,
+      "names": [
+        "len"
+      ],
+      "path": "crates/skald/skald-runtime/src/provider.rs",
+      "score": 3,
+      "start": 116,
+      "tokens": 16
+    },
+    {
+      "blob": "ee804778c5153a67d4f68d7fc9e2e2ffec6d5d92",
+      "end": 126,
+      "names": [
+        "SealKey::new"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/seal_key.rs",
+      "score": 3,
+      "start": 120,
+      "tokens": 46
+    },
+    {
+      "blob": "ee804778c5153a67d4f68d7fc9e2e2ffec6d5d92",
+      "end": 176,
+      "names": [
+        "len"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/seal_key.rs",
+      "score": 3,
+      "start": 174,
+      "tokens": 21
+    },
+    {
+      "blob": "ee804778c5153a67d4f68d7fc9e2e2ffec6d5d92",
+      "end": 262,
+      "names": [
+        "next"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/seal_key.rs",
+      "score": 3,
+      "start": 255,
+      "tokens": 63
+    },
+    {
+      "blob": "8acbddc4940efbdbb521765bea38be8e3a32d5a7",
+      "end": 34,
+      "names": [
+        "NodeId::generate"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/stream_identity.rs",
+      "score": 3,
+      "start": 32,
+      "tokens": 18
+    },
+    {
+      "blob": "8acbddc4940efbdbb521765bea38be8e3a32d5a7",
+      "end": 67,
+      "names": [
+        "WriterEpoch::new"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/stream_identity.rs",
+      "score": 3,
+      "start": 65,
+      "tokens": 18
+    },
+    {
+      "blob": "8acbddc4940efbdbb521765bea38be8e3a32d5a7",
+      "end": 99,
+      "names": [
+        "StreamIdentity::new"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/stream_identity.rs",
+      "score": 3,
+      "start": 94,
+      "tokens": 39
+    },
+    {
+      "blob": "5ee0371f229c48de898a6f11dd1f123c4c381ac8",
+      "end": 75,
+      "names": [
+        "Path"
+      ],
+      "path": "crates/wyrd-spec/src/reference.rs",
+      "score": 3,
+      "start": 75,
+      "tokens": 5
+    },
+    {
+      "blob": "5ee0371f229c48de898a6f11dd1f123c4c381ac8",
+      "end": 136,
+      "names": [
+        "Path"
+      ],
+      "path": "crates/wyrd-spec/src/reference.rs",
+      "score": 3,
+      "start": 136,
+      "tokens": 5
+    },
+    {
+      "blob": "5ee0371f229c48de898a6f11dd1f123c4c381ac8",
+      "end": 257,
+      "names": [
+        "len"
+      ],
+      "path": "crates/wyrd-spec/src/reference.rs",
+      "score": 3,
+      "start": 255,
+      "tokens": 15
+    },
+    {
+      "blob": "5ee0371f229c48de898a6f11dd1f123c4c381ac8",
+      "end": 504,
+      "names": [
+        "Err"
+      ],
+      "path": "crates/wyrd-spec/src/reference.rs",
+      "score": 3,
+      "start": 504,
+      "tokens": 9
+    },
+    {
+      "blob": "d22fd4913bd02c48a1632635c12ed917a21505cb",
+      "end": 84,
+      "names": [
+        "count"
+      ],
+      "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/features/observe/core/types.ts",
+      "score": 3,
+      "start": 84,
+      "tokens": 19
+    },
+    {
+      "blob": "d22fd4913bd02c48a1632635c12ed917a21505cb",
+      "end": 87,
+      "names": [
+        "values"
+      ],
+      "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/features/observe/core/types.ts",
+      "score": 3,
+      "start": 87,
+      "tokens": 17
+    },
+    {
+      "blob": "d22fd4913bd02c48a1632635c12ed917a21505cb",
+      "end": 94,
+      "names": [
+        "count"
+      ],
+      "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/features/observe/core/types.ts",
+      "score": 3,
+      "start": 94,
+      "tokens": 15
+    },
+    {
+      "blob": "d22fd4913bd02c48a1632635c12ed917a21505cb",
+      "end": 135,
+      "names": [
+        "values"
+      ],
+      "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/features/observe/core/types.ts",
+      "score": 3,
+      "start": 135,
+      "tokens": 13
+    },
+    {
+      "blob": "d22fd4913bd02c48a1632635c12ed917a21505cb",
+      "end": 327,
+      "names": [
+        "owner"
+      ],
+      "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/features/observe/core/types.ts",
+      "score": 3,
+      "start": 327,
+      "tokens": 5
+    },
+    {
+      "blob": "d22fd4913bd02c48a1632635c12ed917a21505cb",
+      "end": 355,
+      "names": [
+        "owner"
+      ],
+      "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/features/observe/core/types.ts",
+      "score": 3,
+      "start": 355,
+      "tokens": 5
+    },
+    {
+      "blob": "0c672c084b0514072a9fb4ff86fe1f3b26a3deae",
+      "end": 412,
+      "names": [
+        "next"
+      ],
+      "path": "sdks/wyrd-sdk-ts/wyrd/src/index.ts",
+      "score": 3,
+      "start": 356,
+      "tokens": 414
+    },
+    {
+      "blob": "0c672c084b0514072a9fb4ff86fe1f3b26a3deae",
+      "end": 861,
+      "names": [
+        "stream"
+      ],
+      "path": "sdks/wyrd-sdk-ts/wyrd/src/index.ts",
+      "score": 3,
+      "start": 837,
+      "tokens": 216
+    },
+    {
+      "blob": "0c672c084b0514072a9fb4ff86fe1f3b26a3deae",
+      "end": 1099,
+      "names": [
+        "get"
+      ],
+      "path": "sdks/wyrd-sdk-ts/wyrd/src/index.ts",
+      "score": 3,
+      "start": 1097,
+      "tokens": 33
+    },
+    {
+      "blob": "9b8fe634b1f117fb0ed99f708d36346f68166b3f",
+      "end": 180,
+      "names": [
+        "stream"
+      ],
+      "path": "crates/shared/wyrd-client/src/bifrost/blocking.rs",
+      "score": 2,
+      "start": 176,
+      "tokens": 50
+    },
+    {
+      "blob": "9b8fe634b1f117fb0ed99f708d36346f68166b3f",
+      "end": 290,
+      "names": [
+        "next"
+      ],
+      "path": "crates/shared/wyrd-client/src/bifrost/blocking.rs",
+      "score": 2,
+      "start": 284,
+      "tokens": 59
+    },
+    {
+      "blob": "461dde4a1bf870c9f63af93dd8415d9bb019af37",
+      "end": 55,
+      "names": [
+        "len"
+      ],
+      "path": "crates/skald/skald-agent/src/conversation.rs",
+      "score": 2,
+      "start": 53,
+      "tokens": 16
+    },
+    {
+      "blob": "461dde4a1bf870c9f63af93dd8415d9bb019af37",
+      "end": 66,
+      "names": [
+        "iter"
+      ],
+      "path": "crates/skald/skald-agent/src/conversation.rs",
+      "score": 2,
+      "start": 64,
+      "tokens": 25
+    },
+    {
+      "blob": "e297cfe5fd32bfebbfccc7dd065850a9c0e0d09d",
+      "end": 43,
+      "names": [
+        "count"
+      ],
+      "path": "crates/skald/skald-agent/tests/observer_noop.rs",
+      "score": 2,
+      "start": 38,
+      "tokens": 42
+    },
+    {
+      "blob": "e297cfe5fd32bfebbfccc7dd065850a9c0e0d09d",
+      "end": 96,
+      "names": [
+        "stream"
+      ],
+      "path": "crates/skald/skald-agent/tests/observer_noop.rs",
+      "score": 2,
+      "start": 91,
+      "tokens": 58
+    },
+    {
+      "blob": "aded6b2c736d09ba0ee92054c3660aca3f9f7cbc",
+      "end": 12,
+      "names": [
+        "get"
+      ],
+      "path": "crates/skald/skald-cache/src/inmemory.rs",
+      "score": 2,
+      "start": 12,
+      "tokens": 15
+    },
+    {
+      "blob": "aded6b2c736d09ba0ee92054c3660aca3f9f7cbc",
+      "end": 58,
+      "names": [
+        "len"
+      ],
+      "path": "crates/skald/skald-cache/src/inmemory.rs",
+      "score": 2,
+      "start": 56,
+      "tokens": 21
+    },
+    {
+      "blob": "aded6b2c736d09ba0ee92054c3660aca3f9f7cbc",
+      "end": 75,
+      "names": [
+        "get"
+      ],
+      "path": "crates/skald/skald-cache/src/inmemory.rs",
+      "score": 2,
+      "start": 67,
+      "tokens": 79
+    }
+  ],
+  "tree": "9a669329a9a06e2762895b6a556cc6ff99a89353"
+}

@@ -140,7 +140,7 @@ async fn run() -> Result<(), Box<dyn Error>> {
             "outcome": format!("{:?}", built.outcome),
             "eligible": built.coverage.eligible,
             "indexed": built.coverage.indexed,
-            "skipped": built.coverage.skipped.len(),
+            "skipped": serde_json::to_value(&built.coverage.skipped)?,
             "excluded": format!("{:?}", built.coverage.excluded),
             "archive_entries": built.ingest.archive_entries,
             "fallback_blobs": built.ingest.fallback_blobs,
