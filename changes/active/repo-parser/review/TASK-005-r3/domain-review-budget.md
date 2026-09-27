@@ -1,0 +1,21 @@
+# Budget safety domain review
+
+Subject: base `fa4fa2101950626a9fe60b0fdff0439b04c16f01`, candidate `9ce990fe933ff69de464b3ffc0a4c073d1c4754b`. Reviewed the complete cumulative diff for the PR-context facade, with emphasis on `PrContext::run`, `changed_head`, `near`, `Ingest::fallback`, candidate packing, and provider request bounds. Authorities: approved spec revision 12, especially REQ-008, REQ-010, REQ-013, INV-002 and INV-006; original TASK-005 and R1/R2 remediation; `AGENTS.md` and `architecture/agent-rules.md`.
+
+## Coverage and limits
+
+The provider caps JSON/blob responses and PR-file pagination; `near` limits scope to changed-path directories; fallback counts fetched files; candidate packing uses the existing symbolic facade with file and estimated-token limits. The configured diff and prompt reserve are subtracted with saturation, and zero allowance produces an explicit exhausted budget. The exact focused test `pull_request::tests::scoped_bound_skips_excluded_neighbors` passed (1 selected); it exercises one changed head and does not cover multiple changed heads at or beyond the scoped cap. This is a source-traced finding, not a new failing test. No live GitHub or large-memory benchmark was run.
+
+## Material finding
+
+**BUDGET-1 — INCORRECT: changed heads bypass the scoped ingest ceiling.** The owner shape is `PrContext::run`'s direct `changed_head` ingestion before calculating the scoped fetch bound. Every valid listed changed head is fetched and indexed; `max_scoped_files` only reduces subsequent fallback fetches. With no snapshot, two valid changed heads and `max_scoped_files = 1` yield at least two fetched and indexed files, so the stated fixed scoped file/request bound is exceeded. `Ingest::fallback` cannot undo earlier fetches or indexing, and coverage can still report the indexed set as complete. This violates REQ-008's fixed scoped file/request bound and REQ-013's scoped-file bound (spec lines 65 and 76). The existing one-head scoped test is below its cap. The same direct path applies to every changed head; `max_overlay_changes` is documented for default-branch drift, so it is not asserted as a separate changed-head ceiling here.
+
+**Observable consequence:** a realistic multi-file PR can issue more blob requests and index more files than the configured scoped bound allows, while the published scoped result does not identify over-bound changed heads as omitted. **Testable correction:** enforce the configured scoped admission bound for changed heads as well as fallback files, report every excluded changed head and incomplete coverage. Preserve analysis of admitted valid files, file-local failures, head identity checks, and candidate-only packing. A focused fake-provider test with more valid changed heads than the configured scoped bound should assert capped blob calls, capped indexed count, explicit omissions/incomplete coverage, and no source selected from an unadmitted head.
+
+## Result
+
+**FAIL** — BUDGET-1 is a bounded-ingest contract failure. Other reviewed token-allocation and candidate-packing paths satisfy their stated estimate and omission contracts within the verification above.
+
+```citations
+[{"id":"BUDGET-1","path":"crates/bohmian-code-review-pipeline/src/pull_request.rs","line":210,"snippet":"        let mut heads = Vec::new();","symbols":["PrContext::run","Head"]},{"id":"BUDGET-1","path":"crates/bohmian-code-review-pipeline/src/pull_request.rs","line":211,"snippet":"        for file in &pinned.files {","symbols":["PrContext::run","changed_head"]},{"id":"BUDGET-1","path":"crates/bohmian-code-review-pipeline/src/pull_request.rs","line":220,"snippet":"        let fetch_bound = match snapshot_tree {","symbols":["PrContext::run"]},{"id":"BUDGET-1","path":"crates/bohmian-code-review-pipeline/src/pull_request.rs","line":401,"snippet":"        let bytes = self","symbols":["changed_head"]},{"id":"BUDGET-1","path":"crates/bohmian-code-review-pipeline/src/pull_request.rs","line":408,"snippet":"        if ingest.is_pending(&file.path) {","symbols":["changed_head"]},{"id":"BUDGET-1","path":"crates/bohmian-code-review-pipeline/src/pull_request.rs","line":411,"snippet":"        Ok(Head {","symbols":["changed_head","Head"]}]
+```
