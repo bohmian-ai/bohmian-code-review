@@ -46,6 +46,8 @@ pub(crate) struct TarStream {
     next_path: Option<String>,
     next_size: Option<u64>,
     ended: bool,
+    /// Whether the decompressed stream passed its byte bound.
+    pub(crate) expansion_exceeded: bool,
     /// Entries verified since the caller last drained them.
     pub(crate) verified: Vec<VerifiedEntry>,
 }
@@ -68,6 +70,7 @@ impl TarStream {
             next_path: None,
             next_size: None,
             ended: false,
+            expansion_exceeded: false,
             verified: Vec::new(),
         }
     }
@@ -228,10 +231,12 @@ impl Write for TarStream {
     ///
     /// # Errors
     ///
-    /// Returns an error naming `archive expansion` once the decompressed
-    /// stream exceeds its bound, or a parse error from [`TarStream::feed`].
+    /// Returns an error naming `archive expansion`, and sets
+    /// `expansion_exceeded`, once the decompressed stream exceeds its bound,
+    /// or a parse error from [`TarStream::feed`].
     fn write(&mut self, input: &[u8]) -> io::Result<usize> {
         if input.len() as u64 > self.expansion_left {
+            self.expansion_exceeded = true;
             return Err(io::Error::other("archive expansion exceeds its byte limit"));
         }
         self.expansion_left -= input.len() as u64;

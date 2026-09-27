@@ -28,7 +28,7 @@ use bohmian_code_review::{EXTRACTION_VERSION, IndexedFileFacts, RelativePath, Sy
 use flate2::write::GzDecoder;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use std::io::Write;
+use std::io::{self, Write};
 use std::time::SystemTime;
 use thiserror::Error;
 
@@ -65,7 +65,8 @@ impl Default for ColdBuildLimits {
 pub enum SkipReason {
     /// Content is a Git LFS pointer, not source.
     LfsPointer,
-    /// Fetched bytes exceeded the file bound.
+    /// Fetched bytes, or a provider ceiling at least the file bound, proved
+    /// the blob exceeds the file bound.
     Oversize,
     /// The extractor rejected the content; `detail` carries no source.
     ParseFailed {
@@ -332,6 +333,9 @@ fn snapshot_key(identity: &Identity, tree: &ObjectSha) -> ObjectKey {
 pub enum IncompleteReason {
     /// The provider truncated the recursive tree listing.
     TruncatedTree,
+    /// The compressed or decompressed archive passed its byte bound;
+    /// coverage still reports what verified fallback indexed.
+    ArchiveTooLarge,
     /// Some eligible files were not indexed; see [`Coverage::skipped`].
     UnindexedFiles {
         /// Eligible files neither indexed nor benignly skipped.
@@ -359,6 +363,8 @@ pub struct IngestStats {
     pub fallback_blobs: usize,
     /// Why the archive stream stopped early, if it did; never source text.
     pub archive_error: Option<String>,
+    /// Most verified archive bytes waiting to be indexed at once.
+    pub peak_verified_bytes: usize,
 }
 
 /// Result of one cold build invocation.
@@ -510,7 +516,7 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
             &attributes,
             self.limits.max_file_bytes,
         );
-        match self
+        let archive_too_large = match self
             .client
             .archive(&identity.repository, &head.commit)
             .await
@@ -520,12 +526,22 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
                     .consume_archive(archive, self.limits.max_expanded_archive_bytes)
                     .await
             }
-            Err(error) => ingest.stats.archive_error = Some(error.to_string()),
-        }
+            Err(error) => {
+                ingest.stats.archive_error = Some(error.to_string());
+                false
+            }
+        };
         ingest
             .fallback(self.client, identity, self.limits.max_fallback_blobs)
             .await;
         let (coverage, stats, files, context) = ingest.finish();
+        if archive_too_large {
+            return Ok(result(
+                coverage,
+                stats,
+                ColdBuildOutcome::Incomplete(IncompleteReason::ArchiveTooLarge),
+            ));
+        }
         if !coverage.is_complete() {
             let count = coverage.unindexed();
             return Ok(result(
@@ -665,36 +681,74 @@ impl Ingest {
     }
 
     /// Stream the archive through gzip into [`TarStream`], indexing each
-    /// verified entry as soon as the chunk that completes it arrives.
+    /// verified entry as soon as the decompressed bytes completing it arrive.
     ///
-    /// Only the chunk in flight, one header or metadata record, and one
-    /// wanted file are held; a provider, decompression, tar, or expansion
-    /// error stops the archive and is recorded, leaving the rest pending
-    /// for [`Ingest::fallback`]. Entries indexed before it stay indexed.
-    async fn consume_archive(&mut self, mut archive: Archive, max_expanded_bytes: u64) {
+    /// Only the chunk in flight, one decompressed buffer, one header or
+    /// metadata record, and one wanted file are held; a provider,
+    /// decompression, tar, or bound error stops the archive and is
+    /// recorded, leaving the rest pending for [`Ingest::fallback`]. Entries
+    /// indexed before it stay indexed. Returns whether the compressed or
+    /// decompressed archive passed its byte bound.
+    async fn consume_archive(&mut self, mut archive: Archive, max_expanded_bytes: u64) -> bool {
         let tar = TarStream::new(
             self.pending.clone(),
             self.max_file_bytes,
             max_expanded_bytes,
         );
         let mut decoder = GzDecoder::new(tar);
+        let mut compressed_too_large = false;
         let error = loop {
-            let written = match archive.chunk().await {
-                Ok(Some(chunk)) => decoder.write_all(&chunk),
-                Ok(None) => break decoder.try_finish().err().map(|error| error.to_string()),
-                Err(error) => break Some(error.to_string()),
-            };
-            self.ingest_verified(&mut decoder.get_mut().verified);
-            if let Err(error) = written {
-                break Some(error.to_string());
+            match archive.chunk().await {
+                Ok(Some(chunk)) => {
+                    if let Err(error) = self.decompress(&mut decoder, &chunk) {
+                        break Some(error.to_string());
+                    }
+                }
+                Ok(None) => {
+                    let finished = decoder.try_finish();
+                    self.ingest_verified(&mut decoder.get_mut().verified);
+                    break finished.err().map(|error| error.to_string());
+                }
+                Err(error) => {
+                    compressed_too_large = matches!(error, GitHubError::ResponseTooLarge { .. });
+                    break Some(error.to_string());
+                }
             }
         };
-        self.ingest_verified(&mut decoder.get_mut().verified);
         self.stats.archive_error = error;
+        compressed_too_large || decoder.get_ref().expansion_exceeded
     }
 
-    /// Index and drain entries the tar stream verified against their blob ids.
+    /// Feed one compressed `chunk` through `decoder` one inner write at a
+    /// time, indexing verified entries after each, so only the entries of
+    /// one decompressed buffer (plus the file they complete) wait at once,
+    /// however many files the chunk carries.
+    ///
+    /// # Errors
+    ///
+    /// Returns the decompression, tar, or expansion error, or
+    /// [`io::ErrorKind::WriteZero`] when the decoder accepts no input.
+    fn decompress(
+        &mut self,
+        decoder: &mut GzDecoder<TarStream>,
+        mut chunk: &[u8],
+    ) -> io::Result<()> {
+        while !chunk.is_empty() {
+            let written = decoder.write(chunk);
+            self.ingest_verified(&mut decoder.get_mut().verified);
+            match written? {
+                0 => return Err(io::ErrorKind::WriteZero.into()),
+                consumed => chunk = &chunk[consumed..],
+            }
+        }
+        Ok(())
+    }
+
+    /// Index and drain entries the tar stream verified against their blob
+    /// ids, recording the largest batch of bytes that waited.
     fn ingest_verified(&mut self, verified: &mut Vec<VerifiedEntry>) {
+        let waiting = verified.iter().map(|(_, _, bytes)| bytes.len()).sum();
+        self.stats.peak_verified_bytes = self.stats.peak_verified_bytes.max(waiting);
         for (path, blob, bytes) in verified.drain(..) {
             self.stats.archive_entries += 1;
             self.ingest(path, blob, &bytes);
@@ -703,8 +757,9 @@ impl Ingest {
 
     /// Fetch every still-pending blob individually, up to `max_blobs`, and
     /// index it; everything still pending afterwards is skipped as not
-    /// fetched. A blob larger than the file bound, or than the client's
-    /// blob bound, is a benign oversize skip.
+    /// fetched. A blob larger than the file bound, or than a client blob
+    /// bound at least the file bound, is a benign oversize skip; a client
+    /// bound below the file bound proves nothing and the blob is unfetched.
     async fn fallback(&mut self, client: &GitHubClient, identity: &Identity, max_blobs: usize) {
         while let Some((path, blob)) = self.pending.pop_first() {
             if self.stats.fallback_blobs >= max_blobs {
@@ -717,7 +772,9 @@ impl Ingest {
                     self.skip(path, blob, SkipReason::Oversize);
                 }
                 Ok(bytes) => self.ingest(path, blob, &bytes),
-                Err(GitHubError::ResponseTooLarge { .. }) => {
+                Err(GitHubError::ResponseTooLarge { limit, .. })
+                    if limit >= self.max_file_bytes =>
+                {
                     self.skip(path, blob, SkipReason::Oversize);
                 }
                 Err(error) => self.skip(
@@ -854,6 +911,7 @@ mod tests {
         transport: Arc<RoutedTransport>,
         tree: ObjectSha,
         commit: ObjectSha,
+        limits: RequestLimits,
     }
 
     impl FakeRepo {
@@ -901,6 +959,7 @@ mod tests {
                 transport,
                 tree,
                 commit,
+                limits: RequestLimits::default(),
             }
         }
 
@@ -913,12 +972,12 @@ mod tests {
             );
         }
 
-        /// A client over this fake.
+        /// A client over this fake under `limits`.
         fn client(&self) -> GitHubClient {
             GitHubClient::with_transport(
                 GitHubHost::public(),
                 InstallationToken::new("ghs_token").expect("token"),
-                RequestLimits::default(),
+                self.limits.clone(),
                 Box::new(Shared(Arc::clone(&self.transport))),
             )
         }
@@ -1098,12 +1157,12 @@ mod tests {
             ])
         );
         assert_eq!(
-            result.ingest,
-            IngestStats {
-                archive_entries: 4,
-                fallback_blobs: 2,
-                archive_error: None,
-            }
+            (
+                result.ingest.archive_entries,
+                result.ingest.fallback_blobs,
+                &result.ingest.archive_error
+            ),
+            (4, 2, &None)
         );
 
         let calls = client.calls();
@@ -1190,10 +1249,10 @@ mod tests {
     }
 
     /// Scenario 2: a truncated tree, a parse failure, an exhausted fallback
-    /// bound, and an exhausted expansion bound each yield an incomplete
-    /// result with exact skips; nothing is written and a prior pointer for
-    /// another tree stays in place. A bounded archive failure alone still
-    /// completes through fallback.
+    /// bound, and an exhausted expansion or compressed archive bound each
+    /// yield an incomplete result with exact skips; nothing is written and a
+    /// prior pointer for another tree stays in place, even when fallback
+    /// fetched every file after the archive bound.
     #[tokio::test]
     async fn incomplete_attempts_report_coverage_and_keep_the_prior_pointer() {
         let identity = identity();
@@ -1322,9 +1381,32 @@ mod tests {
         assert_eq!(result.ingest.fallback_blobs, 6);
         assert_eq!(blobs, 7);
         assert!(result.coverage.is_complete());
-        assert!(matches!(result.outcome, ColdBuildOutcome::Published(_)));
-        assert_eq!(keys.len(), 1);
-        assert_eq!(pointer.map(|p| p.tree), Some(repo.tree.clone()));
+        assert_eq!((result.coverage.eligible, result.coverage.indexed), (6, 5));
+        assert_eq!(
+            result.outcome,
+            ColdBuildOutcome::Incomplete(IncompleteReason::ArchiveTooLarge)
+        );
+        assert!(keys.is_empty());
+        assert_eq!(pointer.as_ref(), Some(&prior));
+
+        let mut repo = FakeRepo::new(&standard_files(), &standard_archive());
+        repo.limits.max_archive_bytes = 16;
+        let (result, keys, pointer, blobs) = run(&repo, ColdBuildLimits::default()).await;
+        assert!(
+            result
+                .ingest
+                .archive_error
+                .as_deref()
+                .is_some_and(|e| e.contains("exceeds 16 bytes"))
+        );
+        assert_eq!(blobs, 7);
+        assert!(result.coverage.is_complete());
+        assert_eq!(
+            result.outcome,
+            ColdBuildOutcome::Incomplete(IncompleteReason::ArchiveTooLarge)
+        );
+        assert!(keys.is_empty());
+        assert_eq!(pointer.as_ref(), Some(&prior));
 
         let repo = FakeRepo::new(&standard_files(), &standard_archive());
         let (result, keys, pointer, _) = run(
@@ -1338,8 +1420,9 @@ mod tests {
         .await;
         assert_eq!(
             result.outcome,
-            ColdBuildOutcome::Incomplete(IncompleteReason::UnindexedFiles { count: 6 })
+            ColdBuildOutcome::Incomplete(IncompleteReason::ArchiveTooLarge)
         );
+        assert_eq!(result.coverage.unindexed(), 6);
         assert!(
             result
                 .coverage
@@ -1383,6 +1466,127 @@ mod tests {
                 blob: blob_sha(big),
                 reason: SkipReason::Oversize,
             }]
+        );
+    }
+
+    /// A provider blob ceiling below the file bound cannot prove an omitted
+    /// eligible file oversize: the build is incomplete, names the file, and
+    /// keeps the prior pointer. A ceiling at the file bound still proves a
+    /// larger blob oversize, so that build publishes with a benign skip.
+    #[tokio::test]
+    async fn blob_ceiling_below_file_bound_is_not_oversize() {
+        const SMALL: &[u8] = b"export const a = 1;\n";
+        let omitted: &'static [u8] = Box::leak(vec![b'x'; 200].into_boxed_slice());
+        let files = || {
+            [
+                file("src/a.ts", SMALL),
+                File {
+                    path: "src/omitted.ts",
+                    mode: "100644",
+                    content: omitted,
+                    size: Some(1),
+                },
+            ]
+        };
+        let identity = identity();
+        let prior = SnapshotPointer {
+            tree: sha('0'),
+            commit: sha('1'),
+            key: snapshot_key(&identity, &sha('0')),
+            digest: ObjectDigest::of(b""),
+            published_at: UNIX_EPOCH,
+        };
+        let build = async |max_file_bytes: u64| {
+            let mut repo = FakeRepo::new(&files(), &[("src/a.ts", SMALL)]);
+            repo.limits.max_blob_bytes = 100;
+            let client = repo.client();
+            let storage = MemoryStorage::default();
+            let store = MemorySnapshotStore::default();
+            assert!(
+                store
+                    .publish_snapshot_pointer(&scope(&identity), None, &prior)
+                    .await
+                    .expect("seed")
+            );
+            let limits = ColdBuildLimits {
+                max_file_bytes,
+                ..ColdBuildLimits::default()
+            };
+            let result = ColdBuild::new(&client, &storage, &store, limits)
+                .run(&identity)
+                .await
+                .expect("build");
+            let pointer = store
+                .snapshot_pointer(&scope(&identity))
+                .await
+                .expect("read");
+            (result, pointer)
+        };
+
+        let (result, pointer) = build(ColdBuildLimits::default().max_file_bytes).await;
+        assert_eq!(
+            result.outcome,
+            ColdBuildOutcome::Incomplete(IncompleteReason::UnindexedFiles { count: 1 })
+        );
+        let [skipped] = result.coverage.skipped.as_slice() else {
+            panic!("one skip expected: {:?}", result.coverage.skipped);
+        };
+        assert_eq!(skipped.path.as_str(), "src/omitted.ts");
+        assert_eq!(skipped.blob, blob_sha(omitted));
+        assert!(
+            matches!(&skipped.reason, SkipReason::FetchFailed { detail } if detail.contains("exceeds 100 bytes"))
+        );
+        assert_eq!(pointer, Some(prior.clone()));
+
+        let (result, pointer) = build(100).await;
+        assert!(matches!(result.outcome, ColdBuildOutcome::Published(_)));
+        assert_eq!(result.coverage.skipped[0].reason, SkipReason::Oversize);
+        assert_eq!(pointer.map(|p| p.tree), Some(result.tree));
+    }
+
+    /// One compressed body chunk carrying many wanted files is indexed while
+    /// only a bounded batch of verified bytes waits, independent of how many
+    /// files the chunk holds.
+    #[tokio::test]
+    async fn one_chunk_archive_keeps_verified_bytes_bounded() {
+        let sources: Vec<(&'static str, &'static [u8])> = (0..128)
+            .map(|n| {
+                let path: &'static str = Box::leak(format!("src/f{n}.ts").into_boxed_str());
+                let body = format!(
+                    "export function f{n}(): number {{\n  return {n};\n}}\n// {}\n",
+                    "p".repeat(2000)
+                );
+                (path, &*Box::leak(body.into_bytes().into_boxed_slice()))
+            })
+            .collect();
+        let files: Vec<File> = sources
+            .iter()
+            .map(|&(path, bytes)| file(path, bytes))
+            .collect();
+        let repo = FakeRepo::new(&files, &sources);
+        let client = repo.client();
+        let storage = MemoryStorage::default();
+        let store = MemorySnapshotStore::default();
+        let result = ColdBuild::new(&client, &storage, &store, ColdBuildLimits::default())
+            .run(&identity())
+            .await
+            .expect("build");
+        assert!(matches!(result.outcome, ColdBuildOutcome::Published(_)));
+        assert_eq!(
+            (result.coverage.eligible, result.coverage.indexed),
+            (128, 128)
+        );
+        assert_eq!(
+            (result.ingest.archive_entries, result.ingest.fallback_blobs),
+            (128, 0)
+        );
+        let total: usize = sources.iter().map(|(_, bytes)| bytes.len()).sum();
+        let bound = 32 * 1024 + 2100;
+        assert!(total > 4 * bound);
+        assert!(
+            (1..=bound).contains(&result.ingest.peak_verified_bytes),
+            "peak {} of {total}",
+            result.ingest.peak_verified_bytes
         );
     }
 
@@ -1559,13 +1763,12 @@ mod tests {
         let mut archive = standard_archive();
         archive.retain(|(path, _)| *path != "src/format.ts");
         archive.push(("src/format.ts", big));
-        let repo = FakeRepo::new(&standard_files(), &archive);
-        let client = repo.client();
         let identity = identity();
-        let publish = async |limits: ColdBuildLimits| {
+        let publish = async |repo: FakeRepo| {
+            let client = repo.client();
             let storage = MemoryStorage::default();
             let store = MemorySnapshotStore::default();
-            let result = ColdBuild::new(&client, &storage, &store, limits)
+            let result = ColdBuild::new(&client, &storage, &store, ColdBuildLimits::default())
                 .run(&identity)
                 .await
                 .expect("build");
@@ -1578,13 +1781,9 @@ mod tests {
             )
         };
 
-        let (streamed, streamed_bytes) = publish(ColdBuildLimits::default()).await;
+        let (streamed, streamed_bytes) = publish(FakeRepo::new(&standard_files(), &archive)).await;
         assert_eq!((streamed.archive_entries, streamed.fallback_blobs), (3, 3));
-        let (fallback, fallback_bytes) = publish(ColdBuildLimits {
-            max_expanded_archive_bytes: 64,
-            ..ColdBuildLimits::default()
-        })
-        .await;
+        let (fallback, fallback_bytes) = publish(FakeRepo::new(&standard_files(), &[])).await;
         assert_eq!((fallback.archive_entries, fallback.fallback_blobs), (0, 6));
         assert_eq!(streamed_bytes, fallback_bytes);
         let text = String::from_utf8(streamed_bytes).expect("json");
