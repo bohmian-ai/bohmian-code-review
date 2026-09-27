@@ -1,6 +1,0 @@
-# citation check — TASK-002 r4
-
-Command: `mise run review:verify-citations changes/active/repo-parser/review/TASK-002-r4 801d9572cf6b0364b5ab33e858388d86f54cb91e`
-Exit: 0
-Reports checked: task-review-a.md, task-review-b.md, standards-review.md, domain-review-source-trust.md, domain-review-provider-bounds.md
-Citations: 0 (every report ended with an empty `citations` block); OK 0; REJECT 0; dropped findings: none

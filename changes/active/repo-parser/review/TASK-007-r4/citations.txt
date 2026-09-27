@@ -1,3 +1,0 @@
-[review:verify-citations] $ python3 scripts/verify_review_citations.py changes/…
-TASK-A-1	OK
-TASK-A-1	OK

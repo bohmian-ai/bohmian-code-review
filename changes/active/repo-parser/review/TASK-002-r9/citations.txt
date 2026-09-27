@@ -1,2 +1,0 @@
-Command: mise run review:verify-citations changes/active/repo-parser/review/TASK-002-r9 e38c3ae165f8972037c6b823aa9c725782b4237c
-Result: exit 0. All five Wave 1 reports end with an empty citations array; no citation was rejected.

@@ -1,5 +1,0 @@
-[review:verify-citations] $ python3 scripts/verify_review_citations.py changes/…
-TREE-1	OK
-TREE-1	REJECT	symbol 'GitHubClient::list_into' not in crates/bohmian-code-review-pipeline/src/github.rs
-TREE-1	REJECT	symbol 'GitHubClient::list_into' not in crates/bohmian-code-review-pipeline/src/github.rs
-TREE-1	REJECT	symbol 'GitHubClient::get_json' not in crates/bohmian-code-review-pipeline/src/github.rs

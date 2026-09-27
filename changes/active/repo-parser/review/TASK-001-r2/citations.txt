@@ -1,6 +1,0 @@
-[review:verify-citations] $ python3 scripts/verify_review_citations.py changes/…
-REPO-1	REJECT	snippet not found at changes/active/repo-parser/tasks/TASK-001-symbolic-library-contract.md:73
-REPO-1	REJECT	snippet not found at changes/active/repo-parser/tasks/TASK-001-symbolic-library-contract.md:74
-REPO-1	REJECT	snippet not found at changes/active/repo-parser/tasks/TASK-001-symbolic-library-contract.md:75
-REPO-1	OK
-exit=0
