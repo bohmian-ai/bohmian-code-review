@@ -26,8 +26,8 @@ pub mod persistence;
 pub mod pull_request;
 pub mod snapshot;
 pub mod storage;
-#[cfg(test)]
-pub(crate) mod testing;
+#[cfg(any(test, feature = "testing"))]
+pub mod testing;
 pub mod update;
 
 pub use context::{

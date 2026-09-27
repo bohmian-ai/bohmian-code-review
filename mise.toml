@@ -58,6 +58,17 @@ run = [
   "cargo test --locked -p bohmian-code-review-pipeline --doc --all-features",
 ]
 
+[tasks."test:pipeline:journey"]
+description = "Run the outer pipeline's public four-facade journey over fake GitHub and injected in-memory stores"
+run = "cargo test --locked -p bohmian-code-review-pipeline --test pipeline_journey --all-features"
+
+[tasks."live:pr"]
+description = "S20, explicitly invoked and never in gate: build and read back context for a real PR (GITHUB_TOKEN, BCR_REPO_ID; BCR_REPO, BCR_PR optional); macOS /usr/bin/time -l reports peak memory"
+run = [
+  "cargo build --locked --release -p bohmian-code-review-pipeline --example live_pr --all-features",
+  "/usr/bin/time -l target/release/examples/live_pr",
+]
+
 [tasks."test:rust"]
 description = "Run every component lane and the public journey"
 depends = [

@@ -3,7 +3,9 @@
 //! identity-scoped snapshot and context stores.
 //!
 //! These prove publication order, retry convergence, and isolation without
-//! a network, disk, or database. They are compiled only for tests.
+//! a network, disk, or database. They are compiled for owner tests and,
+//! behind the `testing` feature, for the outer-crate journey and the live
+//! pull-request command, which inject them in place of a consumer's stores.
 
 use crate::context::CONTEXT_LIFETIME;
 use crate::github::{
@@ -21,11 +23,11 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 /// Response body delivered as one chunk, then end of body.
-pub(crate) struct FixedBody(Option<Vec<u8>>);
+pub struct FixedBody(Option<Vec<u8>>);
 
 impl FixedBody {
     /// A body carrying exactly `bytes`.
-    pub(crate) fn new(bytes: Vec<u8>) -> FixedBody {
+    pub fn new(bytes: Vec<u8>) -> FixedBody {
         FixedBody(Some(bytes))
     }
 }
@@ -43,11 +45,11 @@ impl HttpBody for FixedBody {
 }
 
 /// One scripted response: status, headers, body.
-pub(crate) type Response = (u16, Vec<(String, String)>, Vec<u8>);
+pub type Response = (u16, Vec<(String, String)>, Vec<u8>);
 
 /// Fake transport answering by URL suffix; unmatched requests get 404.
 #[derive(Default)]
-pub(crate) struct RoutedTransport {
+pub struct RoutedTransport {
     routes: Mutex<Vec<(String, VecDeque<Response>)>>,
     seen: Mutex<Vec<String>>,
 }
@@ -55,13 +57,13 @@ pub(crate) struct RoutedTransport {
 impl RoutedTransport {
     /// Answer requests whose URL ends with `suffix` with `status` and
     /// `body`; a later route for the same suffix overrides an earlier one.
-    pub(crate) fn route(&self, suffix: &str, status: u16, body: impl Into<Vec<u8>>) {
+    pub fn route(&self, suffix: &str, status: u16, body: impl Into<Vec<u8>>) {
         self.respond(suffix, vec![(status, Vec::new(), body.into())]);
     }
 
     /// Answer requests whose URL ends with `suffix` with `responses` in
     /// order, repeating the last; overrides earlier routes for `suffix`.
-    pub(crate) fn respond(&self, suffix: &str, responses: Vec<Response>) {
+    pub fn respond(&self, suffix: &str, responses: Vec<Response>) {
         self.routes
             .lock()
             .expect("routes lock")
@@ -69,12 +71,12 @@ impl RoutedTransport {
     }
 
     /// Answer with JSON 200.
-    pub(crate) fn json(&self, suffix: &str, json: &str) {
+    pub fn json(&self, suffix: &str, json: &str) {
         self.route(suffix, 200, json);
     }
 
     /// URLs requested so far.
-    pub(crate) fn seen(&self) -> Vec<String> {
+    pub fn seen(&self) -> Vec<String> {
         self.seen.lock().expect("seen lock").clone()
     }
 }
@@ -131,26 +133,26 @@ async fn hold(held: &AtomicBool) {
 /// Create-if-absent in-memory storage with a one-shot stall after a create,
 /// a one-shot delete failure, and a releasable hold before deletes.
 #[derive(Default)]
-pub(crate) struct MemoryStorage {
+pub struct MemoryStorage {
     objects: Mutex<BTreeMap<ObjectKey, Vec<u8>>>,
     stall_after_create: AtomicBool,
     fail_next_delete: AtomicBool,
-    pub(crate) hold_deletes: AtomicBool,
+    pub hold_deletes: AtomicBool,
 }
 
 impl MemoryStorage {
     /// Make the next `create` store its object, then never return.
-    pub(crate) fn stall_after_create(&self) {
+    pub fn stall_after_create(&self) {
         self.stall_after_create.store(true, Ordering::SeqCst);
     }
 
     /// Make the next `delete` fail with the object still present.
-    pub(crate) fn fail_next_delete(&self) {
+    pub fn fail_next_delete(&self) {
         self.fail_next_delete.store(true, Ordering::SeqCst);
     }
 
     /// Every stored key in order.
-    pub(crate) fn keys(&self) -> Vec<ObjectKey> {
+    pub fn keys(&self) -> Vec<ObjectKey> {
         self.objects
             .lock()
             .expect("objects lock")
@@ -212,7 +214,7 @@ impl ObjectStorage for MemoryStorage {
 /// A store-owned clock that starts at the Unix epoch and moves only when a
 /// test advances it, standing in for a database clock.
 #[derive(Default)]
-pub(crate) struct ManualClock(Mutex<Duration>);
+pub struct ManualClock(Mutex<Duration>);
 
 impl ManualClock {
     /// The store's current time.
@@ -221,7 +223,7 @@ impl ManualClock {
     }
 
     /// Move the clock forward by `by`.
-    pub(crate) fn advance(&self, by: Duration) {
+    pub fn advance(&self, by: Duration) {
         *self.0.lock().expect("clock lock") += by;
     }
 }
@@ -232,28 +234,28 @@ impl ManualClock {
 /// one-shot stalls after a record upsert and before a swap and a
 /// releasable hold before swaps.
 #[derive(Default)]
-pub(crate) struct MemorySnapshotStore {
+pub struct MemorySnapshotStore {
     pointers: Mutex<HashMap<SnapshotScope, SnapshotPointer>>,
     records: Mutex<BTreeMap<(Identity, ObjectKey), (SystemTime, bool)>>,
     stall_after_upsert: AtomicBool,
     stall_before_swap: AtomicBool,
-    pub(crate) hold_swaps: AtomicBool,
-    pub(crate) clock: ManualClock,
+    pub hold_swaps: AtomicBool,
+    pub clock: ManualClock,
 }
 
 impl MemorySnapshotStore {
     /// Make the next `upsert_record` write its record, then never return.
-    pub(crate) fn stall_after_upsert(&self) {
+    pub fn stall_after_upsert(&self) {
         self.stall_after_upsert.store(true, Ordering::SeqCst);
     }
 
     /// Make the next pointer swap never return, without moving the pointer.
-    pub(crate) fn stall_before_swap(&self) {
+    pub fn stall_before_swap(&self) {
         self.stall_before_swap.store(true, Ordering::SeqCst);
     }
 
     /// Every `(identity, key)` record in order.
-    pub(crate) fn records(&self) -> Vec<(Identity, ObjectKey)> {
+    pub fn records(&self) -> Vec<(Identity, ObjectKey)> {
         self.records
             .lock()
             .expect("records lock")
@@ -395,20 +397,20 @@ impl SnapshotStore for MemorySnapshotStore {
 /// judging expiry on its own [`ManualClock`], with a one-shot stall after
 /// an upsert.
 #[derive(Default)]
-pub(crate) struct MemoryContextStore {
+pub struct MemoryContextStore {
     records: Mutex<BTreeMap<(Identity, ContextId), (ContextRecord, ContextLifetime)>>,
     stall_after_upsert: AtomicBool,
-    pub(crate) clock: ManualClock,
+    pub clock: ManualClock,
 }
 
 impl MemoryContextStore {
     /// Make the next `upsert_context` write its record, then never return.
-    pub(crate) fn stall_after_upsert(&self) {
+    pub fn stall_after_upsert(&self) {
         self.stall_after_upsert.store(true, Ordering::SeqCst);
     }
 
     /// Every `(identity, id)` record in order.
-    pub(crate) fn ids(&self) -> Vec<(Identity, ContextId)> {
+    pub fn ids(&self) -> Vec<(Identity, ContextId)> {
         self.records
             .lock()
             .expect("records lock")

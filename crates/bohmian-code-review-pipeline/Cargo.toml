@@ -20,9 +20,21 @@ sha2.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["time"] }
 
+[features]
+# In-memory adapters and a routed fake transport for journeys outside the crate.
+testing = ["tokio/rt"]
+
 [dev-dependencies]
 tar.workspace = true
-tokio = { workspace = true, features = ["macros", "rt", "time", "test-util"] }
+tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread", "time", "test-util"] }
 
 [lints]
 workspace = true
+
+[[test]]
+name = "pipeline_journey"
+required-features = ["testing"]
+
+[[example]]
+name = "live_pr"
+required-features = ["testing"]
