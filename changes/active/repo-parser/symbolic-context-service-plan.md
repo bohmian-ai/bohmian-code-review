@@ -6,7 +6,7 @@ Status: proposal supporting [revision 11 of the specification](spec.md). The spe
 
 The new outer library crate owns GitHub and GHES source access, in-memory ingest, complete source-free snapshots, incremental updates, PR-head overlays, related-file selection, shared context publication, and context read-back. The six existing crates remain IO-free and own extraction, indexing, resolution, scoring and packing. The outer crate calls their public facade instead of copying those algorithms.
 
-A caller supplies verified tenant/installation/repository identity, GitHub credentials, deadlines, cancellation, and implementations of the library's narrow object-storage, snapshot-store and context-store traits. The crate exposes four independent facades:
+A caller supplies verified tenant/installation/repository identity, GitHub credentials, and implementations of the library's narrow object-storage, snapshot-store and context-store traits. The crate exposes four independent facades:
 
 1. **Cold build:** build or reuse a complete default-branch symbol snapshot.
 2. **Incremental update:** move the default-branch pointer to a complete snapshot for a newer tree.
@@ -36,13 +36,13 @@ The cold-build facade reads a pinned default-branch commit/tree, lists its eligi
 
 The index retains facts, path/blob identity, and coverage, then drops source bytes. A reusable snapshot is written at an immutable tenant/installation/repository/version/tree key only when every eligible file is indexed. The pointer is published only after the object is complete and validated. An incomplete or timed-out build leaves the old pointer unchanged, returns exact coverage and a retry reason, and can be retried from scratch. The PR facade uses a bounded scoped index around changed paths when a complete snapshot is unavailable; it never claims repository-wide coverage.
 
-The cold build honors a caller-supplied deadline; the library imposes no maximum. A caller may wait for readiness before beginning an independent review deadline.
+The caller bounds the cold build by dropping its future (`timeout`, `select!`); the library imposes no maximum. A caller may wait for readiness before beginning an independent review deadline.
 
 ## 4. Incremental snapshot update
 
 The update facade reads the current default-branch tree and compares eligible `(path, blob_sha)` identities with the prior snapshot. It copies unchanged facts, verifies/parses added or changed blobs, removes deleted or now-ineligible paths, and treats renames as delete plus add. A failed replacement removes stale facts from the attempt and prevents pointer movement. If the change set exceeds the bounded incremental path, the facade does a new cold build. Only a complete new snapshot is published. Re-reading the branch head after publication reports when another update is needed.
 
-The facade is safe under force-pushes because it compares trees rather than commit ancestry. An in-progress PR review keeps its immutable loaded snapshot. The update honors its own caller-supplied deadline; callers may invoke it after pushes or when the PR facade reports a stale default-branch pointer.
+The facade is safe under force-pushes because it compares trees rather than commit ancestry. An in-progress PR review keeps its immutable loaded snapshot. The caller bounds the update the same way; callers may invoke it after pushes or when the PR facade reports a stale default-branch pointer.
 
 ## 5. PR-context build and shared read
 
@@ -53,7 +53,7 @@ The facade is safe under force-pushes because it compares trees rather than comm
 5. Write one immutable selected-context object with source spans, pinned identities, matched names, ranges, coverage, omissions and budget. Publish its context ID and exact key only after validating the object.
 6. On read, require the matching tenant and installation, check integrity and `expires_at`, and return the stored spans without another GitHub fetch or reranking. A missing/corrupt object fails explicitly.
 
-The PR-context build honors its own caller-supplied deadline, independent of cold and update deadlines. A context is readable for 24 hours from publication. Expired reads fail even if deletion is pending; the library exposes cleanup that deletes expired objects and reports/retries lag when invoked.
+The caller bounds the PR-context build independently of cold build and update. A context is readable for 24 hours from publication. Expired reads fail even if deletion is pending; the library exposes cleanup that deletes expired objects and reports/retries lag when invoked.
 
 ## 6. Injected dependencies and publication contract
 
@@ -69,7 +69,7 @@ Tests use separate in-memory implementations of each trait to prove publication 
 
 ## 7. Bounds and failure semantics
 
-Configurable initial ceilings: 1 MiB per eligible file, 4 GiB expanded archive, 200 archive-fallback blobs, 2,000 changed blobs before a full rebuild, 300 PR overlay changes, 300 scoped files, the provider's 3,000 PR-file ceiling, 15 selected candidate files, a 64,000-token review allocation and a 4,096-token prompt reserve. The library honors GitHub primary/secondary rate limits, `retry-after`, concurrency limits, cancellation and supplied deadlines. Every bound yields explicit coverage, omission or retry/terminal status. No source, credential or tenant-crossing cache key appears in logs or metrics.
+Configurable initial ceilings: 1 MiB per eligible file, 4 GiB expanded archive, 200 archive-fallback blobs, 2,000 changed blobs before a full rebuild, 300 PR overlay changes, 300 scoped files, the provider's 3,000 PR-file ceiling, 15 selected candidate files, a 64,000-token review allocation and a 4,096-token prompt reserve. The library honors GitHub primary/secondary rate limits, `retry-after`, and concurrency limits. A dropped call leaves the pointer on a complete snapshot; a retry converges. Every bound yields explicit coverage, omission or retry/terminal status. No source, credential or tenant-crossing cache key appears in logs or metrics.
 
 ## 8. Verification scenarios
 
