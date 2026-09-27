@@ -580,14 +580,7 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
                 ColdBuildOutcome::Incomplete(IncompleteReason::TruncatedTree),
             )));
         }
-        let attributes = match listing.entries.iter().find(|entry| {
-            entry.path.as_str() == ".gitattributes" && entry.mode == TreeEntryMode::File
-        }) {
-            Some(entry) => {
-                RootAttributes::parse(&self.client.blob(&identity.repository, &entry.sha).await?)
-            }
-            None => RootAttributes::default(),
-        };
+        let attributes = root_attributes(self.client, identity, &listing.entries).await?;
         Ok(Ok(Ingest::new(
             &listing.entries,
             listing.rejected.len(),
@@ -737,6 +730,28 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
     }
 }
 
+/// Fetch and parse the root `.gitattributes` among `entries`, or the
+/// defaults when the tree has none.
+///
+/// # Errors
+///
+/// Returns the attributes blob provider error.
+pub(crate) async fn root_attributes(
+    client: &GitHubClient,
+    identity: &Identity,
+    entries: &[TreeEntry],
+) -> Result<RootAttributes, GitHubError> {
+    match entries
+        .iter()
+        .find(|entry| entry.path.as_str() == ".gitattributes" && entry.mode == TreeEntryMode::File)
+    {
+        Some(entry) => Ok(RootAttributes::parse(
+            &client.blob(&identity.repository, &entry.sha).await?,
+        )),
+        None => Ok(RootAttributes::default()),
+    }
+}
+
 /// In-memory ingest state for one attempt: eligible entries still wanted,
 /// and what was indexed and skipped.
 pub(crate) struct Ingest {
@@ -755,7 +770,7 @@ impl Ingest {
     /// Classify `entries` and start with every eligible file pending;
     /// `rejected` listing entries failed validation and are counted as
     /// [`ExclusionReason::InvalidEntry`].
-    fn new(
+    pub(crate) fn new(
         entries: &[TreeEntry],
         rejected: usize,
         attributes: &RootAttributes,
@@ -869,6 +884,19 @@ impl Ingest {
         self.pending.len()
     }
 
+    /// Whether `path` is eligible and still wanted.
+    pub(crate) fn is_pending(&self, path: &RelativePath) -> bool {
+        self.pending.contains_key(path)
+    }
+
+    /// Blob id of eligible `path` in the classified tree, if it is eligible.
+    pub(crate) fn eligible_blob(&self, path: &RelativePath) -> Option<&ObjectSha> {
+        self.files
+            .binary_search_by(|file| file.path.cmp(path))
+            .ok()
+            .map(|index| &self.files[index].blob)
+    }
+
     /// Carry `prior`'s facts and benign skips for every pending path still
     /// at the blob `prior` recorded, so only changed or added paths stay
     /// pending. Facts of changed, deleted, renamed, or now-ineligible paths
@@ -937,7 +965,7 @@ impl Ingest {
 
     /// Index verified `bytes` for `path`, or skip it for an LFS pointer or
     /// extractor failure. The bytes are dropped by the caller afterwards.
-    fn ingest(&mut self, path: RelativePath, blob: ObjectSha, bytes: &[u8]) {
+    pub(crate) fn ingest(&mut self, path: RelativePath, blob: ObjectSha, bytes: &[u8]) {
         if bytes.starts_with(LFS_POINTER_PREFIX) {
             self.skip(path, blob, SkipReason::LfsPointer);
             return;
@@ -964,7 +992,7 @@ impl Ingest {
     }
 
     /// Coverage, ingest stats, eligible files, and the populated context.
-    fn finish(mut self) -> (Coverage, IngestStats, Vec<SnapshotFile>, SymbolicContext) {
+    pub(crate) fn finish(mut self) -> (Coverage, IngestStats, Vec<SnapshotFile>, SymbolicContext) {
         self.skipped.sort_by(|a, b| a.path.cmp(&b.path));
         let mut excluded = BTreeMap::new();
         for exclusion in &self.excluded {

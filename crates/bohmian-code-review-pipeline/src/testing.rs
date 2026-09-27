@@ -1,5 +1,6 @@
 //! In-memory test doubles shared by facade tests: a fixed response body, a
-//! URL-routed fake GitHub transport, create-if-absent object storage, and an identity-scoped snapshot store.
+//! URL-routed fake GitHub transport, create-if-absent object storage, and
+//! identity-scoped snapshot and context stores.
 //!
 //! These prove publication order, retry convergence, and isolation without
 //! a network, disk, or database. They are compiled only for tests.
@@ -8,9 +9,12 @@ use crate::github::{
     BoxFuture, HttpBody, HttpRequest, HttpResponse, HttpTransport, TransportError,
 };
 use crate::identity::{Identity, ObjectSha};
-use crate::persistence::{PersistenceError, SnapshotPointer, SnapshotScope, SnapshotStore};
+use crate::persistence::{
+    ContextId, ContextRecord, ContextStore, PersistenceError, SnapshotPointer, SnapshotScope,
+    SnapshotStore,
+};
 use crate::storage::{ObjectKey, ObjectStorage, StorageError};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::SystemTime;
@@ -37,10 +41,13 @@ impl HttpBody for FixedBody {
     }
 }
 
+/// One scripted response: status, headers, body.
+pub(crate) type Response = (u16, Vec<(String, String)>, Vec<u8>);
+
 /// Fake transport answering by URL suffix; unmatched requests get 404.
 #[derive(Default)]
 pub(crate) struct RoutedTransport {
-    routes: Mutex<Vec<(String, u16, Vec<u8>)>>,
+    routes: Mutex<Vec<(String, VecDeque<Response>)>>,
     seen: Mutex<Vec<String>>,
 }
 
@@ -48,10 +55,16 @@ impl RoutedTransport {
     /// Answer requests whose URL ends with `suffix` with `status` and
     /// `body`; a later route for the same suffix overrides an earlier one.
     pub(crate) fn route(&self, suffix: &str, status: u16, body: impl Into<Vec<u8>>) {
+        self.respond(suffix, vec![(status, Vec::new(), body.into())]);
+    }
+
+    /// Answer requests whose URL ends with `suffix` with `responses` in
+    /// order, repeating the last; overrides earlier routes for `suffix`.
+    pub(crate) fn respond(&self, suffix: &str, responses: Vec<Response>) {
         self.routes
             .lock()
             .expect("routes lock")
-            .insert(0, (suffix.to_owned(), status, body.into()));
+            .insert(0, (suffix.to_owned(), responses.into()));
     }
 
     /// Answer with JSON 200.
@@ -66,7 +79,7 @@ impl RoutedTransport {
 }
 
 impl HttpTransport for RoutedTransport {
-    /// Serves the first matching route.
+    /// Serves the next response of the first matching route.
     ///
     /// # Errors
     ///
@@ -76,17 +89,22 @@ impl HttpTransport for RoutedTransport {
             .lock()
             .expect("seen lock")
             .push(request.url.clone());
-        let routes = self.routes.lock().expect("routes lock");
-        let (status, body) = routes
-            .iter()
-            .find(|(suffix, _, _)| request.url.ends_with(suffix))
-            .map_or((404, Vec::new()), |(_, status, body)| {
-                (*status, body.clone())
-            });
+        let mut routes = self.routes.lock().expect("routes lock");
+        let (status, headers, body) = routes
+            .iter_mut()
+            .find(|(suffix, _)| request.url.ends_with(suffix.as_str()))
+            .and_then(|(_, responses)| {
+                if responses.len() > 1 {
+                    responses.pop_front()
+                } else {
+                    responses.front().cloned()
+                }
+            })
+            .unwrap_or((404, Vec::new(), Vec::new()));
         Box::pin(async move {
             Ok(HttpResponse {
                 status,
-                headers: Vec::new(),
+                headers,
                 body: Box::new(FixedBody::new(body)),
             })
         })
@@ -348,5 +366,125 @@ impl SnapshotStore for MemorySnapshotStore {
             .expect("pointers lock")
             .retain(|scope, _| scope.identity != *identity);
         Ok(())
+    }
+}
+
+/// In-memory context store keyed by exact identity and id, with a one-shot
+/// stall after an upsert.
+#[derive(Default)]
+pub(crate) struct MemoryContextStore {
+    records: Mutex<BTreeMap<(Identity, ContextId), ContextRecord>>,
+    stall_after_upsert: AtomicBool,
+}
+
+impl MemoryContextStore {
+    /// Make the next `upsert_context` write its record, then never return.
+    pub(crate) fn stall_after_upsert(&self) {
+        self.stall_after_upsert.store(true, Ordering::SeqCst);
+    }
+
+    /// Every `(identity, id)` record in order.
+    pub(crate) fn ids(&self) -> Vec<(Identity, ContextId)> {
+        self.records
+            .lock()
+            .expect("records lock")
+            .keys()
+            .cloned()
+            .collect()
+    }
+}
+
+impl ContextStore for MemoryContextStore {
+    /// Insert or replace; honours the stall switch after writing.
+    ///
+    /// # Errors
+    ///
+    /// Never.
+    async fn upsert_context(
+        &self,
+        identity: &Identity,
+        record: &ContextRecord,
+    ) -> Result<(), PersistenceError> {
+        self.records
+            .lock()
+            .expect("records lock")
+            .insert((identity.clone(), record.id.clone()), record.clone());
+        stall(&self.stall_after_upsert).await;
+        Ok(())
+    }
+
+    /// Exact `(identity, id)` lookup; another identity's id is absent.
+    ///
+    /// # Errors
+    ///
+    /// Never.
+    async fn context(
+        &self,
+        identity: &Identity,
+        id: &ContextId,
+    ) -> Result<Option<ContextRecord>, PersistenceError> {
+        Ok(self
+            .records
+            .lock()
+            .expect("records lock")
+            .get(&(identity.clone(), id.clone()))
+            .cloned())
+    }
+
+    /// Up to `limit` records expired at `now`, in key order.
+    ///
+    /// # Errors
+    ///
+    /// Never.
+    async fn expired_contexts(
+        &self,
+        now: SystemTime,
+        limit: usize,
+    ) -> Result<Vec<(Identity, ContextRecord)>, PersistenceError> {
+        Ok(self
+            .records
+            .lock()
+            .expect("records lock")
+            .iter()
+            .filter(|(_, record)| record.expires_at <= now)
+            .take(limit)
+            .map(|((identity, _), record)| (identity.clone(), record.clone()))
+            .collect())
+    }
+
+    /// Idempotent removal of one record under `identity`.
+    ///
+    /// # Errors
+    ///
+    /// Never.
+    async fn delete_context(
+        &self,
+        identity: &Identity,
+        id: &ContextId,
+    ) -> Result<(), PersistenceError> {
+        self.records
+            .lock()
+            .expect("records lock")
+            .remove(&(identity.clone(), id.clone()));
+        Ok(())
+    }
+
+    /// Drop every record of `identity`, returning their object keys.
+    ///
+    /// # Errors
+    ///
+    /// Never.
+    async fn remove_repository(
+        &self,
+        identity: &Identity,
+    ) -> Result<Vec<ObjectKey>, PersistenceError> {
+        let mut records = self.records.lock().expect("records lock");
+        let keys = records
+            .iter()
+            .filter(|((owner, _), _)| owner == identity)
+            .map(|(_, record)| record.key.clone())
+            .collect();
+        records.retain(|(owner, _), _| owner != identity);
+        Ok(keys)
     }
 }

@@ -17,12 +17,6 @@ use thiserror::Error;
 /// Why a persistence operation failed.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum PersistenceError {
-    /// A context id was already published for this identity.
-    #[error("context already published: {id}")]
-    AlreadyPublished {
-        /// The duplicate id.
-        id: ContextId,
-    },
     /// A running collection claimed the snapshot record of `key`; retry the
     /// build after that collection deletes it.
     #[error("snapshot record is being collected: {key}")]
@@ -234,22 +228,25 @@ pub trait SnapshotStore: Send + Sync {
 /// Context metadata store a consumer implements: published PR context
 /// records, kept separately from snapshots because their lifecycle differs.
 ///
-/// Every method receives the caller identity (or returns it, for expiry
-/// sweeps) and must refuse to read or write another identity's rows.
-/// Implementations must not hold a transaction open across a call into
-/// GitHub or object storage; the library publishes a record only after its
-/// object exists.
+/// The library upserts a record before creating the object it names, so
+/// every context object has a record; a record whose object is absent is
+/// a dropped or failed publication that readers treat as not found and
+/// expiry cleanup removes. Every method receives the caller identity (or
+/// returns it, for expiry sweeps) and must refuse to read or write another
+/// identity's rows; lookup is by exact identity and id. Implementations
+/// must not hold a transaction open across a call into GitHub or object
+/// storage; the library never asks them to.
 ///
 /// Methods return `Send` futures and implementers may write `async fn`. The
 /// trait is not dyn-compatible, so facades take it as a generic parameter.
 pub trait ContextStore: Send + Sync {
-    /// Make `record` readable for `identity`.
+    /// Insert `record` for `identity`, or replace the existing record with
+    /// the same id, so a retried publication converges.
     ///
     /// # Errors
     ///
-    /// Returns [`PersistenceError::AlreadyPublished`] when the id exists for
-    /// this identity and [`PersistenceError::Backend`] otherwise.
-    fn publish_context(
+    /// Returns [`PersistenceError::Backend`] on backend failure.
+    fn upsert_context(
         &self,
         identity: &Identity,
         record: &ContextRecord,

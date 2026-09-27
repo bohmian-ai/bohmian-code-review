@@ -14,6 +14,7 @@
 //! `bohmian-code-review` facade alone and imports no consumer type.
 
 mod archive;
+pub mod context;
 pub mod eligibility;
 pub mod github;
 pub mod identity;
@@ -24,6 +25,11 @@ pub mod storage;
 pub(crate) mod testing;
 pub mod update;
 
+pub use context::{
+    Budget, CONTEXT_FORMAT_VERSION, CONTEXT_LIFETIME, ContextCleanup, ContextCoverage,
+    ContextError, Contexts, NotAnalyzed, NotAnalyzedReason, OmittedReason, OmittedSpan,
+    ReviewContext, Scope, SelectedSpan,
+};
 pub use eligibility::ExclusionReason;
 pub use github::{
     Archive, BoxFuture, BranchHead, CallCounts, Commit, Disposition, FileStatus, GitHubClient,
