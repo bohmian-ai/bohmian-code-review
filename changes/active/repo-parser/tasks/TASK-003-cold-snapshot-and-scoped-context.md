@@ -105,3 +105,24 @@ Run the scenario tests with `mise exec -- cargo test --locked -p bohmian-code-re
 ## Authority Links
 
 [Revision 12 spec](../spec.md), [pipeline plan](../symbolic-context-service-plan.md), [TASK-002](TASK-002-github-source-and-stage-contracts.md).
+
+## Implementation Evidence (revision 12 async reimplementation)
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| Cold-build S1/S11: complete source-free snapshot, verified archive and fallback blobs, reload without source fetches | `archive.rs` `TarStream` (push tar reader behind `flate2::write::GzDecoder`, fed per archive chunk); `snapshot.rs` `Ingest::consume_archive`, `Ingest::fallback`, `ColdBuild::run` reuse path | `snapshot::tests::complete_cold_snapshot_is_verified_source_free_and_reloadable`, `same_tree_serializes_identically_across_ingest_paths`, `archive::tests::entries_verify_identically_across_chunk_boundaries`, `file_and_expansion_bounds_hold`, `sizes_and_pax_records_are_validated` | PASS |
+| Incomplete builds leave the pointer unmoved and report exact coverage and a fallback reason | `ColdBuildOutcome::Incomplete(IncompleteReason)`, `Coverage::skipped`; blob-bound `ResponseTooLarge` maps to benign `SkipReason::Oversize` | `incomplete_attempts_report_coverage_and_keep_the_prior_pointer` (truncated tree, parse failure, fallback bound, expansion bound), `verified_oversize_blob_is_a_benign_skip` | PASS |
+| Drop at any publication step leaves pointer on a complete snapshot or absent, every object recorded; retry converges | `ColdBuild::publish`: upsert record (`touched_at`) → create-if-absent (adopt only byte-identical) → pointer CAS | `dropped_publication_keeps_pointer_and_retry_converges` (paused-clock timeout at each step × {no pointer, prior pointer}), `existing_object_with_other_bytes_is_refused`, `lost_pointer_swap_returns_retry_state` | PASS |
+| `collect` deletes object then record for stale unreferenced records; missing object is success; never pointed-to or re-touched | `Snapshots::collect(identity, older_than)`, `Snapshots::remove_repository`; `SnapshotStore::{upsert_record, unreferenced, delete_record, remove_pointers}` | `collect_removes_only_stale_unreferenced_records`, `collect_refuses_foreign_keys` | PASS |
+| Snapshot-store S14 / AC-009 against a separate in-memory snapshot store | `testing.rs` `MemorySnapshotStore` (no context store involved) | `identities_cannot_read_or_advance_each_others_snapshots`, `collect_removes_only_stale_unreferenced_records` (second installation untouched) | PASS |
+| `.gitattributes` `!attr` unspecified, `-attr` false | `eligibility.rs` `parse_attribute` / `AttributeRule` tri-state | `eligibility::tests::attribute_resets_read_as_unset` | PASS |
+| No `tokio::spawn` | — | `rg -n 'tokio::spawn' crates/bohmian-code-review-pipeline` → no matches (exit 1) | PASS |
+
+State after each drop point (from `dropped_publication_keeps_pointer_and_retry_converges`): after record upsert — record `[key]`, objects `[]`, pointer unchanged; after object create — record `[key]`, objects `[key]`, pointer unchanged; before CAS — record `[key]`, objects `[key]`, pointer unchanged. Retry in every case: record `[key]`, objects `[key]`, pointer → `key`.
+
+Commands (all exit 0 in this session): scenario tests via `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --all-features --lib <test> -- --exact`; `mise run test:pipeline`; `mise run test:symbolic-context:journey`; `mise run fmt:check`; `mise run lints`; `mise run gate`; `git diff --check`.
+
+Notes:
+- The full-buffer archive stopgap and `github::BoundedReader` are deleted; `tar` is now a dev-dependency (fixtures only). No new dependency; `Cargo.lock` unchanged.
+- A pointer whose object is missing is rebuilt and re-created at the same deterministic key; if that rebuild is incomplete the pointer is left as is and the incomplete reason is returned.
+- Fallback fetches remain sequential, so no `JoinSet` is needed. Non-goals (backends, scoped PR indexing, incremental update, scheduling, deadlines) untouched.
