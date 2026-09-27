@@ -23,3 +23,15 @@ Implement this bounded correction through `$cr-implement` under the approved [re
 **Write set.** `crates/bohmian-code-review-pipeline/examples/provider_contract.rs` and a durable fixture under `crates/bohmian-code-review-pipeline/`. Update the task's implementation evidence in this packet as required by the lifecycle. Do not change the opt-in provider command, production transport, live report, snapshot behavior, or external specification.
 
 **Acceptance and proof.** The example test has no compile-time dependency on `changes/active/`; its passing case and every broken or missing named case retain the existing assertions. Prove this by compiling and running `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --example provider_contract --all-features tests::every_named_case_decides_the_verdict -- --exact` with the active packet absent in an isolated copy, without altering the reviewed worktree. Then run `mise run test:pipeline`, `mise run fmt:check`, `mise run lints`, `mise run gate`, and `git diff --check`. The next task review reassesses the entire cumulative base-to-new-candidate range and all four prior findings.
+
+## Implementation evidence
+
+Commit `fca3837`. The verdict test now uses `include_str!("provider_contract_cases.json\")`, a compact case fixture (5.3 KB, copied from the live report's cases with `etag`/`content-type` headers dropped and `without_patch` trimmed to one path) at `crates/bohmian-code-review-pipeline/examples/provider_contract_cases.json`. The test body, `failures`, all nine broken/missing-case mutations, the opt-in command, transport, and live report are unchanged.
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| No compile-time dependency on `changes/active/` | `examples/provider_contract.rs` `tests::CAPTURED` | rsync copy excluding `changes/active`, `target`, `.git`; focused `cargo test ... --example provider_contract ... -- --exact`: 1 passed, exit 0 | PASS |
+| Passing and every broken/missing named case keep existing assertions | `every_named_case_decides_the_verdict` unchanged | same focused test; `mise run test:pipeline` exit 0 | PASS |
+| Lanes green | — | `mise run fmt:check`, `mise run lints`, `mise run gate`, `git diff --check` all exit 0 | PASS |
+
+Non-goals held: no change to provider command, production transport, live report, snapshot behavior, or specification. Only the example file, the new fixture, and this task file changed.
