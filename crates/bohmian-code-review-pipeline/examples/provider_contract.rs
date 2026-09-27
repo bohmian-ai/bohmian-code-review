@@ -326,17 +326,17 @@ async fn main() {
 
 #[cfg(test)]
 mod tests {
-    //! Offline checks of the provider verdict against the checked-in captured
-    //! report: the recorded passing report stays passing, and breaking or
+    //! Offline checks of the provider verdict against compact case data
+    //! captured from the controlled Wyrd run and owned by this crate: the
+    //! recorded passing cases stay passing, and breaking or
     //! removing any single named case makes `failures` report that case, so
     //! the command's exit status cannot pass on a partially failed run.
 
     use super::*;
 
-    /// The captured controlled-provider report.
-    const CAPTURED: &str = include_str!(
-        "../../../changes/active/repo-parser/evidence/TASK-007/provider-contract-wyrd.json"
-    );
+    /// Cases of a captured controlled-provider report, reduced to the
+    /// fields [`failures`] inspects.
+    const CAPTURED: &str = include_str!("provider_contract_cases.json");
 
     /// Cases of the captured report.
     fn captured() -> Vec<Value> {
