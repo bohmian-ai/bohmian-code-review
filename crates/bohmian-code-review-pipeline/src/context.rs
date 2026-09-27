@@ -2,8 +2,9 @@
 //! context id, and expiry cleanup.
 //!
 //! A [`ReviewContext`] is the only source-bearing object the library
-//! persists. Its id is the digest of its bytes, so a retried publication of
-//! the same context reaches the same record and key. Publication upserts the
+//! persists. Its id is the digest of its bytes plus its publication time,
+//! so each publication has its own record, key, and lifetime while a
+//! record's digest still checks the object's bytes. Publication upserts the
 //! record, carrying `expires_at`, before creating the object if absent, so
 //! every object has a record; a reader treats a record whose object is
 //! absent as not found. Reads require the caller's tenant and installation
@@ -18,7 +19,7 @@ use crate::storage::{ObjectDigest, ObjectKey, ObjectStorage, StorageError};
 use bohmian_code_review::Error as SymbolicError;
 use bohmian_code_review::RelativePath;
 use serde::{Deserialize, Serialize};
-use std::time::{Duration, SystemTime};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use thiserror::Error;
 
 /// Layout version of the serialized [`ReviewContext`].
@@ -280,15 +281,18 @@ impl<'a, O: ObjectStorage, C: ContextStore> Contexts<'a, O, C> {
     /// Publish `context` for `identity` at `now`, readable until
     /// `now + CONTEXT_LIFETIME`.
     ///
-    /// Upserts the record, then creates the object if absent. The id is the
-    /// object digest, so an existing object at the key already holds these
-    /// bytes. Dropped after the upsert, the record names an absent object
-    /// that reads treat as not found; a retry converges on the same id.
+    /// Upserts the record, then creates the object if absent. The id joins
+    /// the object digest and `now`, so a later publication of identical
+    /// bytes gets its own id, key, and expiry, and cleanup of one never
+    /// touches another. An object already at the key is adopted only when
+    /// it holds exactly these bytes. Dropped after the upsert, the record
+    /// names an absent object that reads treat as not found; a retry
+    /// publishes a new readable id.
     ///
     /// # Errors
     ///
     /// Returns persistence and storage failures, and `Corrupt` if the
-    /// context does not serialize.
+    /// context does not serialize or an existing object at the key differs.
     pub(crate) async fn publish(
         &self,
         identity: &Identity,
@@ -299,9 +303,12 @@ impl<'a, O: ObjectStorage, C: ContextStore> Contexts<'a, O, C> {
             detail: error.to_string(),
         })?;
         let digest = ObjectDigest::of(&bytes);
-        let id = ContextId::new(digest.as_str()).map_err(|error| ContextError::Corrupt {
-            detail: error.to_string(),
-        })?;
+        let published = now.duration_since(UNIX_EPOCH).unwrap_or_default();
+        let id = ContextId::new(&format!("{}-{}", digest.as_str(), published.as_nanos())).map_err(
+            |error| ContextError::Corrupt {
+                detail: error.to_string(),
+            },
+        )?;
         let record = ContextRecord {
             key: ObjectKey::context(identity, &id),
             id,
@@ -314,9 +321,17 @@ impl<'a, O: ObjectStorage, C: ContextStore> Contexts<'a, O, C> {
         };
         self.store.upsert_context(identity, &record).await?;
         match self.storage.create(&record.key, &bytes).await {
-            Ok(()) | Err(StorageError::AlreadyExists { .. }) => Ok(record),
-            Err(error) => Err(error.into()),
+            Ok(()) => {}
+            Err(StorageError::AlreadyExists { .. }) => {
+                if self.storage.read(&record.key).await? != bytes {
+                    return Err(ContextError::Corrupt {
+                        detail: "existing object differs from the published context".to_owned(),
+                    });
+                }
+            }
+            Err(error) => return Err(error.into()),
         }
+        Ok(record)
     }
 
     /// Read the context `id` published for `identity`, as of `now`.
@@ -420,7 +435,7 @@ mod tests {
     use super::*;
     use crate::identity::{InstallationId, RepositoryIdentity, TenantId};
     use crate::testing::{MemoryContextStore, MemoryStorage};
-    use std::time::UNIX_EPOCH;
+    use std::sync::atomic::Ordering;
 
     /// An identity for `tenant` under `installation`.
     fn identity(tenant: &str, installation: u64) -> Identity {
@@ -571,6 +586,93 @@ mod tests {
             contexts.read(&acme, &unknown, now).await,
             Err(ContextError::NotFound { id: unknown })
         );
+    }
+
+    /// An object already at the publication key is adopted only when its
+    /// bytes equal the context's: different bytes fail as `Corrupt`, equal
+    /// bytes publish an id that reads back.
+    #[tokio::test]
+    async fn existing_object_is_adopted_only_when_identical() {
+        let acme = identity("acme", 1);
+        let now = UNIX_EPOCH;
+        let (storage, store) = (MemoryStorage::default(), MemoryContextStore::default());
+        let record = Contexts::new(&storage, &store)
+            .publish(&acme, &context(&acme), now)
+            .await
+            .expect("publish");
+        let bytes = storage.read(&record.key).await.expect("object");
+
+        let (storage, store) = (MemoryStorage::default(), MemoryContextStore::default());
+        storage.create(&record.key, b"{}").await.expect("seed");
+        assert!(matches!(
+            Contexts::new(&storage, &store)
+                .publish(&acme, &context(&acme), now)
+                .await,
+            Err(ContextError::Corrupt { .. })
+        ));
+
+        let (storage, store) = (MemoryStorage::default(), MemoryContextStore::default());
+        storage.create(&record.key, &bytes).await.expect("seed");
+        let contexts = Contexts::new(&storage, &store);
+        let adopted = contexts
+            .publish(&acme, &context(&acme), now)
+            .await
+            .expect("adopt");
+        assert_eq!(adopted, record);
+        assert_eq!(
+            contexts.read(&acme, &adopted.id, now).await,
+            Ok(context(&acme))
+        );
+    }
+
+    /// Identical content published at two times gets two ids, each with
+    /// its own cutoff; a sweep that listed the first before the second was
+    /// published removes only the first.
+    #[tokio::test]
+    async fn identical_publications_expire_and_clean_up_independently() {
+        let storage = MemoryStorage::default();
+        let store = MemoryContextStore::default();
+        let contexts = Contexts::new(&storage, &store);
+        let acme = identity("acme", 1);
+        let first = contexts
+            .publish(&acme, &context(&acme), UNIX_EPOCH)
+            .await
+            .expect("publish");
+        let later = UNIX_EPOCH + CONTEXT_LIFETIME;
+        storage.hold_deletes.store(true, Ordering::SeqCst);
+        let (sweep, second) = tokio::join!(contexts.collect_expired(later, 10), async {
+            let second = contexts
+                .publish(&acme, &context(&acme), later)
+                .await
+                .expect("publish");
+            assert_eq!(
+                contexts.read(&acme, &first.id, later).await,
+                Err(ContextError::Expired {
+                    id: first.id.clone()
+                })
+            );
+            storage.hold_deletes.store(false, Ordering::SeqCst);
+            second
+        });
+        assert_ne!(first.id, second.id);
+        assert_ne!(first.key, second.key);
+        assert_eq!(first.digest, second.digest);
+        assert_eq!(
+            sweep.expect("sweep").deleted,
+            [(acme.clone(), first.id.clone())]
+        );
+        assert_eq!(
+            contexts.read(&acme, &first.id, later).await,
+            Err(ContextError::NotFound {
+                id: first.id.clone()
+            })
+        );
+        assert_eq!(
+            contexts.read(&acme, &second.id, later).await,
+            Ok(context(&acme))
+        );
+        assert_eq!(store.ids(), [(acme.clone(), second.id.clone())]);
+        assert_eq!(storage.keys(), [second.key]);
     }
 
     /// Cleanup deletes each expired object then its record, treats a

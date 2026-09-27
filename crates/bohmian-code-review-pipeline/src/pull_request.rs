@@ -1168,7 +1168,8 @@ mod tests {
 
     /// Dropping the PR future after the record upsert leaves a record with
     /// no object, which reads as not found; after the object create both
-    /// exist. Either way the retry publishes the same readable id.
+    /// exist. Either way every object has a record and the retry publishes
+    /// a new id that reads back.
     #[tokio::test(start_paused = true)]
     async fn dropped_publication_leaves_no_readable_half_context() {
         let repo = FakeRepo::new(&standard_files(), &standard_archive());
@@ -1210,11 +1211,16 @@ mod tests {
             }
 
             let retry = facade.run(&identity(), 1).await.expect("retry");
-            assert_eq!(&retry.record.id, id);
+            assert_ne!(&retry.record.id, id);
+            assert_eq!(stores.context_store.ids().len(), 2);
+            assert_eq!(
+                stores.context_storage.keys().len(),
+                1 + usize::from(object_written)
+            );
             assert_eq!(
                 stores
                     .contexts()
-                    .read(&identity(), id, SystemTime::now())
+                    .read(&identity(), &retry.record.id, SystemTime::now())
                     .await,
                 Ok(retry.context)
             );
