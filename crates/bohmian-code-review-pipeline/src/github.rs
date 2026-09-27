@@ -2,13 +2,14 @@
 //!
 //! [`GitHubClient`] performs the only provider IO in the workspace. Each
 //! operation builds one authenticated request, applies a single retry policy
-//! for rate limits and transient failures under the caller's [`Execution`],
-//! parses a bounded response, and verifies the returned identity against
-//! what was asked for before anything crosses into the symbolic library.
-//! Transport is a one-method seam so the same policy and verification run
-//! against a scripted fake in tests and `ureq` in production.
+//! for rate limits and transient failures, parses a bounded response, and
+//! verifies the returned identity against what was asked for before anything
+//! crosses into the symbolic library. Every operation is an `async fn`; the
+//! caller cancels one by dropping its future, which stops any retry wait
+//! before another request is sent. Transport is a one-method seam so the same
+//! policy and verification run against a scripted fake in tests and
+//! `reqwest` in production.
 
-use crate::execution::{Execution, Interrupted};
 use crate::identity::{GitHubHost, InstallationToken, ObjectSha, RepositoryIdentity};
 use crate::storage::hex;
 use bohmian_code_review::{InvalidRelativePath, RelativePath};
@@ -16,9 +17,10 @@ use serde::Deserialize;
 use serde_json::Error as JsonError;
 use sha1::{Digest, Sha1};
 use std::collections::BTreeMap;
+use std::future::Future;
 use std::io::{self, Read};
+use std::pin::Pin;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use thiserror::Error;
 
@@ -37,8 +39,8 @@ const USER_AGENT: &str = "bohmian-code-review-pipeline";
 /// Files requested per PR-files page; the provider's maximum.
 const PR_FILES_PER_PAGE: u32 = 100;
 
-/// Longest single sleep so cancellation is observed promptly while waiting.
-const SLEEP_SLICE: Duration = Duration::from_millis(100);
+/// Boxed `Send` future returned by the object-safe transport and body seams.
+pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
 /// One outbound GET request. Headers may include the bearer token, so this
 /// type deliberately has no `Debug`.
@@ -61,6 +63,33 @@ impl HttpRequest {
     }
 }
 
+/// An unread response body delivered in chunks so archives can stream.
+pub trait HttpBody: Send {
+    /// Next chunk, or `None` at end of body.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TransportError`] when the body stream fails or times out.
+    fn chunk(&mut self) -> BoxFuture<'_, Result<Option<Vec<u8>>, TransportError>>;
+}
+
+impl HttpBody for reqwest::Response {
+    /// Delegates to [`reqwest::Response::chunk`].
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TransportError::Timeout`] when the request timeout elapses
+    /// mid-body and [`TransportError::Failed`] for any other body failure.
+    fn chunk(&mut self) -> BoxFuture<'_, Result<Option<Vec<u8>>, TransportError>> {
+        Box::pin(async move {
+            reqwest::Response::chunk(self)
+                .await
+                .map(|chunk| chunk.map(|bytes| bytes.to_vec()))
+                .map_err(transport_error)
+        })
+    }
+}
+
 /// One response with its body left unread so archives can stream.
 pub struct HttpResponse {
     /// HTTP status code.
@@ -68,7 +97,7 @@ pub struct HttpResponse {
     /// Lowercase header names with their values.
     pub headers: Vec<(String, String)>,
     /// Unread body.
-    pub body: Box<dyn Read + Send>,
+    pub body: Box<dyn HttpBody>,
 }
 
 impl HttpResponse {
@@ -92,79 +121,80 @@ pub enum TransportError {
     Failed(String),
 }
 
-/// Sends one GET request. Implemented by [`UreqTransport`] and by test fakes.
+/// Sends one GET request. Implemented by [`ReqwestTransport`] and by test
+/// fakes; the boxed future keeps the seam object-safe for [`GitHubClient`].
 pub trait HttpTransport: Send + Sync {
     /// Send `request` without following redirects and without raising on status.
     ///
     /// # Errors
     ///
     /// Returns [`TransportError`] only when no response arrived.
-    fn get(&self, request: HttpRequest) -> Result<HttpResponse, TransportError>;
+    fn get(&self, request: HttpRequest) -> BoxFuture<'_, Result<HttpResponse, TransportError>>;
 }
 
-/// Production transport over `ureq` with redirects disabled.
-pub struct UreqTransport {
-    agent: ureq::Agent,
+/// Production transport over `reqwest` with redirects disabled.
+pub struct ReqwestTransport {
+    client: reqwest::Client,
 }
 
-impl UreqTransport {
-    /// Build an agent that returns every status and never follows redirects.
-    pub fn new() -> UreqTransport {
-        let config = ureq::Agent::config_builder()
-            .http_status_as_error(false)
-            .max_redirects(0)
+impl ReqwestTransport {
+    /// Build a client that never follows redirects.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TransportError::Failed`] when the TLS backend cannot be
+    /// initialised.
+    pub fn new() -> Result<ReqwestTransport, TransportError> {
+        let client = reqwest::Client::builder()
+            .redirect(reqwest::redirect::Policy::none())
             .user_agent(USER_AGENT)
-            .build();
-        UreqTransport {
-            agent: config.into(),
-        }
+            .build()
+            .map_err(transport_error)?;
+        Ok(ReqwestTransport { client })
     }
 }
 
-impl Default for UreqTransport {
-    /// Same as [`UreqTransport::new`].
-    fn default() -> UreqTransport {
-        UreqTransport::new()
+/// Classify a `reqwest` failure without keeping its URL, which may carry an
+/// archive redirect's signed token.
+fn transport_error(error: reqwest::Error) -> TransportError {
+    if error.is_timeout() {
+        TransportError::Timeout
+    } else {
+        TransportError::Failed(error.without_url().to_string())
     }
 }
 
-impl HttpTransport for UreqTransport {
-    /// Sends the request with its own global timeout and streams the body.
+impl HttpTransport for ReqwestTransport {
+    /// Sends the request with its whole-request timeout; the body streams.
     ///
     /// # Errors
     ///
     /// Returns [`TransportError::Timeout`] when `request.timeout` elapses
     /// before the response headers arrive and [`TransportError::Failed`] for
     /// any other connection, TLS, or protocol failure.
-    fn get(&self, request: HttpRequest) -> Result<HttpResponse, TransportError> {
-        let mut builder = self.agent.get(&request.url);
-        for (name, value) in &request.headers {
-            builder = builder.header(*name, value);
-        }
-        let response = builder
-            .config()
-            .timeout_global(Some(request.timeout))
-            .build()
-            .call()
-            .map_err(|error| match error {
-                ureq::Error::Timeout(_) => TransportError::Timeout,
-                other => TransportError::Failed(other.to_string()),
-            })?;
-        let status = response.status().as_u16();
-        let headers = response
-            .headers()
-            .iter()
-            .map(|(name, value)| {
-                (
-                    name.as_str().to_owned(),
-                    String::from_utf8_lossy(value.as_bytes()).into_owned(),
-                )
+    fn get(&self, request: HttpRequest) -> BoxFuture<'_, Result<HttpResponse, TransportError>> {
+        Box::pin(async move {
+            let mut builder = self.client.get(&request.url).timeout(request.timeout);
+            for (name, value) in &request.headers {
+                builder = builder.header(*name, value);
+            }
+            let response = builder.send().await.map_err(transport_error)?;
+            let status = response.status().as_u16();
+            let headers = response
+                .headers()
+                .iter()
+                .map(|(name, value)| {
+                    (
+                        name.as_str().to_owned(),
+                        String::from_utf8_lossy(value.as_bytes()).into_owned(),
+                    )
+                })
+                .collect();
+            Ok(HttpResponse {
+                status,
+                headers,
+                body: Box::new(response),
             })
-            .collect();
-        Ok(HttpResponse {
-            status,
-            headers,
-            body: Box::new(response.into_body().into_reader()),
         })
     }
 }
@@ -176,7 +206,7 @@ pub struct RequestLimits {
     pub max_attempts: u32,
     /// Longest in-call wait for `retry-after`, reset, or backoff; longer waits are reported as retryable errors.
     pub max_retry_wait: Duration,
-    /// Per-request timeout, further capped by the remaining deadline.
+    /// Per-request timeout including body transfer.
     pub request_timeout: Duration,
     /// Largest JSON body accepted.
     pub max_json_bytes: usize,
@@ -276,10 +306,7 @@ pub enum Disposition {
 /// Why a provider operation failed.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum GitHubError {
-    /// The caller cancelled or the deadline passed.
-    #[error(transparent)]
-    Interrupted(#[from] Interrupted),
-    /// A rate limit could not be waited out inside the deadline or the retry cap.
+    /// A rate limit could not be waited out inside the retry cap.
     #[error("rate limited; retry after {retry_after:?}")]
     RateLimited {
         /// Wait the provider requested through `retry-after` or the reset
@@ -353,9 +380,9 @@ impl GitHubError {
             GitHubError::RateLimited { retry_after } => Disposition::Retry {
                 after: Some(*retry_after),
             },
-            GitHubError::Interrupted(Interrupted::DeadlineExceeded)
-            | GitHubError::Unavailable { .. }
-            | GitHubError::Transport(_) => Disposition::Retry { after: None },
+            GitHubError::Unavailable { .. } | GitHubError::Transport(_) => {
+                Disposition::Retry { after: None }
+            }
             _ => Disposition::Terminal,
         }
     }
@@ -551,8 +578,33 @@ pub struct PullRequestFilesPage {
 
 /// A streaming, byte-bounded compressed archive body.
 pub struct Archive {
-    /// Compressed tarball bytes; reading past the archive limit fails.
-    pub reader: Box<dyn Read + Send>,
+    body: Box<dyn HttpBody>,
+    read: u64,
+    limit: u64,
+    resource: String,
+}
+
+impl Archive {
+    /// Next chunk of compressed tarball bytes, or `None` at the end.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`GitHubError::ResponseTooLarge`] once the stream passes
+    /// `max_archive_bytes` (it fails instead of truncating) and
+    /// [`GitHubError::Transport`] when the body stream fails.
+    pub async fn chunk(&mut self) -> Result<Option<Vec<u8>>, GitHubError> {
+        let Some(chunk) = self.body.chunk().await.map_err(GitHubError::Transport)? else {
+            return Ok(None);
+        };
+        self.read = self.read.saturating_add(chunk.len() as u64);
+        if self.read > self.limit {
+            return Err(GitHubError::ResponseTooLarge {
+                resource: self.resource.clone(),
+                limit: self.limit,
+            });
+        }
+        Ok(Some(chunk))
+    }
 }
 
 /// Reader that fails instead of truncating once `limit` bytes were read.
@@ -754,18 +806,22 @@ fn rate_limit_wait(response: &HttpResponse) -> Option<Duration> {
 }
 
 /// Longest 403 body prefix read to recognise a header-less secondary limit.
-const RATE_LIMIT_BODY_BYTES: u64 = 4096;
+const RATE_LIMIT_BODY_BYTES: usize = 4096;
 
 /// Whether a 403 body names a rate limit, as GitHub's secondary-limit
 /// responses do when they carry no rate headers.
 ///
 /// At most [`RATE_LIMIT_BODY_BYTES`] are read; a read error counts as no
 /// signal, and the text never leaves this function.
-fn names_rate_limit(response: &mut HttpResponse) -> bool {
+async fn names_rate_limit(response: &mut HttpResponse) -> bool {
     let mut body = Vec::new();
-    let _ = (&mut response.body)
-        .take(RATE_LIMIT_BODY_BYTES)
-        .read_to_end(&mut body);
+    while body.len() < RATE_LIMIT_BODY_BYTES {
+        match response.body.chunk().await {
+            Ok(Some(chunk)) => body.extend_from_slice(&chunk),
+            _ => break,
+        }
+    }
+    body.truncate(RATE_LIMIT_BODY_BYTES);
     String::from_utf8_lossy(&body)
         .to_ascii_lowercase()
         .contains("rate limit")
@@ -782,7 +838,7 @@ fn is_trusted_redirect(location: &str, host: &GitHubHost) -> bool {
 /// Authenticated, bounded client for one GitHub host and installation.
 ///
 /// The client is stateless apart from call accounting, so one instance may
-/// serve many invocations, each bounded by its own [`Execution`].
+/// serve many concurrent invocations.
 pub struct GitHubClient {
     host: GitHubHost,
     token: InstallationToken,
@@ -792,9 +848,24 @@ pub struct GitHubClient {
 }
 
 impl GitHubClient {
-    /// Client over the production `ureq` transport.
-    pub fn new(host: GitHubHost, token: InstallationToken, limits: RequestLimits) -> GitHubClient {
-        GitHubClient::with_transport(host, token, limits, Box::new(UreqTransport::new()))
+    /// Client over the production `reqwest` transport.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TransportError::Failed`] when the TLS backend cannot be
+    /// initialised.
+    pub fn new(
+        host: GitHubHost,
+        token: InstallationToken,
+        limits: RequestLimits,
+    ) -> Result<GitHubClient, TransportError> {
+        let transport = ReqwestTransport::new()?;
+        Ok(GitHubClient::with_transport(
+            host,
+            token,
+            limits,
+            Box::new(transport),
+        ))
     }
 
     /// Client over an injected transport, for tests and consumers with their own HTTP stack.
@@ -824,14 +895,14 @@ impl GitHubClient {
     ///
     /// [`GitHubError::IdentityMismatch`] when the provider's numeric id or
     /// `full_name` differs, plus any policy or transport error.
-    pub fn repository(
+    pub async fn repository(
         &self,
-        execution: &Execution,
         repository: &RepositoryIdentity,
     ) -> Result<Repository, GitHubError> {
         let resource = format!("/repos/{}", repository.full_name());
-        let wire: RepositoryWire =
-            self.get_json(execution, Operation::Repository, &resource, ACCEPT_JSON)?;
+        let wire: RepositoryWire = self
+            .get_json(Operation::Repository, &resource, ACCEPT_JSON)
+            .await?;
         if wire.id != repository.id()
             || !wire.full_name.eq_ignore_ascii_case(&repository.full_name())
         {
@@ -853,9 +924,8 @@ impl GitHubClient {
     ///
     /// [`GitHubError::IdentityMismatch`] when the provider names another
     /// branch, plus any policy or transport error.
-    pub fn branch_head(
+    pub async fn branch_head(
         &self,
-        execution: &Execution,
         repository: &RepositoryIdentity,
         branch: &str,
     ) -> Result<BranchHead, GitHubError> {
@@ -864,8 +934,9 @@ impl GitHubClient {
             repository.full_name(),
             encode_segment(branch)
         );
-        let wire: BranchWire =
-            self.get_json(execution, Operation::BranchHead, &resource, ACCEPT_JSON)?;
+        let wire: BranchWire = self
+            .get_json(Operation::BranchHead, &resource, ACCEPT_JSON)
+            .await?;
         if wire.name != branch {
             return Err(GitHubError::IdentityMismatch {
                 expected: branch.to_owned(),
@@ -885,15 +956,15 @@ impl GitHubClient {
     ///
     /// [`GitHubError::IdentityMismatch`] when the provider returns another
     /// commit id, plus any policy or transport error.
-    pub fn commit(
+    pub async fn commit(
         &self,
-        execution: &Execution,
         repository: &RepositoryIdentity,
         sha: &ObjectSha,
     ) -> Result<Commit, GitHubError> {
         let resource = format!("/repos/{}/git/commits/{sha}", repository.full_name());
-        let wire: CommitWire =
-            self.get_json(execution, Operation::Commit, &resource, ACCEPT_JSON)?;
+        let wire: CommitWire = self
+            .get_json(Operation::Commit, &resource, ACCEPT_JSON)
+            .await?;
         if wire.sha != *sha {
             return Err(GitHubError::IdentityMismatch {
                 expected: sha.to_string(),
@@ -913,9 +984,8 @@ impl GitHubClient {
     /// [`GitHubError::IdentityMismatch`] when the provider returns another
     /// tree id, plus any policy or transport error. Individual bad entries
     /// are reported in [`TreeListing::rejected`] rather than failing the call.
-    pub fn tree(
+    pub async fn tree(
         &self,
-        execution: &Execution,
         repository: &RepositoryIdentity,
         tree: &ObjectSha,
     ) -> Result<TreeListing, GitHubError> {
@@ -923,7 +993,9 @@ impl GitHubClient {
             "/repos/{}/git/trees/{tree}?recursive=1",
             repository.full_name()
         );
-        let wire: TreeWire = self.get_json(execution, Operation::Tree, &resource, ACCEPT_JSON)?;
+        let wire: TreeWire = self
+            .get_json(Operation::Tree, &resource, ACCEPT_JSON)
+            .await?;
         if wire.sha != *tree {
             return Err(GitHubError::IdentityMismatch {
                 expected: tree.to_string(),
@@ -956,16 +1028,22 @@ impl GitHubClient {
     /// [`GitHubError::ResponseTooLarge`] past `max_blob_bytes`,
     /// [`GitHubError::IdentityMismatch`] when the bytes do not hash to `sha`,
     /// plus any policy or transport error.
-    pub fn blob(
+    pub async fn blob(
         &self,
-        execution: &Execution,
         repository: &RepositoryIdentity,
         sha: &ObjectSha,
     ) -> Result<Vec<u8>, GitHubError> {
         let resource = format!("/repos/{}/git/blobs/{sha}", repository.full_name());
-        let mut response = self.request(execution, Operation::Blob, &resource, ACCEPT_RAW, true)?;
+        let mut response = self
+            .request(Operation::Blob, &resource, ACCEPT_RAW, true)
+            .await?;
         expect_status(&response, 200, &resource)?;
-        let bytes = read_bounded(&mut response.body, self.limits.max_blob_bytes, &resource)?;
+        let bytes = read_bounded(
+            response.body.as_mut(),
+            self.limits.max_blob_bytes,
+            &resource,
+        )
+        .await?;
         let actual = git_blob_sha(&bytes);
         if actual != sha.as_str() {
             return Err(GitHubError::IdentityMismatch {
@@ -986,15 +1064,16 @@ impl GitHubClient {
     /// [`GitHubError::UntrustedRedirect`] for any other redirect target,
     /// [`GitHubError::UnexpectedStatus`] when neither hop yields the body,
     /// plus any policy or transport error. Reading the returned stream past
-    /// `max_archive_bytes` fails with an IO error.
-    pub fn archive(
+    /// `max_archive_bytes` fails with [`GitHubError::ResponseTooLarge`].
+    pub async fn archive(
         &self,
-        execution: &Execution,
         repository: &RepositoryIdentity,
         commit: &ObjectSha,
     ) -> Result<Archive, GitHubError> {
         let resource = format!("/repos/{}/tarball/{commit}", repository.full_name());
-        let first = self.request(execution, Operation::Archive, &resource, ACCEPT_JSON, true)?;
+        let first = self
+            .request(Operation::Archive, &resource, ACCEPT_JSON, true)
+            .await?;
         let response = match first.status {
             200 => first,
             301..=303 | 307 | 308 => {
@@ -1002,24 +1081,19 @@ impl GitHubClient {
                 if !is_trusted_redirect(&location, &self.host) {
                     return Err(GitHubError::UntrustedRedirect);
                 }
-                let hop = self.send_with_policy(
-                    execution,
-                    Operation::Archive,
-                    &location,
-                    ACCEPT_JSON,
-                    false,
-                )?;
+                let hop = self
+                    .send_with_policy(Operation::Archive, &location, ACCEPT_JSON, false)
+                    .await?;
                 expect_status(&hop, 200, &resource)?;
                 hop
             }
             _ => return Err(status_error(&first, &resource)),
         };
         Ok(Archive {
-            reader: Box::new(BoundedReader::new(
-                response.body,
-                self.limits.max_archive_bytes,
-                &resource,
-            )),
+            body: response.body,
+            read: 0,
+            limit: self.limits.max_archive_bytes,
+            resource,
         })
     }
 
@@ -1030,15 +1104,15 @@ impl GitHubClient {
     /// [`GitHubError::IdentityMismatch`] when the number or base repository
     /// id differs, [`GitHubError::MalformedResponse`] for an unknown state,
     /// plus any policy or transport error.
-    pub fn pull_request(
+    pub async fn pull_request(
         &self,
-        execution: &Execution,
         repository: &RepositoryIdentity,
         number: u64,
     ) -> Result<PullRequest, GitHubError> {
         let resource = format!("/repos/{}/pulls/{number}", repository.full_name());
-        let wire: PullRequestWire =
-            self.get_json(execution, Operation::PullRequest, &resource, ACCEPT_JSON)?;
+        let wire: PullRequestWire = self
+            .get_json(Operation::PullRequest, &resource, ACCEPT_JSON)
+            .await?;
         let base_repo = wire.base.repo.as_ref().map(|repo| repo.id);
         if wire.number != number || base_repo != Some(repository.id()) {
             return Err(GitHubError::IdentityMismatch {
@@ -1075,9 +1149,8 @@ impl GitHubClient {
     ///
     /// Any policy or transport error. Individual bad files are reported in
     /// [`PullRequestFilesPage::rejected`] rather than failing the page.
-    pub fn pull_request_files(
+    pub async fn pull_request_files(
         &self,
-        execution: &Execution,
         repository: &RepositoryIdentity,
         number: u64,
         page: u32,
@@ -1086,18 +1159,19 @@ impl GitHubClient {
             "/repos/{}/pulls/{number}/files?per_page={PR_FILES_PER_PAGE}&page={page}",
             repository.full_name()
         );
-        let mut response = self.request(
-            execution,
-            Operation::PullRequestFiles,
-            &resource,
-            ACCEPT_JSON,
-            true,
-        )?;
+        let mut response = self
+            .request(Operation::PullRequestFiles, &resource, ACCEPT_JSON, true)
+            .await?;
         expect_status(&response, 200, &resource)?;
         let has_next = response
             .header("link")
             .is_some_and(|link| link.contains("rel=\"next\""));
-        let bytes = read_bounded(&mut response.body, self.limits.max_json_bytes, &resource)?;
+        let bytes = read_bounded(
+            response.body.as_mut(),
+            self.limits.max_json_bytes,
+            &resource,
+        )
+        .await?;
         let wire: Vec<PullRequestFileWire> = parse_json(&bytes, &resource)?;
         let mut files = Vec::with_capacity(wire.len());
         let mut rejected = Vec::new();
@@ -1126,16 +1200,16 @@ impl GitHubClient {
     /// [`GitHubError::ResponseTooLarge`] or [`GitHubError::Transport`] from
     /// [`read_bounded`], and [`GitHubError::MalformedResponse`] from
     /// [`parse_json`].
-    fn get_json<T: for<'de> Deserialize<'de>>(
+    async fn get_json<T: for<'de> Deserialize<'de>>(
         &self,
-        execution: &Execution,
         operation: Operation,
         resource: &str,
         accept: &str,
     ) -> Result<T, GitHubError> {
-        let mut response = self.request(execution, operation, resource, accept, true)?;
+        let mut response = self.request(operation, resource, accept, true).await?;
         expect_status(&response, 200, resource)?;
-        let bytes = read_bounded(&mut response.body, self.limits.max_json_bytes, resource)?;
+        let bytes =
+            read_bounded(response.body.as_mut(), self.limits.max_json_bytes, resource).await?;
         parse_json(&bytes, resource)
     }
 
@@ -1144,16 +1218,16 @@ impl GitHubClient {
     /// # Errors
     ///
     /// Returns exactly the errors of [`GitHubClient::send_with_policy`].
-    fn request(
+    async fn request(
         &self,
-        execution: &Execution,
         operation: Operation,
         resource: &str,
         accept: &str,
         authenticated: bool,
     ) -> Result<HttpResponse, GitHubError> {
         let url = format!("{}{resource}", self.host.api_base());
-        self.send_with_policy(execution, operation, &url, accept, authenticated)
+        self.send_with_policy(operation, &url, accept, authenticated)
+            .await
     }
 
     /// Build one request for `url`.
@@ -1179,26 +1253,24 @@ impl GitHubClient {
         }
     }
 
-    /// The single request policy: check the execution bound, send, and
-    /// retry rate limits, server errors, and transport failures within
-    /// `max_attempts` and the remaining deadline.
+    /// The single request policy: send, and retry rate limits, server
+    /// errors, and transport failures within `max_attempts`.
+    ///
+    /// Retry waits use tokio time, so dropping the returned future during a
+    /// wait sends no further request.
     ///
     /// # Errors
     ///
-    /// Returns [`GitHubError::Interrupted`] when [`Execution::check`] reports
-    /// cancellation or an expired deadline before an attempt or during a
-    /// retry sleep; [`GitHubError::Forbidden`] for a 403 with neither
-    /// rate-limit headers nor a body naming a rate limit;
-    /// [`GitHubError::RateLimited`] for a 403/429 whose wait (from headers,
-    /// or [`SECONDARY_RATE_LIMIT_WAIT`] without them) exceeds
-    /// `max_retry_wait`, the remaining deadline, or the attempt budget;
-    /// [`GitHubError::Unavailable`] for a 5xx and [`GitHubError::Transport`]
-    /// for a transport failure once `max_attempts` or the deadline is
-    /// exhausted. Any other status is returned as a successful response for
-    /// the caller to classify.
-    fn send_with_policy(
+    /// Returns [`GitHubError::Forbidden`] for a 403 with neither rate-limit
+    /// headers nor a body naming a rate limit; [`GitHubError::RateLimited`]
+    /// for a 403/429 whose wait (from headers, or
+    /// [`SECONDARY_RATE_LIMIT_WAIT`] without them) exceeds `max_retry_wait`
+    /// or the attempt budget; [`GitHubError::Unavailable`] for a 5xx and
+    /// [`GitHubError::Transport`] for a transport failure once `max_attempts`
+    /// is exhausted. Any other status is returned as a successful response
+    /// for the caller to classify.
+    async fn send_with_policy(
         &self,
-        execution: &Execution,
         operation: Operation,
         url: &str,
         accept: &str,
@@ -1207,18 +1279,17 @@ impl GitHubClient {
         let mut attempt = 0;
         loop {
             attempt += 1;
-            let remaining = execution.check()?;
-            let timeout = remaining.min(self.limits.request_timeout);
             self.calls.record(operation);
             let outcome = self
                 .transport
-                .get(self.build(url, accept, authenticated, timeout));
+                .get(self.build(url, accept, authenticated, self.limits.request_timeout))
+                .await;
             let backoff = Duration::from_secs(attempt.into()).min(self.limits.max_retry_wait);
             let (wait, failure) = match outcome {
                 Ok(mut response) if matches!(response.status, 403 | 429) => {
                     let wait = match rate_limit_wait(&response) {
                         Some(wait) => wait,
-                        None if response.status == 429 || names_rate_limit(&mut response) => {
+                        None if response.status == 429 || names_rate_limit(&mut response).await => {
                             SECONDARY_RATE_LIMIT_WAIT
                         }
                         None => return Err(GitHubError::Forbidden),
@@ -1234,31 +1305,12 @@ impl GitHubClient {
                 Ok(response) => return Ok(response),
                 Err(error) => (backoff, GitHubError::Transport(error)),
             };
-            let too_long = wait > self.limits.max_retry_wait
-                || execution.remaining().is_none_or(|left| wait >= left);
-            if attempt >= self.limits.max_attempts || too_long {
+            if attempt >= self.limits.max_attempts || wait > self.limits.max_retry_wait {
                 return Err(failure);
             }
-            sleep_bounded(execution, wait)?;
+            tokio::time::sleep(wait).await;
         }
     }
-}
-
-/// Sleep for `wait` in slices, stopping early on cancellation.
-///
-/// # Errors
-///
-/// Returns the [`Interrupted`] reported by [`Execution::check`] when the
-/// execution is cancelled or its deadline passes before `wait` elapses.
-fn sleep_bounded(execution: &Execution, wait: Duration) -> Result<(), Interrupted> {
-    let mut left = wait;
-    while !left.is_zero() {
-        execution.check()?;
-        let slice = left.min(SLEEP_SLICE);
-        thread::sleep(slice);
-        left -= slice;
-    }
-    Ok(())
 }
 
 /// Map a non-success status to its typed error.
@@ -1300,19 +1352,23 @@ fn expect_status(
 ///
 /// # Errors
 ///
-/// Returns [`GitHubError::Transport`] wrapping [`TransportError::Failed`]
-/// when the body stream fails and [`GitHubError::ResponseTooLarge`] when
-/// more than `limit` bytes are available.
-fn read_bounded(body: &mut dyn Read, limit: usize, resource: &str) -> Result<Vec<u8>, GitHubError> {
+/// Returns [`GitHubError::Transport`] when the body stream fails and
+/// [`GitHubError::ResponseTooLarge`] when more than `limit` bytes are
+/// available.
+async fn read_bounded(
+    body: &mut dyn HttpBody,
+    limit: usize,
+    resource: &str,
+) -> Result<Vec<u8>, GitHubError> {
     let mut bytes = Vec::new();
-    body.take((limit as u64).saturating_add(1))
-        .read_to_end(&mut bytes)
-        .map_err(|error| GitHubError::Transport(TransportError::Failed(error.to_string())))?;
-    if bytes.len() > limit {
-        return Err(GitHubError::ResponseTooLarge {
-            resource: resource.to_owned(),
-            limit: limit as u64,
-        });
+    while let Some(chunk) = body.chunk().await.map_err(GitHubError::Transport)? {
+        if chunk.len() > limit - bytes.len() {
+            return Err(GitHubError::ResponseTooLarge {
+                resource: resource.to_owned(),
+                limit: limit as u64,
+            });
+        }
+        bytes.extend_from_slice(&chunk);
     }
     Ok(bytes)
 }
@@ -1402,11 +1458,9 @@ fn validate_pull_request_file(file: &PullRequestFileWire) -> Result<PullRequestF
 /// Owner tests for the request policy, identity verification, and archive trust rules, driven through a scripted transport.
 mod tests {
     use super::*;
-    use crate::execution::CancelToken;
+    use crate::testing::FixedBody;
     use std::collections::VecDeque;
-    use std::io::Cursor;
     use std::sync::Mutex;
-    use std::time::Instant;
 
     /// One request the fake observed, with its headers but never its token value.
     struct SeenRequest {
@@ -1471,22 +1525,25 @@ mod tests {
         /// # Errors
         ///
         /// Returns the scripted [`TransportError`] when the next entry is one.
-        fn get(&self, request: HttpRequest) -> Result<HttpResponse, TransportError> {
+        fn get(&self, request: HttpRequest) -> BoxFuture<'_, Result<HttpResponse, TransportError>> {
             self.seen.lock().expect("seen lock").push(SeenRequest {
                 url: request.url.clone(),
                 authorized: request.header("authorization") == Some("Bearer ghs_token"),
                 accept: request.header("accept").unwrap_or("").to_owned(),
             });
-            let (status, headers, body) = self
+            let scripted = self
                 .responses
                 .lock()
                 .expect("responses lock")
                 .pop_front()
-                .expect("scripted response for every request")?;
-            Ok(HttpResponse {
-                status,
-                headers,
-                body: Box::new(Cursor::new(body)),
+                .expect("scripted response for every request");
+            Box::pin(async move {
+                let (status, headers, body) = scripted?;
+                Ok(HttpResponse {
+                    status,
+                    headers,
+                    body: Box::new(FixedBody::new(body)),
+                })
             })
         }
     }
@@ -1511,7 +1568,7 @@ mod tests {
         /// # Errors
         ///
         /// Returns whatever [`FakeTransport::get`] returns.
-        fn get(&self, request: HttpRequest) -> Result<HttpResponse, TransportError> {
+        fn get(&self, request: HttpRequest) -> BoxFuture<'_, Result<HttpResponse, TransportError>> {
             self.0.get(request)
         }
     }
@@ -1521,9 +1578,17 @@ mod tests {
         client_on(GitHubHost::public(), RequestLimits::default())
     }
 
-    /// A one-minute execution bound.
-    fn execution() -> Execution {
-        Execution::with_timeout(Duration::from_secs(60))
+    /// Every remaining chunk of `archive`, concatenated.
+    ///
+    /// # Errors
+    ///
+    /// Returns the first [`Archive::chunk`] error.
+    async fn read_archive(archive: &mut Archive) -> Result<Vec<u8>, GitHubError> {
+        let mut bytes = Vec::new();
+        while let Some(chunk) = archive.chunk().await? {
+            bytes.extend_from_slice(&chunk);
+        }
+        Ok(bytes)
     }
 
     /// The pinned test repository.
@@ -1539,10 +1604,9 @@ mod tests {
     /// Scenario 1: pinned repository, branch, commit, tree, blob, and PR data
     /// come back verified; mismatched repository, commit, tree, or blob
     /// identity is rejected before any bytes are returned.
-    #[test]
-    fn verified_provider_identities_cross_and_mismatches_are_rejected() {
+    #[tokio::test]
+    async fn verified_provider_identities_cross_and_mismatches_are_rejected() {
         let (client, fake) = client();
-        let execution = execution();
         let repo = repo();
         let commit = sha('c');
         let tree = sha('7');
@@ -1552,7 +1616,7 @@ mod tests {
         fake.push_json(
             r#"{"id":1296269,"full_name":"octocat/Hello-World","default_branch":"main","private":true}"#,
         );
-        let repository = client.repository(&execution, &repo).expect("repository");
+        let repository = client.repository(&repo).await.expect("repository");
         assert_eq!(
             repository,
             Repository {
@@ -1565,19 +1629,14 @@ mod tests {
         fake.push_json(&format!(
             r#"{{"name":"main","commit":{{"sha":"{commit}","commit":{{"tree":{{"sha":"{tree}"}}}}}}}}"#
         ));
-        let head = client
-            .branch_head(&execution, &repo, "main")
-            .expect("branch");
+        let head = client.branch_head(&repo, "main").await.expect("branch");
         assert_eq!((&head.commit, &head.tree), (&commit, &tree));
 
         fake.push_json(&format!(
             r#"{{"sha":"{commit}","tree":{{"sha":"{tree}"}}}}"#
         ));
         assert_eq!(
-            client
-                .commit(&execution, &repo, &commit)
-                .expect("commit")
-                .tree,
+            client.commit(&repo, &commit).await.expect("commit").tree,
             tree
         );
 
@@ -1589,7 +1648,7 @@ mod tests {
                 {{"path":"src","mode":"040000","type":"tree","sha":"{tree}"}}
             ]}}"#
         ));
-        let listing = client.tree(&execution, &repo, &tree).expect("tree");
+        let listing = client.tree(&repo, &tree).await.expect("tree");
         assert!(!listing.truncated);
         assert_eq!(listing.entries.len(), 2);
         assert_eq!(listing.entries[0].path.as_str(), "src/lib.rs");
@@ -1606,10 +1665,7 @@ mod tests {
         );
 
         fake.push(200, &[], blob_bytes.to_vec());
-        assert_eq!(
-            client.blob(&execution, &repo, &blob).expect("blob"),
-            blob_bytes
-        );
+        assert_eq!(client.blob(&repo, &blob).await.expect("blob"), blob_bytes);
         assert_eq!(fake.seen().last().map(|s| s.2.as_str()), Some(ACCEPT_RAW));
 
         fake.push_json(&format!(
@@ -1617,7 +1673,7 @@ mod tests {
                 "base":{{"ref":"main","sha":"{commit}","repo":{{"id":1296269}}}},
                 "head":{{"ref":"feature","sha":"{tree}","repo":{{"id":99}}}}}}"#
         ));
-        let pr = client.pull_request(&execution, &repo, 42).expect("pr");
+        let pr = client.pull_request(&repo, 42).await.expect("pr");
         assert_eq!(
             (pr.state, pr.base.clone(), pr.head_repository_id),
             (PullRequestState::Open, commit.clone(), Some(99))
@@ -1633,7 +1689,8 @@ mod tests {
             ),
         );
         let page = client
-            .pull_request_files(&execution, &repo, 42, 1)
+            .pull_request_files(&repo, 42, 1)
+            .await
             .expect("files");
         assert!(page.has_next);
         assert_eq!(page.files.len(), 1);
@@ -1650,36 +1707,36 @@ mod tests {
             r#"{"id":1,"full_name":"octocat/Hello-World","default_branch":"main","private":true}"#,
         );
         assert!(matches!(
-            client.repository(&execution, &repo),
+            client.repository(&repo).await,
             Err(GitHubError::IdentityMismatch { .. })
         ));
         fake.push_json(&format!(r#"{{"sha":"{tree}","tree":{{"sha":"{tree}"}}}}"#));
         assert!(matches!(
-            client.commit(&execution, &repo, &commit),
+            client.commit(&repo, &commit).await,
             Err(GitHubError::IdentityMismatch { .. })
         ));
         fake.push_json(&format!(
             r#"{{"sha":"{commit}","truncated":true,"tree":[]}}"#
         ));
         assert!(matches!(
-            client.tree(&execution, &repo, &tree),
+            client.tree(&repo, &tree).await,
             Err(GitHubError::IdentityMismatch { .. })
         ));
         fake.push(200, &[], b"tampered\n".to_vec());
         assert!(matches!(
-            client.blob(&execution, &repo, &blob),
+            client.blob(&repo, &blob).await,
             Err(GitHubError::IdentityMismatch { .. })
         ));
         fake.push_json(&format!(
             r#"{{"number":42,"state":"open","base":{{"ref":"main","sha":"{commit}","repo":{{"id":5}}}},"head":{{"ref":"f","sha":"{tree}","repo":null}}}}"#
         ));
         assert!(matches!(
-            client.pull_request(&execution, &repo, 42),
+            client.pull_request(&repo, 42).await,
             Err(GitHubError::IdentityMismatch { .. })
         ));
         fake.push_json(r#"{"name":"other","commit":{"sha":"cccccccccccccccccccccccccccccccccccccccc","commit":{"tree":{"sha":"7777777777777777777777777777777777777777"}}}}"#);
         assert!(matches!(
-            client.branch_head(&execution, &repo, "main"),
+            client.branch_head(&repo, "main").await,
             Err(GitHubError::IdentityMismatch { .. })
         ));
 
@@ -1691,8 +1748,8 @@ mod tests {
 
     /// Scenario 1: an archive redirect is followed once, without credentials,
     /// only to the trusted archive host; the stream is byte-bounded.
-    #[test]
-    fn archive_redirect_is_trusted_only_on_archive_host_and_never_forwards_credentials() {
+    #[tokio::test]
+    async fn archive_redirect_is_trusted_only_on_archive_host_and_never_forwards_credentials() {
         let (client, fake) = client_on(
             GitHubHost::public(),
             RequestLimits {
@@ -1700,7 +1757,6 @@ mod tests {
                 ..RequestLimits::default()
             },
         );
-        let execution = execution();
         let repo = repo();
         let commit = sha('c');
 
@@ -1713,12 +1769,8 @@ mod tests {
             Vec::new(),
         );
         fake.push(200, &[], b"abcd".to_vec());
-        let mut archive = client.archive(&execution, &repo, &commit).expect("archive");
-        let mut bytes = Vec::new();
-        archive
-            .reader
-            .read_to_end(&mut bytes)
-            .expect("within limit");
+        let mut archive = client.archive(&repo, &commit).await.expect("archive");
+        let bytes = read_archive(&mut archive).await.expect("within limit");
         assert_eq!(bytes, b"abcd");
         let seen = fake.seen();
         assert_eq!(
@@ -1732,7 +1784,8 @@ mod tests {
         let evil = "https://evil.example.com/archive.tar.gz?token=secret";
         fake.push(302, &[("location", evil)], Vec::new());
         let untrusted = client
-            .archive(&execution, &repo, &commit)
+            .archive(&repo, &commit)
+            .await
             .err()
             .expect("untrusted redirect");
         assert_eq!(untrusted, GitHubError::UntrustedRedirect);
@@ -1749,12 +1802,11 @@ mod tests {
             Vec::new(),
         );
         fake.push(200, &[], b"abcde".to_vec());
-        let mut archive = client.archive(&execution, &repo, &commit).expect("archive");
-        let error = archive
-            .reader
-            .read_to_end(&mut Vec::new())
-            .expect_err("over limit");
-        assert!(error.to_string().contains("exceeds archive byte limit"));
+        let mut archive = client.archive(&repo, &commit).await.expect("archive");
+        assert!(matches!(
+            read_archive(&mut archive).await,
+            Err(GitHubError::ResponseTooLarge { limit: 4, .. })
+        ));
 
         let ghes = GitHubHost::enterprise("https://ghe.example.com/api/v3").expect("ghes");
         let (client, fake) = client_on(ghes, RequestLimits::default());
@@ -1764,7 +1816,7 @@ mod tests {
             Vec::new(),
         );
         fake.push(200, &[], b"gz".to_vec());
-        assert!(client.archive(&execution, &repo, &commit).is_ok());
+        assert!(client.archive(&repo, &commit).await.is_ok());
         assert_eq!(
             fake.seen()[0].0,
             "https://ghe.example.com/api/v3/repos/octocat/Hello-World/tarball/cccccccccccccccccccccccccccccccccccccccc"
@@ -1775,7 +1827,7 @@ mod tests {
             Vec::new(),
         );
         fake.push(200, &[], b"gz".to_vec());
-        assert!(client.archive(&execution, &repo, &commit).is_ok());
+        assert!(client.archive(&repo, &commit).await.is_ok());
         let seen = fake.seen();
         assert_eq!(seen[3].0, "https://codeload.ghe.example.com/x");
         assert!(!seen[3].1, "codeload hop must not forward credentials");
@@ -1785,17 +1837,34 @@ mod tests {
             Vec::new(),
         );
         assert!(matches!(
-            client.archive(&execution, &repo, &commit),
+            client.archive(&repo, &commit).await,
             Err(GitHubError::UntrustedRedirect)
         ));
         assert_eq!(client.calls().get(Operation::Archive), 5);
     }
 
+    /// A caller that drops a call while it waits out a rate limit sends no
+    /// further request and sees no library error: drop is cancellation.
+    #[tokio::test(start_paused = true)]
+    async fn dropped_call_sends_no_further_requests() {
+        let (client, fake) = client();
+        let repo = repo();
+        fake.push(429, &[("retry-after", "30")], Vec::new());
+        fake.push_json(r#"{"id":1296269,"full_name":"octocat/Hello-World","default_branch":"main","private":false}"#);
+
+        let dropped = tokio::time::timeout(Duration::from_secs(1), client.repository(&repo)).await;
+        assert!(dropped.is_err(), "call must still be waiting when dropped");
+        tokio::time::advance(Duration::from_secs(120)).await;
+
+        assert_eq!(fake.seen().len(), 1);
+        assert_eq!(client.calls().get(Operation::Repository), 1);
+    }
+
     /// Scenario 2: rate limits with a short wait are retried once under one
     /// policy; long waits, exhausted attempts, header-less secondary limits,
     /// and plain 403s are typed.
-    #[test]
-    fn rate_limits_retry_within_bounds_or_report_typed_outcomes() {
+    #[tokio::test]
+    async fn rate_limits_retry_within_bounds_or_report_typed_outcomes() {
         let (client, fake) = client_on(
             GitHubHost::public(),
             RequestLimits {
@@ -1804,13 +1873,12 @@ mod tests {
                 ..RequestLimits::default()
             },
         );
-        let execution = execution();
         let repo = repo();
         let ok = r#"{"id":1296269,"full_name":"octocat/Hello-World","default_branch":"main","private":false}"#;
 
         fake.push(403, &[("retry-after", "0")], Vec::new());
         fake.push_json(ok);
-        assert!(client.repository(&execution, &repo).is_ok());
+        assert!(client.repository(&repo).await.is_ok());
         assert_eq!(client.calls().get(Operation::Repository), 2);
 
         fake.push(
@@ -1819,7 +1887,7 @@ mod tests {
             Vec::new(),
         );
         fake.push_json(ok);
-        assert!(client.repository(&execution, &repo).is_ok());
+        assert!(client.repository(&repo).await.is_ok());
 
         let far = (now_epoch_seconds() + 3600).to_string();
         fake.push(
@@ -1827,9 +1895,7 @@ mod tests {
             &[("x-ratelimit-remaining", "0"), ("x-ratelimit-reset", &far)],
             Vec::new(),
         );
-        let error = client
-            .repository(&execution, &repo)
-            .expect_err("rate limited");
+        let error = client.repository(&repo).await.expect_err("rate limited");
         match error {
             GitHubError::RateLimited { retry_after } => {
                 assert!(retry_after >= Duration::from_secs(3590));
@@ -1846,7 +1912,7 @@ mod tests {
         fake.push(403, &[("retry-after", "0")], Vec::new());
         fake.push(403, &[("retry-after", "0")], Vec::new());
         assert_eq!(
-            client.repository(&execution, &repo).err(),
+            client.repository(&repo).await.err(),
             Some(GitHubError::RateLimited {
                 retry_after: Duration::ZERO
             })
@@ -1857,9 +1923,7 @@ mod tests {
             &[("x-ratelimit-remaining", "4990")],
             b"You have exceeded a secondary rate limit".to_vec(),
         );
-        let secondary = client
-            .repository(&execution, &repo)
-            .expect_err("secondary limit");
+        let secondary = client.repository(&repo).await.expect_err("secondary limit");
         assert_eq!(
             secondary,
             GitHubError::RateLimited {
@@ -1874,23 +1938,23 @@ mod tests {
         );
 
         fake.push(403, &[], Vec::new());
-        let forbidden = client.repository(&execution, &repo).expect_err("forbidden");
+        let forbidden = client.repository(&repo).await.expect_err("forbidden");
         assert_eq!(forbidden, GitHubError::Forbidden);
         assert_eq!(forbidden.disposition(), Disposition::Terminal);
 
         fake.push(401, &[], Vec::new());
         assert_eq!(
-            client.repository(&execution, &repo).err(),
+            client.repository(&repo).await.err(),
             Some(GitHubError::Unauthorized)
         );
         fake.push(404, &[], Vec::new());
         assert!(matches!(
-            client.repository(&execution, &repo),
+            client.repository(&repo).await,
             Err(GitHubError::NotFound { .. })
         ));
         fake.push(429, &[], Vec::new());
         assert_eq!(
-            client.repository(&execution, &repo).err(),
+            client.repository(&repo).await.err(),
             Some(GitHubError::RateLimited {
                 retry_after: SECONDARY_RATE_LIMIT_WAIT
             }),
@@ -1899,10 +1963,9 @@ mod tests {
     }
 
     /// Scenario 2: malformed or oversized payloads are terminal; server and
-    /// transport failures retry then surface as retryable; cancellation and
-    /// deadlines stop before any request is sent.
-    #[test]
-    fn malformed_payloads_and_interruptions_are_explicit() {
+    /// transport failures retry then surface as retryable.
+    #[tokio::test]
+    async fn malformed_payloads_and_failures_are_explicit() {
         let (client, fake) = client_on(
             GitHubHost::public(),
             RequestLimits {
@@ -1912,11 +1975,10 @@ mod tests {
                 ..RequestLimits::default()
             },
         );
-        let execution = execution();
         let repo = repo();
 
         fake.push_json(r#"{"id":"not a number"}"#);
-        let error = client.repository(&execution, &repo).expect_err("malformed");
+        let error = client.repository(&repo).await.expect_err("malformed");
         assert!(
             matches!(&error, GitHubError::MalformedResponse { detail, .. } if detail.starts_with("unexpected json shape"))
         );
@@ -1924,61 +1986,29 @@ mod tests {
 
         fake.push_json(r#"{"id":1296269,"full_name":"octocat/Hello-World","default_branch":"main","private":false,"pad":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"}"#);
         assert!(matches!(
-            client.repository(&execution, &repo),
+            client.repository(&repo).await,
             Err(GitHubError::ResponseTooLarge { limit: 64, .. })
         ));
 
         fake.push(503, &[], Vec::new());
         fake.push(502, &[], Vec::new());
-        let error = client
-            .repository(&Execution::with_timeout(Duration::from_secs(10)), &repo)
-            .expect_err("unavailable");
+        let error = client.repository(&repo).await.expect_err("unavailable");
         assert_eq!(error, GitHubError::Unavailable { status: 502 });
         assert_eq!(error.disposition(), Disposition::Retry { after: None });
 
         fake.push_failure(TransportError::Timeout);
         fake.push_failure(TransportError::Failed("reset".into()));
         assert_eq!(
-            client
-                .repository(&Execution::with_timeout(Duration::from_secs(10)), &repo)
-                .err(),
+            client.repository(&repo).await.err(),
             Some(GitHubError::Transport(TransportError::Failed(
                 "reset".into()
             )))
         );
-
-        let before = fake.seen().len();
-        let cancelled = Execution::with_timeout(Duration::from_secs(60));
-        cancelled.cancel_token().cancel();
-        assert_eq!(
-            client.repository(&cancelled, &repo).err(),
-            Some(GitHubError::Interrupted(Interrupted::Cancelled))
-        );
-        let expired = Execution::new(Instant::now(), CancelToken::new());
-        assert_eq!(
-            client.tree(&expired, &repo, &sha('7')).err(),
-            Some(GitHubError::Interrupted(Interrupted::DeadlineExceeded))
-        );
-        assert_eq!(
-            fake.seen().len(),
-            before,
-            "no request is sent once interrupted"
-        );
-
-        // A retry wait that would cross the deadline is reported instead of slept.
-        fake.push(403, &[("retry-after", "2")], Vec::new());
-        let short = Execution::with_timeout(Duration::from_secs(1));
-        assert_eq!(
-            client.repository(&short, &repo).err(),
-            Some(GitHubError::RateLimited {
-                retry_after: Duration::from_secs(2)
-            })
-        );
     }
 
     /// Branch names are percent-encoded except `/`; blob ids hash like Git.
-    #[test]
-    fn helpers_encode_paths_and_hash_blobs_like_git() {
+    #[tokio::test]
+    async fn helpers_encode_paths_and_hash_blobs_like_git() {
         assert_eq!(encode_segment("feature/a b#1"), "feature/a%20b%231");
         assert_eq!(
             git_blob_sha(b""),
@@ -2004,10 +2034,10 @@ mod tests {
     }
 
     /// A limit of `usize::MAX` reads the whole body instead of overflowing.
-    #[test]
-    fn read_bounded_accepts_the_maximum_limit() {
-        let mut body = Cursor::new(b"hello".to_vec());
-        let bytes = read_bounded(&mut body, std::hint::black_box(usize::MAX), "blob");
+    #[tokio::test]
+    async fn read_bounded_accepts_the_maximum_limit() {
+        let mut body = FixedBody::new(b"hello".to_vec());
+        let bytes = read_bounded(&mut body, std::hint::black_box(usize::MAX), "blob").await;
         assert_eq!(bytes.as_deref(), Ok(&b"hello"[..]));
     }
 }

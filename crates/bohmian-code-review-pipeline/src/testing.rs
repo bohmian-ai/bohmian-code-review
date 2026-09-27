@@ -1,28 +1,47 @@
-//! In-memory test doubles shared by facade tests: a URL-routed fake GitHub
-//! transport, create-only object storage, and an identity-scoped snapshot store.
+//! In-memory test doubles shared by facade tests: a fixed response body, a
+//! URL-routed fake GitHub transport, create-only object storage, and an identity-scoped snapshot store.
 //!
 //! These prove publication order, retry convergence, and isolation without
 //! a network, disk, or database. They are compiled only for tests.
 
-use crate::github::{HttpRequest, HttpResponse, HttpTransport, TransportError};
+use crate::github::{
+    BoxFuture, HttpBody, HttpRequest, HttpResponse, HttpTransport, TransportError,
+};
 use crate::identity::{Identity, ObjectSha};
 use crate::persistence::{PersistenceError, SnapshotPointer, SnapshotScope, SnapshotStore};
 use crate::storage::{ObjectKey, ObjectStorage, StorageError};
 use std::collections::{BTreeMap, HashMap};
-use std::io::Cursor;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::SystemTime;
 
-/// Hook run with every requested URL.
-type RequestHook = Box<dyn Fn(&str) + Send>;
+/// Response body delivered as one chunk, then end of body.
+pub(crate) struct FixedBody(Option<Vec<u8>>);
+
+impl FixedBody {
+    /// A body carrying exactly `bytes`.
+    pub(crate) fn new(bytes: Vec<u8>) -> FixedBody {
+        FixedBody(Some(bytes))
+    }
+}
+
+impl HttpBody for FixedBody {
+    /// Yields the whole body once, then `None`.
+    ///
+    /// # Errors
+    ///
+    /// Never.
+    fn chunk(&mut self) -> BoxFuture<'_, Result<Option<Vec<u8>>, TransportError>> {
+        let chunk = self.0.take();
+        Box::pin(async move { Ok(chunk) })
+    }
+}
 
 /// Fake transport answering by URL suffix; unmatched requests get 404.
 #[derive(Default)]
 pub(crate) struct RoutedTransport {
     routes: Mutex<Vec<(String, u16, Vec<u8>)>>,
     seen: Mutex<Vec<String>>,
-    on_request: Mutex<Option<RequestHook>>,
 }
 
 impl RoutedTransport {
@@ -40,11 +59,6 @@ impl RoutedTransport {
         self.route(suffix, 200, json);
     }
 
-    /// Run `hook` with every requested URL before answering it.
-    pub(crate) fn on_request(&self, hook: impl Fn(&str) + Send + 'static) {
-        *self.on_request.lock().expect("hook lock") = Some(Box::new(hook));
-    }
-
     /// URLs requested so far.
     pub(crate) fn seen(&self) -> Vec<String> {
         self.seen.lock().expect("seen lock").clone()
@@ -57,14 +71,11 @@ impl HttpTransport for RoutedTransport {
     /// # Errors
     ///
     /// Never; unmatched URLs are answered with 404.
-    fn get(&self, request: HttpRequest) -> Result<HttpResponse, TransportError> {
+    fn get(&self, request: HttpRequest) -> BoxFuture<'_, Result<HttpResponse, TransportError>> {
         self.seen
             .lock()
             .expect("seen lock")
             .push(request.url.clone());
-        if let Some(hook) = self.on_request.lock().expect("hook lock").as_ref() {
-            hook(&request.url);
-        }
         let routes = self.routes.lock().expect("routes lock");
         let (status, body) = routes
             .iter()
@@ -72,10 +83,12 @@ impl HttpTransport for RoutedTransport {
             .map_or((404, Vec::new()), |(_, status, body)| {
                 (*status, body.clone())
             });
-        Ok(HttpResponse {
-            status,
-            headers: Vec::new(),
-            body: Box::new(Cursor::new(body)),
+        Box::pin(async move {
+            Ok(HttpResponse {
+                status,
+                headers: Vec::new(),
+                body: Box::new(FixedBody::new(body)),
+            })
         })
     }
 }
@@ -117,7 +130,7 @@ impl ObjectStorage for MemoryStorage {
     /// # Errors
     ///
     /// `AlreadyExists` for a taken key, `Backend` when the switch was set.
-    fn create(&self, key: &ObjectKey, bytes: &[u8]) -> Result<(), StorageError> {
+    async fn create(&self, key: &ObjectKey, bytes: &[u8]) -> Result<(), StorageError> {
         if self.fail_next_create.swap(false, Ordering::SeqCst) {
             return Err(StorageError::Backend {
                 detail: "injected create failure".to_owned(),
@@ -136,7 +149,7 @@ impl ObjectStorage for MemoryStorage {
     /// # Errors
     ///
     /// `Backend` when the switch was set, `NotFound` when absent.
-    fn read(&self, key: &ObjectKey) -> Result<Vec<u8>, StorageError> {
+    async fn read(&self, key: &ObjectKey) -> Result<Vec<u8>, StorageError> {
         if self.fail_next_read.swap(false, Ordering::SeqCst) {
             return Err(StorageError::Backend {
                 detail: "injected read failure".to_owned(),
@@ -155,7 +168,7 @@ impl ObjectStorage for MemoryStorage {
     /// # Errors
     ///
     /// Never.
-    fn delete(&self, key: &ObjectKey) -> Result<(), StorageError> {
+    async fn delete(&self, key: &ObjectKey) -> Result<(), StorageError> {
         self.objects.lock().expect("objects lock").remove(key);
         Ok(())
     }
@@ -183,7 +196,7 @@ impl SnapshotStore for MemorySnapshotStore {
     /// # Errors
     ///
     /// Never.
-    fn snapshot_pointer(
+    async fn snapshot_pointer(
         &self,
         scope: &SnapshotScope,
     ) -> Result<Option<SnapshotPointer>, PersistenceError> {
@@ -200,7 +213,7 @@ impl SnapshotStore for MemorySnapshotStore {
     /// # Errors
     ///
     /// `Backend` when the failure switch was set.
-    fn publish_snapshot_pointer(
+    async fn publish_snapshot_pointer(
         &self,
         scope: &SnapshotScope,
         expected: Option<&ObjectSha>,
@@ -225,7 +238,7 @@ impl SnapshotStore for MemorySnapshotStore {
     /// # Errors
     ///
     /// Never.
-    fn record_snapshot(
+    async fn record_snapshot(
         &self,
         identity: &Identity,
         key: &ObjectKey,
@@ -244,7 +257,7 @@ impl SnapshotStore for MemorySnapshotStore {
     /// # Errors
     ///
     /// Never.
-    fn unreferenced_snapshots(
+    async fn unreferenced_snapshots(
         &self,
         before: SystemTime,
         limit: usize,
@@ -273,7 +286,7 @@ impl SnapshotStore for MemorySnapshotStore {
     /// # Errors
     ///
     /// Never.
-    fn delete_snapshot(
+    async fn delete_snapshot(
         &self,
         identity: &Identity,
         key: &ObjectKey,
@@ -291,7 +304,10 @@ impl SnapshotStore for MemorySnapshotStore {
     /// # Errors
     ///
     /// Never.
-    fn remove_repository(&self, identity: &Identity) -> Result<Vec<ObjectKey>, PersistenceError> {
+    async fn remove_repository(
+        &self,
+        identity: &Identity,
+    ) -> Result<Vec<ObjectKey>, PersistenceError> {
         self.pointers
             .lock()
             .expect("pointers lock")

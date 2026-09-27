@@ -7,14 +7,15 @@
 //! substituted, and indexes through the public [`SymbolicContext`]. Source
 //! bytes live only while one entry is being parsed. A [`Snapshot`] is
 //! recorded, then written at its immutable key and compared byte for byte on
-//! read-back before the pointer moves; an incomplete or interrupted attempt
-//! writes nothing and returns exact coverage. [`Snapshots`] reads published
+//! read-back before the pointer moves; an incomplete attempt writes nothing
+//! and returns exact coverage. Dropping the build future at any `.await`
+//! leaves the pointer on a complete snapshot and every written object
+//! recorded. [`Snapshots`] reads published
 //! snapshots and deletes recorded snapshots no pointer names.
 
 use crate::eligibility::{
     Exclusion, ExclusionReason, MAX_ELIGIBLE_FILE_BYTES, RootAttributes, classify,
 };
-use crate::execution::{Execution, Interrupted};
 use crate::github::{
     Archive, BoundedReader, GitHubClient, GitHubError, TreeEntry, TreeEntryMode, git_blob_sha,
 };
@@ -26,7 +27,7 @@ use bohmian_code_review::{EXTRACTION_VERSION, IndexedFileFacts, RelativePath, Sy
 use flate2::read::GzDecoder;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use std::io::{self, Read};
+use std::io::{self, Cursor, Read};
 use std::time::SystemTime;
 use tar::EntryType;
 use thiserror::Error;
@@ -76,7 +77,7 @@ pub enum SkipReason {
         /// Provider error text.
         detail: String,
     },
-    /// The archive omitted it and the fallback bound or deadline was reached.
+    /// The archive omitted it and the fallback bound was reached.
     NotFetched,
 }
 
@@ -224,14 +225,14 @@ impl Snapshot {
 
 /// Read-back and collection of recorded snapshots over the caller's object
 /// storage and snapshot store.
-pub struct Snapshots<'a> {
-    storage: &'a dyn ObjectStorage,
-    store: &'a dyn SnapshotStore,
+pub struct Snapshots<'a, O, S> {
+    storage: &'a O,
+    store: &'a S,
 }
 
-impl<'a> Snapshots<'a> {
+impl<'a, O: ObjectStorage, S: SnapshotStore> Snapshots<'a, O, S> {
     /// Snapshot access over the caller's storage and snapshot store.
-    pub fn new(storage: &'a dyn ObjectStorage, store: &'a dyn SnapshotStore) -> Snapshots<'a> {
+    pub fn new(storage: &'a O, store: &'a S) -> Snapshots<'a, O, S> {
         Snapshots { storage, store }
     }
 
@@ -249,7 +250,7 @@ impl<'a> Snapshots<'a> {
     /// backend fails, and [`ColdBuildError::Corrupt`] when its bytes do not
     /// match the pointer's digest or do not decode as a complete snapshot of
     /// that identity and tree.
-    pub fn read(
+    pub async fn read(
         &self,
         identity: &Identity,
         pointer: &SnapshotPointer,
@@ -260,7 +261,7 @@ impl<'a> Snapshots<'a> {
                 key: pointer.key.clone(),
             });
         }
-        let bytes = self.storage.read(&expected)?;
+        let bytes = self.storage.read(&expected).await?;
         if ObjectDigest::of(&bytes) != pointer.digest {
             return Err(ColdBuildError::Corrupt {
                 detail: "digest mismatch".to_owned(),
@@ -290,18 +291,18 @@ impl<'a> Snapshots<'a> {
     /// Returns [`ColdBuildError::ForeignKey`] for a key outside its
     /// identity's snapshot namespace, otherwise the first persistence or
     /// storage failure; keys deleted before it stay deleted.
-    pub fn collect(
+    pub async fn collect(
         &self,
         before: SystemTime,
         limit: usize,
     ) -> Result<Vec<ObjectKey>, ColdBuildError> {
         let mut deleted = Vec::new();
-        for (identity, key) in self.store.unreferenced_snapshots(before, limit)? {
+        for (identity, key) in self.store.unreferenced_snapshots(before, limit).await? {
             if !key.is_snapshot_of(&identity) {
                 return Err(ColdBuildError::ForeignKey { key });
             }
-            self.storage.delete(&key)?;
-            self.store.delete_snapshot(&identity, &key)?;
+            self.storage.delete(&key).await?;
+            self.store.delete_snapshot(&identity, &key).await?;
             deleted.push(key);
         }
         Ok(deleted)
@@ -319,8 +320,6 @@ fn snapshot_key(identity: &Identity, tree: &ObjectSha) -> ObjectKey {
 pub enum IncompleteReason {
     /// The provider truncated the recursive tree listing.
     TruncatedTree,
-    /// The caller cancelled or the deadline passed during ingest.
-    Interrupted(Interrupted),
     /// Some eligible files were not indexed; see [`Coverage::skipped`].
     UnindexedFiles {
         /// Eligible files neither indexed nor benignly skipped.
@@ -395,21 +394,21 @@ pub enum ColdBuildError {
 }
 
 /// The cold-build facade over injected provider, storage, and snapshot store.
-pub struct ColdBuild<'a> {
+pub struct ColdBuild<'a, O, S> {
     client: &'a GitHubClient,
-    storage: &'a dyn ObjectStorage,
-    store: &'a dyn SnapshotStore,
+    storage: &'a O,
+    store: &'a S,
     limits: ColdBuildLimits,
 }
 
-impl<'a> ColdBuild<'a> {
+impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
     /// Facade over the caller's capabilities and ceilings.
     pub fn new(
         client: &'a GitHubClient,
-        storage: &'a dyn ObjectStorage,
-        store: &'a dyn SnapshotStore,
+        storage: &'a O,
+        store: &'a S,
         limits: ColdBuildLimits,
-    ) -> ColdBuild<'a> {
+    ) -> ColdBuild<'a, O, S> {
         ColdBuild {
             client,
             storage,
@@ -420,17 +419,15 @@ impl<'a> ColdBuild<'a> {
 
     /// Build or reuse the complete default-branch snapshot for `identity`.
     ///
-    /// The caller's `execution` bounds every provider call; the library
+    /// The caller bounds the call by dropping its future; the library
     /// imposes no maximum of its own. A current pointer at the branch tree
     /// is validated and reused; if its object has gone missing the snapshot
-    /// is rebuilt. Cancellation and the deadline are checked before every
-    /// archive entry and fallback blob and once more before publication, so
-    /// an interrupted build never writes. Publication order is fixed: the
-    /// key is recorded, the object is created (or an existing one adopted),
-    /// read back and compared byte for byte, and only then is the pointer
-    /// published conditionally on the pointer observed at the start. A retry
-    /// after any interruption converges, and every object written is
-    /// tracked for collection and namespace removal.
+    /// is rebuilt. Publication order is fixed: the key is recorded, the
+    /// object is created (or an existing one adopted), read back and
+    /// compared byte for byte, and only then is the pointer published
+    /// conditionally on the pointer observed at the start. A retry after a
+    /// drop at any `.await` converges, and every object written is tracked
+    /// for collection and namespace removal.
     ///
     /// # Errors
     ///
@@ -440,21 +437,18 @@ impl<'a> ColdBuild<'a> {
     /// `PointerConflict` when the conditional publication lost. Per-file
     /// failures and an unusable archive never error; they appear in
     /// coverage and ingest stats.
-    pub fn run(
-        &self,
-        execution: &Execution,
-        identity: &Identity,
-    ) -> Result<ColdBuildResult, ColdBuildError> {
+    pub async fn run(&self, identity: &Identity) -> Result<ColdBuildResult, ColdBuildError> {
         let scope = SnapshotScope {
             identity: identity.clone(),
             extraction_version: EXTRACTION_VERSION.to_owned(),
             format_version: SNAPSHOT_FORMAT_VERSION,
         };
-        let current = self.store.snapshot_pointer(&scope)?;
-        let repository = self.client.repository(execution, &identity.repository)?;
-        let head =
-            self.client
-                .branch_head(execution, &identity.repository, &repository.default_branch)?;
+        let current = self.store.snapshot_pointer(&scope).await?;
+        let repository = self.client.repository(&identity.repository).await?;
+        let head = self
+            .client
+            .branch_head(&identity.repository, &repository.default_branch)
+            .await?;
         let result = |coverage, ingest, outcome| ColdBuildResult {
             commit: head.commit.clone(),
             tree: head.tree.clone(),
@@ -463,7 +457,10 @@ impl<'a> ColdBuild<'a> {
             outcome,
         };
         if let Some(pointer) = current.as_ref().filter(|pointer| pointer.tree == head.tree) {
-            match Snapshots::new(self.storage, self.store).read(identity, pointer) {
+            match Snapshots::new(self.storage, self.store)
+                .read(identity, pointer)
+                .await
+            {
                 Ok(snapshot) => {
                     return Ok(result(
                         snapshot.coverage,
@@ -476,9 +473,7 @@ impl<'a> ColdBuild<'a> {
             }
         }
 
-        let listing = self
-            .client
-            .tree(execution, &identity.repository, &head.tree)?;
+        let listing = self.client.tree(&identity.repository, &head.tree).await?;
         if listing.truncated {
             let coverage = Coverage {
                 truncated_tree: true,
@@ -493,11 +488,9 @@ impl<'a> ColdBuild<'a> {
         let attributes = match listing.entries.iter().find(|entry| {
             entry.path.as_str() == ".gitattributes" && entry.mode == TreeEntryMode::File
         }) {
-            Some(entry) => RootAttributes::parse(&self.client.blob(
-                execution,
-                &identity.repository,
-                &entry.sha,
-            )?),
+            Some(entry) => {
+                RootAttributes::parse(&self.client.blob(&identity.repository, &entry.sha).await?)
+            }
             None => RootAttributes::default(),
         };
         let mut ingest = Ingest::new(
@@ -508,29 +501,20 @@ impl<'a> ColdBuild<'a> {
         );
         match self
             .client
-            .archive(execution, &identity.repository, &head.commit)
+            .archive(&identity.repository, &head.commit)
+            .await
         {
             Ok(archive) => {
-                ingest.consume_archive(archive, execution, self.limits.max_expanded_archive_bytes)
+                ingest
+                    .consume_archive(archive, self.limits.max_expanded_archive_bytes)
+                    .await
             }
             Err(error) => ingest.stats.archive_error = Some(error.to_string()),
         }
-        let interrupted = ingest
-            .fallback(
-                self.client,
-                execution,
-                identity,
-                self.limits.max_fallback_blobs,
-            )
-            .or_else(|| execution.check().err());
+        ingest
+            .fallback(self.client, identity, self.limits.max_fallback_blobs)
+            .await;
         let (coverage, stats, files, context) = ingest.finish();
-        if let Some(interrupted) = interrupted {
-            return Ok(result(
-                coverage,
-                stats,
-                ColdBuildOutcome::Incomplete(IncompleteReason::Interrupted(interrupted)),
-            ));
-        }
         if !coverage.is_complete() {
             let count = coverage.unindexed();
             return Ok(result(
@@ -549,7 +533,9 @@ impl<'a> ColdBuild<'a> {
             facts: context.export(),
             coverage: coverage.clone(),
         };
-        let pointer = self.publish(&scope, current.as_ref(), &head.commit, &snapshot)?;
+        let pointer = self
+            .publish(&scope, current.as_ref(), &head.commit, &snapshot)
+            .await?;
         Ok(result(
             coverage,
             stats,
@@ -566,7 +552,7 @@ impl<'a> ColdBuild<'a> {
     /// # Errors
     ///
     /// Storage, persistence, `Corrupt`, and `PointerConflict` as in [`ColdBuild::run`].
-    fn publish(
+    async fn publish(
         &self,
         scope: &SnapshotScope,
         current: Option<&SnapshotPointer>,
@@ -579,12 +565,12 @@ impl<'a> ColdBuild<'a> {
             detail: error.to_string(),
         })?;
         let now = SystemTime::now();
-        self.store.record_snapshot(identity, &key, now)?;
-        match self.storage.create(&key, &bytes) {
+        self.store.record_snapshot(identity, &key, now).await?;
+        match self.storage.create(&key, &bytes).await {
             Ok(()) | Err(StorageError::AlreadyExists { .. }) => {}
             Err(error) => return Err(error.into()),
         }
-        if self.storage.read(&key)? != bytes {
+        if self.storage.read(&key).await? != bytes {
             return Err(ColdBuildError::Corrupt {
                 detail: "stored object differs from the built snapshot".to_owned(),
             });
@@ -599,7 +585,8 @@ impl<'a> ColdBuild<'a> {
         let expected = current.map(|pointer| &pointer.tree);
         if !self
             .store
-            .publish_snapshot_pointer(scope, expected, &pointer)?
+            .publish_snapshot_pointer(scope, expected, &pointer)
+            .await?
         {
             return Err(ColdBuildError::PointerConflict);
         }
@@ -607,29 +594,8 @@ impl<'a> ColdBuild<'a> {
     }
 }
 
-/// Reader that checks the caller's cancellation and deadline before every
-/// read of `inner`, so no archive bytes are consumed once interrupted.
-struct Interruptible<'a, R> {
-    inner: R,
-    execution: &'a Execution,
-}
-
-impl<R: Read> Read for Interruptible<'_, R> {
-    /// Reads from `inner` while the execution may continue.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`io::Error::other`] wrapping the [`Interrupted`] reason once
-    /// cancelled or past the deadline (never [`io::ErrorKind::Interrupted`],
-    /// which readers retry), and propagates `inner`'s errors.
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        self.execution.check().map_err(io::Error::other)?;
-        self.inner.read(buf)
-    }
-}
-
 /// In-memory ingest state for one attempt: eligible entries still wanted,
-/// what was indexed and skipped, and the interruption that stopped it.
+/// and what was indexed and skipped.
 struct Ingest {
     context: SymbolicContext,
     max_file_bytes: u64,
@@ -640,7 +606,6 @@ struct Ingest {
     rejected: usize,
     indexed: usize,
     stats: IngestStats,
-    interrupted: Option<Interrupted>,
 }
 
 impl Ingest {
@@ -678,44 +643,35 @@ impl Ingest {
             rejected,
             indexed: 0,
             stats: IngestStats::default(),
-            interrupted: None,
         }
     }
 
-    /// Stream the tarball through bounded decompression; a stream error
-    /// stops the archive and is recorded, and an interruption stops it and
-    /// is kept for [`Ingest::fallback`], leaving the rest pending.
+    /// Read the bounded compressed archive, then expand it through bounded
+    /// decompression; a stream error stops the archive and is recorded,
+    /// leaving the rest pending for [`Ingest::fallback`].
     ///
-    /// Both the compressed body and the expanded stream are
-    /// [`Interruptible`], so cancellation and the deadline are checked
-    /// before every source read and every decompressed read, including tar
-    /// headers, eligible entry bodies, and unselected entries the tar
-    /// iterator drains. A read already blocked in the transport still ends
-    /// at the transport's own timeout.
-    fn consume_archive(
-        &mut self,
-        archive: Archive,
-        execution: &Execution,
-        max_expanded_bytes: u64,
-    ) {
-        let expanded = Interruptible {
-            inner: BoundedReader::new(
-                GzDecoder::new(Interruptible {
-                    inner: archive.reader,
-                    execution,
-                }),
-                max_expanded_bytes,
-                "archive expansion",
-            ),
-            execution,
-        };
-        if let Err(error) = self.stream_entries(expanded) {
-            // Cancellation and an elapsed deadline never revert, so a check
-            // that fails now names the interruption that failed the read.
-            match execution.check() {
-                Err(interrupted) => self.interrupted = Some(interrupted),
-                Ok(_) => self.stats.archive_error = Some(error.to_string()),
+    /// ponytail: the compressed archive is buffered in memory (bounded by
+    /// `max_archive_bytes`) so the synchronous tar reader can run on it; the
+    /// cold-build rework streams it.
+    async fn consume_archive(&mut self, mut archive: Archive, max_expanded_bytes: u64) {
+        let mut compressed = Vec::new();
+        loop {
+            match archive.chunk().await {
+                Ok(Some(chunk)) => compressed.extend_from_slice(&chunk),
+                Ok(None) => break,
+                Err(error) => {
+                    self.stats.archive_error = Some(error.to_string());
+                    return;
+                }
             }
+        }
+        let expanded = BoundedReader::new(
+            GzDecoder::new(Cursor::new(compressed)),
+            max_expanded_bytes,
+            "archive expansion",
+        );
+        if let Err(error) = self.stream_entries(expanded) {
+            self.stats.archive_error = Some(error.to_string());
         }
     }
 
@@ -729,8 +685,7 @@ impl Ingest {
     /// # Errors
     ///
     /// Returns the first tar, decompression, or read error, including the
-    /// expansion bound and an [`Interruptible`] interruption; entries
-    /// indexed before it stay indexed.
+    /// expansion bound; entries indexed before it stay indexed.
     fn stream_entries<R: Read>(&mut self, expanded: R) -> io::Result<()> {
         let mut tar = tar::Archive::new(expanded);
         for entry in tar.entries()? {
@@ -768,35 +723,20 @@ impl Ingest {
     }
 
     /// Fetch every still-pending blob individually, up to `max_blobs`, and
-    /// index it. Returns the interruption that stopped the archive or this
-    /// loop, if any; everything still pending afterwards is skipped as not
+    /// index it; everything still pending afterwards is skipped as not
     /// fetched.
-    fn fallback(
-        &mut self,
-        client: &GitHubClient,
-        execution: &Execution,
-        identity: &Identity,
-        max_blobs: usize,
-    ) -> Option<Interrupted> {
-        let mut interrupted = self.interrupted;
+    async fn fallback(&mut self, client: &GitHubClient, identity: &Identity, max_blobs: usize) {
         while let Some((path, blob)) = self.pending.pop_first() {
-            if interrupted.is_none() && self.stats.fallback_blobs < max_blobs {
-                interrupted = execution.check().err();
-            }
-            if interrupted.is_some() || self.stats.fallback_blobs >= max_blobs {
+            if self.stats.fallback_blobs >= max_blobs {
                 self.skip(path, blob, SkipReason::NotFetched);
                 continue;
             }
             self.stats.fallback_blobs += 1;
-            match client.blob(execution, &identity.repository, &blob) {
+            match client.blob(&identity.repository, &blob).await {
                 Ok(bytes) if bytes.len() as u64 > self.max_file_bytes => {
                     self.skip(path, blob, SkipReason::Oversize);
                 }
                 Ok(bytes) => self.ingest(path, blob, &bytes),
-                Err(GitHubError::Interrupted(reason)) => {
-                    interrupted = Some(reason);
-                    self.skip(path, blob, SkipReason::NotFetched);
-                }
                 Err(error) => self.skip(
                     path,
                     blob,
@@ -806,7 +746,6 @@ impl Ingest {
                 ),
             }
         }
-        interrupted
     }
 
     /// Index verified `bytes` for `path`, or skip it for an LFS pointer or
@@ -864,7 +803,6 @@ impl Ingest {
 /// through a routed fake GitHub and in-memory storage and persistence.
 mod tests {
     use super::*;
-    use crate::execution::CancelToken;
     use crate::github::{Operation, RequestLimits};
     use crate::identity::{
         GitHubHost, InstallationId, InstallationToken, RepositoryIdentity, TenantId,
@@ -874,8 +812,7 @@ mod tests {
     use flate2::write::GzEncoder;
     use std::io::Write;
     use std::sync::Arc;
-    use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
-    use std::time::{Duration, Instant, UNIX_EPOCH};
+    use std::time::{Duration, UNIX_EPOCH};
 
     /// Declares `lookupUser` and `saveUser`.
     const USER: &[u8] = b"export interface User {\n  id: string;\n}\n\nexport function lookupUser(id: string): User {\n  return { id };\n}\n\nexport function saveUser(user: User): void {\n  console.log(user.id);\n}\n";
@@ -1016,7 +953,10 @@ mod tests {
         fn get(
             &self,
             request: crate::github::HttpRequest,
-        ) -> Result<crate::github::HttpResponse, crate::github::TransportError> {
+        ) -> crate::github::BoxFuture<
+            '_,
+            Result<crate::github::HttpResponse, crate::github::TransportError>,
+        > {
             self.0.get(request)
         }
     }
@@ -1121,18 +1061,13 @@ mod tests {
         ]
     }
 
-    /// A one-minute cold-build execution.
-    fn execution() -> Execution {
-        Execution::with_timeout(Duration::from_secs(60))
-    }
-
     /// Scenario 1: the cold build verifies archive entries, falls back to
     /// blobs for omitted and substituted entries, skips the LFS pointer by
     /// content, writes a source-free object, publishes the pointer only
     /// after read-back, reproduces facts on reload without source calls, and
     /// reuses the pointer on a second invocation without another archive.
-    #[test]
-    fn complete_cold_snapshot_is_verified_source_free_and_reloadable() {
+    #[tokio::test]
+    async fn complete_cold_snapshot_is_verified_source_free_and_reloadable() {
         let repo = FakeRepo::new(&standard_files(), &standard_archive());
         let client = repo.client();
         let storage = MemoryStorage::default();
@@ -1140,8 +1075,7 @@ mod tests {
         let identity = identity();
         let build = ColdBuild::new(&client, &storage, &persistence, ColdBuildLimits::default());
 
-        let result = build.run(&execution(), &identity).expect("cold build");
-        let review = Execution::with_timeout(Duration::from_secs(30 * 60));
+        let result = build.run(&identity).await.expect("cold build");
         let ColdBuildOutcome::Published(pointer) = &result.outcome else {
             panic!("expected publication, got {:?}", result.outcome);
         };
@@ -1209,7 +1143,7 @@ mod tests {
         );
 
         assert_eq!(storage.keys(), std::slice::from_ref(&pointer.key));
-        let bytes = storage.read(&pointer.key).expect("object");
+        let bytes = storage.read(&pointer.key).await.expect("object");
         assert_eq!(ObjectDigest::of(&bytes), pointer.digest);
         let text = String::from_utf8(bytes.clone()).expect("json");
         assert!(text.contains("lookupUser") && text.contains("omittedFn"));
@@ -1241,6 +1175,7 @@ mod tests {
         assert_eq!(
             persistence
                 .snapshot_pointer(&scope)
+                .await
                 .expect("pointer")
                 .as_ref(),
             Some(pointer)
@@ -1248,6 +1183,7 @@ mod tests {
 
         let loaded = Snapshots::new(&storage, &persistence)
             .read(&identity, pointer)
+            .await
             .expect("read")
             .into_context()
             .expect("load");
@@ -1261,14 +1197,13 @@ mod tests {
         );
         assert_eq!(calls.get(Operation::Blob), 3, "reload fetched nothing");
 
-        let again = build.run(&execution(), &identity).expect("second build");
+        let again = build.run(&identity).await.expect("second build");
         assert_eq!(again.outcome, ColdBuildOutcome::Reused(pointer.clone()));
         assert_eq!(again.coverage, *coverage);
         assert_eq!(again.ingest, IngestStats::default());
         assert_eq!(calls.get(Operation::Archive), 1);
         assert_eq!(calls.get(Operation::Tree), 1);
         assert_eq!(storage.keys().len(), 1);
-        assert!(review.remaining().expect("review clock") > Duration::from_secs(29 * 60));
     }
 
     /// Scenario 2: a truncated tree, a parse failure, an exhausted fallback
@@ -1276,8 +1211,8 @@ mod tests {
     /// result with exact skips; nothing is written and a prior pointer for
     /// another tree stays in place. A bounded archive failure alone still
     /// completes through fallback.
-    #[test]
-    fn incomplete_attempts_report_coverage_and_keep_the_prior_pointer() {
+    #[tokio::test]
+    async fn incomplete_attempts_report_coverage_and_keep_the_prior_pointer() {
         let identity = identity();
         let scope = SnapshotScope {
             identity: identity.clone(),
@@ -1296,19 +1231,21 @@ mod tests {
             digest: ObjectDigest::of(b""),
             published_at: SystemTime::UNIX_EPOCH,
         };
-        let run = |repo: &FakeRepo, limits: ColdBuildLimits| {
+        let run = async |repo: &FakeRepo, limits: ColdBuildLimits| {
             let client = repo.client();
             let storage = MemoryStorage::default();
             let persistence = MemorySnapshotStore::default();
             assert!(
                 persistence
                     .publish_snapshot_pointer(&scope, None, &prior)
+                    .await
                     .expect("seed")
             );
             let result = ColdBuild::new(&client, &storage, &persistence, limits)
-                .run(&execution(), &identity)
+                .run(&identity)
+                .await
                 .expect("build result");
-            let pointer = persistence.snapshot_pointer(&scope).expect("pointer");
+            let pointer = persistence.snapshot_pointer(&scope).await.expect("pointer");
             (
                 result,
                 storage.keys(),
@@ -1319,7 +1256,7 @@ mod tests {
 
         let repo = FakeRepo::new(&standard_files(), &standard_archive());
         repo.truncate_tree();
-        let (result, keys, pointer, _) = run(&repo, ColdBuildLimits::default());
+        let (result, keys, pointer, _) = run(&repo, ColdBuildLimits::default()).await;
         assert_eq!(
             result.outcome,
             ColdBuildOutcome::Incomplete(IncompleteReason::TruncatedTree)
@@ -1333,7 +1270,7 @@ mod tests {
         let mut archive = standard_archive();
         archive.push(("src/broken.ts", BROKEN));
         let repo = FakeRepo::new(&files, &archive);
-        let (result, keys, pointer, _) = run(&repo, ColdBuildLimits::default());
+        let (result, keys, pointer, _) = run(&repo, ColdBuildLimits::default()).await;
         assert_eq!(
             result.outcome,
             ColdBuildOutcome::Incomplete(IncompleteReason::UnindexedFiles { count: 1 })
@@ -1359,7 +1296,8 @@ mod tests {
                 max_fallback_blobs: 1,
                 ..ColdBuildLimits::default()
             },
-        );
+        )
+        .await;
         assert_eq!(
             result.outcome,
             ColdBuildOutcome::Incomplete(IncompleteReason::UnindexedFiles { count: 1 })
@@ -1388,7 +1326,8 @@ mod tests {
                 max_expanded_archive_bytes: 64,
                 ..ColdBuildLimits::default()
             },
-        );
+        )
+        .await;
         assert!(
             result
                 .ingest
@@ -1412,7 +1351,8 @@ mod tests {
                 max_fallback_blobs: 0,
                 ..ColdBuildLimits::default()
             },
-        );
+        )
+        .await;
         assert_eq!(
             result.outcome,
             ColdBuildOutcome::Incomplete(IncompleteReason::UnindexedFiles { count: 6 })
@@ -1428,57 +1368,13 @@ mod tests {
         assert_eq!(pointer.as_ref(), Some(&prior));
     }
 
-    /// Cancellation once the archive request starts stops ingest before any
-    /// archive entry or fallback blob, marks every eligible file as not
-    /// fetched, and reports the interruption; the library imposes no
-    /// deadline maximum, so a day-long caller deadline then publishes.
-    #[test]
-    fn interruption_is_explicit_and_deadlines_are_caller_owned() {
-        let repo = FakeRepo::new(&standard_files(), &standard_archive());
-        let client = repo.client();
-        let storage = MemoryStorage::default();
-        let persistence = MemorySnapshotStore::default();
-        let identity = identity();
-        let build = ColdBuild::new(&client, &storage, &persistence, ColdBuildLimits::default());
-
-        let cancel = CancelToken::new();
-        let execution = Execution::new(Instant::now() + Duration::from_secs(60), cancel.clone());
-        let hook_cancel = cancel.clone();
-        repo.transport.on_request(move |url| {
-            if url.contains("/tarball/") {
-                hook_cancel.cancel();
-            }
-        });
-        let result = build.run(&execution, &identity).expect("result");
-        assert_eq!(
-            result.outcome,
-            ColdBuildOutcome::Incomplete(IncompleteReason::Interrupted(Interrupted::Cancelled))
-        );
-        assert_eq!(result.ingest.archive_entries, 0);
-        assert_eq!(result.ingest.fallback_blobs, 0);
-        assert_eq!(result.coverage.indexed, 0);
-        assert_eq!(result.coverage.skipped.len(), 6);
-        assert!(
-            result
-                .coverage
-                .skipped
-                .iter()
-                .all(|f| f.reason == SkipReason::NotFetched)
-        );
-        assert!(storage.keys().is_empty());
-
-        let long = Execution::with_timeout(Duration::from_secs(24 * 60 * 60));
-        let result = build.run(&long, &identity).expect("long deadline");
-        assert!(matches!(result.outcome, ColdBuildOutcome::Published(_)));
-    }
-
     /// S17: a storage failure before the object exists surfaces and leaves
     /// no pointer; a persistence failure after the object was written leaves
     /// the object without a pointer, and the retry adopts the validated
     /// existing object and publishes. A corrupt object at the key is refused
     /// rather than adopted, and a tampered digest fails read-back.
-    #[test]
-    fn publication_is_crash_safe_and_retry_converges() {
+    #[tokio::test]
+    async fn publication_is_crash_safe_and_retry_converges() {
         let repo = FakeRepo::new(&standard_files(), &standard_archive());
         let client = repo.client();
         let storage = MemoryStorage::default();
@@ -1493,24 +1389,30 @@ mod tests {
 
         storage.fail_next_create();
         assert!(matches!(
-            build.run(&execution(), &identity),
+            build.run(&identity).await,
             Err(ColdBuildError::Storage(StorageError::Backend { .. }))
         ));
         assert!(storage.keys().is_empty());
-        assert_eq!(persistence.snapshot_pointer(&scope).expect("pointer"), None);
+        assert_eq!(
+            persistence.snapshot_pointer(&scope).await.expect("pointer"),
+            None
+        );
 
         persistence.fail_next_publish();
         assert!(matches!(
-            build.run(&execution(), &identity),
+            build.run(&identity).await,
             Err(ColdBuildError::Persistence(
                 PersistenceError::Backend { .. }
             ))
         ));
         assert_eq!(storage.keys().len(), 1);
-        assert_eq!(persistence.snapshot_pointer(&scope).expect("pointer"), None);
+        assert_eq!(
+            persistence.snapshot_pointer(&scope).await.expect("pointer"),
+            None
+        );
 
         let archives = client.calls().get(Operation::Archive);
-        let result = build.run(&execution(), &identity).expect("retry");
+        let result = build.run(&identity).await.expect("retry");
         let ColdBuildOutcome::Published(pointer) = result.outcome else {
             panic!("retry must publish");
         };
@@ -1523,6 +1425,7 @@ mod tests {
         assert_eq!(
             persistence
                 .snapshot_pointer(&scope)
+                .await
                 .expect("pointer")
                 .as_ref(),
             Some(&pointer)
@@ -1531,13 +1434,14 @@ mod tests {
         let mut tampered = pointer.clone();
         tampered.digest = ObjectDigest::of(b"other");
         assert!(matches!(
-            Snapshots::new(&storage, &persistence).read(&identity, &tampered),
+            Snapshots::new(&storage, &persistence).read(&identity, &tampered).await,
             Err(ColdBuildError::Corrupt { detail }) if detail == "digest mismatch"
         ));
 
         let corrupt_storage = MemoryStorage::default();
         corrupt_storage
             .create(&pointer.key, b"{\"not\":\"a snapshot\"}")
+            .await
             .expect("seed corrupt object");
         let corrupt_persistence = MemorySnapshotStore::default();
         let build = ColdBuild::new(
@@ -1547,12 +1451,13 @@ mod tests {
             ColdBuildLimits::default(),
         );
         assert!(matches!(
-            build.run(&execution(), &identity),
+            build.run(&identity).await,
             Err(ColdBuildError::Corrupt { .. })
         ));
         assert_eq!(
             corrupt_persistence
                 .snapshot_pointer(&scope)
+                .await
                 .expect("pointer"),
             None
         );
@@ -1572,8 +1477,8 @@ mod tests {
     /// identical bytes even though their ingest stats differ, and an archive
     /// entry larger than the file bound is refetched as a verified blob
     /// instead of becoming a benign oversize skip.
-    #[test]
-    fn same_tree_serializes_identically_across_ingest_paths() {
+    #[tokio::test]
+    async fn same_tree_serializes_identically_across_ingest_paths() {
         let big: &'static [u8] =
             Box::leak(vec![b'x'; MAX_ELIGIBLE_FILE_BYTES as usize + 1].into_boxed_slice());
         let mut archive = standard_archive();
@@ -1582,24 +1487,29 @@ mod tests {
         let repo = FakeRepo::new(&standard_files(), &archive);
         let client = repo.client();
         let identity = identity();
-        let publish = |limits: ColdBuildLimits| {
+        let publish = async |limits: ColdBuildLimits| {
             let storage = MemoryStorage::default();
             let store = MemorySnapshotStore::default();
             let result = ColdBuild::new(&client, &storage, &store, limits)
-                .run(&execution(), &identity)
+                .run(&identity)
+                .await
                 .expect("build");
             let ColdBuildOutcome::Published(pointer) = &result.outcome else {
                 panic!("expected publication, got {:?}", result.outcome);
             };
-            (result.ingest, storage.read(&pointer.key).expect("object"))
+            (
+                result.ingest,
+                storage.read(&pointer.key).await.expect("object"),
+            )
         };
 
-        let (streamed, streamed_bytes) = publish(ColdBuildLimits::default());
+        let (streamed, streamed_bytes) = publish(ColdBuildLimits::default()).await;
         assert_eq!((streamed.archive_entries, streamed.fallback_blobs), (3, 3));
         let (fallback, fallback_bytes) = publish(ColdBuildLimits {
             max_expanded_archive_bytes: 64,
             ..ColdBuildLimits::default()
-        });
+        })
+        .await;
         assert_eq!((fallback.archive_entries, fallback.fallback_blobs), (0, 6));
         assert_eq!(streamed_bytes, fallback_bytes);
         let text = String::from_utf8(streamed_bytes).expect("json");
@@ -1618,8 +1528,8 @@ mod tests {
     /// repository has one; a pointer naming another identity's key is
     /// refused before storage is read; each identity's build publishes its
     /// own key without advancing the other's pointer.
-    #[test]
-    fn identities_cannot_read_or_advance_each_others_snapshots() {
+    #[tokio::test]
+    async fn identities_cannot_read_or_advance_each_others_snapshots() {
         let repo = FakeRepo::new(&standard_files(), &standard_archive());
         let client = repo.client();
         let storage = MemoryStorage::default();
@@ -1635,29 +1545,34 @@ mod tests {
             ..owner.clone()
         };
 
-        let result = build.run(&execution(), &owner).expect("owner build");
+        let result = build.run(&owner).await.expect("owner build");
         let ColdBuildOutcome::Published(pointer) = result.outcome else {
             panic!("owner must publish");
         };
         for intruder in [&other_tenant, &other_installation] {
             assert_eq!(
-                store.snapshot_pointer(&scope(intruder)).expect("read"),
+                store
+                    .snapshot_pointer(&scope(intruder))
+                    .await
+                    .expect("read"),
                 None
             );
             assert_eq!(
-                Snapshots::new(&storage, &store).read(intruder, &pointer),
+                Snapshots::new(&storage, &store)
+                    .read(intruder, &pointer)
+                    .await,
                 Err(ColdBuildError::ForeignKey {
                     key: pointer.key.clone()
                 })
             );
 
-            let own = build.run(&execution(), intruder).expect("intruder build");
+            let own = build.run(intruder).await.expect("intruder build");
             let ColdBuildOutcome::Published(own) = own.outcome else {
                 panic!("intruder builds its own snapshot");
             };
             assert_ne!(own.key, pointer.key);
             assert_eq!(
-                store.snapshot_pointer(&scope(&owner)).expect("read"),
+                store.snapshot_pointer(&scope(&owner)).await.expect("read"),
                 Some(pointer.clone())
             );
         }
@@ -1665,6 +1580,7 @@ mod tests {
         assert!(
             Snapshots::new(&storage, &store)
                 .read(&owner, &pointer)
+                .await
                 .is_ok()
         );
     }
@@ -1674,8 +1590,8 @@ mod tests {
     /// expired and never touches a pointed-to snapshot; a pointer whose
     /// object went missing is rebuilt; namespace removal returns every
     /// recorded key of that identity only.
-    #[test]
-    fn collection_removes_only_expired_unreferenced_snapshots() {
+    #[tokio::test]
+    async fn collection_removes_only_expired_unreferenced_snapshots() {
         let repo = FakeRepo::new(&standard_files(), &standard_archive());
         let client = repo.client();
         let storage = MemoryStorage::default();
@@ -1686,13 +1602,12 @@ mod tests {
             tenant: TenantId::new("orphaned").expect("tenant"),
             ..owner.clone()
         };
-        let ColdBuildOutcome::Published(pointer) =
-            build.run(&execution(), &owner).expect("owner").outcome
+        let ColdBuildOutcome::Published(pointer) = build.run(&owner).await.expect("owner").outcome
         else {
             panic!("owner must publish");
         };
         store.fail_next_publish();
-        assert!(build.run(&execution(), &orphaned).is_err());
+        assert!(build.run(&orphaned).await.is_err());
         let orphan = ObjectKey::snapshot(
             &orphaned,
             EXTRACTION_VERSION,
@@ -1704,6 +1619,7 @@ mod tests {
         assert_eq!(
             Snapshots::new(&storage, &store)
                 .collect(UNIX_EPOCH, 10)
+                .await
                 .expect("nothing expired"),
             []
         );
@@ -1711,6 +1627,7 @@ mod tests {
         assert_eq!(
             Snapshots::new(&storage, &store)
                 .collect(later, 10)
+                .await
                 .expect("collect"),
             [orphan]
         );
@@ -1718,21 +1635,24 @@ mod tests {
         assert_eq!(
             Snapshots::new(&storage, &store)
                 .collect(later, 10)
+                .await
                 .expect("idempotent"),
             []
         );
         assert!(
             Snapshots::new(&storage, &store)
                 .read(&owner, &pointer)
+                .await
                 .is_ok()
         );
 
         let faulty = MemorySnapshotStore::default();
         faulty
             .record_snapshot(&orphaned, &pointer.key, UNIX_EPOCH)
+            .await
             .expect("forge record");
         assert_eq!(
-            Snapshots::new(&storage, &faulty).collect(later, 10),
+            Snapshots::new(&storage, &faulty).collect(later, 10).await,
             Err(ColdBuildError::ForeignKey {
                 key: pointer.key.clone()
             })
@@ -1740,11 +1660,12 @@ mod tests {
         assert!(
             Snapshots::new(&storage, &store)
                 .read(&owner, &pointer)
+                .await
                 .is_ok()
         );
 
-        storage.delete(&pointer.key).expect("lose object");
-        let rebuilt = build.run(&execution(), &owner).expect("rebuild");
+        storage.delete(&pointer.key).await.expect("lose object");
+        let rebuilt = build.run(&owner).await.expect("rebuild");
         let ColdBuildOutcome::Published(rebuilt) = rebuilt.outcome else {
             panic!("a missing pointed-to object is rebuilt");
         };
@@ -1752,276 +1673,28 @@ mod tests {
         assert!(
             Snapshots::new(&storage, &store)
                 .read(&owner, &rebuilt)
+                .await
                 .is_ok()
         );
 
         assert!(matches!(
-            build.run(&execution(), &orphaned).expect("retry").outcome,
+            build.run(&orphaned).await.expect("retry").outcome,
             ColdBuildOutcome::Published(_)
         ));
         assert_eq!(
-            store.remove_repository(&owner).expect("remove"),
+            store.remove_repository(&owner).await.expect("remove"),
             [pointer.key]
         );
-        assert_eq!(store.snapshot_pointer(&scope(&owner)).expect("read"), None);
+        assert_eq!(
+            store.snapshot_pointer(&scope(&owner)).await.expect("read"),
+            None
+        );
         assert!(
             store
                 .snapshot_pointer(&scope(&orphaned))
+                .await
                 .expect("read")
                 .is_some()
-        );
-    }
-
-    /// FIND-2: when the archive supplies every eligible file, a cancellation
-    /// once the archive request starts still stops the build before
-    /// publication: the outcome reports the interruption, nothing is
-    /// written, and the prior pointer stays.
-    #[test]
-    fn interruption_during_a_complete_archive_never_publishes() {
-        let files = [file("src/user.ts", USER), file("src/format.ts", FORMAT)];
-        let archive = [("src/user.ts", USER), ("src/format.ts", FORMAT)];
-        let identity = identity();
-        let prior = SnapshotPointer {
-            tree: sha('0'),
-            commit: sha('1'),
-            key: snapshot_key(&identity, &sha('0')),
-            digest: ObjectDigest::of(b""),
-            published_at: UNIX_EPOCH,
-        };
-        let run = |execution: &Execution, hook: Box<dyn Fn() + Send + Sync>| {
-            let repo = FakeRepo::new(&files, &archive);
-            repo.transport.on_request(move |url| {
-                if url.contains("/tarball/") {
-                    hook();
-                }
-            });
-            let client = repo.client();
-            let storage = MemoryStorage::default();
-            let store = MemorySnapshotStore::default();
-            assert!(
-                store
-                    .publish_snapshot_pointer(&scope(&identity), None, &prior)
-                    .expect("seed")
-            );
-            let result = ColdBuild::new(&client, &storage, &store, ColdBuildLimits::default())
-                .run(execution, &identity)
-                .expect("result");
-            assert!(storage.keys().is_empty(), "no object written");
-            assert_eq!(
-                store.snapshot_pointer(&scope(&identity)).expect("pointer"),
-                Some(prior.clone())
-            );
-            result
-        };
-
-        let cancel = CancelToken::new();
-        let cancelled = Execution::new(Instant::now() + Duration::from_secs(60), cancel.clone());
-        let result = run(&cancelled, Box::new(move || cancel.cancel()));
-        assert_eq!(
-            result.outcome,
-            ColdBuildOutcome::Incomplete(IncompleteReason::Interrupted(Interrupted::Cancelled))
-        );
-        assert_eq!(result.ingest.archive_entries, 0);
-    }
-
-    /// Transport over a shared fake that serves the tarball body in
-    /// `CHUNK`-byte reads, trips `cancel` once `cancel_at` body bytes were
-    /// read, and counts every body read that starts after that.
-    struct Streamed {
-        transport: Arc<RoutedTransport>,
-        cancel: CancelToken,
-        cancel_at: usize,
-        reads_after_cancel: Arc<AtomicUsize>,
-    }
-
-    impl crate::github::HttpTransport for Streamed {
-        /// Delegates to the shared fake and wraps a tarball body.
-        ///
-        /// # Errors
-        ///
-        /// Never.
-        fn get(
-            &self,
-            request: crate::github::HttpRequest,
-        ) -> Result<crate::github::HttpResponse, crate::github::TransportError> {
-            let tarball = request.url.contains("/tarball/");
-            let mut response = self.transport.get(request)?;
-            if tarball {
-                response.body = Box::new(Chunked {
-                    inner: response.body,
-                    read: 0,
-                    cancel: self.cancel.clone(),
-                    cancel_at: self.cancel_at,
-                    reads_after_cancel: Arc::clone(&self.reads_after_cancel),
-                });
-            }
-            Ok(response)
-        }
-    }
-
-    /// Body bytes per read of a [`Chunked`] body.
-    const CHUNK: usize = 256;
-
-    /// Streaming body behind [`Streamed`].
-    struct Chunked {
-        inner: Box<dyn Read + Send>,
-        read: usize,
-        cancel: CancelToken,
-        cancel_at: usize,
-        reads_after_cancel: Arc<AtomicUsize>,
-    }
-
-    impl Read for Chunked {
-        /// Reads at most [`CHUNK`] bytes, counting reads after cancellation
-        /// and cancelling once `cancel_at` bytes were delivered.
-        ///
-        /// # Errors
-        ///
-        /// Propagates the inner reader's error.
-        fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-            if self.cancel.is_cancelled() {
-                self.reads_after_cancel.fetch_add(1, AtomicOrdering::SeqCst);
-            }
-            let want = buf.len().min(CHUNK);
-            let read = self.inner.read(&mut buf[..want])?;
-            self.read += read;
-            if self.read >= self.cancel_at {
-                self.cancel.cancel();
-            }
-            Ok(read)
-        }
-    }
-
-    /// Roughly `len` bytes of valid, poorly compressible TypeScript, so its
-    /// gzipped archive spans many body chunks.
-    fn noise(len: usize) -> Vec<u8> {
-        let mut state: u64 = 0x9e37_79b9_7f4a_7c15;
-        let mut source = String::new();
-        let mut index = 0;
-        while source.len() < len {
-            state ^= state << 13;
-            state ^= state >> 7;
-            state ^= state << 17;
-            source.push_str(&format!("export const v{index} = \"{state:016x}\";\n"));
-            index += 1;
-        }
-        source.into_bytes()
-    }
-
-    /// FIND-2: cancellation after the first body chunks of a large archive
-    /// entry stops source reads at the archive read chain, whether the
-    /// entry is eligible (read in full) or unselected (drained by the tar
-    /// iterator): no later body chunk is read, the build reports the
-    /// cancellation, every eligible file is not fetched, nothing is
-    /// written, and the prior pointer stays.
-    #[test]
-    fn cancellation_mid_archive_entry_stops_reading_the_body() {
-        let big: &'static [u8] = Box::leak(noise(96 * 1024).into_boxed_slice());
-        let identity = identity();
-        let prior = SnapshotPointer {
-            tree: sha('0'),
-            commit: sha('1'),
-            key: snapshot_key(&identity, &sha('0')),
-            digest: ObjectDigest::of(b""),
-            published_at: UNIX_EPOCH,
-        };
-        let eligible_entry = (vec![file("src/big.ts", big)], vec![("src/big.ts", big)], 1);
-        let unselected_entry = (
-            vec![file("src/user.ts", USER)],
-            vec![("vendor/big.ts", big), ("src/user.ts", USER)],
-            1,
-        );
-        for (files, archive, eligible) in [eligible_entry, unselected_entry] {
-            let repo = FakeRepo::new(&files, &archive);
-            let cancel = CancelToken::new();
-            let reads_after_cancel = Arc::new(AtomicUsize::new(0));
-            let client = GitHubClient::with_transport(
-                GitHubHost::public(),
-                InstallationToken::new("ghs_token").expect("token"),
-                RequestLimits::default(),
-                Box::new(Streamed {
-                    transport: Arc::clone(&repo.transport),
-                    cancel: cancel.clone(),
-                    cancel_at: 16 * CHUNK,
-                    reads_after_cancel: Arc::clone(&reads_after_cancel),
-                }),
-            );
-            let storage = MemoryStorage::default();
-            let store = MemorySnapshotStore::default();
-            assert!(
-                store
-                    .publish_snapshot_pointer(&scope(&identity), None, &prior)
-                    .expect("seed")
-            );
-            let execution = Execution::new(Instant::now() + Duration::from_secs(60), cancel);
-            let result = ColdBuild::new(&client, &storage, &store, ColdBuildLimits::default())
-                .run(&execution, &identity)
-                .expect("result");
-
-            assert_eq!(reads_after_cancel.load(AtomicOrdering::SeqCst), 0);
-            assert_eq!(
-                result.outcome,
-                ColdBuildOutcome::Incomplete(IncompleteReason::Interrupted(Interrupted::Cancelled))
-            );
-            assert_eq!(result.ingest.archive_entries, 0);
-            assert_eq!(result.ingest.archive_error, None);
-            assert_eq!(result.ingest.fallback_blobs, 0);
-            assert_eq!(result.coverage.skipped.len(), eligible);
-            assert!(
-                result
-                    .coverage
-                    .skipped
-                    .iter()
-                    .all(|f| f.reason == SkipReason::NotFetched)
-            );
-            assert!(storage.keys().is_empty(), "no object written");
-            assert_eq!(
-                store.snapshot_pointer(&scope(&identity)).expect("pointer"),
-                Some(prior.clone())
-            );
-        }
-    }
-
-    /// FIND-2: the archive ingest owner recognizes an already-expired
-    /// deadline at its read chain without waiting for wall time: no entry
-    /// is indexed, no archive error is recorded, and the fallback reports
-    /// the deadline and fetches nothing, which [`ColdBuild::run`] turns into
-    /// an unpublished interrupted outcome.
-    #[test]
-    fn expired_deadline_stops_archive_ingest() {
-        let repo = FakeRepo::new(&standard_files(), &standard_archive());
-        let client = repo.client();
-        let identity = identity();
-        let listing = client
-            .tree(&execution(), &identity.repository, &repo.tree)
-            .expect("tree");
-        let mut ingest = Ingest::new(
-            &listing.entries,
-            0,
-            &RootAttributes::default(),
-            MAX_ELIGIBLE_FILE_BYTES,
-        );
-        let expired = Execution::new(Instant::now(), CancelToken::new());
-        let archive = Archive {
-            reader: Box::new(io::Cursor::new(tarball(&standard_archive()))),
-        };
-        ingest.consume_archive(archive, &expired, u64::MAX);
-
-        assert_eq!(ingest.interrupted, Some(Interrupted::DeadlineExceeded));
-        assert_eq!(ingest.stats.archive_entries, 0);
-        assert_eq!(ingest.stats.archive_error, None);
-        assert_eq!(
-            ingest.fallback(&client, &expired, &identity, 10),
-            Some(Interrupted::DeadlineExceeded)
-        );
-        assert_eq!(ingest.stats.fallback_blobs, 0);
-        assert_eq!(ingest.indexed, 0);
-        assert!(ingest.pending.is_empty());
-        assert!(
-            ingest
-                .skipped
-                .iter()
-                .all(|f| f.reason == SkipReason::NotFetched)
         );
     }
 
@@ -2029,8 +1702,8 @@ mod tests {
     /// injected create, read-back, or pointer-publish failure the snapshot
     /// is tracked: expired collection leaves storage empty, and namespace
     /// removal returns the key for deletion.
-    #[test]
-    fn every_interrupted_publication_leaves_a_tracked_key() {
+    #[tokio::test]
+    async fn every_interrupted_publication_leaves_a_tracked_key() {
         let repo = FakeRepo::new(&standard_files(), &standard_archive());
         let client = repo.client();
         let identity = identity();
@@ -2042,31 +1715,36 @@ mod tests {
         ];
         let later = SystemTime::now() + Duration::from_secs(3600);
         for inject in failures {
-            let interrupted = || {
+            let interrupted = async || {
                 let storage = MemoryStorage::default();
                 let store = MemorySnapshotStore::default();
                 inject(&storage, &store);
                 assert!(
                     ColdBuild::new(&client, &storage, &store, ColdBuildLimits::default())
-                        .run(&execution(), &identity)
+                        .run(&identity)
+                        .await
                         .is_err()
                 );
                 assert_eq!(
-                    store.snapshot_pointer(&scope(&identity)).expect("read"),
+                    store
+                        .snapshot_pointer(&scope(&identity))
+                        .await
+                        .expect("read"),
                     None
                 );
                 (storage, store)
             };
 
-            let (storage, store) = interrupted();
+            let (storage, store) = interrupted().await;
             Snapshots::new(&storage, &store)
                 .collect(later, 10)
+                .await
                 .expect("collect");
             assert!(storage.keys().is_empty());
 
-            let (_storage, store) = interrupted();
+            let (_storage, store) = interrupted().await;
             assert_eq!(
-                store.remove_repository(&identity).expect("remove"),
+                store.remove_repository(&identity).await.expect("remove"),
                 std::slice::from_ref(&key)
             );
         }
@@ -2075,8 +1753,8 @@ mod tests {
     /// FIND-3: tree entries the listing rejected for an invalid path or an
     /// unknown mode are counted under their own exclusion reason instead of
     /// vanishing, and do not change eligibility or completeness.
-    #[test]
-    fn rejected_tree_entries_are_counted_as_invalid_exclusions() {
+    #[tokio::test]
+    async fn rejected_tree_entries_are_counted_as_invalid_exclusions() {
         let files = [
             file("src/user.ts", USER),
             file("src/a\\\\b.ts", FORMAT),
@@ -2092,7 +1770,8 @@ mod tests {
         let storage = MemoryStorage::default();
         let store = MemorySnapshotStore::default();
         let result = ColdBuild::new(&client, &storage, &store, ColdBuildLimits::default())
-            .run(&execution(), &identity())
+            .run(&identity())
+            .await
             .expect("build");
         assert!(matches!(result.outcome, ColdBuildOutcome::Published(_)));
         assert_eq!((result.coverage.eligible, result.coverage.indexed), (1, 1));

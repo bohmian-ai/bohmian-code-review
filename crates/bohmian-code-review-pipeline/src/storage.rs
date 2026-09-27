@@ -11,6 +11,7 @@ use crate::persistence::ContextId;
 use serde::{Deserialize, Deserializer, Serialize};
 use sha2::{Digest, Sha256};
 use std::fmt;
+use std::future::Future;
 use std::num::NonZeroU64;
 use thiserror::Error;
 
@@ -218,7 +219,11 @@ pub trait ObjectStorage: Send + Sync {
     /// Returns [`StorageError::AlreadyExists`] when `key` is taken and
     /// [`StorageError::Backend`] on any other failure. A failed write must
     /// not leave a partial object readable.
-    fn create(&self, key: &ObjectKey, bytes: &[u8]) -> Result<(), StorageError>;
+    fn create(
+        &self,
+        key: &ObjectKey,
+        bytes: &[u8],
+    ) -> impl Future<Output = Result<(), StorageError>> + Send;
 
     /// Read the exact object at `key`.
     ///
@@ -226,14 +231,14 @@ pub trait ObjectStorage: Send + Sync {
     ///
     /// Returns [`StorageError::NotFound`] when absent and
     /// [`StorageError::Backend`] on any other failure.
-    fn read(&self, key: &ObjectKey) -> Result<Vec<u8>, StorageError>;
+    fn read(&self, key: &ObjectKey) -> impl Future<Output = Result<Vec<u8>, StorageError>> + Send;
 
     /// Delete `key`; deleting an absent key succeeds so retries converge.
     ///
     /// # Errors
     ///
     /// Returns [`StorageError::Backend`] when the object may still exist.
-    fn delete(&self, key: &ObjectKey) -> Result<(), StorageError>;
+    fn delete(&self, key: &ObjectKey) -> impl Future<Output = Result<(), StorageError>> + Send;
 }
 
 #[cfg(test)]

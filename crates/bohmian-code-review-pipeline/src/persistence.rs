@@ -11,6 +11,7 @@ use crate::identity::{Identity, InvalidIdentity, ObjectSha, validate_name};
 use crate::storage::{ObjectDigest, ObjectKey};
 use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt;
+use std::future::Future;
 use std::time::SystemTime;
 use thiserror::Error;
 
@@ -140,7 +141,7 @@ pub trait SnapshotStore: Send + Sync {
     fn snapshot_pointer(
         &self,
         scope: &SnapshotScope,
-    ) -> Result<Option<SnapshotPointer>, PersistenceError>;
+    ) -> impl Future<Output = Result<Option<SnapshotPointer>, PersistenceError>> + Send;
 
     /// Publish `pointer` only when the current pointer's tree equals `expected`.
     ///
@@ -156,7 +157,7 @@ pub trait SnapshotStore: Send + Sync {
         scope: &SnapshotScope,
         expected: Option<&ObjectSha>,
         pointer: &SnapshotPointer,
-    ) -> Result<bool, PersistenceError>;
+    ) -> impl Future<Output = Result<bool, PersistenceError>> + Send;
 
     /// Record that a snapshot object is about to exist at `key`, refreshing
     /// `recorded_at` when the row already exists.
@@ -174,7 +175,7 @@ pub trait SnapshotStore: Send + Sync {
         identity: &Identity,
         key: &ObjectKey,
         recorded_at: SystemTime,
-    ) -> Result<(), PersistenceError>;
+    ) -> impl Future<Output = Result<(), PersistenceError>> + Send;
 
     /// Up to `limit` recorded snapshots, across identities, whose
     /// `recorded_at` is before `before` and that no pointer names.
@@ -186,7 +187,7 @@ pub trait SnapshotStore: Send + Sync {
         &self,
         before: SystemTime,
         limit: usize,
-    ) -> Result<Vec<(Identity, ObjectKey)>, PersistenceError>;
+    ) -> impl Future<Output = Result<Vec<(Identity, ObjectKey)>, PersistenceError>> + Send;
 
     /// Forget the record of `key` under `identity`; forgetting an absent
     /// record succeeds.
@@ -194,8 +195,11 @@ pub trait SnapshotStore: Send + Sync {
     /// # Errors
     ///
     /// Returns [`PersistenceError::Backend`] when the row may still exist.
-    fn delete_snapshot(&self, identity: &Identity, key: &ObjectKey)
-    -> Result<(), PersistenceError>;
+    fn delete_snapshot(
+        &self,
+        identity: &Identity,
+        key: &ObjectKey,
+    ) -> impl Future<Output = Result<(), PersistenceError>> + Send;
 
     /// Remove every snapshot pointer and record for `identity`, returning
     /// every recorded object key the caller must delete from snapshot
@@ -204,7 +208,10 @@ pub trait SnapshotStore: Send + Sync {
     /// # Errors
     ///
     /// Returns [`PersistenceError::Backend`] on backend failure.
-    fn remove_repository(&self, identity: &Identity) -> Result<Vec<ObjectKey>, PersistenceError>;
+    fn remove_repository(
+        &self,
+        identity: &Identity,
+    ) -> impl Future<Output = Result<Vec<ObjectKey>, PersistenceError>> + Send;
 }
 
 /// Context metadata store a consumer implements: published PR context
@@ -226,7 +233,7 @@ pub trait ContextStore: Send + Sync {
         &self,
         identity: &Identity,
         record: &ContextRecord,
-    ) -> Result<(), PersistenceError>;
+    ) -> impl Future<Output = Result<(), PersistenceError>> + Send;
 
     /// Exact lookup of `id` under `identity`; another identity's id is absent.
     ///
@@ -237,7 +244,7 @@ pub trait ContextStore: Send + Sync {
         &self,
         identity: &Identity,
         id: &ContextId,
-    ) -> Result<Option<ContextRecord>, PersistenceError>;
+    ) -> impl Future<Output = Result<Option<ContextRecord>, PersistenceError>> + Send;
 
     /// Up to `limit` records whose `expires_at` is at or before `now`, across identities.
     ///
@@ -248,14 +255,18 @@ pub trait ContextStore: Send + Sync {
         &self,
         now: SystemTime,
         limit: usize,
-    ) -> Result<Vec<(Identity, ContextRecord)>, PersistenceError>;
+    ) -> impl Future<Output = Result<Vec<(Identity, ContextRecord)>, PersistenceError>> + Send;
 
     /// Remove `id` under `identity`; removing an absent id succeeds.
     ///
     /// # Errors
     ///
     /// Returns [`PersistenceError::Backend`] when the row may still exist.
-    fn delete_context(&self, identity: &Identity, id: &ContextId) -> Result<(), PersistenceError>;
+    fn delete_context(
+        &self,
+        identity: &Identity,
+        id: &ContextId,
+    ) -> impl Future<Output = Result<(), PersistenceError>> + Send;
 
     /// Remove every context record for `identity`, returning the object keys
     /// the caller must delete from context storage.
@@ -263,7 +274,10 @@ pub trait ContextStore: Send + Sync {
     /// # Errors
     ///
     /// Returns [`PersistenceError::Backend`] on backend failure.
-    fn remove_repository(&self, identity: &Identity) -> Result<Vec<ObjectKey>, PersistenceError>;
+    fn remove_repository(
+        &self,
+        identity: &Identity,
+    ) -> impl Future<Output = Result<Vec<ObjectKey>, PersistenceError>> + Send;
 }
 
 #[cfg(test)]

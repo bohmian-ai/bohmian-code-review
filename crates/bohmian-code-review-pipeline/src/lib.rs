@@ -2,8 +2,8 @@
 //! with Git provider or storage IO.
 //!
 //! This crate obtains verified GitHub/GHES repository, commit, tree, blob,
-//! and pull-request identities through provider APIs ([`GitHubClient`]),
-//! bounds every call by a caller-supplied [`Execution`], and defines the
+//! and pull-request identities through provider APIs ([`GitHubClient`]) and
+//! defines the
 //! narrow [`ObjectStorage`], [`SnapshotStore`], and [`ContextStore`] traits
 //! the stage facades publish through. [`ColdBuild`] is the first facade: it
 //! streams a pinned default-branch archive into a complete, source-free
@@ -12,7 +12,6 @@
 //! public `bohmian-code-review` facade alone and imports no consumer type.
 
 pub mod eligibility;
-pub mod execution;
 pub mod github;
 pub mod identity;
 pub mod persistence;
@@ -22,12 +21,11 @@ pub mod storage;
 pub(crate) mod testing;
 
 pub use eligibility::ExclusionReason;
-pub use execution::{CancelToken, Execution, Interrupted};
 pub use github::{
-    Archive, BranchHead, CallCounts, Commit, Disposition, FileStatus, GitHubClient, GitHubError,
-    HttpRequest, HttpResponse, HttpTransport, Operation, PullRequest, PullRequestFile,
-    PullRequestFilesPage, PullRequestState, RejectedPath, Repository, RequestLimits,
-    TransportError, TreeEntry, TreeEntryMode, TreeListing, UreqTransport,
+    Archive, BoxFuture, BranchHead, CallCounts, Commit, Disposition, FileStatus, GitHubClient,
+    GitHubError, HttpBody, HttpRequest, HttpResponse, HttpTransport, Operation, PullRequest,
+    PullRequestFile, PullRequestFilesPage, PullRequestState, RejectedPath, Repository,
+    RequestLimits, ReqwestTransport, TransportError, TreeEntry, TreeEntryMode, TreeListing,
 };
 pub use identity::{
     GitHubHost, Identity, InstallationId, InstallationToken, InvalidIdentity, ObjectSha,
