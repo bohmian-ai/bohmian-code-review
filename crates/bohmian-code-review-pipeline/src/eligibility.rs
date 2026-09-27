@@ -75,12 +75,16 @@ pub(crate) struct RootAttributes {
     rules: Vec<AttributeRule>,
 }
 
-/// One `.gitattributes` line that sets or unsets a linguist attribute.
+/// One `.gitattributes` line that mentions a linguist attribute.
+///
+/// `None` means the line does not mention the attribute; `Some(state)`
+/// replaces any earlier state, where `Some(None)` is Git's `!attr` reset to
+/// unspecified.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct AttributeRule {
     pattern: String,
-    generated: Option<bool>,
-    vendored: Option<bool>,
+    generated: Option<Option<bool>>,
+    vendored: Option<Option<bool>>,
 }
 
 impl RootAttributes {
@@ -119,29 +123,34 @@ impl RootAttributes {
     }
 
     /// Effective `(linguist-generated, linguist-vendored)` for `path`;
-    /// `None` when no rule mentions the attribute.
+    /// `None` when the attribute is unspecified, either because no matching
+    /// rule mentions it or because the last one reset it with `!attr`.
     fn resolve(&self, path: &str) -> (Option<bool>, Option<bool>) {
         let mut generated = None;
         let mut vendored = None;
         for rule in &self.rules {
             if pattern_matches(&rule.pattern, path) {
-                generated = rule.generated.or(generated);
-                vendored = rule.vendored.or(vendored);
+                generated = rule.generated.unwrap_or(generated);
+                vendored = rule.vendored.unwrap_or(vendored);
             }
         }
         (generated, vendored)
     }
 }
 
-/// Split one attribute word into its name and effective boolean:
-/// `attr` and `attr=true` set it, `-attr`, `!attr`, and `attr=false` unset it.
-fn parse_attribute(word: &str) -> (&str, bool) {
-    if let Some(name) = word.strip_prefix('-').or_else(|| word.strip_prefix('!')) {
-        return (name, false);
+/// Split one attribute word into its name and state, following Git:
+/// `attr` and `attr=true` set it, `-attr` and `attr=false` are explicit
+/// false, and `!attr` returns it to unspecified (`None`).
+fn parse_attribute(word: &str) -> (&str, Option<bool>) {
+    if let Some(name) = word.strip_prefix('!') {
+        return (name, None);
+    }
+    if let Some(name) = word.strip_prefix('-') {
+        return (name, Some(false));
     }
     match word.split_once('=') {
-        Some((name, value)) => (name, value != "false"),
-        None => (word, true),
+        Some((name, value)) => (name, Some(value != "false")),
+        None => (word, Some(true)),
     }
 }
 
@@ -344,6 +353,45 @@ mod tests {
         ));
         assert!(glob_matches(&pattern, &format!("{text}b")));
         assert!(started.elapsed() < std::time::Duration::from_secs(1));
+    }
+
+    /// `-attr` and `attr=false` are explicit false and override the
+    /// built-in vendor-segment and minified exclusions; a later `!attr`
+    /// returns the attribute to unspecified so the built-ins apply again.
+    #[test]
+    fn attribute_resets_read_as_unset() {
+        let context = SymbolicContext::new();
+        let entries = [
+            entry("vendor/a.ts", TreeEntryMode::File, Some(1)),
+            entry("app.min.js", TreeEntryMode::File, Some(1)),
+        ];
+        let eligible = |attributes: &[u8]| -> Vec<String> {
+            classify(
+                &entries,
+                &RootAttributes::parse(attributes),
+                &context,
+                MAX_ELIGIBLE_FILE_BYTES,
+            )
+            .eligible
+            .iter()
+            .map(|entry| entry.path.as_str().to_owned())
+            .collect()
+        };
+        let both = ["vendor/a.ts", "app.min.js"];
+        assert_eq!(
+            eligible(b"vendor/* -linguist-vendored\n*.min.js -linguist-generated\n"),
+            both
+        );
+        assert_eq!(
+            eligible(b"vendor/* linguist-vendored=false\n*.min.js linguist-generated=false\n"),
+            both
+        );
+        assert!(
+            eligible(
+                b"vendor/* -linguist-vendored\n*.min.js -linguist-generated\nvendor/* !linguist-vendored\n*.min.js !linguist-generated\n"
+            )
+            .is_empty()
+        );
     }
 
     /// Every exclusion reason is reported once; attribute `false` overrides
