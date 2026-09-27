@@ -19,7 +19,7 @@ use crate::archive::{TarStream, VerifiedEntry};
 use crate::eligibility::{
     Exclusion, ExclusionReason, MAX_ELIGIBLE_FILE_BYTES, RootAttributes, classify,
 };
-use crate::github::{Archive, GitHubClient, GitHubError, TreeEntry, TreeEntryMode};
+use crate::github::{Archive, BranchHead, GitHubClient, GitHubError, TreeEntry, TreeEntryMode};
 use crate::identity::{Identity, ObjectSha};
 use crate::persistence::{PersistenceError, SnapshotPointer, SnapshotScope, SnapshotStore};
 use crate::storage::{ObjectDigest, ObjectKey, ObjectStorage, StorageError};
@@ -327,6 +327,15 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> Snapshots<'a, O, S> {
     }
 }
 
+/// The pointer scope of `identity` under the current versions.
+pub(crate) fn snapshot_scope(identity: &Identity) -> SnapshotScope {
+    SnapshotScope {
+        identity: identity.clone(),
+        extraction_version: EXTRACTION_VERSION.to_owned(),
+        format_version: SNAPSHOT_FORMAT_VERSION,
+    }
+}
+
 /// The only key a snapshot of `tree` for `identity` may live at under the
 /// current extraction and format versions.
 fn snapshot_key(identity: &Identity, tree: &ObjectSha) -> ObjectKey {
@@ -385,6 +394,24 @@ pub struct ColdBuildResult {
     pub ingest: IngestStats,
     /// Publication outcome.
     pub outcome: ColdBuildOutcome,
+}
+
+impl ColdBuildResult {
+    /// Result for pinned `head`.
+    fn new(
+        head: &BranchHead,
+        coverage: Coverage,
+        ingest: IngestStats,
+        outcome: ColdBuildOutcome,
+    ) -> ColdBuildResult {
+        ColdBuildResult {
+            commit: head.commit.clone(),
+            tree: head.tree.clone(),
+            coverage,
+            ingest,
+            outcome,
+        }
+    }
 }
 
 /// Why a cold build could not produce a result at all.
@@ -461,31 +488,45 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
     /// failures and an unusable archive never error; they appear in
     /// coverage and ingest stats.
     pub async fn run(&self, identity: &Identity) -> Result<ColdBuildResult, ColdBuildError> {
-        let scope = SnapshotScope {
-            identity: identity.clone(),
-            extraction_version: EXTRACTION_VERSION.to_owned(),
-            format_version: SNAPSHOT_FORMAT_VERSION,
-        };
+        let scope = snapshot_scope(identity);
         let current = self.store.snapshot_pointer(&scope).await?;
+        let head = self.pin(identity).await?;
+        self.build(&scope, current.as_ref(), &head).await
+    }
+
+    /// Pin the default branch's current commit and tree.
+    ///
+    /// # Errors
+    ///
+    /// Returns the repository or branch provider error.
+    pub(crate) async fn pin(&self, identity: &Identity) -> Result<BranchHead, GitHubError> {
         let repository = self.client.repository(&identity.repository).await?;
-        let head = self
-            .client
+        self.client
             .branch_head(&identity.repository, &repository.default_branch)
-            .await?;
-        let result = |coverage, ingest, outcome| ColdBuildResult {
-            commit: head.commit.clone(),
-            tree: head.tree.clone(),
-            coverage,
-            ingest,
-            outcome,
-        };
-        if let Some(pointer) = current.as_ref().filter(|pointer| pointer.tree == head.tree) {
+            .await
+    }
+
+    /// Reuse `current` when it already covers `head` and validates, else
+    /// ingest `head` from its archive and publish over `current`.
+    ///
+    /// # Errors
+    ///
+    /// As [`ColdBuild::run`].
+    pub(crate) async fn build(
+        &self,
+        scope: &SnapshotScope,
+        current: Option<&SnapshotPointer>,
+        head: &BranchHead,
+    ) -> Result<ColdBuildResult, ColdBuildError> {
+        let identity = &scope.identity;
+        if let Some(pointer) = current.filter(|pointer| pointer.tree == head.tree) {
             match Snapshots::new(self.storage, self.store)
                 .read(identity, pointer)
                 .await
             {
                 Ok(snapshot) => {
-                    return Ok(result(
+                    return Ok(ColdBuildResult::new(
+                        head,
                         snapshot.coverage,
                         IngestStats::default(),
                         ColdBuildOutcome::Reused(pointer.clone()),
@@ -495,18 +536,40 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
                 Err(error) => return Err(error),
             }
         }
+        let mut ingest = match self.start(identity, head).await? {
+            Ok(ingest) => ingest,
+            Err(truncated) => return Ok(truncated),
+        };
+        let archive_too_large = self.fetch(&mut ingest, identity, head).await;
+        self.complete(scope, current, head, ingest, archive_too_large)
+            .await
+    }
 
+    /// List and classify `head`'s tree, with every eligible file pending.
+    ///
+    /// Returns `Err` with the incomplete result when the provider truncated
+    /// the listing.
+    ///
+    /// # Errors
+    ///
+    /// Returns the tree or attributes provider error.
+    pub(crate) async fn start(
+        &self,
+        identity: &Identity,
+        head: &BranchHead,
+    ) -> Result<Result<Ingest, ColdBuildResult>, ColdBuildError> {
         let listing = self.client.tree(&identity.repository, &head.tree).await?;
         if listing.truncated {
             let coverage = Coverage {
                 truncated_tree: true,
                 ..Coverage::default()
             };
-            return Ok(result(
+            return Ok(Err(ColdBuildResult::new(
+                head,
                 coverage,
                 IngestStats::default(),
                 ColdBuildOutcome::Incomplete(IncompleteReason::TruncatedTree),
-            ));
+            )));
         }
         let attributes = match listing.entries.iter().find(|entry| {
             entry.path.as_str() == ".gitattributes" && entry.mode == TreeEntryMode::File
@@ -516,12 +579,23 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
             }
             None => RootAttributes::default(),
         };
-        let mut ingest = Ingest::new(
+        Ok(Ok(Ingest::new(
             &listing.entries,
             listing.rejected.len(),
             &attributes,
             self.limits.max_file_bytes,
-        );
+        )))
+    }
+
+    /// Stream `head`'s archive into `ingest`, then fetch what it omitted as
+    /// bounded verified blobs. Returns whether the archive passed its byte
+    /// bound.
+    pub(crate) async fn fetch(
+        &self,
+        ingest: &mut Ingest,
+        identity: &Identity,
+        head: &BranchHead,
+    ) -> bool {
         let archive_too_large = match self
             .client
             .archive(&identity.repository, &head.commit)
@@ -540,9 +614,27 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
         ingest
             .fallback(self.client, identity, self.limits.max_fallback_blobs)
             .await;
+        archive_too_large
+    }
+
+    /// Report an incomplete `ingest` without writing, or publish its
+    /// complete snapshot of `head` over `current`.
+    ///
+    /// # Errors
+    ///
+    /// Publication errors as in [`ColdBuild::publish`].
+    pub(crate) async fn complete(
+        &self,
+        scope: &SnapshotScope,
+        current: Option<&SnapshotPointer>,
+        head: &BranchHead,
+        ingest: Ingest,
+        archive_too_large: bool,
+    ) -> Result<ColdBuildResult, ColdBuildError> {
         let (coverage, stats, files, context) = ingest.finish();
         if archive_too_large {
-            return Ok(result(
+            return Ok(ColdBuildResult::new(
+                head,
                 coverage,
                 stats,
                 ColdBuildOutcome::Incomplete(IncompleteReason::ArchiveTooLarge),
@@ -550,7 +642,8 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
         }
         if !coverage.is_complete() {
             let count = coverage.unindexed();
-            return Ok(result(
+            return Ok(ColdBuildResult::new(
+                head,
                 coverage,
                 stats,
                 ColdBuildOutcome::Incomplete(IncompleteReason::UnindexedFiles { count }),
@@ -560,16 +653,15 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
         let snapshot = Snapshot {
             format_version: SNAPSHOT_FORMAT_VERSION,
             extraction_version: EXTRACTION_VERSION.to_owned(),
-            identity: identity.clone(),
+            identity: scope.identity.clone(),
             tree: head.tree.clone(),
             files,
             facts: context.export(),
             coverage: coverage.clone(),
         };
-        let pointer = self
-            .publish(&scope, current.as_ref(), &head.commit, &snapshot)
-            .await?;
-        Ok(result(
+        let pointer = self.publish(scope, current, &head.commit, &snapshot).await?;
+        Ok(ColdBuildResult::new(
+            head,
             coverage,
             stats,
             ColdBuildOutcome::Published(pointer),
@@ -636,7 +728,7 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
 
 /// In-memory ingest state for one attempt: eligible entries still wanted,
 /// and what was indexed and skipped.
-struct Ingest {
+pub(crate) struct Ingest {
     context: SymbolicContext,
     max_file_bytes: u64,
     files: Vec<SnapshotFile>,
@@ -1511,7 +1603,7 @@ mod tests {
             let store = MemorySnapshotStore::default();
             assert!(
                 store
-                    .publish_snapshot_pointer(&scope(&identity), None, &prior)
+                    .publish_snapshot_pointer(&snapshot_scope(&identity), None, &prior)
                     .await
                     .expect("seed")
             );
@@ -1524,7 +1616,7 @@ mod tests {
                 .await
                 .expect("build");
             let pointer = store
-                .snapshot_pointer(&scope(&identity))
+                .snapshot_pointer(&snapshot_scope(&identity))
                 .await
                 .expect("read");
             (result, pointer)
@@ -1628,7 +1720,7 @@ mod tests {
                 if let Some(prior) = &prior {
                     assert!(
                         store
-                            .publish_snapshot_pointer(&scope(&identity), None, prior)
+                            .publish_snapshot_pointer(&snapshot_scope(&identity), None, prior)
                             .await
                             .expect("seed")
                     );
@@ -1639,7 +1731,7 @@ mod tests {
                     tokio::time::timeout(Duration::from_secs(60), build.run(&identity)).await;
                 assert!(dropped.is_err(), "the stalled build must be dropped");
                 let pointer = store
-                    .snapshot_pointer(&scope(&identity))
+                    .snapshot_pointer(&snapshot_scope(&identity))
                     .await
                     .expect("read");
                 assert_eq!(pointer, prior);
@@ -1660,7 +1752,7 @@ mod tests {
                 assert_eq!(store.records(), [(identity.clone(), key.clone())]);
                 assert_eq!(
                     store
-                        .snapshot_pointer(&scope(&identity))
+                        .snapshot_pointer(&snapshot_scope(&identity))
                         .await
                         .expect("read"),
                     Some(published.clone())
@@ -1696,7 +1788,7 @@ mod tests {
         assert!(matches!(result, Err(ColdBuildError::Corrupt { .. })));
         assert_eq!(
             store
-                .snapshot_pointer(&scope(&identity))
+                .snapshot_pointer(&snapshot_scope(&identity))
                 .await
                 .expect("read"),
             None
@@ -1730,19 +1822,19 @@ mod tests {
         };
         assert!(
             store
-                .publish_snapshot_pointer(&scope(&identity), Some(&pointer.tree), &winner)
+                .publish_snapshot_pointer(&snapshot_scope(&identity), Some(&pointer.tree), &winner)
                 .await
                 .expect("winner")
         );
         assert_eq!(
             build
-                .publish(&scope(&identity), Some(&pointer), &repo.commit, &snapshot)
+                .publish(&snapshot_scope(&identity), Some(&pointer), &repo.commit, &snapshot)
                 .await,
             Err(ColdBuildError::PointerConflict)
         );
         assert_eq!(
             store
-                .snapshot_pointer(&scope(&identity))
+                .snapshot_pointer(&snapshot_scope(&identity))
                 .await
                 .expect("read"),
             Some(winner)
@@ -1778,7 +1870,7 @@ mod tests {
             tokio::join!(snapshots.collect(&owner, SystemTime::now()), async {
                 let raced = build.run(&owner).await;
                 assert_eq!(
-                    store.snapshot_pointer(&scope(&owner)).await.expect("read"),
+                    store.snapshot_pointer(&snapshot_scope(&owner)).await.expect("read"),
                     None
                 );
                 assert_eq!(store.records(), recorded());
@@ -1817,7 +1909,7 @@ mod tests {
             assert_eq!(store.records(), recorded());
             assert_eq!(storage.keys(), std::slice::from_ref(&key));
             assert_eq!(
-                store.snapshot_pointer(&scope(&owner)).await.expect("read"),
+                store.snapshot_pointer(&snapshot_scope(&owner)).await.expect("read"),
                 None
             );
             store.hold_swaps.store(false, Ordering::SeqCst);
@@ -1836,15 +1928,6 @@ mod tests {
         );
         assert_eq!(store.records(), recorded());
         assert!(snapshots.read(&owner, &pointer).await.is_ok());
-    }
-
-    /// The scope of `identity` under the current versions.
-    fn scope(identity: &Identity) -> SnapshotScope {
-        SnapshotScope {
-            identity: identity.clone(),
-            extraction_version: EXTRACTION_VERSION.to_owned(),
-            format_version: SNAPSHOT_FORMAT_VERSION,
-        }
     }
 
     /// A snapshot is a pure function of identity, versions, and tree: an
@@ -1922,7 +2005,7 @@ mod tests {
         for intruder in [&other_tenant, &other_installation] {
             assert_eq!(
                 store
-                    .snapshot_pointer(&scope(intruder))
+                    .snapshot_pointer(&snapshot_scope(intruder))
                     .await
                     .expect("read"),
                 None
@@ -1942,7 +2025,7 @@ mod tests {
             };
             assert_ne!(own.key, pointer.key);
             assert_eq!(
-                store.snapshot_pointer(&scope(&owner)).await.expect("read"),
+                store.snapshot_pointer(&snapshot_scope(&owner)).await.expect("read"),
                 Some(pointer.clone())
             );
         }
@@ -2044,7 +2127,7 @@ mod tests {
             [head]
         );
         assert_eq!(
-            store.snapshot_pointer(&scope(&owner)).await.expect("read"),
+            store.snapshot_pointer(&snapshot_scope(&owner)).await.expect("read"),
             None
         );
         assert_eq!(storage.keys(), std::slice::from_ref(&foreign));
