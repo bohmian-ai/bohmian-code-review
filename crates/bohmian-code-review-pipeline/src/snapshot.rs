@@ -16,9 +16,7 @@
 //! snapshots and collects records no pointer names.
 
 use crate::archive::{TarStream, VerifiedEntry};
-use crate::eligibility::{
-    Exclusion, ExclusionReason, MAX_ELIGIBLE_FILE_BYTES, RootAttributes, classify,
-};
+use crate::eligibility::{ExclusionReason, MAX_ELIGIBLE_FILE_BYTES, RootAttributes, classify};
 use crate::github::{Archive, BranchHead, GitHubClient, GitHubError, TreeEntry, TreeEntryMode};
 use crate::identity::{Identity, ObjectSha};
 use crate::persistence::{PersistenceError, SnapshotPointer, SnapshotScope, SnapshotStore};
@@ -27,7 +25,8 @@ use bohmian_code_review::Error as SymbolicError;
 use bohmian_code_review::{EXTRACTION_VERSION, IndexedFileFacts, RelativePath, SymbolicContext};
 use flate2::write::GzDecoder;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::btree_map::Entry;
+use std::collections::{BTreeMap, BTreeSet};
 use std::io::{self, Write};
 use std::time::Duration;
 use thiserror::Error;
@@ -307,6 +306,13 @@ impl Snapshot {
         Ok(snapshot)
     }
 
+    /// Whether `path` is one of the tree's eligible files.
+    pub(crate) fn holds(&self, path: &RelativePath) -> bool {
+        self.files
+            .binary_search_by(|outcome| outcome.path().cmp(path))
+            .is_ok()
+    }
+
     /// Coverage of the tree, derived from the file outcomes; always
     /// complete for a decoded snapshot.
     pub fn coverage(&self) -> Coverage {
@@ -531,6 +537,21 @@ impl ColdBuildResult {
             outcome,
         }
     }
+
+    /// Incomplete result for `head` because some tree listing was truncated
+    /// even without recursion; nothing was indexed.
+    pub(crate) fn truncated(head: &BranchHead) -> ColdBuildResult {
+        let coverage = Coverage {
+            truncated_tree: true,
+            ..Coverage::default()
+        };
+        ColdBuildResult::new(
+            head,
+            coverage,
+            IngestStats::default(),
+            ColdBuildOutcome::Incomplete(IncompleteReason::TruncatedTree),
+        )
+    }
 }
 
 /// Why a cold build could not produce a result at all.
@@ -672,23 +693,14 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
     /// # Errors
     ///
     /// Returns the tree or attributes provider error.
-    pub(crate) async fn start(
+    async fn start(
         &self,
         identity: &Identity,
         head: &BranchHead,
     ) -> Result<Result<Ingest, ColdBuildResult>, ColdBuildError> {
         let listing = self.client.tree(&identity.repository, &head.tree).await?;
         if listing.truncated {
-            let coverage = Coverage {
-                truncated_tree: true,
-                ..Coverage::default()
-            };
-            return Ok(Err(ColdBuildResult::new(
-                head,
-                coverage,
-                IngestStats::default(),
-                ColdBuildOutcome::Incomplete(IncompleteReason::TruncatedTree),
-            )));
+            return Ok(Err(ColdBuildResult::truncated(head)));
         }
         let attributes = root_attributes(
             self.client,
@@ -708,12 +720,7 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
     /// Stream `head`'s archive into `ingest`, then fetch what it omitted as
     /// bounded verified blobs. Returns whether the archive passed its byte
     /// bound.
-    pub(crate) async fn fetch(
-        &self,
-        ingest: &mut Ingest,
-        identity: &Identity,
-        head: &BranchHead,
-    ) -> bool {
+    async fn fetch(&self, ingest: &mut Ingest, identity: &Identity, head: &BranchHead) -> bool {
         let archive_too_large = match self
             .client
             .archive(&identity.repository, &head.commit)
@@ -885,8 +892,7 @@ pub(crate) struct Ingest {
     pending: BTreeMap<RelativePath, ObjectSha>,
     outcomes: Vec<FileOutcome>,
     indexed: usize,
-    excluded: Vec<Exclusion>,
-    invalid_paths: usize,
+    excluded: BTreeMap<ExclusionReason, usize>,
     stats: IngestStats,
 }
 
@@ -937,6 +943,13 @@ impl Ingest {
             .iter()
             .map(|file| (file.path.clone(), file.blob.clone()))
             .collect();
+        let mut excluded = BTreeMap::new();
+        for exclusion in tree.excluded {
+            *excluded.entry(exclusion.reason).or_insert(0) += 1;
+        }
+        if invalid_paths > 0 {
+            *excluded.entry(ExclusionReason::Unsupported).or_insert(0) += invalid_paths;
+        }
         Ingest {
             context,
             max_file_bytes,
@@ -944,10 +957,75 @@ impl Ingest {
             pending,
             outcomes: Vec::new(),
             indexed: 0,
-            excluded: tree.excluded,
-            invalid_paths,
+            excluded,
             stats: IngestStats::default(),
         }
+    }
+
+    /// Complete an update started with [`Ingest::new`] over only the head
+    /// entries of changed paths: carry `prior`'s outcome for every path not
+    /// in `removed`, add `prior`'s exclusion counts, and take back the
+    /// exclusions of `gone`, the base entries of removed paths `prior` did
+    /// not hold as eligible, plus `invalid_gone` non-canonical removed paths.
+    ///
+    /// The result equals ingesting the head tree afresh once the pending
+    /// changed paths are fetched, provided `attributes` are unchanged
+    /// between base and head. A carried fact that fails to load stays
+    /// pending at its prior blob and is fetched like a changed one.
+    pub(crate) fn carry(
+        &mut self,
+        prior: Snapshot,
+        removed: &[RelativePath],
+        gone: &[TreeEntry],
+        invalid_gone: usize,
+        attributes: &RootAttributes,
+    ) {
+        for (reason, count) in prior.excluded {
+            *self.excluded.entry(reason).or_insert(0) += count;
+        }
+        let gone = classify(gone, attributes, &self.context, self.max_file_bytes);
+        let gone = gone.excluded.into_iter().map(|exclusion| exclusion.reason);
+        for reason in gone.chain(std::iter::repeat_n(
+            ExclusionReason::Unsupported,
+            invalid_gone,
+        )) {
+            if let Entry::Occupied(mut count) = self.excluded.entry(reason) {
+                *count.get_mut() -= 1;
+                if *count.get() == 0 {
+                    count.remove();
+                }
+            }
+        }
+        let removed: BTreeSet<&RelativePath> = removed.iter().collect();
+        for outcome in prior.files {
+            if removed.contains(outcome.path()) {
+                continue;
+            }
+            match outcome {
+                FileOutcome::Indexed(file) => {
+                    let (path, blob) = (file.facts.path.clone(), file.blob);
+                    self.files.push(SnapshotFile {
+                        path: path.clone(),
+                        blob: blob.clone(),
+                    });
+                    if self.context.load(file.facts).is_ok() {
+                        self.stats.reused_files += 1;
+                        self.settle(path, blob);
+                    } else {
+                        self.pending.insert(path, blob);
+                    }
+                }
+                FileOutcome::Skipped(file) => {
+                    self.files.push(SnapshotFile {
+                        path: file.path.clone(),
+                        blob: file.blob.clone(),
+                    });
+                    self.stats.reused_files += 1;
+                    self.outcomes.push(FileOutcome::Skipped(file));
+                }
+            }
+        }
+        self.files.sort_by(|a, b| a.path.cmp(&b.path));
     }
 
     /// Stream the archive through gzip into [`TarStream`], indexing each
@@ -1028,11 +1106,6 @@ impl Ingest {
     /// Eligible files indexed so far.
     pub(crate) fn indexed(&self) -> usize {
         self.indexed
-    }
-
-    /// Eligible files still wanted.
-    pub(crate) fn pending(&self) -> usize {
-        self.pending.len()
     }
 
     /// Whether `path` is eligible and still wanted.
@@ -1173,16 +1246,9 @@ impl Ingest {
             self.skip(path, blob, SkipReason::NotFetched);
         }
         self.outcomes.sort_by(|a, b| a.path().cmp(b.path()));
-        let mut excluded = BTreeMap::new();
-        for exclusion in &self.excluded {
-            *excluded.entry(exclusion.reason).or_insert(0) += 1;
-        }
-        if self.invalid_paths > 0 {
-            *excluded.entry(ExclusionReason::Unsupported).or_insert(0) += self.invalid_paths;
-        }
         Ingested {
             outcomes: self.outcomes,
-            excluded,
+            excluded: self.excluded,
             stats: self.stats,
             eligible: self.files,
             context: self.context,
@@ -1204,8 +1270,8 @@ pub(crate) mod tests {
     use crate::testing::{MemorySnapshotStore, MemoryStorage, RoutedTransport};
     use flate2::Compression;
     use flate2::write::GzEncoder;
-    use std::sync::Arc;
     use std::sync::atomic::Ordering;
+    use std::sync::{Arc, Mutex};
     use std::time::Duration;
     use tar::EntryType;
 
@@ -1264,28 +1330,115 @@ pub(crate) mod tests {
     /// Provider JSON listing `files` as `tree`'s entries; a blob or
     /// subtree id is the Git blob id of the entry's content.
     pub(crate) fn listing(tree: &ObjectSha, truncated: bool, files: &[File]) -> String {
-        let entries: Vec<String> = files
-            .iter()
-            .map(|f| {
-                let kind = match f.mode {
-                    "040000" => "tree",
-                    "160000" => "commit",
-                    _ => "blob",
-                };
-                let size = f.size.unwrap_or(f.content.len() as u64);
-                let (mode, sha) = match f.mode {
-                    "bad-sha" => ("100644", "not-a-sha".to_owned()),
-                    mode => (mode, blob_sha(f.content).to_string()),
-                };
-                format!(
-                    r#"{{"path":"{}","mode":"{mode}","type":"{kind}","sha":"{sha}","size":{size}}}"#,
-                    f.path
-                )
-            })
-            .collect();
+        let entries: Vec<String> = files.iter().map(|f| entry_json(f.path, f)).collect();
+        tree_json(tree, truncated, &entries)
+    }
+
+    /// Provider JSON of a tree listing holding `entries`.
+    fn tree_json(tree: &ObjectSha, truncated: bool, entries: &[String]) -> String {
         format!(
             r#"{{"sha":"{tree}","truncated":{truncated},"tree":[{}]}}"#,
             entries.join(",")
+        )
+    }
+
+    /// Provider JSON of `f` as a tree entry named `path`.
+    fn entry_json(path: &str, f: &File) -> String {
+        let kind = match f.mode {
+            "040000" => "tree",
+            "160000" => "commit",
+            _ => "blob",
+        };
+        let size = f.size.unwrap_or(f.content.len() as u64);
+        let (mode, sha) = match f.mode {
+            "bad-sha" => ("100644", "not-a-sha".to_owned()),
+            mode => (mode, blob_sha(f.content).to_string()),
+        };
+        format!(
+            r#"{{"path":"{path}","mode":"{mode}","type":"{kind}","sha":"{sha}","size":{size}}}"#
+        )
+    }
+
+    /// Id of directory `dir` in `tree`: unique per tree and directory.
+    fn dir_sha(tree: &ObjectSha, dir: &str) -> ObjectSha {
+        blob_sha(format!("{tree}:{dir}").as_bytes())
+    }
+
+    /// Route a non-recursive listing of every directory of `tree`, which
+    /// holds `files`; subdirectory ids come from [`dir_sha`].
+    fn route_directories(transport: &RoutedTransport, tree: &ObjectSha, files: &[File]) {
+        let mut dirs: BTreeMap<String, Vec<String>> = BTreeMap::new();
+        dirs.insert(String::new(), Vec::new());
+        for f in files.iter().filter(|f| f.mode != "040000") {
+            let (mut parent, mut rest) = (String::new(), f.path);
+            while let Some((name, tail)) = rest.split_once('/') {
+                let child = if parent.is_empty() {
+                    name.to_owned()
+                } else {
+                    format!("{parent}/{name}")
+                };
+                if !dirs.contains_key(&child) {
+                    let sha = dir_sha(tree, &child);
+                    dirs.entry(parent).or_default().push(format!(
+                        r#"{{"path":"{name}","mode":"040000","type":"tree","sha":"{sha}"}}"#
+                    ));
+                    dirs.insert(child.clone(), Vec::new());
+                }
+                (parent, rest) = (child, tail);
+            }
+            dirs.entry(parent).or_default().push(entry_json(rest, f));
+        }
+        for (dir, entries) in dirs {
+            let sha = if dir.is_empty() {
+                tree.clone()
+            } else {
+                dir_sha(tree, &dir)
+            };
+            transport.json(
+                &format!("/git/trees/{sha}"),
+                &tree_json(&sha, false, &entries),
+            );
+        }
+    }
+
+    /// Provider JSON comparing `base` (holding `old`) with `head` (holding
+    /// `new`): added, removed, and modified paths, with an added path whose
+    /// content and mode equal a removed one's reported as its rename.
+    fn compare_json(
+        base: &ObjectSha,
+        head: &ObjectSha,
+        old: &[(String, String)],
+        new: &[(String, String)],
+    ) -> String {
+        let old_map: BTreeMap<&String, &String> = old.iter().map(|(p, id)| (p, id)).collect();
+        let new_map: BTreeMap<&String, &String> = new.iter().map(|(p, id)| (p, id)).collect();
+        let mut removed: Vec<(&String, &String)> = old_map
+            .iter()
+            .filter(|(p, _)| !new_map.contains_key(*p))
+            .map(|(p, id)| (*p, *id))
+            .collect();
+        let mut files = Vec::new();
+        for (path, id) in &new_map {
+            match old_map.get(path) {
+                Some(old_id) if old_id == id => {}
+                Some(_) => files.push(format!(r#"{{"filename":"{path}","status":"modified"}}"#)),
+                None => match removed.iter().position(|(_, old_id)| old_id == id) {
+                    Some(index) => {
+                        let (previous, _) = removed.remove(index);
+                        files.push(format!(
+                            r#"{{"filename":"{path}","status":"renamed","previous_filename":"{previous}"}}"#
+                        ));
+                    }
+                    None => files.push(format!(r#"{{"filename":"{path}","status":"added"}}"#)),
+                },
+            }
+        }
+        for (path, _) in removed {
+            files.push(format!(r#"{{"filename":"{path}","status":"removed"}}"#));
+        }
+        format!(
+            r#"{{"status":"ahead","base_commit":{{"sha":"{base}"}},"commits":[{{"sha":"{head}"}}],"files":[{}]}}"#,
+            files.join(",")
         )
     }
 
@@ -1326,6 +1479,8 @@ pub(crate) mod tests {
         pub(crate) tree: ObjectSha,
         pub(crate) commit: ObjectSha,
         pub(crate) limits: RequestLimits,
+        /// Every pushed commit with its `(path, mode:content id)` entries.
+        history: Mutex<Vec<(ObjectSha, Vec<(String, String)>)>>,
     }
 
     impl FakeRepo {
@@ -1343,13 +1498,15 @@ pub(crate) mod tests {
                 tree,
                 commit,
                 limits: RequestLimits::default(),
+                history: Mutex::default(),
             };
             repo.push(&repo.commit, &repo.tree, files, archive);
             repo
         }
 
         /// Move the branch to `commit`/`tree` listing `files`, routing its
-        /// blobs, tree, and a tarball of `archive`; earlier routes stay.
+        /// blobs, tree, directories, a tarball of `archive`, and a compare
+        /// from every earlier pushed commit; earlier routes stay.
         pub(crate) fn push(
             &self,
             commit: &ObjectSha,
@@ -1365,7 +1522,25 @@ pub(crate) mod tests {
                 ),
             );
             self.route_tree(tree, files);
+            route_directories(transport, tree, files);
             transport.route(&format!("/tarball/{commit}"), 200, tarball(archive));
+            let entries: Vec<(String, String)> = files
+                .iter()
+                .map(|f| {
+                    (
+                        f.path.to_owned(),
+                        format!("{}:{}", f.mode, blob_sha(f.content)),
+                    )
+                })
+                .collect();
+            let mut history = self.history.lock().expect("history lock");
+            for (base, old) in history.iter().filter(|(base, _)| base != commit) {
+                transport.json(
+                    &format!("/compare/{base}...{commit}"),
+                    &compare_json(base, commit, old, &entries),
+                );
+            }
+            history.push((commit.clone(), entries));
         }
 
         /// Route `tree` listing `files` and every file's blob, without
@@ -1812,7 +1987,7 @@ pub(crate) mod tests {
             files: ingested.outcomes,
             excluded: BTreeMap::new(),
         });
-        assert_eq!(ingest.pending(), 0);
+        assert!(ingest.pending.is_empty());
         let ingested = ingest.finish();
         let coverage = ingested.coverage();
         assert_eq!(

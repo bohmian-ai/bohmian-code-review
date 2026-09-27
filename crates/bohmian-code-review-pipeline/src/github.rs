@@ -247,11 +247,13 @@ pub enum Operation {
     PullRequest,
     /// `GET /repos/{owner}/{repo}/pulls/{number}/files`.
     PullRequestFiles,
+    /// `GET /repos/{owner}/{repo}/compare/{base}...{head}`.
+    Compare,
 }
 
 impl Operation {
     /// Every operation in accounting order.
-    const ALL: [Operation; 8] = [
+    const ALL: [Operation; 9] = [
         Operation::Repository,
         Operation::BranchHead,
         Operation::Commit,
@@ -260,12 +262,13 @@ impl Operation {
         Operation::Archive,
         Operation::PullRequest,
         Operation::PullRequestFiles,
+        Operation::Compare,
     ];
 }
 
 /// HTTP requests sent per operation, counting retries and redirect hops.
 #[derive(Debug, Default)]
-pub struct CallCounts([AtomicU64; 8]);
+pub struct CallCounts([AtomicU64; 9]);
 
 impl CallCounts {
     /// Record one request for `operation`.
@@ -605,6 +608,48 @@ pub struct PullRequestFilesPage {
     pub has_next: bool,
 }
 
+/// The changed paths between two commits, as the compare API lists them.
+///
+/// A rename is its old path removed and its new path added; a copy adds
+/// its new path; a modification or mode change is its path in both lists.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Comparison {
+    /// The head descends from the base with new commits (status `ahead`),
+    /// so the files are exactly the base-to-head changes.
+    pub ahead: bool,
+    /// The provider's file list reached its ceiling and may omit changes.
+    pub truncated: bool,
+    /// Changed files the provider listed.
+    pub files: usize,
+    /// Canonical paths present at the base that changed or went away.
+    pub removed: Vec<RelativePath>,
+    /// Canonical paths present at the head that are new or changed.
+    pub added: Vec<RelativePath>,
+    /// Non-canonical paths present at the base that changed or went away;
+    /// a tree listing counts each as an invalid path.
+    pub invalid_removed: usize,
+    /// Non-canonical paths present at the head that are new or changed.
+    pub invalid_added: usize,
+}
+
+impl Comparison {
+    /// Record `raw` as removed from the base, or count it as invalid.
+    fn remove(&mut self, raw: &str) {
+        match RelativePath::new(raw) {
+            Ok(path) => self.removed.push(path),
+            Err(_) => self.invalid_removed += 1,
+        }
+    }
+
+    /// Record `raw` as present at the head, or count it as invalid.
+    fn add(&mut self, raw: &str) {
+        match RelativePath::new(raw) {
+            Ok(path) => self.added.push(path),
+            Err(_) => self.invalid_added += 1,
+        }
+    }
+}
+
 /// A streaming, byte-bounded compressed archive body.
 pub struct Archive {
     body: Box<dyn HttpBody>,
@@ -732,6 +777,26 @@ struct PullRequestFileWire {
     patch: Option<String>,
     previous_filename: Option<String>,
 }
+
+/// Wire shape of `GET /repos/{owner}/{repo}/compare/{base}...{head}`.
+#[derive(Deserialize)]
+struct CompareWire {
+    status: String,
+    base_commit: ShaWire,
+    commits: Vec<ShaWire>,
+    files: Vec<CompareFileWire>,
+}
+
+/// One changed file of a comparison.
+#[derive(Deserialize)]
+struct CompareFileWire {
+    filename: String,
+    status: String,
+    previous_filename: Option<String>,
+}
+
+/// Most files the compare API lists for one comparison.
+pub(crate) const COMPARE_MAX_FILES: usize = 300;
 
 /// Percent-encode a path segment, keeping `/` so branch names route unchanged.
 fn encode_segment(raw: &str) -> String {
@@ -1050,6 +1115,100 @@ impl GitHubClient {
             }
         }
         Ok(())
+    }
+
+    /// List `tree` alone without recursion, with `prefix` (empty or ending
+    /// in `/`) prepended to each path; subtrees appear as directory entries.
+    /// [`TreeListing::truncated`] is set when the provider truncated even
+    /// this listing.
+    ///
+    /// # Errors
+    ///
+    /// As [`GitHubClient::tree`].
+    pub async fn directory(
+        &self,
+        repository: &RepositoryIdentity,
+        tree: &ObjectSha,
+        prefix: &str,
+    ) -> Result<TreeListing, GitHubError> {
+        let (resource, wire) = self.tree_wire(repository, tree, false).await?;
+        let mut listing = TreeListing {
+            sha: tree.clone(),
+            truncated: wire.truncated,
+            entries: Vec::new(),
+            invalid_paths: 0,
+        };
+        for entry in wire.tree {
+            listing.push(&resource, prefix, entry)?;
+        }
+        Ok(listing)
+    }
+
+    /// Compare `base` with `head` and sort the changed files into paths
+    /// removed from the base and paths present at the head.
+    ///
+    /// # Errors
+    ///
+    /// [`GitHubError::IdentityMismatch`] when the provider compares another
+    /// base or, for an `ahead` comparison, ends at another head;
+    /// [`GitHubError::MalformedResponse`] for an unknown file status or a
+    /// rename without its previous path; plus any policy or transport error.
+    pub async fn compare(
+        &self,
+        repository: &RepositoryIdentity,
+        base: &ObjectSha,
+        head: &ObjectSha,
+    ) -> Result<Comparison, GitHubError> {
+        let resource = format!("/repos/{}/compare/{base}...{head}", repository.full_name());
+        let wire: CompareWire = self
+            .get_json(Operation::Compare, &resource, ACCEPT_JSON)
+            .await?;
+        let ahead = wire.status == "ahead";
+        let last = wire.commits.last().map(|commit| &commit.sha);
+        if wire.base_commit.sha != *base || (ahead && last != Some(head)) {
+            return Err(GitHubError::IdentityMismatch {
+                expected: format!("{base}...{head}"),
+                actual: format!(
+                    "{}...{}",
+                    wire.base_commit.sha,
+                    last.map_or_else(String::new, ToString::to_string)
+                ),
+            });
+        }
+        let mut comparison = Comparison {
+            ahead,
+            truncated: wire.files.len() >= COMPARE_MAX_FILES,
+            files: wire.files.len(),
+            removed: Vec::new(),
+            added: Vec::new(),
+            invalid_removed: 0,
+            invalid_added: 0,
+        };
+        let malformed = |detail: String| GitHubError::MalformedResponse {
+            resource: resource.clone(),
+            detail,
+        };
+        for file in wire.files {
+            let status = FileStatus::parse(&file.status)
+                .ok_or_else(|| malformed(format!("unknown status {}", file.status)))?;
+            match status {
+                FileStatus::Added | FileStatus::Copied => comparison.add(&file.filename),
+                FileStatus::Removed => comparison.remove(&file.filename),
+                FileStatus::Modified | FileStatus::Changed => {
+                    comparison.remove(&file.filename);
+                    comparison.add(&file.filename);
+                }
+                FileStatus::Renamed => {
+                    let previous = file.previous_filename.as_deref().ok_or_else(|| {
+                        malformed(format!("rename of {} without previous path", file.filename))
+                    })?;
+                    comparison.remove(previous);
+                    comparison.add(&file.filename);
+                }
+                FileStatus::Unchanged => {}
+            }
+        }
+        Ok(comparison)
     }
 
     /// Fetch one listing of `tree`, recursive or not, and check its id.
@@ -1637,6 +1796,77 @@ mod tests {
     /// Public-host client with default limits.
     fn client() -> (GitHubClient, &'static FakeTransport) {
         client_on(GitHubHost::public(), RequestLimits::default())
+    }
+
+    /// Compare sorts files into base and head paths (a rename is both, a
+    /// copy only its new path), counts non-canonical paths, flags a list at
+    /// the provider ceiling, and rejects another base, another head, or an
+    /// unknown status.
+    #[tokio::test]
+    async fn compare_sorts_changed_paths_and_verifies_its_ends() {
+        let (client, fake) = client();
+        let repo = repo();
+        let (base, head) = (sha('b'), sha('d'));
+        let body = |base: &ObjectSha, head: &ObjectSha, status: &str| {
+            format!(
+                r#"{{"status":"ahead","base_commit":{{"sha":"{base}"}},"commits":[{{"sha":"{head}"}}],"files":[
+                    {{"filename":"a.rs","status":"added"}},
+                    {{"filename":"b.rs","status":"removed"}},
+                    {{"filename":"c.rs","status":"{status}"}},
+                    {{"filename":"new.rs","status":"renamed","previous_filename":"old.rs"}},
+                    {{"filename":"copy.rs","status":"copied","previous_filename":"a.rs"}},
+                    {{"filename":"bad\\name.rs","status":"added"}}
+                ]}}"#
+            )
+        };
+        fake.push_json(&body(&base, &head, "modified"));
+        let comparison = client.compare(&repo, &base, &head).await.expect("compare");
+        let paths = |paths: &[RelativePath]| -> Vec<String> {
+            paths.iter().map(|path| path.as_str().to_owned()).collect()
+        };
+        assert!(comparison.ahead && !comparison.truncated);
+        assert_eq!(comparison.files, 6);
+        assert_eq!(paths(&comparison.removed), ["b.rs", "c.rs", "old.rs"]);
+        assert_eq!(
+            paths(&comparison.added),
+            ["a.rs", "c.rs", "new.rs", "copy.rs"]
+        );
+        assert_eq!(
+            (comparison.invalid_removed, comparison.invalid_added),
+            (0, 1)
+        );
+        assert!(fake.seen()[0].0.ends_with(&format!(
+            "/repos/octocat/Hello-World/compare/{base}...{head}"
+        )));
+
+        let files: Vec<String> = (0..COMPARE_MAX_FILES)
+            .map(|i| format!(r#"{{"filename":"f{i}.rs","status":"added"}}"#))
+            .collect();
+        fake.push_json(&format!(
+            r#"{{"status":"ahead","base_commit":{{"sha":"{base}"}},"commits":[{{"sha":"{head}"}}],"files":[{}]}}"#,
+            files.join(",")
+        ));
+        assert!(
+            client
+                .compare(&repo, &base, &head)
+                .await
+                .expect("ceiling")
+                .truncated
+        );
+
+        fake.push_json(&body(&sha('e'), &head, "modified"));
+        fake.push_json(&body(&base, &sha('e'), "modified"));
+        for _ in 0..2 {
+            assert!(matches!(
+                client.compare(&repo, &base, &head).await,
+                Err(GitHubError::IdentityMismatch { .. })
+            ));
+        }
+        fake.push_json(&body(&base, &head, "exploded"));
+        assert!(matches!(
+            client.compare(&repo, &base, &head).await,
+            Err(GitHubError::MalformedResponse { .. })
+        ));
     }
 
     /// Every remaining chunk of `archive`, concatenated.

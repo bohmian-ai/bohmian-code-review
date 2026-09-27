@@ -1,21 +1,28 @@
 //! Incremental default-branch snapshot updates and review-time staleness.
 //!
-//! [`Update::run`] pins the default branch, reclassifies its tree, carries
-//! the prior snapshot's facts for every path whose blob is unchanged,
-//! fetches changed blobs as verified blobs (or through the archive past
-//! [`ColdBuildLimits::max_changed_blobs`]), and publishes through the cold
-//! build's record-upsert, create-if-absent, pointer compare-and-swap path.
-//! Deleted, renamed-away, and now-ineligible paths simply are not carried.
+//! [`Update::run`] pins the default branch and takes the changed files
+//! between the pointer's commit and the head from the compare API, without
+//! listing the tree. Each changed path is classified from a non-recursive
+//! listing of its parent directory at the head; the prior snapshot's facts
+//! are carried for every other path, and changed eligible blobs are fetched
+//! as verified blobs. The result is published through the cold build's
+//! record-upsert, create-if-absent, pointer compare-and-swap path. A root
+//! `.gitattributes` change, a head that does not descend from the pointer's
+//! commit, or more changed files than compare lists or
+//! [`ColdBuildLimits::max_changed_blobs`] allows rebuilds from the archive.
 //! An incomplete attempt writes nothing, so the prior pointer and the
 //! immutable prior object stay valid for reviews already using them.
 
-use crate::github::{BranchHead, GitHubClient};
-use crate::identity::Identity;
+use crate::github::{BranchHead, GitHubClient, GitHubError, TreeEntry, TreeEntryMode, TreeListing};
+use crate::identity::{Identity, ObjectSha};
 use crate::persistence::{SnapshotPointer, SnapshotStore};
 use crate::snapshot::{
-    ColdBuild, ColdBuildError, ColdBuildLimits, ColdBuildResult, Snapshots, snapshot_scope,
+    ColdBuild, ColdBuildError, ColdBuildLimits, ColdBuildResult, Ingest, Snapshots,
+    root_attributes, snapshot_scope,
 };
 use crate::storage::{ObjectStorage, StorageError};
+use bohmian_code_review::RelativePath;
+use std::collections::BTreeMap;
 
 /// Whether the current pointer covers the default branch head.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -56,7 +63,9 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> Update<'a, O, S> {
     /// Without a pointer under the current versions (first build, or an
     /// extraction or format version change) or with its object missing,
     /// this is a cold build; at the same tree the pointer is validated and
-    /// reused. Otherwise only changed paths are fetched. The caller bounds
+    /// reused. Otherwise only the paths compare reports changed are listed
+    /// and fetched, unless a REQ-007 trigger rebuilds from the archive. The
+    /// caller bounds
     /// the call by dropping its future; a drop at any `.await` leaves the
     /// pointer on a complete snapshot and every written object recorded,
     /// and a retry converges. No persistence transaction spans provider or
@@ -64,9 +73,12 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> Update<'a, O, S> {
     ///
     /// # Errors
     ///
-    /// As [`ColdBuild::run`]: `PointerConflict` or `Persistence(Collecting)`
-    /// is a retry state; a changed blob that cannot be fetched is not an
-    /// error but an `Incomplete` outcome leaving the pointer in place.
+    /// As [`ColdBuild::run`], plus the compare and directory provider
+    /// errors, and `MalformedResponse` when a changed path is missing from
+    /// the tree compare says holds it. `PointerConflict` or
+    /// `Persistence(Collecting)` is a retry state; a changed blob that
+    /// cannot be fetched is not an error but an `Incomplete` outcome
+    /// leaving the pointer in place.
     pub async fn run(&self, identity: &Identity) -> Result<ColdBuildResult, ColdBuildError> {
         let cold = &self.cold;
         let scope = snapshot_scope(identity, cold.limits.max_file_bytes);
@@ -85,20 +97,60 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> Update<'a, O, S> {
             }
             Err(error) => return Err(error),
         };
-        let mut ingest = match cold.start(identity, &head).await? {
-            Ok(ingest) => ingest,
-            Err(truncated) => return Ok(truncated),
-        };
-        ingest.reuse(prior);
-        let archive_too_large = if ingest.pending() > cold.limits.max_changed_blobs {
-            cold.fetch(&mut ingest, identity, &head).await
-        } else {
-            ingest
-                .fallback(cold.client, identity, cold.limits.max_changed_blobs)
-                .await;
-            false
-        };
-        cold.complete(&scope, current.as_ref(), &head, ingest, archive_too_large)
+        let changes = cold
+            .client
+            .compare(&identity.repository, &pointer.commit, &head.commit)
+            .await?;
+        let attributes_changed = changes
+            .removed
+            .iter()
+            .chain(&changes.added)
+            .any(|path| path.as_str() == ".gitattributes");
+        if !changes.ahead
+            || changes.truncated
+            || changes.files > cold.limits.max_changed_blobs
+            || attributes_changed
+        {
+            return cold.build(&scope, current.as_ref(), &head).await;
+        }
+
+        let mut head_tree = Directories::new(cold.client, identity, &head.tree);
+        let added = head_tree.entries(&changes.added).await?;
+        let root = head_tree
+            .listing("")
+            .await?
+            .map_or(&[][..], |root| &root.entries);
+        let attributes =
+            root_attributes(cold.client, identity, root, cold.limits.max_file_bytes).await?;
+        let unheld: Vec<RelativePath> = changes
+            .removed
+            .iter()
+            .filter(|path| !prior.holds(path))
+            .cloned()
+            .collect();
+        let mut base_tree = Directories::new(cold.client, identity, &pointer.tree);
+        let gone = base_tree.entries(&unheld).await?;
+        if head_tree.truncated || base_tree.truncated {
+            return Ok(ColdBuildResult::truncated(&head));
+        }
+
+        let mut ingest = Ingest::new(
+            &added,
+            changes.invalid_added,
+            &attributes,
+            cold.limits.max_file_bytes,
+        );
+        ingest.carry(
+            prior,
+            &changes.removed,
+            &gone,
+            changes.invalid_removed,
+            &attributes,
+        );
+        ingest
+            .fallback(cold.client, identity, cold.limits.max_changed_blobs)
+            .await;
+        cold.complete(&scope, current.as_ref(), &head, ingest, false)
             .await
     }
 
@@ -123,17 +175,109 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> Update<'a, O, S> {
     }
 }
 
+/// Non-recursive listings of one tree's directories, each listed at most
+/// once and reached from the root through verified subtree ids.
+struct Directories<'a> {
+    client: &'a GitHubClient,
+    identity: &'a Identity,
+    root: &'a ObjectSha,
+    /// Listings by path prefix: empty for the root, else ending in `/`.
+    listed: BTreeMap<String, TreeListing>,
+    /// Some listing was truncated, so an entry may be missing from it.
+    truncated: bool,
+}
+
+impl<'a> Directories<'a> {
+    /// Nothing listed yet under `root`.
+    fn new(
+        client: &'a GitHubClient,
+        identity: &'a Identity,
+        root: &'a ObjectSha,
+    ) -> Directories<'a> {
+        Directories {
+            client,
+            identity,
+            root,
+            listed: BTreeMap::new(),
+            truncated: false,
+        }
+    }
+
+    /// The listing of directory `dir` (empty for the root), listing each
+    /// ancestor on the way, or `None` when some ancestor lacks it.
+    ///
+    /// # Errors
+    ///
+    /// The directory provider error.
+    async fn listing(&mut self, dir: &str) -> Result<Option<&TreeListing>, GitHubError> {
+        let mut tree = self.root.clone();
+        let mut prefix = String::new();
+        let mut names = dir.split('/').filter(|name| !name.is_empty());
+        loop {
+            if !self.listed.contains_key(&prefix) {
+                let listing = self
+                    .client
+                    .directory(&self.identity.repository, &tree, &prefix)
+                    .await?;
+                self.truncated |= listing.truncated;
+                self.listed.insert(prefix.clone(), listing);
+            }
+            let Some(name) = names.next() else {
+                return Ok(self.listed.get(&prefix));
+            };
+            let child = format!("{prefix}{name}");
+            let Some(subtree) = self.listed[&prefix].entries.iter().find(|entry| {
+                entry.mode == TreeEntryMode::Directory && entry.path.as_str() == child
+            }) else {
+                return Ok(None);
+            };
+            tree = subtree.sha.clone();
+            prefix = child + "/";
+        }
+    }
+
+    /// The tree entry of every path in `paths`, from its parent's listing.
+    ///
+    /// # Errors
+    ///
+    /// The directory provider error, or `MalformedResponse` when a path is
+    /// missing from a complete listing of its parent.
+    async fn entries(&mut self, paths: &[RelativePath]) -> Result<Vec<TreeEntry>, GitHubError> {
+        let mut entries = Vec::with_capacity(paths.len());
+        for path in paths {
+            let dir = path.as_str().rsplit_once('/').map_or("", |(dir, _)| dir);
+            let entry = self
+                .listing(dir)
+                .await?
+                .and_then(|listing| listing.entries.iter().find(|entry| entry.path == *path))
+                .cloned();
+            match entry {
+                Some(entry) => entries.push(entry),
+                None if self.truncated => {}
+                None => {
+                    return Err(GitHubError::MalformedResponse {
+                        resource: format!("tree {}", self.root),
+                        detail: format!("compared path {path} is not in the tree"),
+                    });
+                }
+            }
+        }
+        Ok(entries)
+    }
+}
+
 #[cfg(test)]
 /// Update journeys over the cold build's routed fake GitHub and in-memory
 /// storage: a from-scratch oracle, failed and dropped attempts, moving and
 /// racing heads, and a version change.
 mod tests {
     use super::*;
+    use crate::eligibility::ExclusionReason;
     use crate::github::{GitHubError, Operation};
     use crate::persistence::SnapshotScope;
     use crate::snapshot::tests::{
-        FakeRepo, File, HANDLER, LFS, OMITTED, SUBSTITUTED, bad_sha, blob_sha, file, identity,
-        scope, sha, standard_archive, standard_files,
+        FakeRepo, File, HANDLER, LFS, OMITTED, bad_sha, blob_sha, file, identity, scope, sha,
+        standard_archive, standard_files,
     };
     use crate::snapshot::{ColdBuildOutcome, IncompleteReason, SkipReason};
     use crate::storage::ObjectKey;
@@ -149,24 +293,31 @@ mod tests {
 
     /// The push after the standard tree: `src/user.ts` changed,
     /// `src/format.ts` deleted, `src/handler.ts` renamed to
-    /// `src/api/handler.ts`, and `src/substituted.ts` made ineligible by an
-    /// attributes change; `src/omitted.ts` and the LFS pointer unchanged.
+    /// `src/api/handler.ts`, `src/substituted.ts` made ineligible by turning
+    /// into a symlink, and the excluded `node_modules/x.ts` deleted;
+    /// `src/omitted.ts`, the LFS pointer, and `.gitattributes` unchanged.
     fn pushed_files() -> Vec<File> {
         let mut files: Vec<File> = standard_files()
             .into_iter()
             .filter(|f| {
                 !matches!(
                     f.path,
-                    "src/user.ts" | "src/format.ts" | "src/handler.ts" | ".gitattributes"
+                    "src/user.ts"
+                        | "src/format.ts"
+                        | "src/handler.ts"
+                        | "src/substituted.ts"
+                        | "node_modules/x.ts"
                 )
             })
             .collect();
         files.push(file("src/user.ts", USER_V2));
         files.push(file("src/api/handler.ts", HANDLER));
-        files.push(file(
-            ".gitattributes",
-            b"generated/* linguist-generated\nsrc/substituted.ts linguist-generated\n",
-        ));
+        files.push(File {
+            path: "src/substituted.ts",
+            mode: "120000",
+            content: b"user.ts",
+            size: None,
+        });
         files
     }
 
@@ -176,7 +327,6 @@ mod tests {
             ("src/user.ts", USER_V2),
             ("src/api/handler.ts", HANDLER),
             ("src/omitted.ts", OMITTED),
-            ("src/substituted.ts", SUBSTITUTED),
             ("src/lfs.ts", LFS),
         ]
     }
@@ -224,9 +374,11 @@ mod tests {
     }
 
     /// Scenario 1: a push changing, deleting, renaming, and de-eligibling
-    /// files fetches only the changed blobs, leaves the old object's bytes
-    /// untouched, moves the pointer, and writes the same bytes as a cold
-    /// build of the new tree; a repeat reuses it.
+    /// files takes its changes from compare without a recursive listing,
+    /// lists only the changed paths' directories, fetches only the changed
+    /// blobs, leaves the old object's bytes untouched, moves the pointer,
+    /// and writes the same bytes as a cold build of the new tree; a repeat
+    /// reuses it.
     #[tokio::test]
     async fn change_delete_and_rename_match_a_fresh_parse() {
         let repo = FakeRepo::new(&standard_files(), &standard_archive());
@@ -262,7 +414,14 @@ mod tests {
         let calls = client.calls();
         assert_eq!(calls.get(Operation::Archive), 0);
         assert_eq!(calls.get(Operation::Blob), 3, "attributes + two changed");
+        assert_eq!(calls.get(Operation::Compare), 1);
+        assert_eq!(
+            calls.get(Operation::Tree),
+            5,
+            "head root, src, src/api; base root, node_modules"
+        );
         let seen = repo.transport.seen();
+        assert!(!seen[before..].iter().any(|url| url.contains("recursive")));
         assert!(
             !seen[before..]
                 .iter()
@@ -284,6 +443,13 @@ mod tests {
         assert_eq!(
             context.lookup("handleRequest")[0].path.as_str(),
             "src/api/handler.ts"
+        );
+        assert_eq!(
+            (
+                coverage.excluded.get(&ExclusionReason::Symlink),
+                coverage.excluded.get(&ExclusionReason::VendoredSegment)
+            ),
+            (Some(&2), None)
         );
         for gone in ["saveUser", "formatUser", "substitutedFn"] {
             assert!(context.lookup(gone).is_empty(), "{gone} survived");
@@ -349,8 +515,8 @@ mod tests {
         assert_eq!(pointer(&store, &identity).await.map(|p| p.tree), Some(tree));
     }
 
-    /// A push whose listing has a malformed entry fails the update with a
-    /// provider error and keeps the prior pointer.
+    /// A push whose changed path's directory listing has a malformed entry
+    /// fails the update with a provider error and keeps the prior pointer.
     #[tokio::test]
     async fn broken_tree_entry_keeps_the_pointer() {
         let repo = FakeRepo::new(&standard_files(), &standard_archive());
@@ -557,10 +723,11 @@ mod tests {
         );
     }
 
-    /// Changed blobs beyond the ceiling stream through the archive instead
-    /// of individual blob calls, still publishing a complete snapshot.
+    /// Scenario 2: more changed files than the changed-blob bound rebuild
+    /// from the archive instead of individual blob calls, still publishing
+    /// a complete snapshot.
     #[tokio::test]
-    async fn changes_past_the_ceiling_use_the_archive() {
+    async fn changes_past_the_ceiling_rebuild_from_the_archive() {
         let repo = FakeRepo::new(&standard_files(), &standard_archive());
         let storage = MemoryStorage::default();
         let store = MemorySnapshotStore::default();
@@ -578,8 +745,89 @@ mod tests {
         assert!(matches!(result.outcome, ColdBuildOutcome::Published(_)));
         assert_eq!(client.calls().get(Operation::Archive), 1);
         assert_eq!(
-            (result.ingest.archive_entries, result.ingest.fallback_blobs),
-            (2, 0)
+            (result.ingest.archive_entries, result.ingest.reused_files),
+            (4, 0)
         );
+    }
+
+    /// Scenario 2: a root `.gitattributes` change, a head that does not
+    /// descend from the pointer's commit, and a compare at its file ceiling
+    /// each rebuild from the archive and publish the complete snapshot a
+    /// cold build of the head would.
+    #[tokio::test]
+    async fn rebuild_triggers_use_the_archive() {
+        let attributes_changed = |repo: &FakeRepo| {
+            let mut files = pushed_files();
+            files.retain(|f| f.path != ".gitattributes");
+            files.push(file(
+                ".gitattributes",
+                b"generated/* linguist-generated\nsrc/omitted.ts linguist-generated\n",
+            ));
+            repo.push(&sha('d'), &sha('8'), &files, &pushed_archive());
+        };
+        let diverged = |repo: &FakeRepo| {
+            repo.push(&sha('d'), &sha('8'), &pushed_files(), &pushed_archive());
+            repo.transport.json(
+                &format!("/compare/{}...{}", repo.commit, sha('d')),
+                &format!(
+                    r#"{{"status":"diverged","base_commit":{{"sha":"{}"}},"commits":[],"files":[]}}"#,
+                    repo.commit
+                ),
+            );
+        };
+        let at_ceiling = |repo: &FakeRepo| {
+            repo.push(&sha('d'), &sha('8'), &pushed_files(), &pushed_archive());
+            let files: Vec<String> = (0..crate::github::COMPARE_MAX_FILES)
+                .map(|i| format!(r#"{{"filename":"f{i}.ts","status":"added"}}"#))
+                .collect();
+            repo.transport.json(
+                &format!("/compare/{}...{}", repo.commit, sha('d')),
+                &format!(
+                    r#"{{"status":"ahead","base_commit":{{"sha":"{}"}},"commits":[{{"sha":"{}"}}],"files":[{}]}}"#,
+                    repo.commit,
+                    sha('d'),
+                    files.join(",")
+                ),
+            );
+        };
+        let triggers: [(&str, &dyn Fn(&FakeRepo)); 3] = [
+            ("attributes", &attributes_changed),
+            ("diverged", &diverged),
+            ("ceiling", &at_ceiling),
+        ];
+        for (name, trigger) in triggers {
+            let repo = FakeRepo::new(&standard_files(), &standard_archive());
+            let storage = MemoryStorage::default();
+            let store = MemorySnapshotStore::default();
+            cold(&repo, &storage, &store).await;
+            trigger(&repo);
+            let client = repo.client();
+            let result = Update::new(&client, &storage, &store, ColdBuildLimits::default())
+                .run(&identity())
+                .await
+                .expect(name);
+            let ColdBuildOutcome::Published(new) = &result.outcome else {
+                panic!("{name}: expected publication, got {:?}", result.outcome);
+            };
+            assert_eq!(client.calls().get(Operation::Archive), 1, "{name}");
+            assert_eq!(result.ingest.reused_files, 0, "{name}");
+
+            let oracle_storage = MemoryStorage::default();
+            let oracle = ColdBuild::new(
+                &client,
+                &oracle_storage,
+                &MemorySnapshotStore::default(),
+                ColdBuildLimits::default(),
+            )
+            .run(&identity())
+            .await
+            .expect("oracle");
+            assert!(matches!(oracle.outcome, ColdBuildOutcome::Published(_)));
+            assert_eq!(
+                oracle_storage.read(&new.key).await.expect("oracle object"),
+                storage.read(&new.key).await.expect("updated object"),
+                "{name}"
+            );
+        }
     }
 }

@@ -37,9 +37,9 @@ pub use context::{
 };
 pub use eligibility::ExclusionReason;
 pub use github::{
-    Archive, BoxFuture, BranchHead, CallCounts, Commit, Disposition, FileStatus, GitHubClient,
-    GitHubError, HttpBody, HttpRequest, HttpResponse, HttpTransport, Operation, PullRequest,
-    PullRequestFile, PullRequestFilesPage, PullRequestState, RejectedPath, Repository,
+    Archive, BoxFuture, BranchHead, CallCounts, Commit, Comparison, Disposition, FileStatus,
+    GitHubClient, GitHubError, HttpBody, HttpRequest, HttpResponse, HttpTransport, Operation,
+    PullRequest, PullRequestFile, PullRequestFilesPage, PullRequestState, RejectedPath, Repository,
     RequestLimits, ReqwestTransport, TransportError, TreeEntry, TreeEntryMode, TreeListing,
 };
 pub use identity::{
