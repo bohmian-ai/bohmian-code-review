@@ -2,9 +2,9 @@
 id: TASK-005
 kind: implementation
 status: proposed
-spec: SPEC-repo-parser@11
+spec: SPEC-repo-parser@12
 depends_on: [TASK-001, TASK-002, TASK-003]
-maps: [REQ-008, REQ-009, REQ-010, REQ-011, REQ-013, REQ-014, REQ-015, REQ-016, REQ-018, INV-002, INV-004, INV-005, INV-006, INV-007, AC-005, AC-009]
+maps: [REQ-008, REQ-009, REQ-010, REQ-011, REQ-012, REQ-013, REQ-014, REQ-015, REQ-016, REQ-018, INV-002, INV-004, INV-005, INV-006, INV-007, AC-005, AC-009]
 ---
 
 ## Outcome and Value
@@ -13,13 +13,14 @@ One PR invocation overlays its pinned head on a private index, ranks related fil
 
 ## Owners, Scope, Consumers, and Prohibited Changes
 
-The outer library owns PR source/diff reconciliation, ranking orchestration, budgeted packing, immutable context publication, and read-time integrity/expiry checks. The six symbolic crates own extraction and scoring. Callers supply verified identity, a deadline, and implementations of the traits each facade uses: the PR-context facade takes the snapshot store, the context store, and object storage for snapshots and contexts; the read facade takes only the context store and context object storage. This task first consumes the context store, so it proves that trait's contract with an in-memory implementation. The library does not invoke a model or publish comments.
+The outer library owns PR source/diff reconciliation, ranking orchestration, budgeted packing, immutable context publication, and read-time integrity/expiry checks. The six symbolic crates own extraction and scoring. Callers supply verified identity and implementations of the traits each facade uses, and they bound each call by dropping its future. The library takes no cancel token or deadline and never detaches a task; concurrent blob fetches use a `JoinSet` owned by the call. The traits used by each facade are: the PR-context facade takes the snapshot store, the context store, and object storage for snapshots and contexts; the read facade takes only the context store and context object storage. This task first consumes the context store, so it fixes that trait's method contract and proves it with an in-memory implementation. The library does not invoke a model or publish comments.
 
 ## Approach
 
 1. Load a compatible snapshot into an invocation-private index and reconcile it with the PR head tree, or build a bounded scoped index when the cold build reports fallback.
 2. Guard paginated PR files with before/after base/head reads and head blob checks; classify missing or malformed patches per file.
-3. Rank and fetch only selected candidate blobs, enforce the candidate budget, then publish and read one immutable context object.
+3. Rank and fetch only selected candidate blobs, and enforce the candidate budget.
+4. Publish in order: upsert the context record with `expires_at`, then create the object if absent. Read one immutable context object by ID.
 
 ## Ordered Implementation Scenarios
 
@@ -45,17 +46,17 @@ The outer library owns PR source/diff reconciliation, ranking orchestration, bud
 
 ### Scenario 3 — Shared read and expiry
 
-**Behavior.** Repeated reads by ID return the same selected spans without GitHub calls before expiry; reads at expiry or for another tenant/installation fail, as do corrupt/missing objects and a missing identity. A context ID is visible only after its object validates; interruption after object write is retry-safe. Cleanup deletes expired contexts and reports and retries deletion failures.
+**Behavior.** Before expiry, repeated reads by ID return the same selected spans without GitHub calls. These reads fail: at or after expiry, from another tenant or installation, for a corrupt object, and with a missing identity. A read ignores a record whose object is absent. Dropping the PR-context future after the record upsert or after the object create leaves no readable half context and no unrecorded object; a retry returns a readable context. Cleanup handles contexts past `expires_at` in the same order as snapshot collection: delete the object, where a missing object is success, then delete the record. A failed delete keeps its record for retry and is reported as lag (REQ-012, REQ-014, REQ-015).
 
-**RED.** Add paused-clock reads for S14–S15 over the in-memory context store with two identities, interruption after write, and a failing delete; absent expiry, integrity, isolation, or cleanup checks fail.
+**RED.** Add paused-clock reads for S14–S15 over the in-memory context store with two identities. Include a `tokio::time::timeout` drop at each publication step, a record whose object is absent, and a failing delete. These cases fail until the expiry, integrity, isolation, and cleanup checks exist.
 
-**GREEN.** Read exact published metadata/object under supplied identity, check expiry and integrity, never rebuild from current branch, and expose expired-context cleanup.
+**GREEN.** Read the exact published record and object under the supplied identity and check expiry and integrity. Never rebuild from the current branch. Expose expired-context cleanup in object-then-record order, reusing TASK-003's cleanup order.
 
 **REFACTOR.** Keep source-bearing storage confined to the context object and drop transient source after use.
 
 ## Acceptance Criteria
 
-S5–S7, S10, S14–S15 and S18–S19 pass with injected test capabilities, the context store exercised separately from the snapshot store (AC-009): pinned identity, private/scoped indexing, selected text, coverage, omissions, expiry and budget. The diff remains separate. The read facade enforces identity and expiry; a downstream model caller counts its complete request separately.
+S5–S7, S10, S14–S15 and S18–S19 pass with injected test capabilities, the context store exercised separately from the snapshot store (AC-009): pinned identity, private/scoped indexing, selected text, coverage, omissions, expiry and budget. The diff remains separate. The read facade enforces identity and expiry. A dropped PR-context call leaves no readable partial context, and a retry converges. A downstream model caller counts its complete request separately.
 
 ## Expected Write Set and Consumer Closure
 
@@ -71,4 +72,4 @@ Stop if provider data cannot be tied to one recorded base/head pair, or if conte
 
 ## Authority Links
 
-[Revision 11 spec](../spec.md), [pipeline plan](../symbolic-context-service-plan.md).
+[Revision 12 spec](../spec.md), [pipeline plan](../symbolic-context-service-plan.md).

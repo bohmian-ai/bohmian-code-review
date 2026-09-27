@@ -1,8 +1,8 @@
 ---
 id: TASK-002
 kind: implementation
-status: review
-spec: SPEC-repo-parser@11
+status: proposed
+spec: SPEC-repo-parser@12
 depends_on: [TASK-001]
 maps: [REQ-004, REQ-013, REQ-015, REQ-016, INV-001, INV-003, INV-006]
 ---
@@ -13,7 +13,7 @@ The new outer library can obtain and verify GitHub/GHES repository, commit, tree
 
 ## Owners, Scope, Consumers, and Prohibited Changes
 
-The new library crate owns provider IO, trust boundaries and dependency-injection traits. Callers supply credentials, trait implementations, deadlines and cancellation. The crate imports no consumer type and runs no server or worker loop. Never clone, check out, or retain source on disk. Provider limits and credential handling must fail visibly.
+The new library crate owns provider IO, trust boundaries and dependency-injection traits. Callers supply credentials and trait implementations, and cancel by dropping the returned future. The crate imports no consumer type and runs no server or worker loop. Never clone, check out, or retain source on disk. Provider limits and credential handling must fail visibly.
 
 ## Approach
 
@@ -61,7 +61,7 @@ Stop if GitHub/GHES cannot provide the required pinned identity or if the depend
 
 ## Authority Links
 
-[Revision 10 spec](../spec.md), [pipeline plan](../symbolic-context-service-plan.md), [library design](../../../../architecture/bohmian-code-review-design.md).
+[Revision 12 spec](../spec.md), [pipeline plan](../symbolic-context-service-plan.md), [library design](../../../../architecture/bohmian-code-review-design.md).
 
 ## Revision 11 delta
 
@@ -78,6 +78,36 @@ Consumer closure: the in-memory test implementation and the partial cold-build c
 Proof strategy: a signature split with no behavior change, so no manufactured RED. Existing persistence tests, the partial cold-build tests, `mise run test:pipeline`, `mise run fmt:check`, `mise run lints`, and `mise run gate` pass; `rg -n 'trait Persistence\b' crates` returns nothing, and no test implementation implements both traits on one type.
 
 Stop if a facade needs one store's records from the other store to meet an approved obligation.
+
+## Revision 12 delta
+
+Revision 12 makes the pipeline crate async on tokio and moves cancellation to the caller: a consumer bounds any call by dropping its future (`select!` on its own token, `tokio::time::timeout`). The completed obligations and evidence below stand except the cancellation and deadline cases in Scenario 2 and the Revision 11 delta, which AC-R12-3 and AC-R12-4 replace. These criteria are added.
+
+### Acceptance criteria
+
+- **AC-R12-1 — reqwest client.** `GitHubClient` is async over `reqwest`; `ureq` is gone from the crate manifest and `Cargo.lock`. Host trust, redirect handling without credential forwarding, bounded bodies, identity checks, and the single rate/retry policy keep their current behavior. Retry waits use tokio time.
+- **AC-R12-2 — async traits.** `ObjectStorage`, `SnapshotStore`, and `ContextStore` methods are async, and implementers can write `async fn`. Identity, key, and error contracts are unchanged. Native async trait methods are not dyn-compatible, so callers take the stores as generic parameters rather than `&dyn`. Each method declares a `Send` future so a facade future can run on a multi-threaded runtime. There is no `async_trait` dependency. Method sets change only in the tasks that first consume them (TASK-003, TASK-005). The in-memory test store follows.
+- **AC-R12-3 — no library cancellation types.** `Execution`, `CancelToken`, `Interrupted`, the `execution` module, their re-exports, and their tests are deleted. Nothing in the crate takes a cancel token or deadline, and no cancellation or deadline case remains in the provider tests.
+- **AC-R12-4 — drop is cancellation.** Dropping a provider call during a retry wait sends no further request.
+- **AC-R12-5 — no detached tasks.** The crate never calls `tokio::spawn`. Any concurrent work runs in a `JoinSet` owned by the calling future, so a dropped call aborts it.
+
+### Scenario — Dropped provider call
+
+**Behavior.** A call that is waiting to retry after a rate-limit response is dropped by its caller. No further request is sent and the caller observes no error (AC-R12-4, REQ-013).
+
+**RED.** Add `github::tests::dropped_call_sends_no_further_requests`: script a retryable rate-limit response, drive the call under `tokio::time::timeout` with a paused clock, and assert on the fake's request count. It fails to compile until the client is async. Command: `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --all-features --lib github::tests::dropped_call_sends_no_further_requests -- --exact`.
+
+**GREEN.** Convert the client and traits to async and delete the execution module; rerun every existing `github::`, `identity::`, `storage::`, and `persistence::` test on the async API.
+
+**REFACTOR.** Remove request-policy branches that existed only to poll `Execution`.
+
+### Proof strategy for the remaining criteria
+
+The rest is a mechanical port with no new behavior, so it needs no manufactured RED. Existing tests pass on the async API. `rg -n 'ureq|Execution|CancelToken|Interrupted|tokio::spawn' crates/bohmian-code-review-pipeline Cargo.toml` returns nothing. `mise run test:pipeline`, `mise run fmt:check`, `mise run lints`, and `mise run gate` pass. Record the new dependency set with `cargo tree -p bohmian-code-review-pipeline --depth 1 --all-features`.
+
+Consumer closure: `snapshot.rs` and `testing.rs` only compile against the async traits. TASK-003 reimplements the cold build, so do not port its behavior here.
+
+Stop if the async port would change any verified provider behavior that an existing test covers.
 
 ## Implementation Evidence
 

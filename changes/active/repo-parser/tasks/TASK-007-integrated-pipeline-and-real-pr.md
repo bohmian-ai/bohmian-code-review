@@ -2,7 +2,7 @@
 id: TASK-007
 kind: implementation
 status: proposed
-spec: SPEC-repo-parser@11
+spec: SPEC-repo-parser@12
 depends_on: [TASK-001, TASK-002, TASK-003, TASK-004, TASK-005]
 maps: [REQ-004, REQ-008, REQ-009, REQ-010, REQ-011, REQ-012, REQ-013, REQ-017, REQ-018, INV-001, INV-002, INV-003, INV-004, INV-005, INV-006, INV-007, AC-002, AC-003, AC-004, AC-006, AC-007, AC-008, AC-010, AC-011]
 ---
@@ -26,17 +26,17 @@ All code, test commands and evidence for this task live in this repository. Norm
 
 ### Scenario 1 — Composed public library journey
 
-**Behavior.** Separate calls build a complete snapshot, advance it for a new default-branch tree, build pinned PR context and read identical selected spans by ID. Cold and warm calls use different source budgets, and incomplete input never claims full coverage.
+**Behavior.** Separate calls build a complete snapshot, advance it for a new default-branch tree, build pinned PR context and read identical selected spans by ID. Cold and warm calls use different source budgets, and incomplete input never claims full coverage. A cold build dropped by the caller's `tokio::time::timeout` leaves no pointer. The next PR-context call then uses scoped fallback without consuming the review's own timeout (AC-002). A retried cold build converges and publishes.
 
-**RED.** Add a public outer-crate integration journey over fake GitHub and injected test capabilities; before composition, it lacks a valid pointer, context ID or read-back equivalence.
+**RED.** Add a public outer-crate async integration journey over fake GitHub and the injected test capabilities. It fails before composition because there is no valid pointer, context ID, or read-back equivalence.
 
 **GREEN.** Close only cross-stage seams and missing behavior found by the journey while retaining the stage owners from earlier tasks.
 
-**REFACTOR.** Keep one identity and coverage result through the facades, without adding an all-in-one production method.
+**REFACTOR.** Keep one identity and coverage result through the facades. Do not add an all-in-one production method, a detached task, or a library deadline.
 
 ### Scenario 2 — Real existing PR
 
-**Behavior.** With configured GitHub credentials, an on-demand command reads an existing PR in the real `bohmian-ai/wyrd` repository, invokes the library facades directly, analyzes a supported changed file, publishes nonempty selected context and reads it back by ID. Missing credentials or an inaccessible PR fail visibly; GitHub is never mutated.
+**Behavior.** With configured GitHub credentials, an on-demand command reads an existing PR in the real `bohmian-ai/wyrd` repository, invokes the library facades directly, analyzes a supported changed file, publishes nonempty selected context and reads it back by ID. Missing credentials or an inaccessible PR fail visibly; GitHub is never mutated. The command bounds each facade call with its own `tokio::time::timeout`.
 
 **RED.** Add the explicitly invoked S20 integration test; it initially cannot produce a verified context ID and read-back through real GitHub.
 
@@ -66,4 +66,4 @@ Stop if the four public facades cannot compose under the approved injected contr
 
 ## Authority Links
 
-[Revision 11 spec](../spec.md), [pipeline plan](../symbolic-context-service-plan.md), [library design](../../../../architecture/bohmian-code-review-design.md).
+[Revision 12 spec](../spec.md), [pipeline plan](../symbolic-context-service-plan.md), [library design](../../../../architecture/bohmian-code-review-design.md).

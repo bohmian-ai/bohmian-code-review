@@ -1,99 +1,107 @@
 ---
 id: TASK-003
 kind: implementation
-status: review
-spec: SPEC-repo-parser@11
+status: proposed
+spec: SPEC-repo-parser@12
 depends_on: [TASK-001, TASK-002]
-maps: [REQ-005, REQ-006, REQ-015, REQ-016, INV-002, INV-003, INV-005, INV-007, AC-005, AC-009]
+maps: [REQ-005, REQ-006, REQ-012, REQ-013, REQ-015, REQ-016, INV-002, INV-003, INV-005, INV-007, AC-005, AC-009]
 ---
 
 ## Outcome and Value
 
-A first repository invocation builds a verified, source-free default-branch snapshot from a streamed archive. Only a complete snapshot is published; an incomplete or oversized build returns an explicit fallback result for the PR-context facade.
+The first call for a repository builds a verified, source-free default-branch snapshot from a streamed archive. Publication is three idempotent steps, so a caller can drop the build future at any `.await`. After a drop, the pointer still names a complete snapshot or nothing, and a retry converges. An incomplete or oversized build returns an explicit fallback result for the PR-context facade.
 
 ## Owners, Scope, Consumers, and Prohibited Changes
 
-The outer library owns eligibility, bounded archive/blob ingest, snapshot serialization, publication order, and fallback signaling. The cold-build facade accepts only an object storage and a snapshot store, both caller-implemented, plus a caller-supplied deadline and cancellation; the library ships no storage backend and imposes no deadline maximum. This task first consumes the snapshot store, so it proves that trait's contract with an in-memory implementation. No source archive, raw blob cache, or checkout is persisted. Caller job scheduling is outside this crate.
+The outer library owns eligibility, bounded archive/blob ingest, snapshot serialization, publication, cleanup, and fallback signaling. The async cold-build facade accepts only caller-implemented object storage and a snapshot store. It takes no cancel token or deadline. It never detaches a task: any concurrent fetches run in a `JoinSet` owned by the call. This task first consumes the snapshot store and the object storage write/delete semantics, so it fixes their method contracts and proves them with in-memory implementations.
+
+Non-goals: storage backends, scoped PR indexing (TASK-005), incremental update (TASK-004), persisting source, archives, or raw blobs, scheduling, and any library deadline maximum.
+
+This task is reimplemented on the async design, not patched. The synchronous candidate on this branch (`741c049`..`d953463`, reviews `TASK-003-r1`..`r3`) is prior art, not a baseline to remediate. Its eligibility, serialization, and verification logic may be kept where it meets these criteria. `TASK-003-R3` is superseded. Scenario 3 replaces its FIND-2, and Scenario 5 replaces its FIND-7.
 
 ## Approach
 
-1. Apply supported-path, mode, size, root attributes, and LFS eligibility to the pinned tree.
-2. Stream and verify eligible archive entries, falling back to bounded verified blob calls where needed.
-3. Publish only validated complete snapshots before advancing the pointer; return incomplete coverage and a scoped-fallback reason otherwise.
+1. Apply supported-path, mode, size, root `.gitattributes`, and LFS eligibility to the pinned tree.
+2. Stream the commit-pinned archive, verify eligible entries against their blob SHAs, and fall back to bounded verified blob fetches where needed.
+3. Publish a complete snapshot in order: upsert its record, which refreshes `touched_at`; create the object if absent; compare-and-swap the pointer. Otherwise return incomplete coverage and a fallback reason.
+4. Expose `collect(identity, older_than)` and repository namespace removal.
 
 ## Ordered Implementation Scenarios
 
 ### Scenario 1 — Complete cold snapshot
 
-**Behavior.** A fake GitHub repository produces a verified source-free snapshot; its pointer appears only after the object is complete, and a later load reproduces symbol facts without source fetches.
+**Behavior.** A fake GitHub repository yields a verified, source-free snapshot. A later call with a matching pointer reloads its facts without any archive, tree, or blob fetch (REQ-005, INV-003, INV-005). The same tree always serializes to identical bytes.
 
-**RED.** Add an outer-crate cold-build journey over injected in-memory object storage and snapshot store; the absent snapshot/pointer flow fails.
+**RED.** Add an async cold-build journey over in-memory object storage and snapshot store. It fails because no snapshot, record, or pointer exists yet.
 
-**GREEN.** Build the eligible index, serialize facts and coverage, write/validate the object, then publish metadata and pointer.
+**GREEN.** Build the eligible index, serialize facts and coverage, then publish through the three steps.
 
-**REFACTOR.** Reuse the public symbolic facade and provider identities; keep publication as one observable boundary.
+**REFACTOR.** Reuse the public symbolic facade and the TASK-002 provider identities.
 
-### Scenario 2 — Incomplete build outcome
+### Scenario 2 — Incomplete build
 
-**Behavior.** Truncated tree, archive mismatch, LFS pointer, parse failure, or exhausted bound never advances a complete pointer; the build result carries exact omissions and a reason for the PR-context facade to use scoped fallback.
+**Behavior.** Each of these leaves the pointer unmoved and returns exact coverage plus a reason the PR-context facade can use for scoped fallback: a truncated tree, an archive mismatch past the fallback bound, a parse failure, an exhausted archive or blob bound, or a pointer whose object is missing. An LFS pointer or a verified oversize blob is a reasoned skip that keeps its path and blob identity (REQ-005, INV-002, S10–S11).
 
-**RED.** Add negative fake-provider cases matching S10–S11 and an object-write crash case; the initial result wrongly publishes or hides coverage.
+**RED.** Add fake-provider cases for each input. They fail while the facade publishes an incomplete build or hides its coverage.
 
-**GREEN.** Enforce bounds and incomplete-attempt results; preserve an existing pointer and permit whole-build retry.
+**GREEN.** Enforce the bounds and return the incomplete result.
 
-**REFACTOR.** Keep eligibility and coverage accounting reusable by the later scoped PR path without treating incomplete input as full repository coverage.
+**REFACTOR.** Keep eligibility and coverage accounting reusable by TASK-005's scoped path.
 
-### Scenario 3 — Snapshot-store isolation and cleanup
+### Scenario 3 — Drop-safe, idempotent publication
 
-**Behavior.** With two tenant/installation identities, one identity can neither read nor advance the other's pointer; a missing identity fails closed; interruption after object write is retry-safe. Collection removes expired unreferenced snapshots and never a pointed-to one; repository namespace removal returns its object keys for deletion.
+**Behavior.** The build future is dropped at any publication step: after the record upsert, after the object create, or before the compare-and-swap. The pointer remains on the prior complete snapshot, or stays absent. Every written object has a record. Retrying the same tree converges on the same key and advances the pointer. An existing object under the key is adopted only after identity and byte validation. A compare-and-swap that loses to another writer returns a typed retry state (REQ-006, REQ-012, REQ-013).
 
-**RED.** Add cold-build and cleanup cases over the in-memory snapshot store for cross-identity access, interruption after write, and a referenced versus unreferenced expired snapshot; they fail before isolation and cleanup exist.
+**RED.** Add cases that use a test store to stall the chosen step and a paused-clock `tokio::time::timeout` to drop the future. Each asserts the pointer and records, then retries. Also cover a pre-existing object with mismatched bytes and a lost compare-and-swap. They fail before the three-step order exists.
 
-**GREEN.** Enforce identity and object-before-pointer through the snapshot store and expose snapshot cleanup; rerun Scenarios 1–2.
+**GREEN.** Implement record upsert with `touched_at`, create-if-absent objects, and pointer compare-and-swap. Rerun Scenarios 1–2.
 
-**REFACTOR.** Keep publication and cleanup checks at the one publication boundary.
+**REFACTOR.** Keep publication as one path shared with TASK-004.
+
+### Scenario 4 — Isolation and cleanup
+
+**Behavior.** For each record in its identity that the pointer does not reference and that was not touched since `older_than`, `collect(identity, older_than)` deletes the object, then the record. A missing object counts as success. It never touches the pointed-to snapshot, a record touched after `older_than`, or another identity's records. Namespace removal returns only that repository's keys. A second tenant or installation cannot read, advance, or collect the first identity's pointer or snapshots. A missing identity fails closed (REQ-006, REQ-015, REQ-016, AC-005, AC-009).
+
+**RED.** Add cases with two identities, a referenced and an unreferenced record, a record re-touched by an in-flight build, a record whose object is already gone, and a failing object delete. The failing delete must leave its record for the next collect. They fail before `unreferenced` and `collect` exist.
+
+**GREEN.** Add `unreferenced(identity, older_than)` and record deletion to the snapshot store. Add create-if-absent, plus delete where a missing object is success, to object storage. Implement `collect`.
+
+**REFACTOR.** Share the object-then-record order with TASK-005's context cleanup when it arrives, not before.
+
+### Scenario 5 — Root `.gitattributes` resets
+
+**Behavior.** For `linguist-generated` and `linguist-vendored`, `!attr` and `-attr` reset the attribute to unset, not false. A later matching reset overrides an earlier set rule. The built-in vendor-segment and minified-output exclusions still apply to a reset path. `attr` and `attr=true` set the attribute; `attr=false` is the only explicit-false override.
+
+**RED.** Add `eligibility::tests::attribute_resets_read_as_unset`. It covers `vendor/a.ts` and `app.min.js` under both `!` and `-` resets, including after a prior set rule, plus the `attr=false` override. Command: `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --all-features --lib eligibility::tests::attribute_resets_read_as_unset -- --exact`. It fails while a reset reads as false.
+
+**GREEN.** Carry set, false, and unset as distinct states through the attribute resolver.
+
+**REFACTOR.** None beyond keeping existing attribute tests green.
 
 ## Acceptance Criteria
 
-The cold-build portions of S1 and S11 pass: complete source-free snapshot, verified archive/fallback blobs, immutable object and safe pointer publication. Incomplete attempts and crashes leave the prior pointer intact with exact coverage and retry/fallback reasons. The snapshot-store portion of S14 and AC-009 passes against an in-memory implementation separate from any context store. The later library journey proves the composed first-PR, scoped-review and independent-clock outcomes.
+- The cold-build portions of S1 and S11 pass: a complete source-free snapshot, verified archive and fallback blobs, and reload without source fetches.
+- Incomplete builds leave the pointer unmoved and report exact coverage and a fallback reason.
+- Dropping the facade future at any publication step leaves the pointer on a complete snapshot or absent, and leaves every object recorded. A retry converges.
+- `collect` deletes the object and then the record for unreferenced records not touched since `older_than`. It treats a missing object as success and never collects the pointed-to or a re-touched snapshot.
+- The snapshot-store portion of S14 and AC-009 passes against an in-memory snapshot store that is separate from any context store.
+- `.gitattributes` resets read as unset per Scenario 5.
+- The crate calls no `tokio::spawn`.
 
 ## Expected Write Set and Consumer Closure
 
-Outer crate ingest/snapshot behavior and focused tests, injected test capabilities, scoped lane and relevant lockfile. TASK-004 and TASK-005 consume immutable snapshots.
+Outer crate eligibility, snapshot, persistence, storage, and in-memory test modules; `lib.rs` exports; lockfile only if streaming needs a dependency. TASK-004 reuses the publication path. TASK-005 consumes snapshots, `Coverage`, and the fallback reason.
 
 ## Verification and Evidence
 
-Run the outer crate's scoped lane, `mise run test:symbolic-context:journey`, `mise run fmt:check`, and `mise run lints`; record stored object/row inspection and paused-clock behavior.
+Run the scenario tests with `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --all-features --lib <module::test> -- --exact`. Then run `mise run test:pipeline`, `mise run test:symbolic-context:journey`, `mise run fmt:check`, `mise run lints`, and `mise run gate`. Record stored objects, records, and pointer state after each drop point. Confirm `rg -n 'tokio::spawn' crates/bohmian-code-review-pipeline` returns nothing.
 
 ## Material Stop Conditions
 
-Stop if the chosen storage operation cannot make incomplete objects invisible or if coverage cannot distinguish excluded from missing eligible files.
+- Stop if create-if-absent or pointer compare-and-swap cannot be expressed so that an in-memory implementation and a typical object store or SQL implementation share the same semantics.
+- Stop if streaming the archive asynchronously requires persisting it.
+- Stop if coverage cannot distinguish excluded files from missing eligible files.
 
 ## Authority Links
 
-[Revision 11 spec](../spec.md), [pipeline plan](../symbolic-context-service-plan.md).
-
-## Implementation Evidence
-
-Starting point `741c049` (unverified draft) was kept where correct and fixed at the root: `read_snapshot` rebuilds `ObjectKey::snapshot` for the caller identity and pointer tree and refuses any other key (`ColdBuildError::ForeignKey`) before storage is read; per-attempt counters moved from the persisted `Coverage` to `ColdBuildResult::ingest` (`IngestStats`); the facade error is imported (`SymbolicError`); `glob_matches` is a segment reachability pass plus an iterative single-segment matcher; the archive closure is `Ingest::stream_entries`. Also removed: the draft's `MAX_COLD_BUILD_DEADLINE`/`DeadlineTooLong` (the task forbids a library deadline maximum) and the draft's benign `Oversize` skip for an oversized archive entry (now left pending for verified blob fallback, so an archive cannot turn an eligible file into a benign skip). Publication now compares the read-back object byte for byte with the built snapshot before adopting it. Eligibility internals (`classify`, `RootAttributes`, `EligibleTree`, `Exclusion`, `MAX_ELIGIBLE_FILE_BYTES`) are crate-private; only `ExclusionReason` is public because `Coverage` carries it.
-
-Local decision: snapshot cleanup needs persisted snapshot rows, not only pointers, so `SnapshotStore` gained `record_snapshot`, `unreferenced_snapshots`, and `delete_snapshot`, and `remove_repository` returns every recorded key. The build records an object after it validates and before the pointer moves, so an object orphaned by an interrupted publication is collectable. `collect_snapshots` deletes object before record and refuses a returned key outside its identity's snapshot namespace. LFS pointers and verified oversize blobs are benign skips that keep their path/blob identity in the snapshot; they do not block completeness (spec "reasoned exclusion", S11).
-
-| Acceptance criterion | Implementation evidence | Verification evidence | Result |
-|---|---|---|---|
-| S1 cold build: complete source-free snapshot, verified archive and fallback blobs, reload without source fetches, separate review clock | `snapshot.rs` `ColdBuild::run`, `Ingest::{stream_entries, fallback, ingest}`, `read_snapshot`, `Snapshot::into_context` | `complete_cold_snapshot_is_verified_source_free_and_reloadable` (stored object inspected for absent source fragments; blob call counts unchanged on reload; reuse makes no archive/tree call) | PASS |
-| Immutable object: same tree serializes to identical bytes | `Coverage` holds only tree facts; `IngestStats` on `ColdBuildResult` | `same_tree_serializes_identically_across_ingest_paths` (archive-fed vs all-fallback bytes equal; no ingest counters or timestamps in the object) | PASS |
-| S10–S11 incomplete attempts: truncated tree, archive mismatch past fallback bound, LFS, parse failure, exhausted bounds, cancellation keep the prior pointer and report exact coverage and reason | `IncompleteReason`, `Coverage::{is_complete, unindexed}`, `SkipReason` | `incomplete_attempts_report_coverage_and_keep_the_prior_pointer`, `interruption_is_explicit_and_deadlines_are_caller_owned` | PASS |
-| Safe publication: object created/adopted, byte-compared, recorded, then conditional pointer; crash before/after object write retries by whole build | `ColdBuild::publish` | `publication_is_crash_safe_and_retry_converges`, `collection_removes_only_expired_unreferenced_snapshots` (missing pointed-to object is rebuilt) | PASS |
-| S14 / AC-005 / AC-009 snapshot-store isolation: another tenant or installation sees no pointer, cannot read via a foreign pointer, cannot advance the owner's pointer | `read_snapshot` exact-key check, `SnapshotStore` scoping, `testing.rs` `MemorySnapshotStore` | `identities_cannot_read_or_advance_each_others_snapshots` | PASS |
-| REQ-006 cleanup: expired unreferenced snapshots collected, pointed-to never; namespace removal returns its keys only | `collect_snapshots`, `ObjectKey::is_snapshot_of`, `SnapshotStore::{record_snapshot, unreferenced_snapshots, delete_snapshot, remove_repository}` | `collection_removes_only_expired_unreferenced_snapshots` (cutoff before/after record time, forged foreign record refused) | PASS |
-| Caller-owned deadline, no library maximum | `ColdBuild::run` uses only `Execution` | `interruption_is_explicit_and_deadlines_are_caller_owned` (24 h deadline publishes) | PASS |
-| Eligibility by reason; linear glob matching | `eligibility.rs` `classify`, `glob_matches`, `segment_matches` | `classification_reports_each_reason`, `attributes_resolve_like_git`, `glob_segments_and_many_stars_match_without_backtracking` (41-star pattern over 4000-byte near-miss) | PASS |
-
-Paused-clock note: collection is driven by a caller-supplied cutoff; tests use `UNIX_EPOCH` (nothing expired) and now + 1 h (orphan expired) rather than sleeping. Deadline and cancellation use `Execution`, tripped by a transport hook.
-
-Verification (this session, all exit 0): `mise run test:pipeline` (27 unit tests, doc tests), `mise run test:symbolic-context:journey` (6), `mise run fmt:check`, `mise run lints`, `git diff --check`, `mise run gate`.
-
-Non-goals held: no storage backend, no scoped PR fallback indexing (TASK-005 consumes `Coverage`/`IncompleteReason`), no incremental update, no source/archive/blob persistence, no new dependency. Changed files: `crates/bohmian-code-review-pipeline/src/{eligibility,lib,persistence,snapshot,storage,testing}.rs` and this task file.
-
-Known limit: a build adopting an existing object between `unreferenced_snapshots` and deletion can publish a pointer to a just-deleted object; the next cold build sees `NotFound` and rebuilds (marked `ponytail:` in `collect_snapshots`).
+[Revision 12 spec](../spec.md), [pipeline plan](../symbolic-context-service-plan.md), [TASK-002](TASK-002-github-source-and-stage-contracts.md).
