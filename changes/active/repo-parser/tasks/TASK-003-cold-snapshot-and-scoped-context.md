@@ -70,11 +70,11 @@ This task is reimplemented on the async design, not patched. The synchronous can
 
 ### Scenario 5 — Root `.gitattributes` resets
 
-**Behavior.** For `linguist-generated` and `linguist-vendored`, `!attr` and `-attr` reset the attribute to unset, not false. A later matching reset overrides an earlier set rule. The built-in vendor-segment and minified-output exclusions still apply to a reset path. `attr` and `attr=true` set the attribute; `attr=false` is the only explicit-false override.
+**Behavior.** For `linguist-generated` and `linguist-vendored`, follow Git: `attr` and `attr=true` set it; `-attr` and `attr=false` are explicit false and override the built-in vendor-segment and minified-output exclusions; `!attr` returns the attribute to unspecified, so the built-in exclusions apply again. The last matching rule wins.
 
-**RED.** Add `eligibility::tests::attribute_resets_read_as_unset`. It covers `vendor/a.ts` and `app.min.js` under both `!` and `-` resets, including after a prior set rule, plus the `attr=false` override. Command: `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --all-features --lib eligibility::tests::attribute_resets_read_as_unset -- --exact`. It fails while a reset reads as false.
+**RED.** Add `eligibility::tests::attribute_resets_read_as_unset`. It covers `vendor/a.ts` and `app.min.js`: `-attr` and `attr=false` make them eligible; `!attr` after a prior `-attr` makes them excluded again. Command: `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --all-features --lib eligibility::tests::attribute_resets_read_as_unset -- --exact`. It fails while `!attr` reads as false.
 
-**GREEN.** Carry set, false, and unset as distinct states through the attribute resolver.
+**GREEN.** Carry set, false, and unspecified as distinct states through the attribute resolver.
 
 **REFACTOR.** None beyond keeping existing attribute tests green.
 
@@ -85,7 +85,7 @@ This task is reimplemented on the async design, not patched. The synchronous can
 - Dropping the facade future at any publication step leaves the pointer on a complete snapshot or absent, and leaves every object recorded. A retry converges.
 - `collect` deletes the object and then the record for unreferenced records not touched since `older_than`. It treats a missing object as success and never collects the pointed-to or a re-touched snapshot.
 - The snapshot-store portion of S14 and AC-009 passes against an in-memory snapshot store that is separate from any context store.
-- `.gitattributes` resets read as unset per Scenario 5.
+- `.gitattributes` `!attr` reads as unspecified and `-attr` as false, per Scenario 5.
 - The crate calls no `tokio::spawn`.
 
 ## Expected Write Set and Consumer Closure
