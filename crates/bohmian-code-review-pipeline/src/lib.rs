@@ -8,7 +8,8 @@
 //! an `async fn` on tokio that the caller cancels by dropping its future. [`ColdBuild`] is the first facade: it
 //! streams a pinned default-branch archive into a complete, source-free
 //! [`Snapshot`], and [`Snapshots`] reads snapshots back and removes those no
-//! pointer names. It never clones, checks out, or persists source; it depends on the
+//! pointer names. [`Update`] advances that pointer incrementally from tree
+//! differences and reports review-time [`Freshness`]. It never clones, checks out, or persists source; it depends on the
 //! public `bohmian-code-review` facade alone and imports no consumer type.
 
 mod archive;
@@ -20,6 +21,7 @@ pub mod snapshot;
 pub mod storage;
 #[cfg(test)]
 pub(crate) mod testing;
+pub mod update;
 
 pub use eligibility::ExclusionReason;
 pub use github::{
@@ -42,3 +44,4 @@ pub use snapshot::{
     SnapshotFile, Snapshots,
 };
 pub use storage::{ObjectDigest, ObjectKey, ObjectStorage, StorageError};
+pub use update::{Freshness, Update};

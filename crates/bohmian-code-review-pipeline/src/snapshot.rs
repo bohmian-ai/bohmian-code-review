@@ -47,15 +47,20 @@ pub struct ColdBuildLimits {
     pub max_expanded_archive_bytes: u64,
     /// Verified blob calls allowed for entries the archive did not supply.
     pub max_fallback_blobs: usize,
+    /// Changed blobs an update fetches individually; beyond it the update
+    /// streams the archive for them instead.
+    pub max_changed_blobs: usize,
 }
 
 impl Default for ColdBuildLimits {
-    /// 1 MiB files, 4 GiB expanded archive, 200 fallback blobs.
+    /// 1 MiB files, 4 GiB expanded archive, 200 fallback blobs, 2,000
+    /// changed blobs.
     fn default() -> ColdBuildLimits {
         ColdBuildLimits {
             max_file_bytes: MAX_ELIGIBLE_FILE_BYTES,
             max_expanded_archive_bytes: 4 * 1024 * 1024 * 1024,
             max_fallback_blobs: 200,
+            max_changed_blobs: 2000,
         }
     }
 }
@@ -373,8 +378,12 @@ pub enum ColdBuildOutcome {
 pub struct IngestStats {
     /// Entries verified from the archive stream.
     pub archive_entries: usize,
-    /// Blobs fetched individually after the archive.
+    /// Blobs fetched individually after the archive, or as an update's
+    /// changed blobs.
     pub fallback_blobs: usize,
+    /// Eligible files an update carried from the prior snapshot because
+    /// their path and blob were unchanged.
+    pub reused_files: usize,
     /// Why the archive stream stopped early, if it did; never source text.
     pub archive_error: Option<String>,
     /// Most verified archive bytes waiting to be indexed at once.
@@ -446,10 +455,10 @@ pub enum ColdBuildError {
 
 /// The cold-build facade over injected provider, storage, and snapshot store.
 pub struct ColdBuild<'a, O, S> {
-    client: &'a GitHubClient,
-    storage: &'a O,
-    store: &'a S,
-    limits: ColdBuildLimits,
+    pub(crate) client: &'a GitHubClient,
+    pub(crate) storage: &'a O,
+    pub(crate) store: &'a S,
+    pub(crate) limits: ColdBuildLimits,
 }
 
 impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
@@ -659,7 +668,9 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
             facts: context.export(),
             coverage: coverage.clone(),
         };
-        let pointer = self.publish(scope, current, &head.commit, &snapshot).await?;
+        let pointer = self
+            .publish(scope, current, &head.commit, &snapshot)
+            .await?;
         Ok(ColdBuildResult::new(
             head,
             coverage,
@@ -853,12 +864,50 @@ impl Ingest {
         }
     }
 
+    /// Eligible files still wanted.
+    pub(crate) fn pending(&self) -> usize {
+        self.pending.len()
+    }
+
+    /// Carry `prior`'s facts and benign skips for every pending path still
+    /// at the blob `prior` recorded, so only changed or added paths stay
+    /// pending. Facts of changed, deleted, renamed, or now-ineligible paths
+    /// are never loaded. A fact that fails to load stays pending and is
+    /// fetched like a changed blob.
+    pub(crate) fn reuse(&mut self, prior: Snapshot) {
+        let unchanged: BTreeMap<RelativePath, ObjectSha> = prior
+            .files
+            .into_iter()
+            .filter(|file| self.pending.get(&file.path) == Some(&file.blob))
+            .map(|file| (file.path, file.blob))
+            .collect();
+        for facts in prior.facts {
+            let path = facts.path.clone();
+            if unchanged.contains_key(&path) && self.context.load(facts).is_ok() {
+                self.pending.remove(&path);
+                self.indexed += 1;
+                self.stats.reused_files += 1;
+            }
+        }
+        for skipped in prior.coverage.skipped {
+            if unchanged.contains_key(&skipped.path) && self.pending.contains_key(&skipped.path) {
+                self.stats.reused_files += 1;
+                self.skip(skipped.path, skipped.blob, skipped.reason);
+            }
+        }
+    }
+
     /// Fetch every still-pending blob individually, up to `max_blobs`, and
     /// index it; everything still pending afterwards is skipped as not
     /// fetched. A blob larger than the file bound, or than a client blob
     /// bound at least the file bound, is a benign oversize skip; a client
     /// bound below the file bound proves nothing and the blob is unfetched.
-    async fn fallback(&mut self, client: &GitHubClient, identity: &Identity, max_blobs: usize) {
+    pub(crate) async fn fallback(
+        &mut self,
+        client: &GitHubClient,
+        identity: &Identity,
+        max_blobs: usize,
+    ) {
         while let Some((path, blob)) = self.pending.pop_first() {
             if self.stats.fallback_blobs >= max_blobs {
                 self.skip(path, blob, SkipReason::NotFetched);
@@ -938,8 +987,9 @@ impl Ingest {
 #[cfg(test)]
 /// Owner tests for the cold build: complete verified snapshots, archive
 /// fallback, every incomplete outcome, and crash-safe publication, driven
-/// through a routed fake GitHub and in-memory storage and persistence.
-mod tests {
+/// through a routed fake GitHub and in-memory storage and persistence. The
+/// fixtures are shared with the update facade's tests.
+pub(crate) mod tests {
     use super::*;
     use crate::github::{Operation, RequestLimits, git_blob_sha};
     use crate::identity::{
@@ -954,32 +1004,34 @@ mod tests {
     use tar::EntryType;
 
     /// Declares `lookupUser` and `saveUser`.
-    const USER: &[u8] = b"export interface User {\n  id: string;\n}\n\nexport function lookupUser(id: string): User {\n  return { id };\n}\n\nexport function saveUser(user: User): void {\n  console.log(user.id);\n}\n";
+    pub(crate) const USER: &[u8] = b"export interface User {\n  id: string;\n}\n\nexport function lookupUser(id: string): User {\n  return { id };\n}\n\nexport function saveUser(user: User): void {\n  console.log(user.id);\n}\n";
     /// Declares `formatUser`.
-    const FORMAT: &[u8] = b"import { User } from \"./user\";\n\nexport function formatUser(user: User): string {\n  return user.id;\n}\n";
+    pub(crate) const FORMAT: &[u8] = b"import { User } from \"./user\";\n\nexport function formatUser(user: User): string {\n  return user.id;\n}\n";
     /// Declares `handleRequest`.
-    const HANDLER: &[u8] = b"import { lookupUser } from \"./user\";\n\nexport function handleRequest(id: string): string {\n  return lookupUser(id).id;\n}\n";
+    pub(crate) const HANDLER: &[u8] = b"import { lookupUser } from \"./user\";\n\nexport function handleRequest(id: string): string {\n  return lookupUser(id).id;\n}\n";
     /// Declares `omittedFn`; never placed in the archive.
-    const OMITTED: &[u8] = b"export function omittedFn(): number {\n  return 1;\n}\n";
+    pub(crate) const OMITTED: &[u8] = b"export function omittedFn(): number {\n  return 1;\n}\n";
     /// Declares `substitutedFn`; the archive carries other bytes for its path.
-    const SUBSTITUTED: &[u8] = b"export function substitutedFn(): number {\n  return 2;\n}\n";
+    pub(crate) const SUBSTITUTED: &[u8] =
+        b"export function substitutedFn(): number {\n  return 2;\n}\n";
     /// A Git LFS pointer.
-    const LFS: &[u8] = b"version https://git-lfs.github.com/spec/v1\noid sha256:0000\nsize 12\n";
+    pub(crate) const LFS: &[u8] =
+        b"version https://git-lfs.github.com/spec/v1\noid sha256:0000\nsize 12\n";
     /// A parse-error file the extractor defers.
     const BROKEN: &[u8] = b"export function (\n";
 
     /// Forty copies of `ch` as an object id.
-    fn sha(ch: char) -> ObjectSha {
+    pub(crate) fn sha(ch: char) -> ObjectSha {
         ObjectSha::new(&ch.to_string().repeat(40)).expect("sha")
     }
 
     /// Blob id of `bytes`.
-    fn blob_sha(bytes: &[u8]) -> ObjectSha {
+    pub(crate) fn blob_sha(bytes: &[u8]) -> ObjectSha {
         ObjectSha::new(&git_blob_sha(bytes)).expect("blob sha")
     }
 
     /// The caller identity for the pinned test repository.
-    fn identity() -> Identity {
+    pub(crate) fn identity() -> Identity {
         Identity {
             tenant: TenantId::new("acme").expect("tenant"),
             installation: InstallationId::new(42).expect("installation"),
@@ -988,15 +1040,15 @@ mod tests {
     }
 
     /// One tree entry of the fake repository.
-    struct File {
-        path: &'static str,
-        mode: &'static str,
-        content: &'static [u8],
-        size: Option<u64>,
+    pub(crate) struct File {
+        pub(crate) path: &'static str,
+        pub(crate) mode: &'static str,
+        pub(crate) content: &'static [u8],
+        pub(crate) size: Option<u64>,
     }
 
     /// A regular file whose listed size is its content length.
-    fn file(path: &'static str, content: &'static [u8]) -> File {
+    pub(crate) fn file(path: &'static str, content: &'static [u8]) -> File {
         File {
             path,
             mode: "100644",
@@ -1006,23 +1058,43 @@ mod tests {
     }
 
     /// A fake repository at commit `c`/tree `7` with routed responses.
-    struct FakeRepo {
-        transport: Arc<RoutedTransport>,
-        tree: ObjectSha,
-        commit: ObjectSha,
+    pub(crate) struct FakeRepo {
+        pub(crate) transport: Arc<RoutedTransport>,
+        pub(crate) tree: ObjectSha,
+        pub(crate) commit: ObjectSha,
         limits: RequestLimits,
     }
 
     impl FakeRepo {
         /// Route repository, branch, tree, every blob, and the tarball
         /// containing `archive` entries under the GitHub prefix.
-        fn new(files: &[File], archive: &[(&str, &[u8])]) -> FakeRepo {
+        pub(crate) fn new(files: &[File], archive: &[(&str, &[u8])]) -> FakeRepo {
             let transport = Arc::new(RoutedTransport::default());
             let (tree, commit) = (sha('7'), sha('c'));
             transport.json(
                 "/repos/octocat/Hello-World",
                 r#"{"id":1296269,"full_name":"octocat/Hello-World","default_branch":"main","private":true}"#,
             );
+            let repo = FakeRepo {
+                transport,
+                tree,
+                commit,
+                limits: RequestLimits::default(),
+            };
+            repo.push(&repo.commit, &repo.tree, files, archive);
+            repo
+        }
+
+        /// Move the branch to `commit`/`tree` listing `files`, routing its
+        /// blobs, tree, and a tarball of `archive`; earlier routes stay.
+        pub(crate) fn push(
+            &self,
+            commit: &ObjectSha,
+            tree: &ObjectSha,
+            files: &[File],
+            archive: &[(&str, &[u8])],
+        ) {
+            let transport = &self.transport;
             transport.json(
                 "/branches/main",
                 &format!(
@@ -1054,12 +1126,6 @@ mod tests {
                 ),
             );
             transport.route(&format!("/tarball/{commit}"), 200, tarball(archive));
-            FakeRepo {
-                transport,
-                tree,
-                commit,
-                limits: RequestLimits::default(),
-            }
         }
 
         /// Replace the tree route with a truncated listing.
@@ -1072,7 +1138,7 @@ mod tests {
         }
 
         /// A client over this fake under `limits`.
-        fn client(&self) -> GitHubClient {
+        pub(crate) fn client(&self) -> GitHubClient {
             GitHubClient::with_transport(
                 GitHubHost::public(),
                 InstallationToken::new("ghs_token").expect("token"),
@@ -1155,7 +1221,7 @@ mod tests {
 
     /// The standard fixture: six eligible files, one LFS pointer, every
     /// exclusion reason, an omitted and a substituted archive entry.
-    fn standard_files() -> Vec<File> {
+    pub(crate) fn standard_files() -> Vec<File> {
         vec![
             file("src/user.ts", USER),
             file("src/format.ts", FORMAT),
@@ -1190,7 +1256,7 @@ mod tests {
 
     /// Archive entries for the standard fixture: no `src/omitted.ts`, and
     /// other bytes under `src/substituted.ts`.
-    fn standard_archive() -> Vec<(&'static str, &'static [u8])> {
+    pub(crate) fn standard_archive() -> Vec<(&'static str, &'static [u8])> {
         vec![
             ("src/user.ts", USER),
             ("src/format.ts", FORMAT),
@@ -1828,7 +1894,12 @@ mod tests {
         );
         assert_eq!(
             build
-                .publish(&snapshot_scope(&identity), Some(&pointer), &repo.commit, &snapshot)
+                .publish(
+                    &snapshot_scope(&identity),
+                    Some(&pointer),
+                    &repo.commit,
+                    &snapshot
+                )
                 .await,
             Err(ColdBuildError::PointerConflict)
         );
@@ -1870,7 +1941,10 @@ mod tests {
             tokio::join!(snapshots.collect(&owner, SystemTime::now()), async {
                 let raced = build.run(&owner).await;
                 assert_eq!(
-                    store.snapshot_pointer(&snapshot_scope(&owner)).await.expect("read"),
+                    store
+                        .snapshot_pointer(&snapshot_scope(&owner))
+                        .await
+                        .expect("read"),
                     None
                 );
                 assert_eq!(store.records(), recorded());
@@ -1909,7 +1983,10 @@ mod tests {
             assert_eq!(store.records(), recorded());
             assert_eq!(storage.keys(), std::slice::from_ref(&key));
             assert_eq!(
-                store.snapshot_pointer(&snapshot_scope(&owner)).await.expect("read"),
+                store
+                    .snapshot_pointer(&snapshot_scope(&owner))
+                    .await
+                    .expect("read"),
                 None
             );
             store.hold_swaps.store(false, Ordering::SeqCst);
@@ -2025,7 +2102,10 @@ mod tests {
             };
             assert_ne!(own.key, pointer.key);
             assert_eq!(
-                store.snapshot_pointer(&snapshot_scope(&owner)).await.expect("read"),
+                store
+                    .snapshot_pointer(&snapshot_scope(&owner))
+                    .await
+                    .expect("read"),
                 Some(pointer.clone())
             );
         }
@@ -2127,7 +2207,10 @@ mod tests {
             [head]
         );
         assert_eq!(
-            store.snapshot_pointer(&snapshot_scope(&owner)).await.expect("read"),
+            store
+                .snapshot_pointer(&snapshot_scope(&owner))
+                .await
+                .expect("read"),
             None
         );
         assert_eq!(storage.keys(), std::slice::from_ref(&foreign));
