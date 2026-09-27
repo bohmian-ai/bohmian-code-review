@@ -93,6 +93,6 @@ Environment: macOS 15 (Darwin 24.6.0), Apple silicon, 2026-09-27. The live run u
 
 Before this change, the TASK-007 run on the same commit indexed 1,678 files and left 3 files unindexed (`Incomplete`). The 140 files that now show as `NoFacts` were counted as indexed before even though they held only a file node. Under the revision 14 Complete-snapshot term they are content skips. PR #91 still exhausts its review budget, which is unrelated to this task.
 
-Non-goals stayed excluded: no grammar pin, vendored C, `match` fixture or golden changed. No facts come from outside the recovered tree, and fetch, verification and extractor failures remain blocking. The only public additions are the `NodeKind` re-export on the facade (already reachable through `Node::kind`) and `SkipReason::NoFacts`.
+Non-goals stayed excluded: no grammar pin, vendored C, `match` fixture or golden changed. No facts come from outside the recovered tree, and fetch, verification and extractor failures remain blocking. The only public additions are `SymbolicContext::has_declarations` and `SkipReason::NoFacts` (TASK-008-R2 replaced the earlier `NodeKind` re-export).
 
 Commands: `mise run test:extract`, `mise run test:symbolic-context:journey`, `mise run test:pipeline`, `mise run fmt:check`, `mise run lints`, `mise run live:pr`, `mise run gate`, `git diff --check`.
