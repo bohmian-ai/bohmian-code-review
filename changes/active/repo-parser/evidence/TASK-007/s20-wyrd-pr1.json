@@ -1,0 +1,449 @@
+{
+  "base": "f7c61336ae824029b55e44c870a96997010d35fd",
+  "budget": {
+    "context_allowance": 28310,
+    "diff_tokens": 31594,
+    "exhausted": false,
+    "prompt_reserve": 4096,
+    "review_tokens": 64000,
+    "selected_tokens": 3864
+  },
+  "calls": {
+    "Archive": 2,
+    "Blob": 99,
+    "BranchHead": 1,
+    "Commit": 1,
+    "PullRequest": 2,
+    "PullRequestFiles": 1,
+    "Repository": 1,
+    "Tree": 2
+  },
+  "cold_build": {
+    "archive_entries": 1681,
+    "archive_error": null,
+    "commit": "2855eac00a15581cede6e29ec5a0dde0b8bc4d48",
+    "eligible": 1681,
+    "excluded": "{Unsupported: 937, GeneratedAttribute: 3}",
+    "fallback_blobs": 0,
+    "indexed": 1678,
+    "outcome": "Incomplete(UnindexedFiles { count: 3 })",
+    "peak_verified_bytes": 379252,
+    "skipped": 3,
+    "snapshot_bytes": 0,
+    "tree": "e52bce5c1a1c5188ed698d541f8128f90474f2bc"
+  },
+  "context_id": "e059d5741302c1efd2636ff0588625d32bfc76ee80294790396dd62b31cbc7c8-a62281b17d2a902847d7b27f60202f77",
+  "coverage": {
+    "files": {
+      "eligible": 82,
+      "excluded": {
+        "Unsupported": 31
+      },
+      "indexed": 82,
+      "skipped": [],
+      "truncated_tree": false
+    },
+    "overlay_complete": true,
+    "pr_files_rejected": 0,
+    "pr_files_truncated": false,
+    "scope": "Scoped",
+    "snapshot_complete": false,
+    "snapshot_tree": null
+  },
+  "elapsed_ms": {
+    "cold_build": 4560,
+    "pr_context": 18721,
+    "read": 0
+  },
+  "full_coverage": false,
+  "head": "9e8d2a108865ac4a8fed0a55baa8896d70f842cd",
+  "not_analyzed": [
+    {
+      "path": ".config/nextest.toml",
+      "reason": "NotEligible"
+    },
+    {
+      "path": ".github/scripts/detect-changes.sh",
+      "reason": "NotEligible"
+    },
+    {
+      "path": ".github/scripts/tests/test-detect-changes.sh",
+      "reason": "NotEligible"
+    },
+    {
+      "path": ".github/scripts/verify-release-artifacts.sh",
+      "reason": "NotEligible"
+    },
+    {
+      "path": "TESTING.md",
+      "reason": "NotEligible"
+    },
+    {
+      "path": "changes/active/affected-monorepo-ci/spec.md",
+      "reason": "NotEligible"
+    },
+    {
+      "path": "changes/active/affected-monorepo-ci/tasks/TASK-001-dependency-aware-ci-and-release.md",
+      "reason": "NotEligible"
+    },
+    {
+      "path": "scripts/run-family-tests.sh",
+      "reason": "NotEligible"
+    }
+  ],
+  "object_digest": "e059d5741302c1efd2636ff0588625d32bfc76ee80294790396dd62b31cbc7c8",
+  "object_key": "tenants/live/installations/1/repositories/1383739221/contexts/e059d5741302c1efd2636ff0588625d32bfc76ee80294790396dd62b31cbc7c8-a62281b17d2a902847d7b27f60202f77",
+  "omissions": [
+    {
+      "end": 136,
+      "names": [
+        "main"
+      ],
+      "path": "scripts/check_tenant_isolation.py",
+      "reason": "FileLimit",
+      "start": 118
+    },
+    {
+      "end": 81,
+      "names": [
+        "main"
+      ],
+      "path": "scripts/check_test_contracts.py",
+      "reason": "FileLimit",
+      "start": 57
+    },
+    {
+      "end": 239,
+      "names": [
+        "main"
+      ],
+      "path": "scripts/check_unwrap_audit.py",
+      "reason": "FileLimit",
+      "start": 223
+    }
+  ],
+  "pull_request": "https://github.com/bohmian-ai/wyrd/pull/1",
+  "read_back_equal": true,
+  "spans": [
+    {
+      "blob": "4e15c3b50f35ca1e59a92624e99bbce3d382f011",
+      "end": 45,
+      "names": [
+        "GenerationOrdinal"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/hot_source.rs",
+      "score": 5,
+      "start": 40,
+      "tokens": 48
+    },
+    {
+      "blob": "4e15c3b50f35ca1e59a92624e99bbce3d382f011",
+      "end": 58,
+      "names": [
+        "get"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/hot_source.rs",
+      "score": 5,
+      "start": 56,
+      "tokens": 17
+    },
+    {
+      "blob": "4e15c3b50f35ca1e59a92624e99bbce3d382f011",
+      "end": 96,
+      "names": [
+        "StagedRun"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/hot_source.rs",
+      "score": 5,
+      "start": 87,
+      "tokens": 99
+    },
+    {
+      "blob": "4e15c3b50f35ca1e59a92624e99bbce3d382f011",
+      "end": 282,
+      "names": [
+        "ScribeHotSourceRegistry"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/hot_source.rs",
+      "score": 5,
+      "start": 277,
+      "tokens": 59
+    },
+    {
+      "blob": "4e15c3b50f35ca1e59a92624e99bbce3d382f011",
+      "end": 289,
+      "names": [
+        "ScribeHotSourceRegistry::new"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/hot_source.rs",
+      "score": 5,
+      "start": 287,
+      "tokens": 15
+    },
+    {
+      "blob": "83bd06c136c873a5c02841abb6ae4c8cb608653d",
+      "end": 116,
+      "names": [
+        "WalLsn::new"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/wal.rs",
+      "score": 4,
+      "start": 114,
+      "tokens": 18
+    },
+    {
+      "blob": "83bd06c136c873a5c02841abb6ae4c8cb608653d",
+      "end": 1905,
+      "names": [
+        "open"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/wal.rs",
+      "score": 4,
+      "start": 1881,
+      "tokens": 209
+    },
+    {
+      "blob": "83bd06c136c873a5c02841abb6ae4c8cb608653d",
+      "end": 1936,
+      "names": [
+        "append"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/wal.rs",
+      "score": 4,
+      "start": 1914,
+      "tokens": 249
+    },
+    {
+      "blob": "83bd06c136c873a5c02841abb6ae4c8cb608653d",
+      "end": 3940,
+      "names": [
+        "ScribeAppendMeta"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/wal.rs",
+      "score": 4,
+      "start": 3915,
+      "tokens": 266
+    },
+    {
+      "blob": "ee804778c5153a67d4f68d7fc9e2e2ffec6d5d92",
+      "end": 126,
+      "names": [
+        "SealKey::new"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/seal_key.rs",
+      "score": 3,
+      "start": 120,
+      "tokens": 46
+    },
+    {
+      "blob": "ee804778c5153a67d4f68d7fc9e2e2ffec6d5d92",
+      "end": 176,
+      "names": [
+        "len"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/seal_key.rs",
+      "score": 3,
+      "start": 174,
+      "tokens": 21
+    },
+    {
+      "blob": "ee804778c5153a67d4f68d7fc9e2e2ffec6d5d92",
+      "end": 262,
+      "names": [
+        "next"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/seal_key.rs",
+      "score": 3,
+      "start": 255,
+      "tokens": 63
+    },
+    {
+      "blob": "8acbddc4940efbdbb521765bea38be8e3a32d5a7",
+      "end": 34,
+      "names": [
+        "NodeId::generate"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/stream_identity.rs",
+      "score": 3,
+      "start": 32,
+      "tokens": 18
+    },
+    {
+      "blob": "8acbddc4940efbdbb521765bea38be8e3a32d5a7",
+      "end": 67,
+      "names": [
+        "WriterEpoch::new"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/stream_identity.rs",
+      "score": 3,
+      "start": 65,
+      "tokens": 18
+    },
+    {
+      "blob": "8acbddc4940efbdbb521765bea38be8e3a32d5a7",
+      "end": 99,
+      "names": [
+        "StreamIdentity::new"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/stream_identity.rs",
+      "score": 3,
+      "start": 94,
+      "tokens": 39
+    },
+    {
+      "blob": "dadab636bad6f86591d29517b1a51998126b225b",
+      "end": 144,
+      "names": [
+        "open"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/claim_merge.rs",
+      "score": 2,
+      "start": 98,
+      "tokens": 439
+    },
+    {
+      "blob": "dadab636bad6f86591d29517b1a51998126b225b",
+      "end": 336,
+      "names": [
+        "next"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/claim_merge.rs",
+      "score": 2,
+      "start": 334,
+      "tokens": 23
+    },
+    {
+      "blob": "c67c8ddc6f66071a7c0a2778f74f14a5bab1bf86",
+      "end": 164,
+      "names": [
+        "get"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/contention.rs",
+      "score": 2,
+      "start": 162,
+      "tokens": 29
+    },
+    {
+      "blob": "c67c8ddc6f66071a7c0a2778f74f14a5bab1bf86",
+      "end": 169,
+      "names": [
+        "set"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/contention.rs",
+      "score": 2,
+      "start": 167,
+      "tokens": 34
+    },
+    {
+      "blob": "9c52890d0ea220377b6edd562d18ab0b92fac22f",
+      "end": 262,
+      "names": [
+        "StagedMemberId::new"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/assembly.rs",
+      "score": 1,
+      "start": 260,
+      "tokens": 26
+    },
+    {
+      "blob": "24f849112ce67ecba684d8cf3efc91862a1d75b1",
+      "end": 82,
+      "names": [
+        "count"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/fixed_ipc.rs",
+      "score": 1,
+      "start": 75,
+      "tokens": 89
+    },
+    {
+      "blob": "24f849112ce67ecba684d8cf3efc91862a1d75b1",
+      "end": 220,
+      "names": [
+        "count"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/fixed_ipc.rs",
+      "score": 1,
+      "start": 198,
+      "tokens": 217
+    },
+    {
+      "blob": "065a1bdec48561e62d0f965d822ed7e6c59fd5ef",
+      "end": 564,
+      "names": [
+        "append"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/replay.rs",
+      "score": 1,
+      "start": 466,
+      "tokens": 1010
+    },
+    {
+      "blob": "8973ec14e85d331431dd2dd48dae13bb22998bf4",
+      "end": 101,
+      "names": [
+        "read"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/staged_tail.rs",
+      "score": 1,
+      "start": 89,
+      "tokens": 105
+    },
+    {
+      "blob": "165dc8840746f2bd92a2fbc672ef552093de3d30",
+      "end": 162,
+      "names": [
+        "with_hot_sources"
+      ],
+      "path": "crates/vala/vala-bifrost-redux/src/scribe/staging_runtime.rs",
+      "score": 1,
+      "start": 155,
+      "tokens": 68
+    },
+    {
+      "blob": "8a17159524e6ad70bab44dc9d79163e243b98b2b",
+      "end": 592,
+      "names": [
+        "column"
+      ],
+      "path": "crates/wyrd/wyrd-testing/tests/bifrost/oracle/analytical_activation.rs",
+      "score": 1,
+      "start": 582,
+      "tokens": 88
+    },
+    {
+      "blob": "59985ef191f839833ac817771d7305738e826a16",
+      "end": 419,
+      "names": [
+        "until_admitted"
+      ],
+      "path": "crates/wyrd/wyrd-testing/tests/bifrost/scribe/support.rs",
+      "score": 1,
+      "start": 395,
+      "tokens": 255
+    },
+    {
+      "blob": "06c38f489eb345ab4f5ab04e67be3f345da8ae6d",
+      "end": 75,
+      "names": [
+        "main"
+      ],
+      "path": "scripts/add_justification.py",
+      "score": 1,
+      "start": 67,
+      "tokens": 86
+    },
+    {
+      "blob": "3a4c4c456a093dca11a42639484901f25511fb27",
+      "end": 235,
+      "names": [
+        "main"
+      ],
+      "path": "scripts/check_clippy_allow.py",
+      "score": 1,
+      "start": 210,
+      "tokens": 210
+    }
+  ],
+  "tree": "9a669329a9a06e2762895b6a556cc6ff99a89353"
+}

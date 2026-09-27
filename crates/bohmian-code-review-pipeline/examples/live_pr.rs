@@ -8,6 +8,8 @@
 //!   verified identity (`gh api repos/<owner>/<name> --jq .id`).
 //! - `BCR_REPO` (default `bohmian-ai/wyrd`) and `BCR_PR` (default `91`).
 //! - `BCR_TIMEOUT_SECS` (default `1800`): each facade call's own timeout.
+//! - `BCR_WARM_RUNS` (default `0`): further PR-context calls over the same
+//!   stores, reported as warm p50/p95 for capacity measurements.
 //!
 //! Storage and persistence are the in-memory test adapters, so nothing is
 //! written outside this process and GitHub is only read. The command prints
@@ -104,6 +106,20 @@ async fn run() -> Result<(), Box<dyn Error>> {
         PrContextLimits::default(),
     );
     let (published, pr_ms) = bounded("pr context", limit, pr.run(&identity, number)).await?;
+    let mut warm_ms = Vec::new();
+    for _ in 0..setting("BCR_WARM_RUNS", Some("0"))?.parse::<usize>()? {
+        warm_ms.push(
+            bounded("warm pr context", limit, pr.run(&identity, number))
+                .await?
+                .1,
+        );
+    }
+    warm_ms.sort_unstable();
+    let percentile = |p: usize| {
+        warm_ms
+            .get((warm_ms.len() * p).div_ceil(100).saturating_sub(1))
+            .copied()
+    };
     let contexts = Contexts::new(&context_storage, &context_store);
     let (read, read_ms) = bounded(
         "read",
@@ -149,7 +165,8 @@ async fn run() -> Result<(), Box<dyn Error>> {
         "calls": client.calls().snapshot().iter()
             .map(|(operation, count)| (format!("{operation:?}"), *count))
             .collect::<std::collections::BTreeMap<_, _>>(),
-        "elapsed_ms": {"cold_build": cold_ms, "pr_context": pr_ms, "read": read_ms},
+        "elapsed_ms": {"cold_build": cold_ms, "pr_context": pr_ms, "read": read_ms,
+            "warm_runs": warm_ms.len(), "warm_p50": percentile(50), "warm_p95": percentile(95)},
     });
     println!("{}", serde_json::to_string_pretty(&report)?);
     if context.spans.is_empty() {

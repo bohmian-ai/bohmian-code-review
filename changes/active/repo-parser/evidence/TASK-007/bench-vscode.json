@@ -1,0 +1,347 @@
+{
+  "base": "66a33c855b3d47016e629b510bb804b4549eefd8",
+  "budget": {
+    "context_allowance": 57184,
+    "diff_tokens": 2720,
+    "exhausted": false,
+    "prompt_reserve": 4096,
+    "review_tokens": 64000,
+    "selected_tokens": 6948
+  },
+  "calls": {
+    "Archive": 2,
+    "Blob": 133,
+    "BranchHead": 1,
+    "Commit": 4,
+    "PullRequest": 8,
+    "PullRequestFiles": 4,
+    "Repository": 1,
+    "Tree": 5
+  },
+  "cold_build": {
+    "archive_entries": 14690,
+    "archive_error": null,
+    "commit": "43dd9070f75d527ab38035c0562acbfe9de4209b",
+    "eligible": 14690,
+    "excluded": "{Symlink: 1, Unsupported: 4392, VendoredSegment: 350, Oversize: 3}",
+    "fallback_blobs": 0,
+    "indexed": 14628,
+    "outcome": "Incomplete(UnindexedFiles { count: 62 })",
+    "peak_verified_bytes": 863059,
+    "skipped": 62,
+    "snapshot_bytes": 0,
+    "tree": "9a87337acd9603820bebdc284fb1c74832fccb15"
+  },
+  "context_id": "cc7bf5f736c49401548f15cbbfd1549f7fb7cdbbbc60f08e0be1a95896df4b3d-2d1ee49f4753759941bd90d8e2660875",
+  "coverage": {
+    "files": {
+      "eligible": 21,
+      "excluded": {
+        "Unsupported": 2
+      },
+      "indexed": 21,
+      "skipped": [],
+      "truncated_tree": false
+    },
+    "overlay_complete": true,
+    "pr_files_rejected": 0,
+    "pr_files_truncated": false,
+    "scope": "Scoped",
+    "snapshot_complete": false,
+    "snapshot_tree": null
+  },
+  "elapsed_ms": {
+    "cold_build": 18795,
+    "pr_context": 9541,
+    "read": 0,
+    "warm_p50": 9605,
+    "warm_p95": 9782,
+    "warm_runs": 3
+  },
+  "full_coverage": false,
+  "head": "5a1037def9312f02fe891a6d275c53857e5b37f5",
+  "not_analyzed": [],
+  "object_digest": "cc7bf5f736c49401548f15cbbfd1549f7fb7cdbbbc60f08e0be1a95896df4b3d",
+  "object_key": "tenants/live/installations/1/repositories/41881900/contexts/cc7bf5f736c49401548f15cbbfd1549f7fb7cdbbbc60f08e0be1a95896df4b3d-2d1ee49f4753759941bd90d8e2660875",
+  "omissions": [],
+  "pull_request": "https://github.com/microsoft/vscode/pull/338165",
+  "read_back_equal": true,
+  "spans": [
+    {
+      "blob": "f48d60c1763ed1d8c000c778fa31cad08e5dec7c",
+      "end": 333,
+      "names": [
+        "FindReplaceState"
+      ],
+      "path": "src/vs/editor/contrib/find/browser/findState.ts",
+      "score": 2,
+      "start": 67,
+      "tokens": 2286
+    },
+    {
+      "blob": "f48d60c1763ed1d8c000c778fa31cad08e5dec7c",
+      "end": 132,
+      "names": [
+        "constructor"
+      ],
+      "path": "src/vs/editor/contrib/find/browser/findState.ts",
+      "score": 2,
+      "start": 111,
+      "tokens": 167
+    },
+    {
+      "blob": "fae3b6254dd30d566b2d7202b0f08450b0c750ea",
+      "end": 104,
+      "names": [
+        "constructor"
+      ],
+      "path": "src/vs/editor/common/config/fontInfo.ts",
+      "score": 1,
+      "start": 86,
+      "tokens": 149
+    },
+    {
+      "blob": "fae3b6254dd30d566b2d7202b0f08450b0c750ea",
+      "end": 186,
+      "names": [
+        "constructor"
+      ],
+      "path": "src/vs/editor/common/config/fontInfo.ts",
+      "score": 1,
+      "start": 158,
+      "tokens": 243
+    },
+    {
+      "blob": "7fb80ef355083518bcd00bb7c65a3b4fda9f1775",
+      "end": 168,
+      "names": [
+        "constructor"
+      ],
+      "path": "src/vs/editor/contrib/find/browser/findController.ts",
+      "score": 1,
+      "start": 118,
+      "tokens": 492
+    },
+    {
+      "blob": "7fb80ef355083518bcd00bb7c65a3b4fda9f1775",
+      "end": 486,
+      "names": [
+        "constructor"
+      ],
+      "path": "src/vs/editor/contrib/find/browser/findController.ts",
+      "score": 1,
+      "start": 469,
+      "tokens": 251
+    },
+    {
+      "blob": "7fb80ef355083518bcd00bb7c65a3b4fda9f1775",
+      "end": 632,
+      "names": [
+        "constructor"
+      ],
+      "path": "src/vs/editor/contrib/find/browser/findController.ts",
+      "score": 1,
+      "start": 620,
+      "tokens": 76
+    },
+    {
+      "blob": "7fb80ef355083518bcd00bb7c65a3b4fda9f1775",
+      "end": 683,
+      "names": [
+        "constructor"
+      ],
+      "path": "src/vs/editor/contrib/find/browser/findController.ts",
+      "score": 1,
+      "start": 669,
+      "tokens": 86
+    },
+    {
+      "blob": "7fb80ef355083518bcd00bb7c65a3b4fda9f1775",
+      "end": 827,
+      "names": [
+        "constructor"
+      ],
+      "path": "src/vs/editor/contrib/find/browser/findController.ts",
+      "score": 1,
+      "start": 821,
+      "tokens": 48
+    },
+    {
+      "blob": "7fb80ef355083518bcd00bb7c65a3b4fda9f1775",
+      "end": 977,
+      "names": [
+        "constructor"
+      ],
+      "path": "src/vs/editor/contrib/find/browser/findController.ts",
+      "score": 1,
+      "start": 966,
+      "tokens": 83
+    },
+    {
+      "blob": "7fb80ef355083518bcd00bb7c65a3b4fda9f1775",
+      "end": 997,
+      "names": [
+        "constructor"
+      ],
+      "path": "src/vs/editor/contrib/find/browser/findController.ts",
+      "score": 1,
+      "start": 986,
+      "tokens": 90
+    },
+    {
+      "blob": "6ce266c699eaed7966ff7a792cd9761b7d72c727",
+      "end": 33,
+      "names": [
+        "constructor"
+      ],
+      "path": "src/vs/editor/contrib/find/browser/findDecorations.ts",
+      "score": 1,
+      "start": 25,
+      "tokens": 80
+    },
+    {
+      "blob": "dab491acd42da0ef3d688e1b0d5060a6a86a06a2",
+      "end": 120,
+      "names": [
+        "constructor"
+      ],
+      "path": "src/vs/editor/contrib/find/browser/findOptionsWidget.ts",
+      "score": 1,
+      "start": 31,
+      "tokens": 719
+    },
+    {
+      "blob": "03e698c3e877774755b3b4bb8a05b4276e0cdb13",
+      "end": 103,
+      "names": [
+        "constructor"
+      ],
+      "path": "src/vs/editor/contrib/find/browser/findWidget.ts",
+      "score": 1,
+      "start": 96,
+      "tokens": 66
+    },
+    {
+      "blob": "03e698c3e877774755b3b4bb8a05b4276e0cdb13",
+      "end": 307,
+      "names": [
+        "constructor"
+      ],
+      "path": "src/vs/editor/contrib/find/browser/findWidget.ts",
+      "score": 1,
+      "start": 166,
+      "tokens": 1309
+    },
+    {
+      "blob": "03e698c3e877774755b3b4bb8a05b4276e0cdb13",
+      "end": 1440,
+      "names": [
+        "constructor"
+      ],
+      "path": "src/vs/editor/contrib/find/browser/findWidget.ts",
+      "score": 1,
+      "start": 1402,
+      "tokens": 256
+    },
+    {
+      "blob": "414d3f51bc4b8610a94067d0098e760cb5fb53b0",
+      "end": 33,
+      "names": [
+        "constructor"
+      ],
+      "path": "src/vs/editor/contrib/find/browser/findWidgetSearchHistory.ts",
+      "score": 1,
+      "start": 27,
+      "tokens": 54
+    },
+    {
+      "blob": "0926711fb3d2fc6b71254316ec68ed0b501b01d0",
+      "end": 28,
+      "names": [
+        "constructor"
+      ],
+      "path": "src/vs/editor/contrib/find/browser/replaceAllCommand.ts",
+      "score": 1,
+      "start": 23,
+      "tokens": 60
+    },
+    {
+      "blob": "70c0f5bbad6961a6803fc5ba2ef5514386f5a3be",
+      "end": 19,
+      "names": [
+        "constructor"
+      ],
+      "path": "src/vs/editor/contrib/find/browser/replacePattern.ts",
+      "score": 1,
+      "start": 19,
+      "tokens": 14
+    },
+    {
+      "blob": "70c0f5bbad6961a6803fc5ba2ef5514386f5a3be",
+      "end": 27,
+      "names": [
+        "constructor"
+      ],
+      "path": "src/vs/editor/contrib/find/browser/replacePattern.ts",
+      "score": 1,
+      "start": 27,
+      "tokens": 15
+    },
+    {
+      "blob": "70c0f5bbad6961a6803fc5ba2ef5514386f5a3be",
+      "end": 50,
+      "names": [
+        "constructor"
+      ],
+      "path": "src/vs/editor/contrib/find/browser/replacePattern.ts",
+      "score": 1,
+      "start": 42,
+      "tokens": 89
+    },
+    {
+      "blob": "70c0f5bbad6961a6803fc5ba2ef5514386f5a3be",
+      "end": 159,
+      "names": [
+        "constructor"
+      ],
+      "path": "src/vs/editor/contrib/find/browser/replacePattern.ts",
+      "score": 1,
+      "start": 151,
+      "tokens": 71
+    },
+    {
+      "blob": "70c0f5bbad6961a6803fc5ba2ef5514386f5a3be",
+      "end": 176,
+      "names": [
+        "constructor"
+      ],
+      "path": "src/vs/editor/contrib/find/browser/replacePattern.ts",
+      "score": 1,
+      "start": 170,
+      "tokens": 41
+    },
+    {
+      "blob": "45440ed290941a8aeba94a881f8844d9ed18ed57",
+      "end": 33,
+      "names": [
+        "constructor"
+      ],
+      "path": "src/vs/editor/contrib/find/browser/replaceWidgetHistory.ts",
+      "score": 1,
+      "start": 27,
+      "tokens": 54
+    },
+    {
+      "blob": "1823dd31e1ab996e22985a664e32b22c612c70e0",
+      "end": 46,
+      "names": [
+        "constructor"
+      ],
+      "path": "src/vs/editor/contrib/find/test/browser/findController.test.ts",
+      "score": 1,
+      "start": 34,
+      "tokens": 149
+    }
+  ],
+  "tree": "47bd8323bf12369ce6c6d94a352c77eb74642560"
+}

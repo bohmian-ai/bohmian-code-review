@@ -1,0 +1,97 @@
+{
+  "base": "0b80633005f513aea0217473be9376bd1a499d49",
+  "budget": {
+    "context_allowance": 59311,
+    "diff_tokens": 593,
+    "exhausted": false,
+    "prompt_reserve": 4096,
+    "review_tokens": 64000,
+    "selected_tokens": 0
+  },
+  "calls": {
+    "Blob": 388,
+    "BranchHead": 1,
+    "Commit": 4,
+    "PullRequest": 8,
+    "PullRequestFiles": 4,
+    "Repository": 1,
+    "Tree": 5
+  },
+  "cold_build": {
+    "archive_entries": 0,
+    "archive_error": null,
+    "commit": "c23137133458bf7a49f4a55d3adb9e2c7c33bd79",
+    "eligible": 0,
+    "excluded": "{}",
+    "fallback_blobs": 0,
+    "indexed": 0,
+    "outcome": "Incomplete(TruncatedTree)",
+    "peak_verified_bytes": 0,
+    "skipped": 0,
+    "snapshot_bytes": 0,
+    "tree": "750ea9ecd859223ae392b84b42c5f341e1a33af3"
+  },
+  "context_id": "dde50f9036fc2ead0320d6e2a3b12f2a4f3ed57bff708520ef53c15ab803d415-b6887a1ea82177d70f3e45670fabaf0e",
+  "coverage": {
+    "files": {
+      "eligible": 96,
+      "excluded": {
+        "Unsupported": 66
+      },
+      "indexed": 95,
+      "skipped": [
+        {
+          "blob": "dd53cd901cc9e1d080e43fac08ffaabd51f0a0d0",
+          "path": "tests/rustdoc-ui/intra-doc/issue-159771-invalid-attribute-disambiguator.rs",
+          "reason": {
+            "ParseFailed": {
+              "detail": "extraction failed for `tests/rustdoc-ui/intra-doc/issue-159771-invalid-attribute-disambiguator.rs`: extraction deferred for `rust`: defer: parse tree contains errors — wasm recovery is canonical"
+            }
+          }
+        }
+      ],
+      "truncated_tree": true
+    },
+    "overlay_complete": false,
+    "pr_files_rejected": 0,
+    "pr_files_truncated": false,
+    "scope": "Scoped",
+    "snapshot_complete": false,
+    "snapshot_tree": null
+  },
+  "elapsed_ms": {
+    "cold_build": 2211,
+    "pr_context": 20010,
+    "read": 0,
+    "warm_p50": 19695,
+    "warm_p95": 22182,
+    "warm_runs": 3
+  },
+  "full_coverage": false,
+  "head": "5cb908a15eda1eab3552c7be27e1356c0de57ea8",
+  "not_analyzed": [
+    {
+      "path": "src/doc/rustdoc/src/write-documentation/linking-to-items-by-name.md",
+      "reason": "NotEligible"
+    },
+    {
+      "path": "tests/rustdoc-ui/intra-doc/issue-159771-invalid-attribute-disambiguator.stderr",
+      "reason": "NotEligible"
+    },
+    {
+      "path": "tests/rustdoc-ui/intra-doc/issue-159771-invalid-attribute-disambiguator.rs",
+      "reason": {
+        "AnalysisFailed": {
+          "detail": "extraction failed for `tests/rustdoc-ui/intra-doc/issue-159771-invalid-attribute-disambiguator.rs`: extraction deferred for `rust`: defer: parse tree contains errors — wasm recovery is canonical"
+        }
+      }
+    }
+  ],
+  "object_digest": "dde50f9036fc2ead0320d6e2a3b12f2a4f3ed57bff708520ef53c15ab803d415",
+  "object_key": "tenants/live/installations/1/repositories/724712/contexts/dde50f9036fc2ead0320d6e2a3b12f2a4f3ed57bff708520ef53c15ab803d415-b6887a1ea82177d70f3e45670fabaf0e",
+  "omissions": [],
+  "pull_request": "https://github.com/rust-lang/rust/pull/163391",
+  "read_back_equal": true,
+  "spans": [],
+  "tree": "59c13ec51503d2d34faf9813602ead7f53992be9"
+}

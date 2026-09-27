@@ -67,3 +67,30 @@ Stop if the four public facades cannot compose under the approved injected contr
 ## Authority Links
 
 [Revision 12 spec](../spec.md), [pipeline plan](../symbolic-context-service-plan.md), [library design](../../../../architecture/bohmian-code-review-design.md).
+
+## Implementation Evidence
+
+Environment: macOS 15 (Darwin 24.6.0), Apple silicon, release build, residential network, 2026-09-26. Live runs used a read-only `gh` user token; GitHub was only read. Reports live in [evidence/TASK-007](../evidence/TASK-007/); they carry paths, ranges and identities, never source text.
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| Independent facade calls | `crates/bohmian-code-review-pipeline/tests/pipeline_journey.rs` `each_facade_is_independently_callable` | `mise run test:pipeline:journey` | PASS |
+| Composed journey, AC-002 dropped cold build → scoped fallback with zero review allowance spent → retry converges; update fetches only the changed blob; warm PR fetches no archive, equals from-scratch ranking, full coverage; read-back by id with no provider calls | same file, `cold_update_warm_review_and_read_compose` | `mise run test:pipeline:journey` | PASS |
+| S1–S19, from-scratch/property oracles | Owner tests from TASK-002–005 (reviewed PASS) | `mise run test:pipeline`, `mise run gate` | PASS |
+| S20 fails visibly without credentials | `examples/live_pr.rs` | `env -u GITHUB_TOKEN target/release/examples/live_pr` → `live_pr failed: GITHUB_TOKEN is required`, exit 1 | PASS |
+| S20 empty context cannot pass | same | PR #91 → budget exhausted (diff ≈422k est. tokens > 64k), `spans: []`, exit 1 ([report](../evidence/TASK-007/s20-wyrd-pr91.json)) | PASS |
+| S20 one recorded passing run, nonempty spans, read-back by id | same | `mise run live:pr` with `BCR_REPO_ID=1383739221 BCR_PR=1` → 29 spans, `read_back_equal: true`, exit 0, 23.3 s, 105 MB peak RSS ([report](../evidence/TASK-007/s20-wyrd-pr1.json)) | PASS (scoped coverage) |
+| Provider contract (AC-006) | live runs | Archive redirect + stream, recursive tree (incl. `truncated: true` on rust-lang/rust), blob verification, PR patch omission (#91: 35 `MissingPatch`) observed live. Rate-limit/conditional headers were not triggered live; covered only by the local fake contract tests. | PARTIAL |
+| Capacity (AC-007) | `BCR_WARM_RUNS=3` | See table below | FAIL: no complete snapshot, so warm reuse is unmeasurable |
+
+| Repository (PR) | Eligible | Cold outcome | Cold ms | PR ms | "Warm" p50/p95 ms (scoped) | Peak RSS | Calls |
+|---|---|---|---|---|---|---|---|
+| bohmian-ai/wyrd @2855eac (#1) | 1,681 | Incomplete: 3 unindexed (Rust extraction deferred) | 3,541 | 19,154 | 17,166 / 17,172 | 99 MB | 418 |
+| microsoft/vscode @43dd907 (#338165) | 14,690 | Incomplete: 62 unindexed | 18,795 | 9,541 | 9,605 / 9,782 | 666 MB | 158 |
+| rust-lang/rust @c231371 (#163391) | — | Incomplete: truncated tree | 2,211 | 20,010 | 19,695 / 22,182 | 115 MB | 411; exit 1, empty spans (changed file failed extraction) |
+
+`ColdBuild` pins the current default-branch head, so these are recorded-commit, not re-runnable fixed-commit, measurements.
+
+**Material finding.** Under REQ-005/“complete snapshot”, one extractor deferral makes the whole snapshot incomplete. All three real repositories therefore never publish a reusable snapshot, and every review is scoped (J2 warm reuse never happens in practice). Deciding whether content-level parse deferrals may count as honest skips in a complete snapshot is a spec decision; it is not changed here.
+
+Non-goals stayed excluded: no consumer code, no server/worker, no production dependency added (the `testing` feature only exposes existing in-memory adapters), S20 is not in `gate`. `scripts/check-test-placement.sh` now also admits the outer pipeline crate's public `tests/`.
