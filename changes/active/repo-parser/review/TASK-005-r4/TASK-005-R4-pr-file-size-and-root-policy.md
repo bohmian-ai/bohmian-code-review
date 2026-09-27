@@ -32,3 +32,19 @@ Approved specification: `changes/active/repo-parser/spec.md` revision 12. Origin
 The correction write set includes the outer crate's existing PR, ingest/eligibility, root-policy owners and their nearest tests as required: `crates/bohmian-code-review-pipeline/src/pull_request.rs`, `snapshot.rs`, `eligibility.rs`, and fake-provider test support where needed. Do not change the six symbolic crates, approved public behavior, Git identity rules, provider transport ceiling, context expiry/cleanup, scoped index count, R3 maintainer tree-entry decision, or unrelated storage contracts. No model, comment publication, consumer scheduling, dependency, or new backend belongs here.
 
 Acceptance is closure of both findings across every sibling above, including explicit file-local and coverage results. Run exact focused new tests and their controls, then `mise run test:pipeline`, `mise run test:symbolic-context:journey`, `mise run fmt:check`, `mise run lints`, `mise run gate`, and `git diff --check`. Record RED/GREEN and final results. Route this remediation directly to `$cr-implement`; the next task review reassesses the complete cumulative candidate.
+
+## Implementation evidence
+
+Shape per `maintainer-decision-clock-and-size.md` (spec revision 13), which replaces this file's FIND-8 correction shape. Commits: `a710587` (store clock, `max_file_bytes` in snapshot key), `0382465` (every blob fetched under `min(max_file_bytes, provider ceiling)`), `cdf9df2` (unreachable candidate `Oversize` branch deleted: candidates are indexed under the current ceiling, so a failed candidate fetch is `FetchFailed`), plus the two test commits below.
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| FIND-8: changed head over `max_file_bytes` (tree size understated) is a file-local `Oversize` omission; small head still analyzed | `PrContext::changed_head`, `GitHubClient::blob` byte bound | `pull_request::tests::file_ceiling_omits_oversize_heads_and_snapshots`; RED with `is_oversize` forced false (got `FetchFailed`) | PASS |
+| FIND-8: snapshot built under a larger ceiling is not reused | `snapshot_scope`/`ObjectKey::snapshot` carry `max_file_bytes` | same test: scope `Scoped`, `snapshot_tree: None` | PASS |
+| FIND-8: provider ceiling below the file ceiling stays `FetchFailed` | `is_oversize` compares refusal limit to `max_file_bytes` | same test, `max_blob_bytes = 100`: handler `FetchFailed … exceeds 100 bytes`, scope `Repository` | PASS |
+| FIND-8: oversize candidate cannot enter selection | candidates come only from indexed facts under the current ceiling; `pack` has no `Oversize` branch | covered by the key test above and existing cold/fallback `SkipReason::Oversize` tests | PASS |
+| FIND-9: executable root `.gitattributes` is policy | `root_attributes` accepts `File \| Executable` | `snapshot::tests::executable_root_attributes_exclude_generated_files`; RED with `File` only (eligible 7 ≠ 6) | PASS |
+
+Verification (this session, all exit 0): `mise run fmt:check`, `mise run lints`, `mise run test:pipeline` (67 passed), `mise run test:symbolic-context:journey` (6 passed), `git diff --check`, `mise run gate`.
+
+Non-goals held: no symbolic-crate, dependency, provider transport ceiling, context expiry, or scoped index count change. FIND-9 update/warm/scoped siblings share the one `root_attributes` loader and are covered by the cold-build proof only; per-path repeats were intentionally not added.
