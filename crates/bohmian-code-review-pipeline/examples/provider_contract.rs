@@ -326,6 +326,11 @@ async fn main() {
 
 #[cfg(test)]
 mod tests {
+    //! Offline checks of the provider verdict against the checked-in captured
+    //! report: the recorded passing report stays passing, and breaking or
+    //! removing any single named case makes `failures` report that case, so
+    //! the command's exit status cannot pass on a partially failed run.
+
     use super::*;
 
     /// The captured controlled-provider report.

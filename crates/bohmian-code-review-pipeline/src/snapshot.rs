@@ -1700,13 +1700,10 @@ pub(crate) mod tests {
         ]
     }
 
-    /// Scenario 1: the cold build verifies archive entries, falls back to
-    /// blobs for omitted and substituted entries, skips the LFS pointer by
-    /// content, writes a source-free object, publishes the pointer only
-    /// after read-back, reproduces facts on reload without source calls, and
-    /// reuses the pointer on a second invocation without another archive.
-    /// A fixed-commit build stays at its requested commit after the default
-    /// branch advances, while the ordinary cold build follows the new head.
+    /// A fixed-commit build publishes at its requested commit and, after the
+    /// default branch advances, reuses that commit's snapshot instead of
+    /// following the new head, while the ordinary cold build follows the
+    /// new head and publishes a fresh snapshot.
     #[tokio::test]
     async fn fixed_commit_build_ignores_head_advance_and_run_follows_it() {
         let repo = FakeRepo::new(&standard_files(), &standard_archive());
@@ -1740,6 +1737,11 @@ pub(crate) mod tests {
         assert!(matches!(followed.outcome, ColdBuildOutcome::Published(_)));
     }
 
+    /// Scenario 1: the cold build verifies archive entries, falls back to
+    /// blobs for omitted and substituted entries, skips the LFS pointer by
+    /// content, writes a source-free object, publishes the pointer only
+    /// after read-back, reproduces facts on reload without source calls, and
+    /// reuses the pointer on a second invocation without another archive.
     #[tokio::test]
     async fn complete_cold_snapshot_is_verified_source_free_and_reloadable() {
         let repo = FakeRepo::new(&standard_files(), &standard_archive());
