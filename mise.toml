@@ -69,6 +69,10 @@ run = [
   "/usr/bin/time -l target/release/examples/live_pr",
 ]
 
+[tasks."live:provider-contract"]
+description = "AC-006 controlled-provider contract, explicitly invoked and never in gate: read-only production client cases at a fixed commit (GITHUB_TOKEN, BCR_REPO_ID, BCR_COMMIT; BCR_REPO, BCR_PR optional)"
+run = "cargo run --locked --release -p bohmian-code-review-pipeline --example provider_contract --all-features"
+
 [tasks."test:rust"]
 description = "Run every component lane and the public journey"
 depends = [

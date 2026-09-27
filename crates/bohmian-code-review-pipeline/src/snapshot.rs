@@ -625,6 +625,35 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
         self.build(&scope, current.as_ref(), &head).await
     }
 
+    /// Build or reuse the snapshot for the caller-chosen `commit` instead of
+    /// the default branch's current head, so fixed-commit capacity runs
+    /// measure the same tree however the branch moves.
+    ///
+    /// The repository identity and the commit's tree are verified with the
+    /// provider, then the build proceeds exactly as [`ColdBuild::run`] and
+    /// publishes the snapshot pointer at `commit`.
+    ///
+    /// # Errors
+    ///
+    /// As [`ColdBuild::run`], with the commit provider call in place of the
+    /// branch call.
+    pub async fn run_at(
+        &self,
+        identity: &Identity,
+        commit: &ObjectSha,
+    ) -> Result<ColdBuildResult, ColdBuildError> {
+        let scope = snapshot_scope(identity, self.limits.max_file_bytes);
+        let current = self.store.snapshot_pointer(&scope).await?;
+        let repository = self.client.repository(&identity.repository).await?;
+        let pinned = self.client.commit(&identity.repository, commit).await?;
+        let head = BranchHead {
+            name: repository.default_branch,
+            commit: pinned.sha,
+            tree: pinned.tree,
+        };
+        self.build(&scope, current.as_ref(), &head).await
+    }
+
     /// Pin the default branch's current commit and tree.
     ///
     /// # Errors
@@ -1676,6 +1705,36 @@ pub(crate) mod tests {
     /// content, writes a source-free object, publishes the pointer only
     /// after read-back, reproduces facts on reload without source calls, and
     /// reuses the pointer on a second invocation without another archive.
+    /// A fixed-commit build stays at its requested commit after the default
+    /// branch advances, while the ordinary cold build follows the new head.
+    #[tokio::test]
+    async fn fixed_commit_build_ignores_head_advance_and_run_follows_it() {
+        let repo = FakeRepo::new(&standard_files(), &standard_archive());
+        repo.transport.json(
+            &format!("/git/commits/{}", repo.commit),
+            &format!(
+                r#"{{"sha":"{}","tree":{{"sha":"{}"}}}}"#,
+                repo.commit, repo.tree
+            ),
+        );
+        let client = repo.client();
+        let (storage, store) = (MemoryStorage::default(), MemorySnapshotStore::default());
+        let build = ColdBuild::new(&client, &storage, &store, ColdBuildLimits::default());
+        let identity = identity();
+
+        let first = build.run_at(&identity, &repo.commit).await.expect("pinned");
+        assert!(matches!(first.outcome, ColdBuildOutcome::Published(_)));
+        let (head, tree) = (sha('d'), sha('8'));
+        repo.push(&head, &tree, &[file("src/user.ts", USER)], &[("src/user.ts", USER)]);
+
+        let repeat = build.run_at(&identity, &repo.commit).await.expect("pinned");
+        assert_eq!((&repeat.commit, &repeat.tree), (&repo.commit, &repo.tree));
+        assert!(matches!(repeat.outcome, ColdBuildOutcome::Reused(_)));
+        let followed = build.run(&identity).await.expect("cold build");
+        assert_eq!((&followed.commit, &followed.tree), (&head, &tree));
+        assert!(matches!(followed.outcome, ColdBuildOutcome::Published(_)));
+    }
+
     #[tokio::test]
     async fn complete_cold_snapshot_is_verified_source_free_and_reloadable() {
         let repo = FakeRepo::new(&standard_files(), &standard_archive());

@@ -8,6 +8,8 @@
 //!   verified identity (`gh api repos/<owner>/<name> --jq .id`).
 //! - `BCR_REPO` (default `bohmian-ai/wyrd`) and `BCR_PR` (default `91`).
 //! - `BCR_TIMEOUT_SECS` (default `1800`): each facade call's own timeout.
+//! - `BCR_COMMIT` (optional): build the snapshot at this commit instead of
+//!   the default branch's current head, for fixed-commit capacity runs.
 //! - `BCR_WARM_RUNS` (default `0`): further PR-context calls over the same
 //!   stores, reported as warm p50/p95 for capacity measurements.
 //!
@@ -25,7 +27,7 @@ use bohmian_code_review_pipeline::testing::{
 };
 use bohmian_code_review_pipeline::{
     ColdBuild, ColdBuildLimits, Contexts, GitHubClient, GitHubHost, Identity, InstallationId,
-    InstallationToken, PrContext, PrContextLimits, RepositoryIdentity, RequestLimits, TenantId,
+    InstallationToken, ObjectSha, PrContext, PrContextLimits, RepositoryIdentity, RequestLimits, TenantId,
 };
 use serde_json::json;
 use std::env;
@@ -95,7 +97,13 @@ async fn run() -> Result<(), Box<dyn Error>> {
         &snapshot_store,
         ColdBuildLimits::default(),
     );
-    let (built, cold_ms) = bounded("cold build", limit, cold.run(&identity)).await?;
+    let (built, cold_ms) = match env::var("BCR_COMMIT") {
+        Ok(commit) => {
+            let commit = ObjectSha::new(&commit)?;
+            bounded("cold build", limit, cold.run_at(&identity, &commit)).await?
+        }
+        Err(_) => bounded("cold build", limit, cold.run(&identity)).await?,
+    };
     let snapshot_bytes: usize = stored_bytes(&snapshot_storage).await?;
     let pr = PrContext::new(
         &client,
