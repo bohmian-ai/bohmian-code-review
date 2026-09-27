@@ -25,7 +25,6 @@ The approved outer pipeline library crate (`changes/active/repo-parser/spec.md`)
 ## Rust and design rules
 
 - Keep stateful capabilities and workflows on cohesive concrete structs. Use free functions only for stateless transformations; use traits only for multiple real implementations. Avoid generic storage/provider interfaces, future-proofing, and unnecessary features or dependencies.
-- Synchronous Rust is the default. Parsing and selection perform no IO. A caller may schedule them on its own bounded worker pool.
 - Use `&str`, `&[u8]`, slices, and references when ownership is unnecessary. Treat `.clone()` as an ownership decision. Use domain values such as `RelativePath` at trust boundaries.
 - Use `thiserror` for library errors, `tracing` with structured fields when diagnostics are needed, and no unchecked `unwrap()` for input, environment, parsing, or IO. `expect()` is reserved for named invariants.
 - Keep imports at module top and use imported bare types in signatures.
