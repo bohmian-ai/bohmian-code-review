@@ -1,0 +1,18 @@
+# TASK-008 r3 verdict
+
+**Verdict: FIX_REQUIRED.** Reviewed immutable base `cea61000ac2d57a0c8f9dd9037c7fb1fd7d41e5c` and candidate/HEAD `f56ec0e3091f1458e80c7addb3286577527f638f` against approved `changes/active/repo-parser/spec.md` revision 14, the original TASK-008, TASK-008-R2, and the r1 maintainer decision. The complete cumulative diff was the subject; no candidate source was edited. `FIND-008-1` is invalid and withdrawn.
+
+| Obligation | Implementation and verification evidence | Result |
+|---|---|
+| Recover tree-sitter declarations from syntax-error files, including inside `ERROR` regions; preserve clean fixtures, grammar pins and goldens | Whole-file deferral removed across ported walkers; malformed corpus entries now use recovery; focused Rust/TypeScript tests and `test:extract` pass. No clean fixture, grammar pin, or golden changed. | PASS |
+| Bump extraction identity and reject old facts | `EXTRACTION_VERSION` differs from `…facts-1`; the public journey checks mismatch and passes. | PASS |
+| Give every verified file with no persistable declarations a blob-identified `NoFacts` skip, with honest complete coverage through cold build, update, reuse, and PR overlay | Fresh ingest and changed-tree reuse now classify import-only files through the shared path; focused tests and recorded pipeline lane pass. A same-tree pointer can still reuse an old complete indexed-empty snapshot before that path runs. | **FAIL — FIND-008-2** |
+| Keep fetch, verification, and extractor failures nonbenign; preserve source and trust boundaries | Existing failure branches and provider verification are unchanged; standards review found no written-rule violation. | PASS |
+| Align task and recovery docs with revised REQ-002 | Task outcome, stop condition, corpus docs, and focused-test docs now allow inside-region declarations. | PASS — FIND-008-3 closed |
+| Live Wyrd cold build indexes both named paths | Checked-in S20 report records `Published`, 1,681 eligible, 1,538 indexed, 143 `NoFacts` skips; neither named path is skipped. | PASS on recorded evidence |
+
+Wave 1: task A **FAIL**, task B **FAIL**, repository standards **PASS**, parser domain **FAIL**, snapshot domain **FAIL**. The citation verifier exited zero. It rejected `TASK-A-1`, `TASK-B-1`, and `PARSER-R3-1` because their qualified symbol strings did not match its contract; those claims were dropped. All seven citations for `SNAPSHOT-008-R3-1` passed. Wave 2 independently traced and retained that claim as reopened **FIND-008-2 / CLASS_INCOMPLETE**. The validated ledger and reproduction are in `findings-validation.md`; no notes remain.
+
+The failure is reachable when a complete snapshot published by the prior candidate has the current extraction and format versions, an indexed import-only record with zero declarations, and matching pointer/digest. `ColdBuild::build` returns that snapshot's old coverage as `Reused` at the same tree before `Ingest::reuse` can repair it; same-tree update delegates there. The durable indexed/no-facts outcome must be represented by shape, and the old permissive snapshot namespace must be retired. Added caller guards are outside the maintainer's direction. The self-contained correction is `TASK-008-R3-indexed-outcome-shape-and-snapshot-version.md`.
+
+Verification limits: no new persisted-object regression was run during this read-only review; source trace through the public cold-build path reproduces the failure. Wave 1 independently ran the focused no-facts, extraction, and public-journey tests; the task records broader pipeline, formatting, lint, and gate passes. The live GitHub run was not repeated, and its report does not cover same-tree prior-format reuse. Candidate HEAD remained unchanged throughout review.

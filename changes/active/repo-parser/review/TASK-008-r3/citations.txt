@@ -1,0 +1,24 @@
+PARSER-R3-1	REJECT	symbol 'SymbolicContext::upsert' not in crates/bohmian-code-review/src/lib.rs
+PARSER-R3-1	OK
+PARSER-R3-1	REJECT	symbol 'SymbolIndex::export' not in crates/bohmian-code-review-index/src/lib.rs
+PARSER-R3-1	REJECT	symbol 'SymbolicContext::has_declarations' not in crates/bohmian-code-review/src/lib.rs
+PARSER-R3-1	REJECT	symbol 'Ingest::settle' not in crates/bohmian-code-review-pipeline/src/snapshot.rs
+SNAPSHOT-008-R3-1	OK
+SNAPSHOT-008-R3-1	OK
+SNAPSHOT-008-R3-1	OK
+SNAPSHOT-008-R3-1	OK
+SNAPSHOT-008-R3-1	OK
+SNAPSHOT-008-R3-1	OK
+SNAPSHOT-008-R3-1	OK
+TASK-A-1	REJECT	symbol 'SymbolicContext::upsert' not in crates/bohmian-code-review/src/lib.rs
+TASK-A-1	REJECT	symbol 'SymbolicContext::has_declarations' not in crates/bohmian-code-review/src/lib.rs
+TASK-A-1	REJECT	symbol 'SymbolIndex::export' not in crates/bohmian-code-review-index/src/lib.rs
+TASK-A-1	REJECT	symbol 'Ingest::ingest' not in crates/bohmian-code-review-pipeline/src/snapshot.rs
+TASK-A-1	REJECT	symbol 'Ingest::settle' not in crates/bohmian-code-review-pipeline/src/snapshot.rs
+TASK-A-1	REJECT	symbol 'Ingest::reuse' not in crates/bohmian-code-review-pipeline/src/snapshot.rs
+TASK-B-1	REJECT	symbol 'SymbolicContext::upsert' not in crates/bohmian-code-review/src/lib.rs
+TASK-B-1	REJECT	symbol 'SymbolicContext::has_declarations' not in crates/bohmian-code-review/src/lib.rs
+TASK-B-1	REJECT	symbol 'Ingest::ingest' not in crates/bohmian-code-review-pipeline/src/snapshot.rs
+TASK-B-1	REJECT	symbol 'Ingest::settle' not in crates/bohmian-code-review-pipeline/src/snapshot.rs
+TASK-B-1	REJECT	symbol 'Ingest::reuse' not in crates/bohmian-code-review-pipeline/src/snapshot.rs
+TASK-B-1	REJECT	symbol 'SymbolIndex::export' not in crates/bohmian-code-review-index/src/lib.rs
