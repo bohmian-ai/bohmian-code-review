@@ -166,15 +166,12 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
             false => self.snapshot(identity).await?,
         };
         let limits = &self.limits;
-        let (mut ingest, fetch_bound) = match snapshot {
-            Some(_) => (
-                Ingest::new(
-                    &listing.entries,
-                    listing.rejected.len(),
-                    &attributes,
-                    limits.max_file_bytes,
-                ),
-                limits.max_overlay_changes,
+        let mut ingest = match snapshot {
+            Some(_) => Ingest::new(
+                &listing.entries,
+                listing.rejected.len(),
+                &attributes,
+                limits.max_file_bytes,
             ),
             None => {
                 let changed = pinned
@@ -183,11 +180,8 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
                     .filter(|file| file.status != FileStatus::Removed)
                     .map(|file| &file.path)
                     .collect();
-                let near = near(&listing.entries, &changed, limits.max_scoped_files);
-                (
-                    Ingest::new(&near, 0, &attributes, limits.max_file_bytes),
-                    limits.max_scoped_files,
-                )
+                let near = near(&listing.entries, &changed);
+                Ingest::new(&near, 0, &attributes, limits.max_file_bytes)
             }
         };
         let snapshot_tree = snapshot.map(|snapshot| {
@@ -196,6 +190,7 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
             tree
         });
 
+        let pr_files_rejected = pinned.rejected.len();
         let mut not_analyzed: Vec<NotAnalyzed> = pinned
             .rejected
             .into_iter()
@@ -216,6 +211,10 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
                 }),
             }
         }
+        let fetch_bound = match snapshot_tree {
+            Some(_) => limits.max_overlay_changes,
+            None => limits.max_scoped_files.saturating_sub(ingest.indexed()),
+        };
         ingest.fallback(self.client, identity, fetch_bound).await;
         let (mut files, _, eligible, index) = ingest.finish();
         files.truncated_tree = listing.truncated;
@@ -228,6 +227,7 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
             snapshot_tree,
             overlay_complete: files.is_complete(),
             pr_files_truncated: pinned.truncated,
+            pr_files_rejected,
             files,
         };
 
@@ -538,17 +538,17 @@ fn blob_of<'e>(eligible: &'e [SnapshotFile], path: &RelativePath) -> Option<&'e 
         .map(|index| &eligible[index].blob)
 }
 
-/// Blob entries sharing a directory with a changed path, changed paths
-/// first, then the rest in listing order, at most `max`.
-fn near(entries: &[TreeEntry], changed: &BTreeSet<&RelativePath>, max: usize) -> Vec<TreeEntry> {
+/// Blob entries sharing a directory with a changed path. Uncapped, so
+/// shared eligibility classifies every one before the scoped file bound is
+/// spent on eligible files only.
+fn near(entries: &[TreeEntry], changed: &BTreeSet<&RelativePath>) -> Vec<TreeEntry> {
     let directories: BTreeSet<&str> = changed.iter().map(|path| parent(path.as_str())).collect();
-    let (mut picked, rest): (Vec<&TreeEntry>, Vec<&TreeEntry>) = entries
+    entries
         .iter()
         .filter(|entry| matches!(entry.mode, TreeEntryMode::File | TreeEntryMode::Executable))
         .filter(|entry| directories.contains(parent(entry.path.as_str())))
-        .partition(|entry| changed.contains(&entry.path));
-    picked.extend(rest);
-    picked.into_iter().take(max).cloned().collect()
+        .cloned()
+        .collect()
 }
 
 /// Directory part of a repository-relative path; empty at the root.
@@ -571,12 +571,13 @@ pub(crate) fn estimate_tokens(text: &str) -> usize {
 mod tests {
     use super::*;
     use crate::context::CONTEXT_LIFETIME;
+    use crate::eligibility::ExclusionReason;
     use crate::github::Operation;
     use crate::snapshot::tests::{
         FORMAT, FakeRepo, File, USER, blob_sha, file, identity, sha, standard_archive,
         standard_files,
     };
-    use crate::snapshot::{ColdBuild, ColdBuildLimits, ColdBuildOutcome};
+    use crate::snapshot::{ColdBuild, ColdBuildLimits, ColdBuildOutcome, SkipReason};
     use crate::testing::{MemoryContextStore, MemorySnapshotStore, MemoryStorage};
     use serde_json::json;
     use std::time::Duration;
@@ -1005,6 +1006,152 @@ mod tests {
             .collect();
         assert_eq!(paths, BTreeSet::from(["src/format.ts", "src/user.ts"]));
         assert!(stores.snapshot_storage.keys().is_empty());
+    }
+
+    /// Without a snapshot, the scoped bound is spent on eligible files:
+    /// unsupported, generated, vendored, minified, and oversize neighbors
+    /// ahead of `src/user.ts` in the listing are excluded with reasons
+    /// instead of taking its slot, and the eligible neighbor past the bound
+    /// is reported as not fetched.
+    #[tokio::test]
+    async fn scoped_bound_skips_excluded_neighbors() {
+        let repo = FakeRepo::new(&standard_files(), &standard_archive());
+        let files = vec![
+            file(
+                ".gitattributes",
+                b"src/a_gen.ts linguist-generated\nsrc/a_vendor.ts linguist-vendored\n",
+            ),
+            file("src/a.txt", b"notes\n"),
+            file("src/a_gen.ts", FORMAT),
+            file("src/a_vendor.ts", FORMAT),
+            file("src/b.min.js", b"var a=1;\n"),
+            File {
+                path: "src/c.ts",
+                mode: "100644",
+                content: FORMAT,
+                size: Some(MAX_ELIGIBLE_FILE_BYTES + 1),
+            },
+            file("src/handler.ts", PR1_HANDLER),
+            file("src/user.ts", USER),
+            file("src/zz.ts", FORMAT),
+        ];
+        route_pr(
+            &repo,
+            1,
+            (&sha('1'), &sha('2')),
+            &files,
+            &[("src/handler.ts", "modified", PR1_HANDLER, Some(PR1_PATCH))],
+        );
+        let stores = Stores::default();
+        let client = repo.client();
+        let limits = PrContextLimits {
+            max_scoped_files: 2,
+            ..PrContextLimits::default()
+        };
+        let scoped = stores
+            .facade(&client, limits)
+            .run(&identity(), 1)
+            .await
+            .expect("scoped");
+        let coverage = &scoped.context.coverage.files;
+        assert_eq!((coverage.eligible, coverage.indexed), (3, 2));
+        assert_eq!(
+            coverage
+                .skipped
+                .iter()
+                .map(|file| (file.path.as_str(), &file.reason))
+                .collect::<Vec<_>>(),
+            [("src/zz.ts", &SkipReason::NotFetched)]
+        );
+        assert_eq!(
+            coverage.excluded,
+            BTreeMap::from([
+                (ExclusionReason::Unsupported, 1),
+                (ExclusionReason::MinifiedOutput, 1),
+                (ExclusionReason::GeneratedAttribute, 1),
+                (ExclusionReason::VendoredAttribute, 1),
+                (ExclusionReason::Oversize, 1),
+            ])
+        );
+        assert!(
+            scoped
+                .context
+                .spans
+                .iter()
+                .any(|span| span.path.as_str() == "src/user.ts"),
+            "{:?}",
+            scoped.context
+        );
+    }
+
+    /// A PR-file entry the provider listing rejected makes PR-file coverage
+    /// partial with its reason, while the valid file still yields context.
+    #[tokio::test]
+    async fn rejected_pr_file_is_not_full_coverage() {
+        let repo = FakeRepo::new(&standard_files(), &standard_archive());
+        let stores = Stores::default();
+        cold(&repo, &stores.snapshot_storage, &stores.snapshot_store).await;
+        route_pr(
+            &repo,
+            1,
+            (&sha('1'), &sha('2')),
+            &head_files(PR1_HANDLER, Vec::new()),
+            &[
+                ("src/handler.ts", "modified", PR1_HANDLER, Some(PR1_PATCH)),
+                ("src/other.ts", "bogus", FORMAT, None),
+            ],
+        );
+        let client = repo.client();
+        let result = stores
+            .facade(&client, PrContextLimits::default())
+            .run(&identity(), 1)
+            .await
+            .expect("context");
+        let coverage = &result.context.coverage;
+        assert_eq!(coverage.pr_files_rejected, 1);
+        assert!(coverage.overlay_complete && !coverage.is_full());
+        assert!(matches!(
+            result.context.not_analyzed.as_slice(),
+            [NotAnalyzed { path, reason: NotAnalyzedReason::Rejected { .. } }]
+                if path == "src/other.ts"
+        ));
+        assert!(!result.context.spans.is_empty());
+    }
+
+    /// A head-tree entry the listing rejected leaves the overlay incomplete
+    /// with an invalid-entry exclusion, while valid files still yield context.
+    #[tokio::test]
+    async fn rejected_head_tree_entry_is_not_full_coverage() {
+        let repo = FakeRepo::new(&standard_files(), &standard_archive());
+        let stores = Stores::default();
+        cold(&repo, &stores.snapshot_storage, &stores.snapshot_store).await;
+        let odd = File {
+            path: "src/odd.ts",
+            mode: "100600",
+            content: FORMAT,
+            size: None,
+        };
+        route_pr(
+            &repo,
+            1,
+            (&sha('1'), &sha('2')),
+            &head_files(PR1_HANDLER, vec![odd]),
+            &[("src/handler.ts", "modified", PR1_HANDLER, Some(PR1_PATCH))],
+        );
+        let client = repo.client();
+        let result = stores
+            .facade(&client, PrContextLimits::default())
+            .run(&identity(), 1)
+            .await
+            .expect("context");
+        let coverage = &result.context.coverage;
+        assert!(coverage.snapshot_complete && !coverage.overlay_complete);
+        assert!(!coverage.is_full());
+        assert_eq!(
+            coverage.files.excluded.get(&ExclusionReason::InvalidEntry),
+            Some(&1)
+        );
+        assert!(!result.context.spans.is_empty());
     }
 
     /// Scenario 18: a 400-file PR is read across four pages; its head moves

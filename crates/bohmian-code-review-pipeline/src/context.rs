@@ -51,18 +51,22 @@ pub struct ContextCoverage {
     pub overlay_complete: bool,
     /// Whether the provider's PR-file ceiling hid further changed files.
     pub pr_files_truncated: bool,
+    /// PR-file entries rejected by validation, whose changes are unknown.
+    pub pr_files_rejected: usize,
     /// Eligible, indexed, skipped, and excluded counts of the indexed set.
     pub files: Coverage,
 }
 
 impl ContextCoverage {
     /// Only a repository-scope index from a complete snapshot with a
-    /// complete overlay and every PR file listed covers the full PR head.
+    /// complete overlay and every PR file listed and validated covers the
+    /// full PR head.
     pub fn is_full(&self) -> bool {
         self.scope == Scope::Repository
             && self.snapshot_complete
             && self.overlay_complete
             && !self.pr_files_truncated
+            && self.pr_files_rejected == 0
     }
 }
 
@@ -487,6 +491,7 @@ mod tests {
                 snapshot_complete: true,
                 overlay_complete: true,
                 pr_files_truncated: false,
+                pr_files_rejected: 0,
                 files: Coverage::default(),
             },
         }

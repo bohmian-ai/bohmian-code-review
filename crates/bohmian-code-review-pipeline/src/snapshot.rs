@@ -128,17 +128,26 @@ pub struct Coverage {
 }
 
 impl Coverage {
-    /// Every eligible file was indexed or skipped for a content reason.
+    /// Every eligible file was indexed or skipped for a content reason, and
+    /// no listing entry was rejected unclassified.
     pub fn is_complete(&self) -> bool {
-        !self.truncated_tree && self.skipped.iter().all(|file| file.reason.is_benign())
+        !self.truncated_tree && self.unindexed() == 0
     }
 
-    /// Eligible files that were neither indexed nor benignly skipped.
+    /// Eligible files that were neither indexed nor benignly skipped, plus
+    /// rejected listing entries, which may have been eligible.
     fn unindexed(&self) -> usize {
-        self.skipped
-            .iter()
-            .filter(|file| !file.reason.is_benign())
-            .count()
+        let rejected = self
+            .excluded
+            .get(&ExclusionReason::InvalidEntry)
+            .copied()
+            .unwrap_or(0);
+        rejected
+            + self
+                .skipped
+                .iter()
+                .filter(|file| !file.reason.is_benign())
+                .count()
     }
 }
 
@@ -877,6 +886,11 @@ impl Ingest {
             self.stats.archive_entries += 1;
             self.ingest(path, blob, &bytes);
         }
+    }
+
+    /// Eligible files indexed so far.
+    pub(crate) fn indexed(&self) -> usize {
+        self.indexed
     }
 
     /// Eligible files still wanted.
@@ -2293,9 +2307,10 @@ pub(crate) mod tests {
         assert_send(Snapshots::new(&storage, &store).collect(&identity, SystemTime::now()));
     }
 
-    /// FIND-3: tree entries the listing rejected for an invalid path or an
-    /// unknown mode are counted under their own exclusion reason instead of
-    /// vanishing, and do not change eligibility or completeness.
+    /// Tree entries the listing rejected for an invalid path or an unknown
+    /// mode are counted under their own exclusion reason instead of
+    /// vanishing; since either may be an eligible source, they leave the
+    /// snapshot incomplete and unpublished.
     #[tokio::test]
     async fn rejected_tree_entries_are_counted_as_invalid_exclusions() {
         let files = [
@@ -2316,11 +2331,16 @@ pub(crate) mod tests {
             .run(&identity())
             .await
             .expect("build");
-        assert!(matches!(result.outcome, ColdBuildOutcome::Published(_)));
+        assert_eq!(
+            result.outcome,
+            ColdBuildOutcome::Incomplete(IncompleteReason::UnindexedFiles { count: 2 })
+        );
         assert_eq!((result.coverage.eligible, result.coverage.indexed), (1, 1));
         assert_eq!(
             result.coverage.excluded,
             BTreeMap::from([(ExclusionReason::InvalidEntry, 2)])
         );
+        assert!(!result.coverage.is_complete());
+        assert!(storage.keys().is_empty());
     }
 }
