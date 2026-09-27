@@ -1,0 +1,15 @@
+[review:verify-citations] $ python3 scripts/verify_review_citations.py changes/…
+DOMAIN-DUR-1	OK
+DOMAIN-DUR-1	OK
+DOMAIN-DUR-1	OK
+DOMAIN-DUR-1	OK
+DOMAIN-DUR-1	OK
+DOMAIN-DUR-1	OK
+TASK-A-1	OK
+TASK-A-1	OK
+TASK-A-2	OK
+TASK-A-2	OK
+TASK-A-2	OK
+TASK-B-1	OK
+TASK-B-1	OK
+TASK-B-1	OK
