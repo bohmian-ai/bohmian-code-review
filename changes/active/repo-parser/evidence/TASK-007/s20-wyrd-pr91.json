@@ -10,13 +10,13 @@
   },
   "calls": {
     "Archive": 2,
-    "Blob": 303,
+    "Blob": 569,
     "BranchHead": 1,
-    "Commit": 1,
-    "PullRequest": 2,
-    "PullRequestFiles": 3,
+    "Commit": 4,
+    "PullRequest": 8,
+    "PullRequestFiles": 12,
     "Repository": 1,
-    "Tree": 2
+    "Tree": 5
   },
   "cold_build": {
     "archive_entries": 1681,
@@ -25,1258 +25,2243 @@
     "eligible": 1681,
     "excluded": "{Unsupported: 937, GeneratedAttribute: 3}",
     "fallback_blobs": 0,
-    "indexed": 1678,
-    "outcome": "Incomplete(UnindexedFiles { count: 3 })",
+    "indexed": 1461,
+    "outcome": "Published(SnapshotPointer { tree: ObjectSha(\"e52bce5c1a1c5188ed698d541f8128f90474f2bc\"), commit: ObjectSha(\"2855eac00a15581cede6e29ec5a0dde0b8bc4d48\"), key: ObjectKey(\"tenants/live/installations/1/repositories/1383739221/snapshots/636f646567726170682d6b65726e656c2d35373264323262662e747265652d7369747465722d302e32352e31302e7265636f76657265642d747265652e66616374732d32/3/1048576/e52bce5c1a1c5188ed698d541f8128f90474f2bc\"), digest: ObjectDigest(\"b3328c2b2b818ca381a8ad62883bc2c0fc12631bc3fa27395c3602032ca29ed6\") })",
     "peak_verified_bytes": 379252,
-    "skipped": 3,
-    "snapshot_bytes": 0,
+    "skipped": [
+      {
+        "blob": "3dddcaf0d49a251b1922094fefd163e9b1951d92",
+        "path": ".agents/skills/wyrd-advise/agents/openai.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "8c5d3dff403096028bef77a619421836f26a9114",
+        "path": ".agents/skills/wyrd-change-review/agents/openai.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "86bb062aaa0b76454d03865bd3d171e8824360e2",
+        "path": ".agents/skills/wyrd-complete/agents/openai.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "ef475c8e64bc18b422b3806a30a18e098fb6d081",
+        "path": ".agents/skills/wyrd-implement/agents/openai.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "82eb55d913306599ddbe38ab2966af919de0fd66",
+        "path": ".agents/skills/wyrd-plan/agents/openai.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "0cacf905590e2c3b9338d80a696e728bb04a98c7",
+        "path": ".agents/skills/wyrd-spec/agents/openai.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "8acf662d2646a2ccc1d19c3752c8f936e7ea3943",
+        "path": ".agents/skills/wyrd-task-review/agents/openai.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "833e85f744683dd81f9cb55090ca1d57a002dea2",
+        "path": ".agents/skills/wyrd-ui/agents/openai.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "016a61e7a96709aa4914a9cd4335a8eeedca2baf",
+        "path": ".github/actions/setup-rust-ci/action.yml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "2f4ce3e82da34a10c20508ff7e0decb23ed95bad",
+        "path": ".github/workflows/identity-e2e.yml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "fa8cfd9be051e9e63d767b18d1628538ff636bdf",
+        "path": ".github/workflows/lints-test.yml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "466efabf9722dd4e1aae13358ff43a98c7eb6c7d",
+        "path": ".github/workflows/nightly.yml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "4d35f837eebfd8e4d8d5e11e851612fc14257f85",
+        "path": ".github/workflows/performance.yml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "5ac8ca08a585b88bd3839c0a4fce9c362aab8791",
+        "path": ".github/workflows/publish-docs.yml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "370df5064d2c05199e83f10de9b7fcbcc725de21",
+        "path": ".github/workflows/release.yml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "f8aebba006f7dd436b95bc6ba6c2dc565568f083",
+        "path": ".github/workflows/storage-integration-cloud.yml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "2f9cf40468ac8aba1b5a2428713f356aa2fbd2e5",
+        "path": ".github/workflows/storage-integration-emulator.yml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "112e9617743c4536d355ca9dc636ff417aa7854f",
+        "path": "crates/shared/workspace-hack/src/lib.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "0adf3ed751c50048b42d4c28209e6a1c7b7f1d74",
+        "path": "crates/shared/wyrd-auth-check/src/lib.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "3f395bd2ccc8a725dd1c03f0bf19e29778bfd1ac",
+        "path": "crates/shared/wyrd-auth-oidc/src/lib.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "4dbf7a77467feb2a928e737d02ed923085e16f9d",
+        "path": "crates/shared/wyrd-bench/src/lib.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "291987121fba64b76cca5b3bb4dac72e4565c00e",
+        "path": "crates/shared/wyrd-client/src/cards/reads/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "99f2a6737d9f1632c151083ca3bc3d2ba16d4c1f",
+        "path": "crates/shared/wyrd-client/src/eval/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "797efa83be2db4fd05cbfc7aa18fb272c9d76ebe",
+        "path": "crates/shared/wyrd-client/src/platform/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "c04d05b5ab28f46ac3436378fc81ba638f72d9d8",
+        "path": "crates/shared/wyrd-client/src/principals/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "53bf986d20605aba17aba6783634349bda1c32d1",
+        "path": "crates/shared/wyrd-client/tests/transport.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "4f89abefe3fd1e99a560d46c922ce39af66a93ac",
+        "path": "crates/shared/wyrd-dev-fixtures/src/lib.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "babec24bfa444f653ee53c3a9e250f00a9cd1c96",
+        "path": "crates/shared/wyrd-queue/src/lib.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "7865e0eef4c41719f55a11b3cf9ac04cf3de94a0",
+        "path": "crates/shared/wyrd-version/src/lib.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "d5ed34ca554ce0befff0eabe435673434c08ab60",
+        "path": "crates/skald/skald-agent/src/lib.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "b3651a5c3996fb959f529bbda72ba00b20a065bd",
+        "path": "crates/skald/skald-agent/tests/fixtures/agent_planner_v0.3.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "297644f131f68cefacb222b975cd9297aa8d8b49",
+        "path": "crates/skald/skald-cache/src/lib.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "5468bf3b1b3daed2656a98d91801af3ed702a270",
+        "path": "crates/skald/skald-providers/src/clients/embeddings.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "6611cc29ab0b38960788d0d3451b4167d269747d",
+        "path": "crates/skald/skald-runtime/src/lib.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "facab2def33d068b7135dfe86d16154a0606cbbf",
+        "path": "crates/skald/skald-tool/src/lib.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "bd1985c57e3f642628efdfd7e1f8258cf13f03de",
+        "path": "crates/skald/skald-workflow/src/lib.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "0588ea21059b43314af2102f10c1b810df1f8b92",
+        "path": "crates/vala/vala-bifrost-redux/src/forge/managed/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "10c8f9d4a06800f07646788481c76e8f776f9b72",
+        "path": "crates/vala/vala-bifrost-redux/src/parquet/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "95a4a586da54302cf7065a487e3eb02b88999af6",
+        "path": "crates/vala/vala-bifrost-redux/src/provider/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "4cf022df6c08ff06126ee66e820dd1f8c0dc6789",
+        "path": "crates/vala/vala-bifrost-redux/src/schema/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "8c12fa31ccc1e77813f2cccce4fd32412787c400",
+        "path": "crates/vala/vala-bifrost-redux/src/tables/audit/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "0bd7d36e1f96193c42cb9f9cf9d243b49ae4cfea",
+        "path": "crates/vala/vala-bifrost-redux/src/tables/dev/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "78a29eaac3ef8be82e7fa679a890ec1278dbdea8",
+        "path": "crates/vala/vala-bifrost-redux/src/tables/drift/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "af0cad2b3e4dfd869e880e5ee5372fe2f2a4ea78",
+        "path": "crates/vala/vala-bifrost-redux/src/tables/eval/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "dd3ea8317a9513c2efa456d6acf55bc704a84aed",
+        "path": "crates/vala/vala-bifrost-redux/src/tables/gateway/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/catalog/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/immutable_tier_retention.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/maintenance.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/mitari_rewrite_api.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "c7ecc2980129f4dadd30f46ccd33d0c1da09b10d",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/replay.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/retention.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/scheduler.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/staging.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/streaming_rewrite.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/worker.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/worker_lifecycle.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "53fbbfe1388b5874175389ce9990cc1ffb684097",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/main.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/oracle/decoder.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/oracle/distributed.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "37b60ace8dc9eff301792ff6c5d19050c6661386",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/oracle/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/oracle/resource_release.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/oracle/semantics.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/oracle/spill.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/oracle/support.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/atomicity.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/bounds.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/commit_hints.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/governor_gauges.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/idempotent.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "b6d5c456dae4ba34c10a2e5ad47f2d8ccba4423c",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/ordering.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/persistence_support.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/registry.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/replay.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/seal.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "crates/vala/vala-bifrost-redux/tests/integration/support.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "b95931d191fe2bbc422e7a0c9c3517e3383a35d5",
+        "path": "crates/vala/vala-core/src/alert_router/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "3a5134fc12048e1690bc1e141dcd5497a64f354f",
+        "path": "crates/vala/vala-core/src/lib.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "05559d11fbbc097279eb31f38ce42156283412e7",
+        "path": "crates/vala/vala-eval/src/lib.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "161b51d6e7d1e6a503de11250f6d46de9764c7b2",
+        "path": "crates/vala/vala-eval/src/orchestrator/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "2b0c28e955d1672c78745af960f8f54600590256",
+        "path": "crates/vala/vala-eval/src/tasks/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "c3f08a01ce4007270edaab2659d133c1d2e30e9c",
+        "path": "crates/vala/vala-ingest/src/lib.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "6b1a8c610fa7f6a1a514c6094bd87ec71259aa37",
+        "path": "crates/vala/vala-sql/src/queries/alerts.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "51600dbfbef82de4b9b9ce23536930b4fcfa5269",
+        "path": "crates/vala/vala-sql/src/queries/anchors.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "4a42c5d1e34311c571bbc3a456440df895525f95",
+        "path": "crates/vala/vala-sql/src/queries/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "7c61478c8a33a1d93ba707baf13bcd3430dc270a",
+        "path": "crates/vala/vala-sql/src/queries/monitor.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "1dfb935ac138f0eff6cafd9d899181379e6be2e7",
+        "path": "crates/vala/vala-sql/src/queries/profiles.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "3efe0c7248ab197687940680168ce350d29b974c",
+        "path": "crates/vala/vala-sql/src/queries/queues.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "4de99a4096d4535f1b202f2f6ef96e3756ff94fc",
+        "path": "crates/vala/vala-sql/src/row_types/anchors.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "92a8c1d221eba97aed746a07c896096696e7d32d",
+        "path": "crates/vala/vala-sql/src/row_types/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "faadbcfa0a181d3ce336c2428a39dc804d9f02f8",
+        "path": "crates/vala/vala-sql/src/row_types/monitor.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "1871263daeaa45c8cd16ad43972a1117a39f5571",
+        "path": "crates/vala/vala-sql/src/row_types/profiles.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "99443996c222edad59efe0b39fa48ad34e00f6c2",
+        "path": "crates/vala/vala-sql/src/row_types/queues.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "a1c83473c9f868186621306ea63e871092dcc46c",
+        "path": "crates/wyrd-spec/src/auth/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "8f46e317ad614ef652a45aebd5c662430b809955",
+        "path": "crates/wyrd-spec/src/card/eval.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "1241fe4b514e9f7dd04d544f86476da1c925fe64",
+        "path": "crates/wyrd-spec/src/format/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "c95cb6c0eebe3cf1318e1f8e3126d240dafe278d",
+        "path": "crates/wyrd-spec/src/query/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e51be60d692d852f52029b41a21ce33cd91d435a",
+        "path": "crates/wyrd-spec/src/registry/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "2066636cab0a5dc866cfd048b6d733339054953c",
+        "path": "crates/wyrd-spec/src/vala/dev/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "2066636cab0a5dc866cfd048b6d733339054953c",
+        "path": "crates/wyrd-spec/src/vala/drift/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "2066636cab0a5dc866cfd048b6d733339054953c",
+        "path": "crates/wyrd-spec/src/vala/logs/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "2066636cab0a5dc866cfd048b6d733339054953c",
+        "path": "crates/wyrd-spec/src/vala/metrics/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "45405db36501eb78dabadc91f8570f2cb50506e0",
+        "path": "crates/wyrd-spec/src/vala/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e114dcdc82b394bccf289d8450f5ecd35378195e",
+        "path": "crates/wyrd-spec/tests/fixtures/operator-remediation.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e7bafec40679c1c4783ec94209250d099e3c9568",
+        "path": "crates/wyrd-spec/tests/fixtures/service-with-runtime-policy.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "aa9dd8e86db1d1b53a6cdc9855ade855efda2311",
+        "path": "crates/wyrd-spec/tests/fixtures/source-logs-loki.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "6c87c80a17377cae62a0f1b17bf4abbe9715e6d6",
+        "path": "crates/wyrd-spec/tests/fixtures/source-metrics-datadog.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "2c85d6dbfbc726a116293d60a56913a13374473f",
+        "path": "crates/wyrd-spec/tests/fixtures/source-object-store-gcs.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "532b243f70498a4442ea18b777b53715e3002dd7",
+        "path": "crates/wyrd-spec/tests/fixtures/source-sql-warehouse.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "4be002cdfd9ab3657ef327facf4bc4794e8ca217",
+        "path": "crates/wyrd-spec/tests/fixtures/source-traces-tempo.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "6715907a22bbdd1117d721757a04bf01e97e8058",
+        "path": "crates/wyrd-spec/tests/fixtures/trigger-on-drift.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "2f20988a190f1c00b8ca3a867f2e65130ade26ac",
+        "path": "crates/wyrd/wyrd-auth/src/lib.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "16cc61ba12552a1f5271975295a4db907fe76338",
+        "path": "crates/wyrd/wyrd-cards/src/card.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "ef1308b29a233b607f58e226255f0a0f6a2231ac",
+        "path": "crates/wyrd/wyrd-cli/src/eval/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "0a2e943d749fa1aa4a15039e00348f69ba120092",
+        "path": "crates/wyrd/wyrd-cli/src/load/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "9d140b55405b7d024d877eae695fa4dd3cc4a08b",
+        "path": "crates/wyrd/wyrd-cli/tests/cli.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "ca9bd90106392592203a752c5981e581dd65fcf2",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/agent-inline.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "1e976c3f86369b18cc77452b761cb0e9f860486e",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/agent-triage.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e084415f019fb7e63507cb9ffd4f99057c6f45dc",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/model-drift.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "0b15c00698ff5a3732365986f9d6db52f4291b1b",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/model-primary.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "ddd485bb347f506e66302119e08b72f85167c553",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/model-shadow.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e8656a20c3545a7dc4c6ef357b6ef73663b6c40d",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/quality.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "abee5b79084dec36fb85d19fc60fff8482797369",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/runtime.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "4959470eaca3918f137ff03a01a1510785761668",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/training.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "3188d835c3cfe3de056a92d63b417e2436d88be6",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/triage-prompt.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "b34a9408138ef762bb64e2cf98bd486665fa826b",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/typed-service.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "a44176c71db13a16c11edf94337ef9a2c1f59734",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/config_defaults/service.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "48572a4e791206635dacbb2ae8cf7727b8d22805",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/agent1/agent.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "ed04562fcebf187e10099e9c59065df5ab91bc36",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/agent1/eval.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "6947067b0ca23ba4f7606f6aefc64dbbbfcaeaca",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/agent1/judge-prompt.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "2ee6ffa584ded6c79ee562887702d0cf8becf00e",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/agent1/prompt.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "332b5d9f7b9896547a683050219769baa07c4220",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/agent2/agent.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "9c1fa8d8ab41e7a220badd7abb74773a03d40a16",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/model/card.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "49f2af4d8651f34bcaec31a957d88973c79aa958",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/model/drift.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "66ca04907f2d0eaa72378d4318b8bf1475d07ebe",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/ops/operator-slack.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "2205c1504cfde276c226ce76f237a5d393e7e460",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/ops/trigger-drift-alert.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "a2ea60b7d2366412f271c9bf8a79dc2e932cba84",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/ops/trigger-eval-fail.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e01bc2a2cd92247f90ebae8a85746d8f1afd0d4f",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/service.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e689fe34483461e7acf9d24486e951c218d08e13",
+        "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end_prerequisites/churn-classifier-data.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e0058970ac08f1dcdf95916f292727c7b55c905d",
+        "path": "crates/wyrd/wyrd-cli/tests/loader.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "d1dc817ee0fc833136d030fc0f99ae1a8982ba87",
+        "path": "crates/wyrd/wyrd-gateway/src/lib.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "2f081659b0d7b50ba4f8903a668d671ab713fba9",
+        "path": "crates/wyrd/wyrd-interfaces/src/model/interfaces/metadata.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "179ef23ebe4c03ed2f7e7295d1c4e615a1782a7c",
+        "path": "crates/wyrd/wyrd-mcp/src/lib.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "bd87440af1f3352d4b6052af4e5534c404ee57b4",
+        "path": "crates/wyrd/wyrd-mcp/tests/bifrost/mcp/main.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "4d5cfbc70e1d35aadf2fe96a85bc4894797b8716",
+        "path": "crates/wyrd/wyrd-server/src/bifrost/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "74ce597ea931d3e5334226f09b11f004dace7019",
+        "path": "crates/wyrd/wyrd-server/src/components/admin/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "da0437fae9ad6bdbd247ee155d852146783ced16",
+        "path": "crates/wyrd/wyrd-server/src/components/auth/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "4ffa2f6a447ce1f5ef64d9810d6a9ca50a521202",
+        "path": "crates/wyrd/wyrd-server/src/components/authz/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e8b3d103354e2a07994e40e160c7b78ee630ef7a",
+        "path": "crates/wyrd/wyrd-server/src/components/cards/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "2f2372a621f8f5a0907f7aa36fab71806e3825bd",
+        "path": "crates/wyrd/wyrd-server/src/components/eval/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "c30778e029f20ba9e0d4b28c453a760f3c1cc58a",
+        "path": "crates/wyrd/wyrd-server/src/components/gateway/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "433889b35a31a680bdcd73298df59d71038904a7",
+        "path": "crates/wyrd/wyrd-server/src/components/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "93b74811d821a7022f247ad63fa97bc8cc123028",
+        "path": "crates/wyrd/wyrd-server/src/components/platform/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "cfe6277537238a9410a6e272568cae2d750110c4",
+        "path": "crates/wyrd/wyrd-server/src/components/principals/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "09a8bab5379fbdcd745e9e7575f488f256d49a3b",
+        "path": "crates/wyrd/wyrd-server/src/components/storage/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "df8f02ec46185fe7407d60e7153e55879a13ca31",
+        "path": "crates/wyrd/wyrd-server/src/http/middleware/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "727c957ed6478cf3fc4801ca8617a851ec32afea",
+        "path": "crates/wyrd/wyrd-server/src/http/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "499e3739b4414b0684faea81ff5867975d022975",
+        "path": "crates/wyrd/wyrd-server/src/lib.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "5fba9b5822e16b4aed4860ad471f5ae3bf777f53",
+        "path": "crates/wyrd/wyrd-server/src/query/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "145a03a3fc41cca7770e82fa3ba24b7780f7ed99",
+        "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/components/Badge.test.ts",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e0ac516cd92b6cc0ea559f73951c50e181120b7d",
+        "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/components/Button.test.ts",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "2ac4454b32f5fcec2ffeeecbaa074734b3004575",
+        "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/components/CodeBlock.test.ts",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "a9d12a3e4e51761823df2e11ca236476385b3b0f",
+        "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/components/KpiTile.test.ts",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "aff50c323ba9ffaf0b5cfbe773d305c4dfe2786e",
+        "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/components/Panel.test.ts",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "39615552f4041a781881386ecd946ee7192dae56",
+        "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/components/Sidebar.test.ts",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "ab6ca3da1005ded46bdaa81ad407564fb9135545",
+        "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/components/Topbar.test.ts",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e6212c6fa1d285840f60b53d9c86d97b46c1071c",
+        "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/components/charts/Bars.test.ts",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "5353b836cdcef04b8457383e96a8cd62fd452351",
+        "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/components/charts/Spark.test.ts",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e9aae890934467dfeb7630fd36aaf8222b7ac321",
+        "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/features/changes/verification-state.test.ts",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "a64a17bbfb00a922faf1978a50d8aeee03f986a7",
+        "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/features/observe/core/FilterState.test.ts",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "1d93d426b591cbe3776b6624d160ae3c8420d1c7",
+        "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/features/observe/core/TraceDetail.test.ts",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "0ea1cae298583c96e5f9da8735a6e43cb60b3a24",
+        "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/format.test.ts",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "a30135d486a838b9f39db6c9708b0f51acad0707",
+        "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/server/auth/session.test.ts",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "b87ae46bce7fda49017f3ef85711e236a03d5aa1",
+        "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/server/routing/tenant.test.ts",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "c7f3ecfaa12648cf33c7eae5b9f58725a7fcb4dd",
+        "path": "crates/wyrd/wyrd-server/wyrd-ui/src/vitest-setup.d.ts",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "d0cf9f45bb50f9df4a0b80572eb7fa9301f41a74",
+        "path": "crates/wyrd/wyrd-server/wyrd-ui/vite.config.ts",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "61f1dba7ed5d950a55f96e1bcb4d7e0d3010c2db",
+        "path": "crates/wyrd/wyrd-sql/src/queries/auth/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "1de28063fcb6260953f16905d5c64ee363972bf5",
+        "path": "crates/wyrd/wyrd-sql/src/queries/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "ca1e6c3812e3ff199d79be9b8b33a16806debfb4",
+        "path": "crates/wyrd/wyrd-sql/src/queries/platform/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "40b45dfa92e70035168284dc0e0012c3db1edc10",
+        "path": "crates/wyrd/wyrd-sql/src/queries/storage/admin/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e37ad57b620bdc2d1be02b71e25a3e7425c4c37b",
+        "path": "crates/wyrd/wyrd-sql/src/queries/storage/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "c480fffd83c5eb9ae5855edca01b73a3772d3704",
+        "path": "crates/wyrd/wyrd-sql/src/query/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "17a8753927f98c73e064304a8bb753ef2166d960",
+        "path": "crates/wyrd/wyrd-sql/src/row_types/auth/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "71e8a13816895d24e09740b13391298ec22e7d58",
+        "path": "crates/wyrd/wyrd-sql/src/row_types/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "4e89eb6b4ef7711b579d5cc713f78b849c3a3aab",
+        "path": "crates/wyrd/wyrd-sql/src/row_types/platform/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "65bf782df4b732a403dd162655f616a8adad5b33",
+        "path": "crates/wyrd/wyrd-storage/docker/docker-compose.yml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "15ff69d2cd1192b0a00a8b011d15e539be2c915f",
+        "path": "crates/wyrd/wyrd-testing/src/bifrost/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "9fafc7c2d7dfdf70a9e5329e5a494b79a3e7249b",
+        "path": "crates/wyrd/wyrd-testing/src/interleaving/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "4bb110c94567e3d79df8e035176a7fc90fbaa377",
+        "path": "crates/wyrd/wyrd-testing/src/lib.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "08a9b6e3aa07aa39c9414061d81665c91c6f3374",
+        "path": "crates/wyrd/wyrd-testing/src/load/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "c09773cd099e28d2e86549d12771cd1afe62a313",
+        "path": "crates/wyrd/wyrd-testing/tests/bifrost/forge/main.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "9f7387b3464433dc08c8f39406d1c184f25bdf2d",
+        "path": "crates/wyrd/wyrd-testing/tests/bifrost/oracle/main.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "91aadd6015c055dd4f57277c8c4da8b79b176ace",
+        "path": "crates/wyrd/wyrd-testing/tests/bifrost/oracle/peer_network/mod.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "27e34ac077de4dfe412afedafc0b3ff828f61567",
+        "path": "crates/wyrd/wyrd-testing/tests/bifrost/otlp/main.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "9ef22be9a56c7cee238d140402df8e4397537cd6",
+        "path": "crates/wyrd/wyrd-testing/tests/bifrost/scribe/main.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e72d36a65c90a1e81925b3b77b6dfe22b11f8b73",
+        "path": "crates/wyrd/wyrd-testing/tests/bifrost/server/main.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "1644febb272c16adc9163ddd9b46bfd0efa2fb02",
+        "path": "crates/wyrd/wyrd-testing/tests/gateway/main.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "59ac5254fc1b5202918a7f6b4338faddbc204569",
+        "path": "crates/wyrd/wyrd/src/agent.rs",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "530b6d4a44f1753a4c0eea0019990e42cfb5bdb7",
+        "path": "deploy/kubernetes/bifrost/deployment-mixed.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "beae0418d858ada8702d71910c4f7fb9bbdd72ef",
+        "path": "deploy/kubernetes/bifrost/deployment-role-separated.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "503bce1179958ac1f3582f877bb8ad553b7d3ad8",
+        "path": "deploy/kubernetes/bifrost/rollback-mixed.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "60414934c2b59c223e2a5f1f178345b47dfd9f1f",
+        "path": "docker-compose.yml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "dd006df0b7cc59a2cb467e82f4b67263bc42a2a9",
+        "path": "docker/jaeger/docker-compose.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "ccbac807c176090b389adb6d98b64fe158f393cd",
+        "path": "docs/pnpm-workspace.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "af4d7837a5e3d027718674d74b456de12ce32ee5",
+        "path": "docs/src/app.d.ts",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "957d6d2f6cb3810d71f33846d48d145947099ba4",
+        "path": "docs/src/lib/content.test.ts",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "5e64a33b72f41a199a45e2d777f15db682b0143e",
+        "path": "docs/src/lib/mdsvex/components.js",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "7f14d3c85ad62b5b447603dedaf122295b2e5158",
+        "path": "docs/vite.config.ts",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "c7d935227ed1d397c78f2e9c7e98083c0468175b",
+        "path": "examples/rust/workflows/research.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "fbdc6aaca199282776ad045720e9b4c22f858f4b",
+        "path": "sdks/wyrd-sdk-python/examples/workflows/research.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "0cbcad8b3dd8d5044272dc08083230622eed3b8a",
+        "path": "sdks/wyrd-sdk-python/tests/__init__.py",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "sdks/wyrd-sdk-python/tests/integration/__init__.py",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "sdks/wyrd-sdk-python/tests/integration/gateway/__init__.py",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "9c989c7d817556633c8f8d4d5bc2805e0000f270",
+        "path": "sdks/wyrd-sdk-python/tests/unit/__init__.py",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "path": "sdks/wyrd-sdk-python/tests/unit/config/__init__.py",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "d559bcccbf765e05410c1c451e2911f4289866d6",
+        "path": "sdks/wyrd-sdk-python/tests/unit/state/__init__.py",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "28a92c1d537ff67f484b7ae376fe7724c2b6e549",
+        "path": "sdks/wyrd-sdk-ts/pnpm-workspace.yaml",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "4396f0eb57b11142cc55c1acd634d1634d045f25",
+        "path": "sdks/wyrd-sdk-ts/wyrd/tests/unit/wyrd-error.test.ts",
+        "reason": "NoFacts"
+      },
+      {
+        "blob": "b33cb98bdb787ce5b217486179c1963835c29096",
+        "path": "tests/fixtures/identity/dex-config.yaml",
+        "reason": "NoFacts"
+      }
+    ],
+    "snapshot_bytes": 7654890,
     "tree": "e52bce5c1a1c5188ed698d541f8128f90474f2bc"
   },
-  "context_id": "aaf79f1d85c986023e10d29b9f3b146a682ca06787a5be180586a557aa3f0b2f-a4860acc5e4f8687b06df43596e96530",
+  "context_id": "c838b21b19711b537f051d528de24d85b71410f9d1ab2febaa16f22bf568360f-99b8fcec506bd39c7cd425ea9ea9c465",
   "coverage": {
     "files": {
-      "eligible": 543,
+      "eligible": 1681,
       "excluded": {
-        "GeneratedAttribute": 1,
-        "Unsupported": 479
+        "GeneratedAttribute": 3,
+        "Unsupported": 937
       },
-      "indexed": 300,
+      "indexed": 1461,
       "skipped": [
         {
-          "blob": "fa8ccc853c2d2d53286c0c33ec9395281accca51",
-          "path": "crates/vala/vala-bifrost-redux/src/scribe/material_plan.rs",
-          "reason": "NotFetched"
+          "blob": "3dddcaf0d49a251b1922094fefd163e9b1951d92",
+          "path": ".agents/skills/wyrd-advise/agents/openai.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "5921ec9839c9d430b2ac4d81ca04d232ec0b6e9a",
-          "path": "crates/vala/vala-bifrost-redux/src/scribe/member_stager.rs",
-          "reason": "NotFetched"
+          "blob": "8c5d3dff403096028bef77a619421836f26a9114",
+          "path": ".agents/skills/wyrd-change-review/agents/openai.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "f524c25e4a9a442bf9f01765f8a599684db21ae4",
-          "path": "crates/vala/vala-bifrost-redux/src/scribe/memory.rs",
-          "reason": "NotFetched"
+          "blob": "86bb062aaa0b76454d03865bd3d171e8824360e2",
+          "path": ".agents/skills/wyrd-complete/agents/openai.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "fc53478e562ca5845b6c9223e09cbc831314ff84",
-          "path": "crates/vala/vala-bifrost-redux/src/scribe/memtable.rs",
-          "reason": "NotFetched"
+          "blob": "ef475c8e64bc18b422b3806a30a18e098fb6d081",
+          "path": ".agents/skills/wyrd-implement/agents/openai.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "a060cbfc77ac0979b8aa13f46c2f672a4eefc066",
-          "path": "crates/vala/vala-bifrost-redux/src/scribe/parquet_writer.rs",
-          "reason": "NotFetched"
+          "blob": "82eb55d913306599ddbe38ab2966af919de0fd66",
+          "path": ".agents/skills/wyrd-plan/agents/openai.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "74caf2771ecd7ef78a359b8212a89f7c54e0c52c",
-          "path": "crates/vala/vala-bifrost-redux/src/scribe/preprocess.rs",
-          "reason": "NotFetched"
+          "blob": "0cacf905590e2c3b9338d80a696e728bb04a98c7",
+          "path": ".agents/skills/wyrd-spec/agents/openai.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "62927182698b051364ef733496c691dc75ba72d0",
-          "path": "crates/vala/vala-bifrost-redux/src/scribe/promotion.rs",
-          "reason": "NotFetched"
+          "blob": "8acf662d2646a2ccc1d19c3752c8f936e7ea3943",
+          "path": ".agents/skills/wyrd-task-review/agents/openai.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "e55f9cf58db05b18624a46b5a6033da18513abfc",
-          "path": "crates/vala/vala-bifrost-redux/src/scribe/registry.rs",
-          "reason": "NotFetched"
+          "blob": "833e85f744683dd81f9cb55090ca1d57a002dea2",
+          "path": ".agents/skills/wyrd-ui/agents/openai.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "065a1bdec48561e62d0f965d822ed7e6c59fd5ef",
-          "path": "crates/vala/vala-bifrost-redux/src/scribe/replay.rs",
-          "reason": "NotFetched"
+          "blob": "016a61e7a96709aa4914a9cd4335a8eeedca2baf",
+          "path": ".github/actions/setup-rust-ci/action.yml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "56a5716962147e67c06d24236a75d7fdae3ff1a5",
-          "path": "crates/vala/vala-bifrost-redux/src/scribe/routing.rs",
-          "reason": "NotFetched"
+          "blob": "2f4ce3e82da34a10c20508ff7e0decb23ed95bad",
+          "path": ".github/workflows/identity-e2e.yml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "ee804778c5153a67d4f68d7fc9e2e2ffec6d5d92",
-          "path": "crates/vala/vala-bifrost-redux/src/scribe/seal_key.rs",
-          "reason": "NotFetched"
+          "blob": "fa8cfd9be051e9e63d767b18d1628538ff636bdf",
+          "path": ".github/workflows/lints-test.yml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "fb98151344ce3dd667788e4911dbf8b547b0ea85",
-          "path": "crates/vala/vala-bifrost-redux/src/scribe/shards.rs",
-          "reason": "NotFetched"
+          "blob": "466efabf9722dd4e1aae13358ff43a98c7eb6c7d",
+          "path": ".github/workflows/nightly.yml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "8973ec14e85d331431dd2dd48dae13bb22998bf4",
-          "path": "crates/vala/vala-bifrost-redux/src/scribe/staged_tail.rs",
-          "reason": "NotFetched"
+          "blob": "4d35f837eebfd8e4d8d5e11e851612fc14257f85",
+          "path": ".github/workflows/performance.yml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "2b669008b7a750bf87db25d2f66651fa7d44ac28",
-          "path": "crates/vala/vala-bifrost-redux/src/scribe/staging.rs",
-          "reason": "NotFetched"
+          "blob": "5ac8ca08a585b88bd3839c0a4fce9c362aab8791",
+          "path": ".github/workflows/publish-docs.yml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "165dc8840746f2bd92a2fbc672ef552093de3d30",
-          "path": "crates/vala/vala-bifrost-redux/src/scribe/staging_runtime.rs",
-          "reason": "NotFetched"
+          "blob": "370df5064d2c05199e83f10de9b7fcbcc725de21",
+          "path": ".github/workflows/release.yml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "8acbddc4940efbdbb521765bea38be8e3a32d5a7",
-          "path": "crates/vala/vala-bifrost-redux/src/scribe/stream_identity.rs",
-          "reason": "NotFetched"
+          "blob": "f8aebba006f7dd436b95bc6ba6c2dc565568f083",
+          "path": ".github/workflows/storage-integration-cloud.yml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "1f2d36acffdb06d0107d584467aa29f85a7011fe",
-          "path": "crates/vala/vala-bifrost-redux/src/scribe/tail_rpc.rs",
-          "reason": "NotFetched"
+          "blob": "2f9cf40468ac8aba1b5a2428713f356aa2fbd2e5",
+          "path": ".github/workflows/storage-integration-emulator.yml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "ad794dd924f033f2eb1cea5b77e5138ded101a24",
-          "path": "crates/vala/vala-bifrost-redux/src/scribe/telemetry.rs",
-          "reason": "NotFetched"
+          "blob": "112e9617743c4536d355ca9dc636ff417aa7854f",
+          "path": "crates/shared/workspace-hack/src/lib.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "83bd06c136c873a5c02841abb6ae4c8cb608653d",
-          "path": "crates/vala/vala-bifrost-redux/src/scribe/wal.rs",
-          "reason": "NotFetched"
+          "blob": "0adf3ed751c50048b42d4c28209e6a1c7b7f1d74",
+          "path": "crates/shared/wyrd-auth-check/src/lib.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "cba931f52ae32d682e83fb2cac56c86531b426bb",
-          "path": "crates/vala/vala-bifrost-redux/src/scribe/write_recipe.rs",
-          "reason": "NotFetched"
+          "blob": "3f395bd2ccc8a725dd1c03f0bf19e29778bfd1ac",
+          "path": "crates/shared/wyrd-auth-oidc/src/lib.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "0fd35e7fa86f3260a625df4cbb49eb4a23dbe06e",
-          "path": "crates/vala/vala-bifrost-redux/src/tables/fields.rs",
-          "reason": "NotFetched"
+          "blob": "4dbf7a77467feb2a928e737d02ed923085e16f9d",
+          "path": "crates/shared/wyrd-bench/src/lib.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "bff29343838cdd48f1168f280c938eb8b5be7603",
-          "path": "crates/vala/vala-bifrost-redux/src/tables/managed_columns.rs",
-          "reason": "NotFetched"
+          "blob": "291987121fba64b76cca5b3bb4dac72e4565c00e",
+          "path": "crates/shared/wyrd-client/src/cards/reads/mod.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "c3846c720947283d636b8f3aa284f51799906939",
-          "path": "crates/vala/vala-bifrost-redux/src/tables/signal.rs",
-          "reason": "NotFetched"
+          "blob": "99f2a6737d9f1632c151083ca3bc3d2ba16d4c1f",
+          "path": "crates/shared/wyrd-client/src/eval/mod.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "454e0633b0c3b5aadacc41556002fb3fb8d8e612",
-          "path": "crates/vala/vala-sql/src/row_types/alerts.rs",
-          "reason": "NotFetched"
+          "blob": "797efa83be2db4fd05cbfc7aa18fb272c9d76ebe",
+          "path": "crates/shared/wyrd-client/src/platform/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "c04d05b5ab28f46ac3436378fc81ba638f72d9d8",
+          "path": "crates/shared/wyrd-client/src/principals/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "53bf986d20605aba17aba6783634349bda1c32d1",
+          "path": "crates/shared/wyrd-client/tests/transport.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "4f89abefe3fd1e99a560d46c922ce39af66a93ac",
+          "path": "crates/shared/wyrd-dev-fixtures/src/lib.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "babec24bfa444f653ee53c3a9e250f00a9cd1c96",
+          "path": "crates/shared/wyrd-queue/src/lib.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "7865e0eef4c41719f55a11b3cf9ac04cf3de94a0",
+          "path": "crates/shared/wyrd-version/src/lib.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "d5ed34ca554ce0befff0eabe435673434c08ab60",
+          "path": "crates/skald/skald-agent/src/lib.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "b3651a5c3996fb959f529bbda72ba00b20a065bd",
+          "path": "crates/skald/skald-agent/tests/fixtures/agent_planner_v0.3.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "297644f131f68cefacb222b975cd9297aa8d8b49",
+          "path": "crates/skald/skald-cache/src/lib.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "5468bf3b1b3daed2656a98d91801af3ed702a270",
+          "path": "crates/skald/skald-providers/src/clients/embeddings.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "6611cc29ab0b38960788d0d3451b4167d269747d",
+          "path": "crates/skald/skald-runtime/src/lib.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "facab2def33d068b7135dfe86d16154a0606cbbf",
+          "path": "crates/skald/skald-tool/src/lib.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "bd1985c57e3f642628efdfd7e1f8258cf13f03de",
+          "path": "crates/skald/skald-workflow/src/lib.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "0588ea21059b43314af2102f10c1b810df1f8b92",
+          "path": "crates/vala/vala-bifrost-redux/src/forge/managed/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "10c8f9d4a06800f07646788481c76e8f776f9b72",
+          "path": "crates/vala/vala-bifrost-redux/src/parquet/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "95a4a586da54302cf7065a487e3eb02b88999af6",
+          "path": "crates/vala/vala-bifrost-redux/src/provider/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "4cf022df6c08ff06126ee66e820dd1f8c0dc6789",
+          "path": "crates/vala/vala-bifrost-redux/src/schema/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "8c12fa31ccc1e77813f2cccce4fd32412787c400",
+          "path": "crates/vala/vala-bifrost-redux/src/tables/audit/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "0bd7d36e1f96193c42cb9f9cf9d243b49ae4cfea",
+          "path": "crates/vala/vala-bifrost-redux/src/tables/dev/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "78a29eaac3ef8be82e7fa679a890ec1278dbdea8",
+          "path": "crates/vala/vala-bifrost-redux/src/tables/drift/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "af0cad2b3e4dfd869e880e5ee5372fe2f2a4ea78",
+          "path": "crates/vala/vala-bifrost-redux/src/tables/eval/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "dd3ea8317a9513c2efa456d6acf55bc704a84aed",
+          "path": "crates/vala/vala-bifrost-redux/src/tables/gateway/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/catalog/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/immutable_tier_retention.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/maintenance.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/mitari_rewrite_api.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "c7ecc2980129f4dadd30f46ccd33d0c1da09b10d",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/replay.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/retention.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/scheduler.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/staging.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/streaming_rewrite.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/worker.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/forge/worker_lifecycle.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "53fbbfe1388b5874175389ce9990cc1ffb684097",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/main.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/oracle/decoder.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/oracle/distributed.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "37b60ace8dc9eff301792ff6c5d19050c6661386",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/oracle/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/oracle/resource_release.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/oracle/semantics.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/oracle/spill.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/oracle/support.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/atomicity.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/bounds.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/commit_hints.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/governor_gauges.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/idempotent.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "b6d5c456dae4ba34c10a2e5ad47f2d8ccba4423c",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/ordering.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/persistence_support.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/registry.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/replay.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/scribe/seal.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "crates/vala/vala-bifrost-redux/tests/integration/support.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "b95931d191fe2bbc422e7a0c9c3517e3383a35d5",
+          "path": "crates/vala/vala-core/src/alert_router/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "3a5134fc12048e1690bc1e141dcd5497a64f354f",
+          "path": "crates/vala/vala-core/src/lib.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "05559d11fbbc097279eb31f38ce42156283412e7",
+          "path": "crates/vala/vala-eval/src/lib.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "161b51d6e7d1e6a503de11250f6d46de9764c7b2",
+          "path": "crates/vala/vala-eval/src/orchestrator/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "2b0c28e955d1672c78745af960f8f54600590256",
+          "path": "crates/vala/vala-eval/src/tasks/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "c3f08a01ce4007270edaab2659d133c1d2e30e9c",
+          "path": "crates/vala/vala-ingest/src/lib.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "6b1a8c610fa7f6a1a514c6094bd87ec71259aa37",
+          "path": "crates/vala/vala-sql/src/queries/alerts.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "51600dbfbef82de4b9b9ce23536930b4fcfa5269",
+          "path": "crates/vala/vala-sql/src/queries/anchors.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "4a42c5d1e34311c571bbc3a456440df895525f95",
+          "path": "crates/vala/vala-sql/src/queries/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "7c61478c8a33a1d93ba707baf13bcd3430dc270a",
+          "path": "crates/vala/vala-sql/src/queries/monitor.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "1dfb935ac138f0eff6cafd9d899181379e6be2e7",
+          "path": "crates/vala/vala-sql/src/queries/profiles.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "3efe0c7248ab197687940680168ce350d29b974c",
+          "path": "crates/vala/vala-sql/src/queries/queues.rs",
+          "reason": "NoFacts"
         },
         {
           "blob": "4de99a4096d4535f1b202f2f6ef96e3756ff94fc",
           "path": "crates/vala/vala-sql/src/row_types/anchors.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "c01b78dabc84b095e2e05df78bd7f654a7d03474",
-          "path": "crates/vala/vala-sql/src/row_types/audit_staging.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "f897f3aa0c92748b6a0492b4028c162d84dea45d",
-          "path": "crates/vala/vala-sql/src/row_types/cluster_nodes.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "aa7652379c9f42cec215ee255e6e276ce4cfee43",
-          "path": "crates/vala/vala-sql/src/row_types/file_list.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "be9acdfb7b26e62e1ed95827c8f9d31f5e811047",
-          "path": "crates/vala/vala-sql/src/row_types/forge_operations.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "b64398d3e21009b219e24232873367b50618f605",
-          "path": "crates/vala/vala-sql/src/row_types/maintenance.rs",
-          "reason": "NotFetched"
+          "reason": "NoFacts"
         },
         {
           "blob": "92a8c1d221eba97aed746a07c896096696e7d32d",
           "path": "crates/vala/vala-sql/src/row_types/mod.rs",
-          "reason": "NotFetched"
+          "reason": "NoFacts"
         },
         {
           "blob": "faadbcfa0a181d3ce336c2428a39dc804d9f02f8",
           "path": "crates/vala/vala-sql/src/row_types/monitor.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "bee8f409b8c7f1f57e602cf58ecaacf1b8f96a5b",
-          "path": "crates/vala/vala-sql/src/row_types/olap_catalog.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "5d99fdce0af0702a304f401829517c6dc36e5cc0",
-          "path": "crates/vala/vala-sql/src/row_types/oracle_reader_authority.rs",
-          "reason": "NotFetched"
+          "reason": "NoFacts"
         },
         {
           "blob": "1871263daeaa45c8cd16ad43972a1117a39f5571",
           "path": "crates/vala/vala-sql/src/row_types/profiles.rs",
-          "reason": "NotFetched"
+          "reason": "NoFacts"
         },
         {
           "blob": "99443996c222edad59efe0b39fa48ad34e00f6c2",
           "path": "crates/vala/vala-sql/src/row_types/queues.rs",
-          "reason": "NotFetched"
+          "reason": "NoFacts"
         },
         {
-          "blob": "0065d3ce768536d1fdb420db57fbd7011525c1ad",
-          "path": "crates/vala/vala-sql/tests/pg_drift_alerts.rs",
-          "reason": "NotFetched"
+          "blob": "a1c83473c9f868186621306ea63e871092dcc46c",
+          "path": "crates/wyrd-spec/src/auth/mod.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "ea51763c38f1ea9d7122786c63d0caf830ef48a6",
-          "path": "crates/vala/vala-sql/tests/pg_file_list_cluster_nodes.rs",
-          "reason": "NotFetched"
+          "blob": "8f46e317ad614ef652a45aebd5c662430b809955",
+          "path": "crates/wyrd-spec/src/card/eval.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "f5538f9c36b5b2630d6d40e988e3d42e720e7119",
-          "path": "crates/vala/vala-sql/tests/pg_forge_file_list.rs",
-          "reason": "NotFetched"
+          "blob": "1241fe4b514e9f7dd04d544f86476da1c925fe64",
+          "path": "crates/wyrd-spec/src/format/mod.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "5cf79c4a5ac7f8a0dfc7b396b5e41094a9e75621",
-          "path": "crates/vala/vala-sql/tests/pg_forge_operations.rs",
-          "reason": "NotFetched"
+          "blob": "c95cb6c0eebe3cf1318e1f8e3126d240dafe278d",
+          "path": "crates/wyrd-spec/src/query/mod.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "24b94e51df20d4bcda7b0482ee364fd17f288281",
-          "path": "crates/vala/vala-sql/tests/pg_forge_tasks.rs",
-          "reason": "NotFetched"
+          "blob": "e51be60d692d852f52029b41a21ce33cd91d435a",
+          "path": "crates/wyrd-spec/src/registry/mod.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "f5443eed09f6853727cbdc1ace5a5ba8596aee6e",
-          "path": "crates/vala/vala-sql/tests/pg_maintenance_leases.rs",
-          "reason": "NotFetched"
+          "blob": "2066636cab0a5dc866cfd048b6d733339054953c",
+          "path": "crates/wyrd-spec/src/vala/dev/mod.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "624332c6f3d7d7c1b06db6b3a94667815222c953",
-          "path": "crates/vala/vala-sql/tests/pg_migration.rs",
-          "reason": "NotFetched"
+          "blob": "2066636cab0a5dc866cfd048b6d733339054953c",
+          "path": "crates/wyrd-spec/src/vala/drift/mod.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "a5e5daad571a1e4abaedee211cd3e0d6f2b2ec3e",
-          "path": "crates/vala/vala-sql/tests/pg_olap_catalog.rs",
-          "reason": "NotFetched"
+          "blob": "2066636cab0a5dc866cfd048b6d733339054953c",
+          "path": "crates/wyrd-spec/src/vala/logs/mod.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "483311cdccd8dfe3c1b4ed8ce03f375de8b317e6",
-          "path": "crates/vala/vala-sql/tests/pg_oracle_membership.rs",
-          "reason": "NotFetched"
+          "blob": "2066636cab0a5dc866cfd048b6d733339054953c",
+          "path": "crates/wyrd-spec/src/vala/metrics/mod.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "ec03587add37d58773e66753ff77dcf7e05dd734",
-          "path": "crates/vala/vala-sql/tests/pg_schema_usage.rs",
-          "reason": "NotFetched"
+          "blob": "45405db36501eb78dabadc91f8570f2cb50506e0",
+          "path": "crates/wyrd-spec/src/vala/mod.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "3b76845ef4ce4925676af91310602802b7aa244a",
-          "path": "crates/vala/vala-sql/tests/pg_stream_identity.rs",
-          "reason": "NotFetched"
+          "blob": "e114dcdc82b394bccf289d8450f5ecd35378195e",
+          "path": "crates/wyrd-spec/tests/fixtures/operator-remediation.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "3df1fe5c3aaf1a9a932def0334130509bfd96f32",
-          "path": "crates/wyrd-spec/src/actor.rs",
-          "reason": "NotFetched"
+          "blob": "e7bafec40679c1c4783ec94209250d099e3c9568",
+          "path": "crates/wyrd-spec/tests/fixtures/service-with-runtime-policy.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "54b1c8096de32f0d1a9c2eada5aa6631fa8be91f",
-          "path": "crates/wyrd-spec/src/api_version.rs",
-          "reason": "NotFetched"
+          "blob": "aa9dd8e86db1d1b53a6cdc9855ade855efda2311",
+          "path": "crates/wyrd-spec/tests/fixtures/source-logs-loki.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "51e29c73759620e84045c6b102dae48b4da5bd20",
-          "path": "crates/wyrd-spec/src/auth/admin.rs",
-          "reason": "NotFetched"
+          "blob": "6c87c80a17377cae62a0f1b17bf4abbe9715e6d6",
+          "path": "crates/wyrd-spec/tests/fixtures/source-metrics-datadog.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "7281f8aa91c5a702b590fa84388d28e94e8653ac",
-          "path": "crates/wyrd-spec/src/auth/card_scope.rs",
-          "reason": "NotFetched"
+          "blob": "2c85d6dbfbc726a116293d60a56913a13374473f",
+          "path": "crates/wyrd-spec/tests/fixtures/source-object-store-gcs.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "08fd67700730a6f0f24a23824b717a6c06c5a759",
-          "path": "crates/wyrd-spec/src/auth/issue_key.rs",
-          "reason": "NotFetched"
+          "blob": "532b243f70498a4442ea18b777b53715e3002dd7",
+          "path": "crates/wyrd-spec/tests/fixtures/source-sql-warehouse.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "ffcbd25c8747b7c3e38c94417820edaf8d38d7a1",
-          "path": "crates/wyrd-spec/src/auth/oidc.rs",
-          "reason": "NotFetched"
+          "blob": "4be002cdfd9ab3657ef327facf4bc4794e8ca217",
+          "path": "crates/wyrd-spec/tests/fixtures/source-traces-tempo.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "766378f32a37dc0cb25db38e97974f682368967a",
-          "path": "crates/wyrd-spec/src/auth/platform_identity.rs",
-          "reason": "NotFetched"
+          "blob": "6715907a22bbdd1117d721757a04bf01e97e8058",
+          "path": "crates/wyrd-spec/tests/fixtures/trigger-on-drift.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "d8824721b7c7a069863cb00a824f2921266d2af1",
-          "path": "crates/wyrd-spec/src/auth/principal_kind.rs",
-          "reason": "NotFetched"
+          "blob": "2f20988a190f1c00b8ca3a867f2e65130ade26ac",
+          "path": "crates/wyrd/wyrd-auth/src/lib.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "b7f87f1075193baa39141a027b4cf9b89f7e5175",
-          "path": "crates/wyrd-spec/src/auth/revoke.rs",
-          "reason": "NotFetched"
+          "blob": "16cc61ba12552a1f5271975295a4db907fe76338",
+          "path": "crates/wyrd/wyrd-cards/src/card.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "c8ce04c2cce575cf0f7945ed5c2d6f54bc2c7b12",
-          "path": "crates/wyrd-spec/src/auth/secret_bearer.rs",
-          "reason": "NotFetched"
+          "blob": "ef1308b29a233b607f58e226255f0a0f6a2231ac",
+          "path": "crates/wyrd/wyrd-cli/src/eval/mod.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "57b34efb8952d6a8e3a83d93e035f7bfdbe481e5",
-          "path": "crates/wyrd-spec/src/auth/tenant_admin.rs",
-          "reason": "NotFetched"
+          "blob": "0a2e943d749fa1aa4a15039e00348f69ba120092",
+          "path": "crates/wyrd/wyrd-cli/src/load/mod.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "46ff699239c8c30a423e19036c2e49af107a1792",
-          "path": "crates/wyrd-spec/src/auth/tenant_principals.rs",
-          "reason": "NotFetched"
+          "blob": "9d140b55405b7d024d877eae695fa4dd3cc4a08b",
+          "path": "crates/wyrd/wyrd-cli/tests/cli.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "489045bdb135cc6de9008d69cf96d10627b9aa2f",
-          "path": "crates/wyrd-spec/src/auth/token.rs",
-          "reason": "NotFetched"
+          "blob": "ca9bd90106392592203a752c5981e581dd65fcf2",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/agent-inline.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "26e2cb6ed6026e6bd7ff836f2948572b07fd5e9b",
-          "path": "crates/wyrd-spec/src/card/prompt/codec.rs",
-          "reason": "NotFetched"
+          "blob": "1e976c3f86369b18cc77452b761cb0e9f860486e",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/agent-triage.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "0549c092839c968502e3afd14e35509627712a3b",
-          "path": "crates/wyrd-spec/src/card/prompt/hash.rs",
-          "reason": "NotFetched"
+          "blob": "e084415f019fb7e63507cb9ffd4f99057c6f45dc",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/model-drift.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "3bc4eb29464fa03d4deaca59678d0ec99938b6ba",
-          "path": "crates/wyrd-spec/src/card/prompt/parameter.rs",
-          "reason": "NotFetched"
+          "blob": "0b15c00698ff5a3732365986f9d6db52f4291b1b",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/model-primary.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "2b19eee7a35f8846ad7df33077c5ac456fdb8ec4",
-          "path": "crates/wyrd-spec/src/card/prompt/promptref.rs",
-          "reason": "NotFetched"
+          "blob": "ddd485bb347f506e66302119e08b72f85167c553",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/model-shadow.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "344af1ba60494c3c7209e5adae476a63345b34fd",
-          "path": "crates/wyrd-spec/src/card/prompt/spec.rs",
-          "reason": "NotFetched"
+          "blob": "e8656a20c3545a7dc4c6ef357b6ef73663b6c40d",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/quality.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "61b3ced858247ce156c3a55c57cc060d5e651d7e",
-          "path": "crates/wyrd-spec/src/card/prompt/validate.rs",
-          "reason": "NotFetched"
+          "blob": "abee5b79084dec36fb85d19fc60fff8482797369",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/runtime.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "4cb5e3cee6f082a27f3164a82c5e671a7f75cccc",
-          "path": "crates/wyrd-spec/src/envelope.rs",
-          "reason": "NotFetched"
+          "blob": "4959470eaca3918f137ff03a01a1510785761668",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/training.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "9b39ee1685cd24c5806a7e59e51959973deb2081",
-          "path": "crates/wyrd-spec/src/intel.rs",
-          "reason": "NotFetched"
+          "blob": "3188d835c3cfe3de056a92d63b417e2436d88be6",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/triage-prompt.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "2ad1f7126094b41e82769272b810554d05eca29e",
-          "path": "crates/wyrd-spec/src/metadata.rs",
-          "reason": "NotFetched"
+          "blob": "b34a9408138ef762bb64e2cf98bd486665fa826b",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/card_lifecycle/typed_state/typed-service.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "83c2cdd61faec20e4baf47ee0b3fe50a9a4f9a67",
-          "path": "crates/wyrd-spec/src/origin.rs",
-          "reason": "NotFetched"
+          "blob": "a44176c71db13a16c11edf94337ef9a2c1f59734",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/config_defaults/service.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "a3e7838552dd5b8d250fec8091509a4d899f6d4f",
-          "path": "crates/wyrd-spec/src/redaction.rs",
-          "reason": "NotFetched"
+          "blob": "48572a4e791206635dacbb2ae8cf7727b8d22805",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/agent1/agent.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "5ee0371f229c48de898a6f11dd1f123c4c381ac8",
-          "path": "crates/wyrd-spec/src/reference.rs",
-          "reason": "NotFetched"
+          "blob": "ed04562fcebf187e10099e9c59065df5ab91bc36",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/agent1/eval.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "7897302cf498e80ec87bd475df36d0fadf356078",
-          "path": "crates/wyrd-spec/src/request_id.rs",
-          "reason": "NotFetched"
+          "blob": "6947067b0ca23ba4f7606f6aefc64dbbbfcaeaca",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/agent1/judge-prompt.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "ef5a13a4ede8c5c14719830353c01366a67a4566",
-          "path": "crates/wyrd-spec/src/run.rs",
-          "reason": "NotFetched"
+          "blob": "2ee6ffa584ded6c79ee562887702d0cf8becf00e",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/agent1/prompt.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "a6b21bfca0887c2666e61da6d4407fa98278a0f1",
-          "path": "crates/wyrd-spec/src/schema.rs",
-          "reason": "NotFetched"
+          "blob": "332b5d9f7b9896547a683050219769baa07c4220",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/agent2/agent.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "f6b05a94c76e612cb37d3c54257edb4c42f08315",
-          "path": "crates/wyrd-spec/src/trace.rs",
-          "reason": "NotFetched"
+          "blob": "9c1fa8d8ab41e7a220badd7abb74773a03d40a16",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/model/card.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "4053ee0476ce9145c8956dacc5885ac64d0c88e0",
-          "path": "crates/wyrd/wyrd-cli/src/card.rs",
-          "reason": "NotFetched"
+          "blob": "49f2af4d8651f34bcaec31a957d88973c79aa958",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/model/drift.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "14cc5a17208301d31ed1ad58a6a05d1bf7fef60f",
-          "path": "crates/wyrd/wyrd-cli/src/client.rs",
-          "reason": "NotFetched"
+          "blob": "66ca04907f2d0eaa72378d4318b8bf1475d07ebe",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/ops/operator-slack.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "71c7370756e169c3ea19a22608c7f2a2b6ec2824",
-          "path": "crates/wyrd/wyrd-cli/src/main.rs",
-          "reason": "NotFetched"
+          "blob": "2205c1504cfde276c226ce76f237a5d393e7e460",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/ops/trigger-drift-alert.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "645f468db0a4e8fb2995bb5a1843ca45896ff237",
-          "path": "crates/wyrd/wyrd-cli/src/python.rs",
-          "reason": "NotFetched"
+          "blob": "a2ea60b7d2366412f271c9bf8a79dc2e932cba84",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/ops/trigger-eval-fail.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "40e9028c10b743a4ff1664407d45847fbad9f9b5",
-          "path": "crates/wyrd/wyrd-cli/src/registration.rs",
-          "reason": "NotFetched"
+          "blob": "e01bc2a2cd92247f90ebae8a85746d8f1afd0d4f",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end/service.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "66c28d2a9767e23f908d98241dcd3a9da4ee4d87",
-          "path": "crates/wyrd/wyrd-cli/tests/auth_issue_key_journey.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "9d051a1b0c4bee28725e13b2f617f1afff3bf305",
-          "path": "crates/wyrd/wyrd-cli/tests/card_lifecycle.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "4c9b0e023cf04e3806a75084b703cb8120b46097",
-          "path": "crates/wyrd/wyrd-cli/tests/eval_local_records.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "df28a2360c871acdb5162c1893dddc25a4807dee",
-          "path": "crates/wyrd/wyrd-cli/tests/eval_server_protocol.rs",
-          "reason": "NotFetched"
+          "blob": "e689fe34483461e7acf9d24486e951c218d08e13",
+          "path": "crates/wyrd/wyrd-cli/tests/fixtures/loader/end_to_end_prerequisites/churn-classifier-data.yaml",
+          "reason": "NoFacts"
         },
         {
           "blob": "e0058970ac08f1dcdf95916f292727c7b55c905d",
           "path": "crates/wyrd/wyrd-cli/tests/loader.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "6345ea167343d650d84c61f7689de257fba80325",
-          "path": "crates/wyrd/wyrd-cli/tests/operator_journey.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "1f28a3a54c85c11689d4b6a33baf3d959b59f575",
-          "path": "crates/wyrd/wyrd-cli/tests/principal_journey.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "3c865c8490e24fff3e07d7103b0995369ea99f80",
-          "path": "crates/wyrd/wyrd-cli/tests/query_server_journey.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "a427891d2f584d586f3a8986a29ddd5f4b5c7683",
-          "path": "crates/wyrd/wyrd-cli/tests/secret_sources.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "19118abdf24a6c66cf034c6d820680796d0156c9",
-          "path": "crates/wyrd/wyrd-gateway/src/adapter/tests.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "9388f2a44aa1e1b2bd576638bcd76eb0c5ff4248",
-          "path": "crates/wyrd/wyrd-gateway/src/credential.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "ee3fb96f2b9a77620af68fb843a34c9525b1bac6",
-          "path": "crates/wyrd/wyrd-gateway/src/endpoint.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "08f78db148d9d0b2b0449f842caff6b03742866d",
-          "path": "crates/wyrd/wyrd-gateway/src/engine.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "61b29226e338bfeb36c8ec816a8f85d3f82bf4f2",
-          "path": "crates/wyrd/wyrd-gateway/src/health.rs",
-          "reason": "NotFetched"
+          "reason": "NoFacts"
         },
         {
           "blob": "d1dc817ee0fc833136d030fc0f99ae1a8982ba87",
           "path": "crates/wyrd/wyrd-gateway/src/lib.rs",
-          "reason": "NotFetched"
+          "reason": "NoFacts"
         },
         {
-          "blob": "dc17359fda977c3ad6cadc78c7691a2921302df9",
-          "path": "crates/wyrd/wyrd-gateway/src/managed.rs",
-          "reason": "NotFetched"
+          "blob": "2f081659b0d7b50ba4f8903a668d671ab713fba9",
+          "path": "crates/wyrd/wyrd-interfaces/src/model/interfaces/metadata.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "9d12a11b37598d51d574238492291f786b1d8337",
-          "path": "crates/wyrd/wyrd-gateway/src/pricing.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "6e9507d988fc5a0d130b114306370592b404c8e8",
-          "path": "crates/wyrd/wyrd-gateway/src/routing.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "3ac789745a675837a5356a18c875a8a6650422b4",
-          "path": "crates/wyrd/wyrd-gateway/src/snapshot.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "cc30b4e443f5136143bd03d97867206e7b9f9546",
-          "path": "crates/wyrd/wyrd-gateway/src/vault.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "2f11ba9119734a5cd5a4a17dd77e1db694c1559a",
-          "path": "crates/wyrd/wyrd-mcp/tests/bifrost/mcp/connectivity.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "614aab185ba1c0f9b7b867b96edc9e3875e20286",
-          "path": "crates/wyrd/wyrd-mcp/tests/bifrost/mcp/discovery.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "a5284a58a2f9c8f484df4461017859f2775e2930",
-          "path": "crates/wyrd/wyrd-mcp/tests/bifrost/mcp/gateway.rs",
-          "reason": "NotFetched"
+          "blob": "179ef23ebe4c03ed2f7e7295d1c4e615a1782a7c",
+          "path": "crates/wyrd/wyrd-mcp/src/lib.rs",
+          "reason": "NoFacts"
         },
         {
           "blob": "bd87440af1f3352d4b6052af4e5534c404ee57b4",
           "path": "crates/wyrd/wyrd-mcp/tests/bifrost/mcp/main.rs",
-          "reason": "NotFetched"
+          "reason": "NoFacts"
         },
         {
-          "blob": "00c7fa5e21a4d27825c0533eb13e4822d7a0c1e5",
-          "path": "crates/wyrd/wyrd-mcp/tests/bifrost/mcp/principals.rs",
-          "reason": "NotFetched"
+          "blob": "4d5cfbc70e1d35aadf2fe96a85bc4894797b8716",
+          "path": "crates/wyrd/wyrd-server/src/bifrost/mod.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "f9310da98fc0a4c57f8499ffdb990ed1b2ad4367",
-          "path": "crates/wyrd/wyrd-mcp/tests/bifrost/mcp/query.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "5b353d52f65615b43e9162f13a8c3ae0d8aa5d19",
-          "path": "crates/wyrd/wyrd-server/src/app/metrics.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "04f8dfa1b30ca22ca8161a2d625e37825a277447",
-          "path": "crates/wyrd/wyrd-server/src/app/mod.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "7d27536f9cbe24f3bfc9b010a44e9dd391750cda",
-          "path": "crates/wyrd/wyrd-server/src/app/peer_plane.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "5eaa7a655f7b9a440b27383fe68863380cd3442b",
-          "path": "crates/wyrd/wyrd-server/src/app/serve.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "a5a177cfc324d35b36242d82da9a7b855a89b3a6",
-          "path": "crates/wyrd/wyrd-server/src/app/server.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "fc635e0e5983fad702441c0e2e62c0156a172f2e",
-          "path": "crates/wyrd/wyrd-server/src/app/shutdown.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "b502cbf8c23dd4977a317f7adec0ab9315ac2862",
-          "path": "crates/wyrd/wyrd-server/src/app/supervise.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "11564053ed602b34e67922b068ab636f8b8f31df",
-          "path": "crates/wyrd/wyrd-server/src/audit/mod.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "e011ade6d526617045025edc457b56194150482f",
-          "path": "crates/wyrd/wyrd-server/src/audit/publication.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "09c813c8db1b66691961f0f3e695893678dee827",
-          "path": "crates/wyrd/wyrd-server/src/boot/auth.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "8f30ebbf2b0cb43ec4cd78aec8c2efc21901916d",
-          "path": "crates/wyrd/wyrd-server/src/boot/data_root.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "025f3870404d3d9161b57bd3ebd75a93a531429b",
-          "path": "crates/wyrd/wyrd-server/src/boot/init.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "081266e20360252319e4d24cfb1a1a00f1c74852",
-          "path": "crates/wyrd/wyrd-server/src/boot/issuer.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "0b27710d22da84c3a67451e82170cde76a30fd80",
-          "path": "crates/wyrd/wyrd-server/src/boot/mod.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "4b18e4db78e90b9d8987dbd69be68c38b2bceb3b",
-          "path": "crates/wyrd/wyrd-server/src/boot/node_identity.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "86adaa49e8d23662301cd9c3771697e232d666ce",
-          "path": "crates/wyrd/wyrd-server/src/components/auth/audit_writer.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "f92a324b8bf935b4153b657d8518f93594032970",
-          "path": "crates/wyrd/wyrd-server/src/components/auth/caller_extractor.rs",
-          "reason": "NotFetched"
+          "blob": "74ce597ea931d3e5334226f09b11f004dace7019",
+          "path": "crates/wyrd/wyrd-server/src/components/admin/mod.rs",
+          "reason": "NoFacts"
         },
         {
           "blob": "da0437fae9ad6bdbd247ee155d852146783ced16",
           "path": "crates/wyrd/wyrd-server/src/components/auth/mod.rs",
-          "reason": "NotFetched"
+          "reason": "NoFacts"
         },
         {
-          "blob": "076a1e7e98645491ca57540253b92fbd54aa9da9",
-          "path": "crates/wyrd/wyrd-server/src/components/auth/platform_extractor.rs",
-          "reason": "NotFetched"
+          "blob": "4ffa2f6a447ce1f5ef64d9810d6a9ca50a521202",
+          "path": "crates/wyrd/wyrd-server/src/components/authz/mod.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "28d4e8aad26b730c02d3e6891c83a0af5ae6cd3e",
-          "path": "crates/wyrd/wyrd-server/src/components/auth/policy_hook.rs",
-          "reason": "NotFetched"
+          "blob": "e8b3d103354e2a07994e40e160c7b78ee630ef7a",
+          "path": "crates/wyrd/wyrd-server/src/components/cards/mod.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "6257ad76351ed16f4c60ddad513e362d5b780674",
-          "path": "crates/wyrd/wyrd-server/src/components/auth/principal_extractor.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "59161fa6ce328789df1b29f29ed5c30fd527ec4a",
-          "path": "crates/wyrd/wyrd-server/src/components/auth/routes.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "512c54ae7d0ff5c10947f847dfeee8f68f096fd0",
-          "path": "crates/wyrd/wyrd-server/src/components/auth/state.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "21f8cca5e25882167d699eeae8500211e39fd208",
-          "path": "crates/wyrd/wyrd-server/src/components/auth/token_extract.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "cbebcf9972a91b82442cc78ba7bc165cd130628a",
-          "path": "crates/wyrd/wyrd-server/src/components/gateway/batches.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "2efb47462750332833e00c833dec66dc37a8c969",
-          "path": "crates/wyrd/wyrd-server/src/components/gateway/capture.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "a42f756b2446f0c38c295697d4a83b472261e222",
-          "path": "crates/wyrd/wyrd-server/src/components/gateway/ingress.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "f5979be7076c6cb9d7a2af2824292ffdd58f9c96",
-          "path": "crates/wyrd/wyrd-server/src/components/gateway/invocation.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "a6d1a6e1323007fd2b3e8fc70d3161e4c538d6d8",
-          "path": "crates/wyrd/wyrd-server/src/components/gateway/ledger.rs",
-          "reason": "NotFetched"
+          "blob": "2f2372a621f8f5a0907f7aa36fab71806e3825bd",
+          "path": "crates/wyrd/wyrd-server/src/components/eval/mod.rs",
+          "reason": "NoFacts"
         },
         {
           "blob": "c30778e029f20ba9e0d4b28c453a760f3c1cc58a",
           "path": "crates/wyrd/wyrd-server/src/components/gateway/mod.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "07df498bc1d2ca14a000ddf28a3312a3cc48be56",
-          "path": "crates/wyrd/wyrd-server/src/components/gateway/multipart.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "9b2743fc4234e80f0fcf2e4cbe37efbd384d241c",
-          "path": "crates/wyrd/wyrd-server/src/components/gateway/pg_administration_tests.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "518d8facea615929bb633fa035a2d57ed5cc3792",
-          "path": "crates/wyrd/wyrd-server/src/components/gateway/pg_invocation_tests.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "53b886ad3bb2e31c298137b8d1d905196f900506",
-          "path": "crates/wyrd/wyrd-server/src/components/gateway/routes.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "d5b697b19114445678448f0c4811b84d43c02eb4",
-          "path": "crates/wyrd/wyrd-server/src/components/gateway/service.rs",
-          "reason": "NotFetched"
+          "reason": "NoFacts"
         },
         {
           "blob": "433889b35a31a680bdcd73298df59d71038904a7",
           "path": "crates/wyrd/wyrd-server/src/components/mod.rs",
-          "reason": "NotFetched"
+          "reason": "NoFacts"
         },
         {
-          "blob": "c2d5cfea5baae0d5cd36fdc998e02709366e6f35",
-          "path": "crates/wyrd/wyrd-server/src/config.rs",
-          "reason": "NotFetched"
+          "blob": "93b74811d821a7022f247ad63fa97bc8cc123028",
+          "path": "crates/wyrd/wyrd-server/src/components/platform/mod.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "69bf16d850e7fbca1814269eee8da8db2ecac781",
-          "path": "crates/wyrd/wyrd-server/src/http/error.rs",
-          "reason": "NotFetched"
+          "blob": "cfe6277537238a9410a6e272568cae2d750110c4",
+          "path": "crates/wyrd/wyrd-server/src/components/principals/mod.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "1b74ece758d67faa00d794fe6e58c5956fb1291d",
-          "path": "crates/wyrd/wyrd-server/src/http/middleware/authenticate.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "c72af73125d235ac9e9b8eb1a98ac107d63550d6",
-          "path": "crates/wyrd/wyrd-server/src/http/middleware/body_limit.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "297579c98d2804e0b6cf6463dc9268a2b919786d",
-          "path": "crates/wyrd/wyrd-server/src/http/middleware/edge_timeout.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "f53c55506eedc6e4a21dade47b63646576670e48",
-          "path": "crates/wyrd/wyrd-server/src/http/middleware/metrics.rs",
-          "reason": "NotFetched"
+          "blob": "09a8bab5379fbdcd745e9e7575f488f256d49a3b",
+          "path": "crates/wyrd/wyrd-server/src/components/storage/mod.rs",
+          "reason": "NoFacts"
         },
         {
           "blob": "df8f02ec46185fe7407d60e7153e55879a13ca31",
           "path": "crates/wyrd/wyrd-server/src/http/middleware/mod.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "90c44a1a1dc830d9ecfeee95bc47268100cec622",
-          "path": "crates/wyrd/wyrd-server/src/http/middleware/request_id.rs",
-          "reason": "NotFetched"
+          "reason": "NoFacts"
         },
         {
           "blob": "727c957ed6478cf3fc4801ca8617a851ec32afea",
           "path": "crates/wyrd/wyrd-server/src/http/mod.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "19c698a2d8c43f42424896bfb0bd40f4f45a5baa",
-          "path": "crates/wyrd/wyrd-server/src/http/openapi.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "b17ea77d0adb6e4a48fad8100af3c797a44e284c",
-          "path": "crates/wyrd/wyrd-server/src/http/otlp.rs",
-          "reason": "NotFetched"
+          "reason": "NoFacts"
         },
         {
           "blob": "499e3739b4414b0684faea81ff5867975d022975",
           "path": "crates/wyrd/wyrd-server/src/lib.rs",
-          "reason": "NotFetched"
+          "reason": "NoFacts"
         },
         {
-          "blob": "faeef0ec89069fd5fa03bac4a85c1c907eaccfac",
-          "path": "crates/wyrd/wyrd-server/src/main.rs",
-          "reason": "NotFetched"
+          "blob": "5fba9b5822e16b4aed4860ad471f5ae3bf777f53",
+          "path": "crates/wyrd/wyrd-server/src/query/mod.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "4e46bc5e98389ae14e28de6546cc2bb1cb2627e4",
-          "path": "crates/wyrd/wyrd-server/src/mcp/bifrost.rs",
-          "reason": "NotFetched"
+          "blob": "145a03a3fc41cca7770e82fa3ba24b7780f7ed99",
+          "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/components/Badge.test.ts",
+          "reason": "NoFacts"
         },
         {
-          "blob": "aa3fe37fc94c2b777efac16c04e0f36039cac889",
-          "path": "crates/wyrd/wyrd-server/src/mcp/principals.rs",
-          "reason": "NotFetched"
+          "blob": "e0ac516cd92b6cc0ea559f73951c50e181120b7d",
+          "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/components/Button.test.ts",
+          "reason": "NoFacts"
         },
         {
-          "blob": "1a1511f8cc51f5f62659f706522e596732483468",
-          "path": "crates/wyrd/wyrd-server/src/mcp/probe.rs",
-          "reason": "NotFetched"
+          "blob": "2ac4454b32f5fcec2ffeeecbaa074734b3004575",
+          "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/components/CodeBlock.test.ts",
+          "reason": "NoFacts"
         },
         {
-          "blob": "0268d94726ac3922c71dbae404eaee58acd4d64d",
-          "path": "crates/wyrd/wyrd-server/src/otlp_decode.rs",
-          "reason": "NotFetched"
+          "blob": "a9d12a3e4e51761823df2e11ca236476385b3b0f",
+          "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/components/KpiTile.test.ts",
+          "reason": "NoFacts"
         },
         {
-          "blob": "16061fa4d6cf2f80242c7218435a2d564744f3cd",
-          "path": "crates/wyrd/wyrd-server/src/otlp_json.rs",
-          "reason": "NotFetched"
+          "blob": "aff50c323ba9ffaf0b5cfbe773d305c4dfe2786e",
+          "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/components/Panel.test.ts",
+          "reason": "NoFacts"
         },
         {
-          "blob": "3c48c493425c19f0f2209a3ec052cbfe60dc7bca",
-          "path": "crates/wyrd/wyrd-server/src/otlp_logs_decode.rs",
-          "reason": "NotFetched"
+          "blob": "39615552f4041a781881386ecd946ee7192dae56",
+          "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/components/Sidebar.test.ts",
+          "reason": "NoFacts"
         },
         {
-          "blob": "fa5b94fadca515bfbd030baf3d2250c1471e54d6",
-          "path": "crates/wyrd/wyrd-server/src/otlp_logs_json.rs",
-          "reason": "NotFetched"
+          "blob": "ab6ca3da1005ded46bdaa81ad407564fb9135545",
+          "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/components/Topbar.test.ts",
+          "reason": "NoFacts"
         },
         {
-          "blob": "dde60db30c3ff76466e760ae6235d1f1cea6cfc6",
-          "path": "crates/wyrd/wyrd-server/src/otlp_metrics_decode.rs",
-          "reason": "NotFetched"
+          "blob": "e6212c6fa1d285840f60b53d9c86d97b46c1071c",
+          "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/components/charts/Bars.test.ts",
+          "reason": "NoFacts"
         },
         {
-          "blob": "9f93737a9e4e03114c328ebdd9db1d267d9acd23",
-          "path": "crates/wyrd/wyrd-server/src/otlp_metrics_json.rs",
-          "reason": "NotFetched"
+          "blob": "5353b836cdcef04b8457383e96a8cd62fd452351",
+          "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/components/charts/Spark.test.ts",
+          "reason": "NoFacts"
         },
         {
-          "blob": "28274711ff0498f1f115f53569c551bc2edda2c8",
-          "path": "crates/wyrd/wyrd-server/src/otlp_trace_json.rs",
-          "reason": "NotFetched"
+          "blob": "e9aae890934467dfeb7630fd36aaf8222b7ac321",
+          "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/features/changes/verification-state.test.ts",
+          "reason": "NoFacts"
         },
         {
-          "blob": "289c5657ef8698453481b9be300a724de44dd39b",
-          "path": "crates/wyrd/wyrd-server/src/postgres.rs",
-          "reason": "NotFetched"
+          "blob": "a64a17bbfb00a922faf1978a50d8aeee03f986a7",
+          "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/features/observe/core/FilterState.test.ts",
+          "reason": "NoFacts"
         },
         {
-          "blob": "3c2c4df29b8e1dade6ec70c25d48b7ffd08d9f40",
-          "path": "crates/wyrd/wyrd-server/src/state.rs",
-          "reason": {
-            "ParseFailed": {
-              "detail": "extraction failed for `crates/wyrd/wyrd-server/src/state.rs`: extraction deferred for `rust`: defer: parse tree contains errors — wasm recovery is canonical"
-            }
-          }
+          "blob": "1d93d426b591cbe3776b6624d160ae3c8420d1c7",
+          "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/features/observe/core/TraceDetail.test.ts",
+          "reason": "NoFacts"
         },
         {
-          "blob": "6e121d9694ca93e2cd1ce49aaff72c651747c9e5",
-          "path": "crates/wyrd/wyrd-server/src/test_support.rs",
-          "reason": "NotFetched"
+          "blob": "0ea1cae298583c96e5f9da8735a6e43cb60b3a24",
+          "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/format.test.ts",
+          "reason": "NoFacts"
         },
         {
-          "blob": "5abf89f935d18f31102f9e3f41ed18912e174f0c",
-          "path": "crates/wyrd/wyrd-server/tests/auth_e2e.rs",
-          "reason": "NotFetched"
+          "blob": "a30135d486a838b9f39db6c9708b0f51acad0707",
+          "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/server/auth/session.test.ts",
+          "reason": "NoFacts"
         },
         {
-          "blob": "f2c7b8a28a0a0075b9ddd6b81f8e09254590921b",
-          "path": "crates/wyrd/wyrd-server/tests/authz_check_e2e.rs",
-          "reason": "NotFetched"
+          "blob": "b87ae46bce7fda49017f3ef85711e236a03d5aa1",
+          "path": "crates/wyrd/wyrd-server/wyrd-ui/src/lib/server/routing/tenant.test.ts",
+          "reason": "NoFacts"
         },
         {
-          "blob": "81c3c9c0e2cf322cf8329ccfdd74e7987f136ea4",
-          "path": "crates/wyrd/wyrd-server/tests/identity_e2e.rs",
-          "reason": "NotFetched"
+          "blob": "c7f3ecfaa12648cf33c7eae5b9f58725a7fcb4dd",
+          "path": "crates/wyrd/wyrd-server/wyrd-ui/src/vitest-setup.d.ts",
+          "reason": "NoFacts"
         },
         {
-          "blob": "77681bab1c41618d64ea0ad0708cbd248a4e6a5d",
-          "path": "crates/wyrd/wyrd-server/tests/pg_authz_check_route.rs",
-          "reason": "NotFetched"
+          "blob": "d0cf9f45bb50f9df4a0b80572eb7fa9301f41a74",
+          "path": "crates/wyrd/wyrd-server/wyrd-ui/vite.config.ts",
+          "reason": "NoFacts"
         },
         {
-          "blob": "13471ac00e0178c8822294078601bc5dfce6baac",
-          "path": "crates/wyrd/wyrd-server/tests/pg_card_registration_route.rs",
-          "reason": "NotFetched"
+          "blob": "61f1dba7ed5d950a55f96e1bcb4d7e0d3010c2db",
+          "path": "crates/wyrd/wyrd-sql/src/queries/auth/mod.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "d8577e9fd9f7d4fb20d6409821deefcfa955cb26",
-          "path": "crates/wyrd/wyrd-server/tests/pg_eval_v1_protocol.rs",
-          "reason": "NotFetched"
+          "blob": "1de28063fcb6260953f16905d5c64ee363972bf5",
+          "path": "crates/wyrd/wyrd-sql/src/queries/mod.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "06ecd0dd63e40824f44d626bac6e4c76a361521f",
-          "path": "crates/wyrd/wyrd-server/tests/pg_grpc_ingest_smoke.rs",
-          "reason": "NotFetched"
+          "blob": "ca1e6c3812e3ff199d79be9b8b33a16806debfb4",
+          "path": "crates/wyrd/wyrd-sql/src/queries/platform/mod.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "5a4c59deaeda32e715495e81fc48aab41b145359",
-          "path": "crates/wyrd/wyrd-server/tests/pg_grpc_smoke.rs",
-          "reason": "NotFetched"
+          "blob": "40b45dfa92e70035168284dc0e0012c3db1edc10",
+          "path": "crates/wyrd/wyrd-sql/src/queries/storage/admin/mod.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "1307dbdaf194b55b851adcac32432161733e99cc",
-          "path": "crates/wyrd/wyrd-server/tests/pg_merge_http_protected.rs",
-          "reason": "NotFetched"
+          "blob": "e37ad57b620bdc2d1be02b71e25a3e7425c4c37b",
+          "path": "crates/wyrd/wyrd-sql/src/queries/storage/mod.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "cafbb67da6250cb237d76fa627aa271a0fd6e668",
-          "path": "crates/wyrd/wyrd-server/tests/platform_admin_e2e.rs",
-          "reason": "NotFetched"
+          "blob": "c480fffd83c5eb9ae5855edca01b73a3772d3704",
+          "path": "crates/wyrd/wyrd-sql/src/query/mod.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "e5425d713f97d31f8d05bf362ebe45ed3917f9f5",
-          "path": "crates/wyrd/wyrd-server/tests/storage_e2e.rs",
-          "reason": "NotFetched"
+          "blob": "17a8753927f98c73e064304a8bb753ef2166d960",
+          "path": "crates/wyrd/wyrd-sql/src/row_types/auth/mod.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "b39ea11d46e5fca5717e9e03f9630bdf8dba7f15",
-          "path": "crates/wyrd/wyrd-sql/src/row_types/cards.rs",
-          "reason": "NotFetched"
+          "blob": "71e8a13816895d24e09740b13391298ec22e7d58",
+          "path": "crates/wyrd/wyrd-sql/src/row_types/mod.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "5c5f987fb18425040d7ebdafb7e113cee9e1e5e9",
-          "path": "crates/wyrd/wyrd-sql/tests/pg_admin_principals.rs",
-          "reason": "NotFetched"
+          "blob": "4e89eb6b4ef7711b579d5cc713f78b849c3a3aab",
+          "path": "crates/wyrd/wyrd-sql/src/row_types/platform/mod.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "56fb73cac07296af5d2e39adc6f22698f0758216",
-          "path": "crates/wyrd/wyrd-sql/tests/pg_cards_register.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "13b1ef5b573ca9e12a3f481299217a04b4520cf6",
-          "path": "crates/wyrd/wyrd-sql/tests/pg_platform_identity.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "d712c50145c392b0489ab57852f2d43c24f8cb2b",
-          "path": "crates/wyrd/wyrd-sql/tests/pg_query_compile.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "9c306f8b955a1b2f24da7452dd87f846d95f03bb",
-          "path": "crates/wyrd/wyrd-testing/src/bifrost/canonical_signals.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "60fc0d28129c06bea1428c22b4233c278dd69037",
-          "path": "crates/wyrd/wyrd-testing/src/bifrost/cluster.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "d68d170aa5570f368917b32612d80a4f12d41092",
-          "path": "crates/wyrd/wyrd-testing/src/bifrost/deployment_contract.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "946fad4c39b84aba995f54c262e7214e82a75867",
-          "path": "crates/wyrd/wyrd-testing/src/bifrost/forge_harness.rs",
-          "reason": "NotFetched"
+          "blob": "65bf782df4b732a403dd162655f616a8adad5b33",
+          "path": "crates/wyrd/wyrd-storage/docker/docker-compose.yml",
+          "reason": "NoFacts"
         },
         {
           "blob": "15ff69d2cd1192b0a00a8b011d15e539be2c915f",
           "path": "crates/wyrd/wyrd-testing/src/bifrost/mod.rs",
-          "reason": "NotFetched"
+          "reason": "NoFacts"
         },
         {
-          "blob": "34cb2feecab17b88eba8a0ab72b19772821921ca",
-          "path": "crates/wyrd/wyrd-testing/src/bifrost/peer_ca.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "cfafc6fd0731bfd7a478dffc821aa64faf784d2d",
-          "path": "crates/wyrd/wyrd-testing/src/bifrost/peer_keyring.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "9ab26ed09809bcd5f259eb2546769a459dc50885",
-          "path": "crates/wyrd/wyrd-testing/src/bifrost/process_cluster.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "d3a9d8116974d262e476d98b6e8bb8d4e5ec4daa",
-          "path": "crates/wyrd/wyrd-testing/src/bifrost/scribe_workload.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "b1ea3d1d50563cb66d6bbc5971b56b266e173a70",
-          "path": "crates/wyrd/wyrd-testing/src/bifrost/telemetry.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "6bf89c2c8343eb4b63e2e02fbbf7cadcc9ab0a34",
-          "path": "crates/wyrd/wyrd-testing/src/keys.rs",
-          "reason": "NotFetched"
+          "blob": "9fafc7c2d7dfdf70a9e5329e5a494b79a3e7249b",
+          "path": "crates/wyrd/wyrd-testing/src/interleaving/mod.rs",
+          "reason": "NoFacts"
         },
         {
           "blob": "4bb110c94567e3d79df8e035176a7fc90fbaa377",
           "path": "crates/wyrd/wyrd-testing/src/lib.rs",
-          "reason": "NotFetched"
+          "reason": "NoFacts"
         },
         {
-          "blob": "b044a5d66769adfd4361da855cb267100300cc04",
-          "path": "crates/wyrd/wyrd-testing/src/oidc_fixture.rs",
-          "reason": "NotFetched"
+          "blob": "08a9b6e3aa07aa39c9414061d81665c91c6f3374",
+          "path": "crates/wyrd/wyrd-testing/src/load/mod.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "4b500519f4a65c1dff0473b2070818656c300849",
-          "path": "crates/wyrd/wyrd-testing/src/principal.rs",
-          "reason": "NotFetched"
+          "blob": "c09773cd099e28d2e86549d12771cd1afe62a313",
+          "path": "crates/wyrd/wyrd-testing/tests/bifrost/forge/main.rs",
+          "reason": "NoFacts"
         },
         {
-          "blob": "d86d99c430566c6cebb31a96b18839f29bbff85d",
-          "path": "crates/wyrd/wyrd-testing/src/time.rs",
-          "reason": "NotFetched"
+          "blob": "9f7387b3464433dc08c8f39406d1c184f25bdf2d",
+          "path": "crates/wyrd/wyrd-testing/tests/bifrost/oracle/main.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "91aadd6015c055dd4f57277c8c4da8b79b176ace",
+          "path": "crates/wyrd/wyrd-testing/tests/bifrost/oracle/peer_network/mod.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "27e34ac077de4dfe412afedafc0b3ff828f61567",
+          "path": "crates/wyrd/wyrd-testing/tests/bifrost/otlp/main.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "9ef22be9a56c7cee238d140402df8e4397537cd6",
+          "path": "crates/wyrd/wyrd-testing/tests/bifrost/scribe/main.rs",
+          "reason": "NoFacts"
         },
         {
           "blob": "e72d36a65c90a1e81925b3b77b6dfe22b11f8b73",
           "path": "crates/wyrd/wyrd-testing/tests/bifrost/server/main.rs",
-          "reason": "NotFetched"
+          "reason": "NoFacts"
         },
         {
-          "blob": "c625eddba7ab834c8cddf13b9caa91f82333a3e1",
-          "path": "crates/wyrd/wyrd-testing/tests/bifrost/server/owner_inspection.rs",
-          "reason": "NotFetched"
+          "blob": "1644febb272c16adc9163ddd9b46bfd0efa2fb02",
+          "path": "crates/wyrd/wyrd-testing/tests/gateway/main.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "59ac5254fc1b5202918a7f6b4338faddbc204569",
+          "path": "crates/wyrd/wyrd/src/agent.rs",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "530b6d4a44f1753a4c0eea0019990e42cfb5bdb7",
+          "path": "deploy/kubernetes/bifrost/deployment-mixed.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "beae0418d858ada8702d71910c4f7fb9bbdd72ef",
+          "path": "deploy/kubernetes/bifrost/deployment-role-separated.yaml",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "503bce1179958ac1f3582f877bb8ad553b7d3ad8",
+          "path": "deploy/kubernetes/bifrost/rollback-mixed.yaml",
+          "reason": "NoFacts"
         },
         {
           "blob": "60414934c2b59c223e2a5f1f178345b47dfd9f1f",
           "path": "docker-compose.yml",
-          "reason": "NotFetched"
+          "reason": "NoFacts"
         },
         {
-          "blob": "06c38f489eb345ab4f5ab04e67be3f345da8ae6d",
-          "path": "scripts/add_justification.py",
-          "reason": "NotFetched"
+          "blob": "dd006df0b7cc59a2cb467e82f4b67263bc42a2a9",
+          "path": "docker/jaeger/docker-compose.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "3a4c4c456a093dca11a42639484901f25511fb27",
-          "path": "scripts/check_clippy_allow.py",
-          "reason": "NotFetched"
+          "blob": "ccbac807c176090b389adb6d98b64fe158f393cd",
+          "path": "docs/pnpm-workspace.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "99f56e76cfd8e068b0f5d29f466bba065f4c221f",
-          "path": "scripts/check_tenant_isolation.py",
-          "reason": "NotFetched"
+          "blob": "af4d7837a5e3d027718674d74b456de12ce32ee5",
+          "path": "docs/src/app.d.ts",
+          "reason": "NoFacts"
         },
         {
-          "blob": "c8de5606cf00fb5f1b22e7e5202f476c6bdcdee8",
-          "path": "scripts/check_test_contracts.py",
-          "reason": "NotFetched"
+          "blob": "957d6d2f6cb3810d71f33846d48d145947099ba4",
+          "path": "docs/src/lib/content.test.ts",
+          "reason": "NoFacts"
         },
         {
-          "blob": "0fababcfb5277339dc1b86cefbcc2172ada9ed5f",
-          "path": "scripts/check_ts_package.mjs",
-          "reason": "NotFetched"
+          "blob": "5e64a33b72f41a199a45e2d777f15db682b0143e",
+          "path": "docs/src/lib/mdsvex/components.js",
+          "reason": "NoFacts"
         },
         {
-          "blob": "ba71dcccb4cb4fda46369e6da7d319497ff6cf84",
-          "path": "scripts/check_unwrap_audit.py",
-          "reason": "NotFetched"
+          "blob": "7f14d3c85ad62b5b447603dedaf122295b2e5158",
+          "path": "docs/vite.config.ts",
+          "reason": "NoFacts"
         },
         {
-          "blob": "42a524814cc1c611cea5e4983d9e1e7a1ea9dfac",
-          "path": "sdks/wyrd-sdk-python/python/wyrd/testing/__init__.py",
-          "reason": "NotFetched"
+          "blob": "c7d935227ed1d397c78f2e9c7e98083c0468175b",
+          "path": "examples/rust/workflows/research.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "2df2244488a3e88029182f7e8935b61d796f1767",
-          "path": "sdks/wyrd-sdk-python/scripts/run_unit_tests.py",
-          "reason": "NotFetched"
+          "blob": "fbdc6aaca199282776ad045720e9b4c22f858f4b",
+          "path": "sdks/wyrd-sdk-python/examples/workflows/research.yaml",
+          "reason": "NoFacts"
         },
         {
-          "blob": "e728dcf4a0c22887bc263bab4374af47449e8ffb",
-          "path": "sdks/wyrd-sdk-python/src/client.rs",
-          "reason": "NotFetched"
+          "blob": "0cbcad8b3dd8d5044272dc08083230622eed3b8a",
+          "path": "sdks/wyrd-sdk-python/tests/__init__.py",
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "sdks/wyrd-sdk-python/tests/integration/__init__.py",
+          "reason": "NoFacts"
         },
         {
           "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
           "path": "sdks/wyrd-sdk-python/tests/integration/gateway/__init__.py",
-          "reason": "NotFetched"
+          "reason": "NoFacts"
         },
         {
-          "blob": "7ea81867d7f33e85b37e54ecc48a956e36033c8b",
-          "path": "sdks/wyrd-sdk-python/tests/unit/cards/prompt/test_errors.py",
-          "reason": "NotFetched"
+          "blob": "9c989c7d817556633c8f8d4d5bc2805e0000f270",
+          "path": "sdks/wyrd-sdk-python/tests/unit/__init__.py",
+          "reason": "NoFacts"
         },
         {
-          "blob": "50c6c5ef8558acb3aba1f4e1c87a3082c025bf08",
-          "path": "sdks/wyrd-sdk-python/tests/unit/cards/prompt/test_module_layout.py",
-          "reason": "NotFetched"
+          "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "path": "sdks/wyrd-sdk-python/tests/unit/config/__init__.py",
+          "reason": "NoFacts"
         },
         {
-          "blob": "df69b322526c8108797893253eb3672ec22e38b7",
-          "path": "sdks/wyrd-sdk-python/tests/unit/cards/prompt/test_prompt_declarative.py",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "ba8cc0602e3ca8c566ebc9f7325701728f38550a",
-          "path": "sdks/wyrd-sdk-python/tests/unit/cards/prompt/test_prompt_envelope.py",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "0d69fd5df0dec8ebd7fb6c317022ceecacab2a82",
-          "path": "sdks/wyrd-sdk-python/tests/unit/cards/prompt/test_prompt_load.py",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "498d6922bdb6881788ec268316982253af845e8a",
-          "path": "sdks/wyrd-sdk-python/tests/unit/cards/prompt/test_prompt_media.py",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "bc41d755dc0587ff90f97ccabfa0eb13d3f7829a",
-          "path": "sdks/wyrd-sdk-python/tests/unit/cards/prompt/test_prompt_media_binding.py",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "0edcf2f8d68d437af805d66fe5749e51186ff03e",
-          "path": "sdks/wyrd-sdk-python/tests/unit/cards/prompt/test_prompt_output_schema.py",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "63127bff377d154dbbf24a354a83fe83044e9388",
-          "path": "sdks/wyrd-sdk-python/tests/unit/cards/prompt/test_prompt_output_schema_rust.py",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "1088baa640ca6eaf5a361ba6a15e615d33c6e590",
-          "path": "sdks/wyrd-sdk-python/tests/unit/cards/prompt/test_prompt_render.py",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "c5e628ed4c42a14358c0695092cc221f61d219cd",
-          "path": "sdks/wyrd-sdk-python/tests/unit/cards/prompt/test_prompt_structured_output.py",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "8dfa6a5bcffb62c3af795a1a92402cfae730904f",
-          "path": "sdks/wyrd-sdk-python/tests/unit/cards/prompt/test_prompt_template_syntax.py",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "b2146474a383621bdddd696562c081cfdb861aa4",
-          "path": "sdks/wyrd-sdk-python/tests/unit/cards/prompt/test_promptcard_lifecycle.py",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "4f9f5b2c94466e2b9e304bd93fbe90f4cb7a7e7b",
-          "path": "sdks/wyrd-sdk-python/tests/unit/cards/prompt/test_promptcard_roundtrip.py",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "e5725f81cc0dc918ae7c4356e2a9a81e6c3a4777",
-          "path": "sdks/wyrd-sdk-python/tests/unit/cards/prompt/test_promptref.py",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "497df55eccf182e162db476b80921aaf17d1d337",
-          "path": "sdks/wyrd-sdk-rust/tests/cards_state.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "78c3218bb3906679651879fdf992c70218020b12",
-          "path": "sdks/wyrd-sdk-ts/native-testing/build.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "fd0f69f44006db81dc9a6e80ec1d54d0444f56e9",
-          "path": "sdks/wyrd-sdk-ts/native/src/cards.rs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "20713cc633667ee2dbe39baaa159bf0cbbd3d601",
-          "path": "sdks/wyrd-sdk-ts/native/src/client.rs",
-          "reason": "NotFetched"
+          "blob": "d559bcccbf765e05410c1c451e2911f4289866d6",
+          "path": "sdks/wyrd-sdk-python/tests/unit/state/__init__.py",
+          "reason": "NoFacts"
         },
         {
           "blob": "28a92c1d537ff67f484b7ae376fe7724c2b6e549",
           "path": "sdks/wyrd-sdk-ts/pnpm-workspace.yaml",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "a8745ec82c2ec2898a6e90043e37ea9dd734475e",
-          "path": "sdks/wyrd-sdk-ts/testing/index.js",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "b351972f8550a913711890408397cb96c08a2beb",
-          "path": "sdks/wyrd-sdk-ts/wyrd/index.cjs",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "443f73181a0480cc27801e4529873f95b9e81ef4",
-          "path": "sdks/wyrd-sdk-ts/wyrd/tests/integration/bifrost-write.test.ts",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "c050cef2f5795f068c214151ce8d55768e96a98d",
-          "path": "sdks/wyrd-sdk-ts/wyrd/tests/integration/cards-state.test.ts",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "bcefaef64f1612b21d6f5960248c758443581a3d",
-          "path": "sdks/wyrd-sdk-ts/wyrd/tests/integration/oracle-query.test.ts",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "2dc4c4cc998ce72f2ab8bc8d2db0d5df5d0085ff",
-          "path": "sdks/wyrd-sdk-ts/wyrd/tests/integration/otel-export.test.ts",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "06b2c434e9fb20f57d83989693e3392a9980b432",
-          "path": "sdks/wyrd-sdk-ts/wyrd/tests/unit/bifrost-query.test.ts",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "baec95f0d2924384a7a0e63f7c0af8600df82100",
-          "path": "sdks/wyrd-sdk-ts/wyrd/tests/unit/connect-errors.test.ts",
-          "reason": "NotFetched"
-        },
-        {
-          "blob": "c8e8251a052408b3d1880d0b4e531c8f5fcb20a3",
-          "path": "sdks/wyrd-sdk-ts/wyrd/tests/unit/wyrd-client.test.ts",
-          "reason": "NotFetched"
+          "reason": "NoFacts"
         },
         {
           "blob": "4396f0eb57b11142cc55c1acd634d1634d045f25",
           "path": "sdks/wyrd-sdk-ts/wyrd/tests/unit/wyrd-error.test.ts",
-          "reason": "NotFetched"
+          "reason": "NoFacts"
+        },
+        {
+          "blob": "b33cb98bdb787ce5b217486179c1963835c29096",
+          "path": "tests/fixtures/identity/dex-config.yaml",
+          "reason": "NoFacts"
         }
       ],
       "truncated_tree": false
     },
-    "overlay_complete": false,
+    "overlay_complete": true,
     "pr_files_rejected": 0,
     "pr_files_truncated": false,
-    "scope": "Scoped",
-    "snapshot_complete": false,
-    "snapshot_tree": null
+    "scope": "Repository",
+    "snapshot_complete": true,
+    "snapshot_tree": "e52bce5c1a1c5188ed698d541f8128f90474f2bc"
   },
   "elapsed_ms": {
-    "cold_build": 3646,
-    "pr_context": 52690,
-    "read": 0
+    "cold_build": 3807,
+    "pr_context": 29484,
+    "read": 0,
+    "warm_p50": 26943,
+    "warm_p95": 27733,
+    "warm_runs": 3
   },
-  "full_coverage": false,
+  "full_coverage": true,
   "head": "856ddf071541ab47f2e504306a9cba73134ddb4d",
   "not_analyzed": [
     {
@@ -1822,18 +2807,10 @@
     {
       "path": "sdks/wyrd-sdk-ts/pnpm-lock.yaml",
       "reason": "NotEligible"
-    },
-    {
-      "path": "crates/wyrd/wyrd-server/src/state.rs",
-      "reason": {
-        "AnalysisFailed": {
-          "detail": "extraction failed for `crates/wyrd/wyrd-server/src/state.rs`: extraction deferred for `rust`: defer: parse tree contains errors — wasm recovery is canonical"
-        }
-      }
     }
   ],
-  "object_digest": "aaf79f1d85c986023e10d29b9f3b146a682ca06787a5be180586a557aa3f0b2f",
-  "object_key": "tenants/live/installations/1/repositories/1383739221/contexts/aaf79f1d85c986023e10d29b9f3b146a682ca06787a5be180586a557aa3f0b2f-a4860acc5e4f8687b06df43596e96530",
+  "object_digest": "c838b21b19711b537f051d528de24d85b71410f9d1ab2febaa16f22bf568360f",
+  "object_key": "tenants/live/installations/1/repositories/1383739221/contexts/c838b21b19711b537f051d528de24d85b71410f9d1ab2febaa16f22bf568360f-99b8fcec506bd39c7cd425ea9ea9c465",
   "omissions": [],
   "pull_request": "https://github.com/bohmian-ai/wyrd/pull/91",
   "read_back_equal": true,

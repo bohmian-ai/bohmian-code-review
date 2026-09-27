@@ -71,29 +71,27 @@ Stop if the four public facades cannot compose under the approved injected contr
 
 ## Implementation Evidence
 
-The evidence below was recorded against revision 13. Its capacity (AC-007) rows are superseded and must be re-run after TASK-008, TASK-009 and TASK-010. Revision 14 resolves the material finding below.
+Recorded 2026-09-27 against revision 14 at `2257992`, after TASK-008, TASK-009 and TASK-010 passed review. It supersedes the revision-13 evidence, including its material finding: revision 14 resolved that finding, and every large repository now publishes a complete snapshot.
 
-Environment: macOS 15 (Darwin 24.6.0), Apple silicon, release build, residential network, 2026-09-26. Live runs used a read-only `gh` user token; GitHub was only read. Reports live in [evidence/TASK-007](../evidence/TASK-007/); they carry paths, ranges and identities, never source text.
+Environment: macOS 15 (Darwin 24.6.0), Apple silicon, release build, residential network. Live runs used a read-only `gh` user token (`GITHUB_TOKEN=$(gh auth token)`) and only read from GitHub. Peak RSS comes from `/usr/bin/time -l`. Reports in [evidence/TASK-007](../evidence/TASK-007/) carry paths, ranges and identities, never source text.
 
 | Acceptance criterion | Implementation evidence | Verification evidence | Result |
 |---|---|---|---|
-| Independent facade calls | `crates/bohmian-code-review-pipeline/tests/pipeline_journey.rs` `each_facade_is_independently_callable` | `mise run test:pipeline:journey` | PASS |
-| Composed journey, AC-002 dropped cold build → scoped fallback with zero review allowance spent → retry converges; update fetches only the changed blob; warm PR fetches no archive, equals from-scratch ranking, full coverage; read-back by id with no provider calls | same file, `cold_update_warm_review_and_read_compose` | `mise run test:pipeline:journey` | PASS |
-| S1–S19, from-scratch/property oracles | Owner tests from TASK-002–005 (reviewed PASS) | `mise run test:pipeline`, `mise run gate` | PASS |
-| S20 fails visibly without credentials | `examples/live_pr.rs` | `env -u GITHUB_TOKEN target/release/examples/live_pr` → `live_pr failed: GITHUB_TOKEN is required`, exit 1 | PASS |
-| S20 empty context cannot pass | same | PR #91 → budget exhausted (diff ≈422k est. tokens > 64k), `spans: []`, exit 1 ([report](../evidence/TASK-007/s20-wyrd-pr91.json)) | PASS |
-| S20 one recorded passing run, nonempty spans, read-back by id | same | `mise run live:pr` with `BCR_REPO_ID=1383739221 BCR_PR=1` → 29 spans, `read_back_equal: true`, exit 0, 23.3 s, 105 MB peak RSS ([report](../evidence/TASK-007/s20-wyrd-pr1.json)) | PASS (scoped coverage) |
-| Provider contract (AC-006) | live runs | Archive redirect + stream, recursive tree (incl. `truncated: true` on rust-lang/rust), blob verification, PR patch omission (#91: 35 `MissingPatch`) observed live. Rate-limit/conditional headers were not triggered live; covered only by the local fake contract tests. | PARTIAL |
-| Capacity (AC-007) | `BCR_WARM_RUNS=3` | See table below | FAIL: no complete snapshot, so warm reuse is unmeasurable |
+| Independent facade calls | `crates/bohmian-code-review-pipeline/tests/pipeline_journey.rs` `each_facade_is_independently_callable` | `mise run test:pipeline:journey` (2 passed) | PASS |
+| Composed journey: a dropped cold build falls back to scoped context without spending review allowance (AC-002), and a retry converges; the compare-based update fetches only the changed blob; the warm PR fetches no archive, matches from-scratch ranking and has full coverage; read-back by ID makes no provider calls | same file, `cold_update_warm_review_and_read_compose` | `mise run test:pipeline:journey` | PASS |
+| S1–S19, from-scratch/property oracles | Owner tests from TASK-002–005 and 008–010 (each reviewed PASS) | `mise run gate` | PASS |
+| S20 fails visibly without credentials or access | `examples/live_pr.rs` | `env -u GITHUB_TOKEN …/live_pr` → `GITHUB_TOKEN is required`, exit 1. `BCR_PR=999999` → `not found: /repos/bohmian-ai/wyrd/pulls/999999`, exit 1. `BCR_REPO_ID=1` → `identity mismatch`, exit 1 | PASS |
+| S20 cannot pass with empty context | same | Default PR #91: diff ≈422k est. tokens > 64k allocation → `exhausted: true`, `spans: []`, `selected context is empty`, exit 1 ([report](../evidence/TASK-007/s20-wyrd-pr91.json)) | PASS |
+| S20 recorded passing run: nonempty spans, read-back by ID | same | `GITHUB_TOKEN=$(gh auth token) BCR_REPO_ID=1383739221 BCR_PR=1 BCR_WARM_RUNS=3 mise run live:pr` → repository scope, `full_coverage: true`, 50 spans, `read_back_equal: true`, exit 0, 107 s wall, 169 MiB peak RSS ([report](../evidence/TASK-007/s20-wyrd-pr1.json)) | PASS |
+| Provider contract (AC-006) | live runs plus `gh api -i` header capture | Observed live: archive 303 redirect to `codeload.github.com` streamed to completion (0 fallback blobs on all three repositories); recursive tree plus subtree splitting (rust-lang/rust: 40 tree calls, no truncation left); blob SHA verification (~1.3k vscode blobs); PR patch omission (#91 not-analyzed files); compare responses. Repository, tree, PR-files, compare and tarball responses carry the `x-ratelimit-remaining`/`x-ratelimit-reset` integer headers that `rate_limit_wait` parses. No live 403/429 was provoked, since exhausting a real quota on purpose is inappropriate; that branch and the GHES header variants are covered by the local fake contract tests in `github.rs`. The client sends no conditional requests, so there is no conditional path to exercise | PASS (limits noted) |
+| Capacity (AC-007), re-run after TASK-008/009/010 | `BCR_WARM_RUNS=3` | Table below. All three repositories publish a complete snapshot, and warm PR context reuses it with no archive fetch | PASS |
 
-| Repository (PR) | Eligible | Cold outcome | Cold ms | PR ms | "Warm" p50/p95 ms (scoped) | Peak RSS | Calls |
-|---|---|---|---|---|---|---|---|
-| bohmian-ai/wyrd @2855eac (#1) | 1,681 | Incomplete: 3 unindexed (Rust extraction deferred) | 3,541 | 19,154 | 17,166 / 17,172 | 99 MB | 418 |
-| microsoft/vscode @43dd907 (#338165) | 14,690 | Incomplete: 62 unindexed | 18,795 | 9,541 | 9,605 / 9,782 | 666 MB | 158 |
-| rust-lang/rust @c231371 (#163391) | — | Incomplete: truncated tree | 2,211 | 20,010 | 19,695 / 22,182 | 115 MB | 411; exit 1, empty spans (changed file failed extraction) |
+| Repository @ commit (PR) | Eligible / indexed / NoFacts | Archive bytes gz / expanded | Snapshot bytes | Cold ms | First PR ms | Warm p50 / p95 ms | Peak RSS | Calls (Blob / Tree / Archive) | PR coverage |
+|---|---|---|---|---|---|---|---|---|---|
+| bohmian-ai/wyrd @2855eac (#1) | 1,681 / 1,461 / 220 | 8.5 MB / 44.2 MB | 7.7 MB | 3,558 | 27,468 | 25,263 / 25,881 | 169 MiB | 545 / 5 / 2 | Full |
+| microsoft/vscode @4336606 (#338165) | 14,691 / 12,762 / 1,929 | 56.8 MB / 296.5 MB | 60.4 MB | 18,548 | 70,648 | 71,363 / 75,026 | 957 MiB | 1,277 / 5 / 2 | Repository scope, overlay incomplete: the PR base is 2,678 changes behind main, past the 300-change overlay ceiling (`NotFetched`) |
+| rust-lang/rust @b20a7eb (#163394) | 39,496 / 36,780 / 2,716 | 40.3 MB / 278.4 MB | 66.1 MB | 17,766 | 10,369 | 7,729 / 7,759 | 1,015 MiB | 25 / 40 / 2 | Full |
 
-`ColdBuild` pins the current default-branch head, so these are recorded-commit, not re-runnable fixed-commit, measurements.
+Archive bytes come from `gh api repos/<repo>/tarball/<commit> | wc -c` (and `| gzip -dc | wc -c`) at the pinned commit. Every `NoFacts` skip on wyrd is a file with no extractable declarations: an empty file, a doc-only or `mod`-only Rust module, a vitest body, or YAML. Calls include the cold build, the first PR and three warm runs. Warm time is dominated by overlay and candidate blob fetches, since each run fetches its PR's changed and selected blobs again. `ColdBuild` pins the current default-branch head, so each row is a recorded-commit measurement. It is reproducible only while that commit is still the default-branch head. The PR #163391 used before was closed, so rust-lang/rust uses the open PR #163394.
 
-**Material finding.** Under REQ-005/“complete snapshot”, one extractor deferral makes the whole snapshot incomplete. All three real repositories therefore never publish a reusable snapshot, and every review is scoped (J2 warm reuse never happens in practice). Deciding whether content-level parse deferrals may count as honest skips in a complete snapshot is a spec decision; it is not changed here.
-
-Non-goals stayed excluded: no consumer code, no server/worker, no production dependency added (the `testing` feature only exposes existing in-memory adapters), S20 is not in `gate`. `scripts/check-test-placement.sh` now also admits the outer pipeline crate's public `tests/`.
+Non-goals stayed excluded. There is no consumer code and no server or worker, and no production code or dependency changed in this refresh. S20 and the live runs stay outside `gate`. Only the evidence reports and this record changed; the superseded `bench-wyrd.json` was removed because `s20-wyrd-pr1.json` is the 1k-class wyrd measurement.
