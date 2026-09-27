@@ -11,8 +11,7 @@
   "calls": {
     "Archive": 2,
     "Blob": 1277,
-    "BranchHead": 1,
-    "Commit": 4,
+    "Commit": 5,
     "PullRequest": 8,
     "PullRequestFiles": 4,
     "Repository": 1,
@@ -27,7 +26,7 @@
     "fallback_blobs": 0,
     "indexed": 12762,
     "outcome": "Published(SnapshotPointer { tree: ObjectSha(\"991515e042ae24e34f21e176a186b2d7ec17968b\"), commit: ObjectSha(\"4336606aa949efdcddb89b3db3e216562730b2bf\"), key: ObjectKey(\"tenants/live/installations/1/repositories/41881900/snapshots/636f646567726170682d6b65726e656c2d35373264323262662e747265652d7369747465722d302e32352e31302e7265636f76657265642d747265652e66616374732d32/3/1048576/991515e042ae24e34f21e176a186b2d7ec17968b\"), digest: ObjectDigest(\"544b3996c89446e3e3a6f1998d4647c34f60760333c6e2ac5d7fe9de48362928\") })",
-    "peak_verified_bytes": 861235,
+    "peak_verified_bytes": 890868,
     "skipped": [
       {
         "blob": "fca187c0ae9ad84e0eec535c5b2af0e4049928fc",
@@ -9678,7 +9677,7 @@
     "snapshot_bytes": 60389385,
     "tree": "991515e042ae24e34f21e176a186b2d7ec17968b"
   },
-  "context_id": "cd7fa7b361225e3b0b57489ac7ed3bf003648bfa843c0a4158bc11c3307c2492-8eea9f76fde9f267b18820bbf0a2b985",
+  "context_id": "cd7fa7b361225e3b0b57489ac7ed3bf003648bfa843c0a4158bc11c3307c2492-4ad33b1e0cb41961897e7bc0fab1b074",
   "coverage": {
     "files": {
       "eligible": 13957,
@@ -30361,18 +30360,18 @@
     "snapshot_tree": "991515e042ae24e34f21e176a186b2d7ec17968b"
   },
   "elapsed_ms": {
-    "cold_build": 18548,
-    "pr_context": 70648,
+    "cold_build": 19209,
+    "pr_context": 71498,
     "read": 8,
-    "warm_p50": 71363,
-    "warm_p95": 75026,
+    "warm_p50": 71279,
+    "warm_p95": 71572,
     "warm_runs": 3
   },
   "full_coverage": false,
   "head": "5a1037def9312f02fe891a6d275c53857e5b37f5",
   "not_analyzed": [],
   "object_digest": "cd7fa7b361225e3b0b57489ac7ed3bf003648bfa843c0a4158bc11c3307c2492",
-  "object_key": "tenants/live/installations/1/repositories/41881900/contexts/cd7fa7b361225e3b0b57489ac7ed3bf003648bfa843c0a4158bc11c3307c2492-8eea9f76fde9f267b18820bbf0a2b985",
+  "object_key": "tenants/live/installations/1/repositories/41881900/contexts/cd7fa7b361225e3b0b57489ac7ed3bf003648bfa843c0a4158bc11c3307c2492-4ad33b1e0cb41961897e7bc0fab1b074",
   "omissions": [
     {
       "end": 60,

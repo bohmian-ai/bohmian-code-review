@@ -11,8 +11,7 @@
   "calls": {
     "Archive": 2,
     "Blob": 25,
-    "BranchHead": 1,
-    "Commit": 4,
+    "Commit": 5,
     "PullRequest": 8,
     "PullRequestFiles": 4,
     "Repository": 1,
@@ -13613,7 +13612,7 @@
     "snapshot_bytes": 66083067,
     "tree": "9e8a9f39e23c7ed653b219bb864aa68743f04700"
   },
-  "context_id": "68b407f58f90799089a5f2e25121cea9a2452934f07feafddccb480248a8b483-4307418114f7a7b5e2a4dd4114a365e3",
+  "context_id": "68b407f58f90799089a5f2e25121cea9a2452934f07feafddccb480248a8b483-3e6bee87e6f1ca3c9f989eb97a64cae2",
   "coverage": {
     "files": {
       "eligible": 39496,
@@ -27218,18 +27217,18 @@
     "snapshot_tree": "9e8a9f39e23c7ed653b219bb864aa68743f04700"
   },
   "elapsed_ms": {
-    "cold_build": 17766,
-    "pr_context": 10369,
+    "cold_build": 18244,
+    "pr_context": 8039,
     "read": 1,
-    "warm_p50": 7729,
-    "warm_p95": 7759,
+    "warm_p50": 8078,
+    "warm_p95": 8096,
     "warm_runs": 3
   },
   "full_coverage": true,
   "head": "b90cbcbabf4f0af8b4710f7d33fa0ee04337acc8",
   "not_analyzed": [],
   "object_digest": "68b407f58f90799089a5f2e25121cea9a2452934f07feafddccb480248a8b483",
-  "object_key": "tenants/live/installations/1/repositories/724712/contexts/68b407f58f90799089a5f2e25121cea9a2452934f07feafddccb480248a8b483-4307418114f7a7b5e2a4dd4114a365e3",
+  "object_key": "tenants/live/installations/1/repositories/724712/contexts/68b407f58f90799089a5f2e25121cea9a2452934f07feafddccb480248a8b483-3e6bee87e6f1ca3c9f989eb97a64cae2",
   "omissions": [],
   "pull_request": "https://github.com/rust-lang/rust/pull/163394",
   "read_back_equal": true,

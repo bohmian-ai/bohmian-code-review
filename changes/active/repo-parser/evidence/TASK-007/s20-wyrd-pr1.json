@@ -11,8 +11,7 @@
   "calls": {
     "Archive": 2,
     "Blob": 545,
-    "BranchHead": 1,
-    "Commit": 4,
+    "Commit": 5,
     "PullRequest": 8,
     "PullRequestFiles": 4,
     "Repository": 1,
@@ -1133,7 +1132,7 @@
     "snapshot_bytes": 7654890,
     "tree": "e52bce5c1a1c5188ed698d541f8128f90474f2bc"
   },
-  "context_id": "56561383dd985d3f0591713650bc1ecbd44c86768d9dc0e839b299dbc8c55052-45cf8d2ae2c5785eaea7474fc0685afb",
+  "context_id": "56561383dd985d3f0591713650bc1ecbd44c86768d9dc0e839b299dbc8c55052-10d2d7b94b6c2f6023b9d23a5b4d3a62",
   "coverage": {
     "files": {
       "eligible": 1612,
@@ -2229,11 +2228,11 @@
     "snapshot_tree": "e52bce5c1a1c5188ed698d541f8128f90474f2bc"
   },
   "elapsed_ms": {
-    "cold_build": 3558,
-    "pr_context": 27468,
+    "cold_build": 3834,
+    "pr_context": 26411,
     "read": 0,
-    "warm_p50": 25263,
-    "warm_p95": 25881,
+    "warm_p50": 24111,
+    "warm_p95": 25788,
     "warm_runs": 3
   },
   "full_coverage": true,
@@ -2273,7 +2272,7 @@
     }
   ],
   "object_digest": "56561383dd985d3f0591713650bc1ecbd44c86768d9dc0e839b299dbc8c55052",
-  "object_key": "tenants/live/installations/1/repositories/1383739221/contexts/56561383dd985d3f0591713650bc1ecbd44c86768d9dc0e839b299dbc8c55052-45cf8d2ae2c5785eaea7474fc0685afb",
+  "object_key": "tenants/live/installations/1/repositories/1383739221/contexts/56561383dd985d3f0591713650bc1ecbd44c86768d9dc0e839b299dbc8c55052-10d2d7b94b6c2f6023b9d23a5b4d3a62",
   "omissions": [
     {
       "end": 192,
