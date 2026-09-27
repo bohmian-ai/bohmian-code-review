@@ -64,3 +64,18 @@ Stop if GitHub's listing semantics make a joined listing differ from the recursi
 ## Authority Links
 
 [Revision 14 spec](../spec.md) (REQ-005, REQ-008), [pipeline plan](../symbolic-context-service-plan.md).
+
+## Implementation Evidence
+
+Environment: macOS 15 (Darwin 24.6.0), Apple silicon, 2026-09-27. Fake-provider tests only; no network.
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| A truncated recursive listing yields a complete, published snapshot equal to the untruncated oracle | `GitHubClient::tree` lists a truncated tree without recursion and each subtree recursively in its place (`list_into`, `tree_wire`, `TreeListing::push`), prefixing paths so entries match the recursive order; `truncated_listing_splits_into_the_complete_snapshot` truncates the root and `src` listings and asserts equal coverage and snapshot bytes against the untruncated oracle in 5 tree calls | `cargo test --locked -p bohmian-code-review-pipeline --all-features --lib truncated` (2 passed); `mise run test:pipeline` (73 + 2 passed) | PASS |
+| A listing that cannot be split is reported incomplete and is not published | `TreeListing::truncated` now means a non-recursive listing was itself truncated; cold build keeps `IncompleteReason::TruncatedTree` and `Coverage::truncated_tree` for it; `unsplittable_truncated_listing_is_incomplete_and_unpublished` asserts no object, prior pointer kept | same `truncated` filter | PASS |
+| Truncation no longer causes scoped fallback | `PrContext::run` no longer drops the snapshot for a truncated head listing; an unsplittable head listing keeps the snapshot and reports `files.truncated_tree`, so overlay coverage is not complete | `mise run test:pipeline` | PASS |
+| Existing cold, update and PR-context tests stay green | Scenario 2's truncated segment moved to its own test; `truncate_tree` fake now truncates both listings; Scenario 10 unchanged | `mise run test:pipeline`, `mise run test:pipeline:journey` (2 passed) | PASS |
+
+The joined listing uses only Git tree listings (`Operation::Tree`, same provider budget). The live `rust-lang/rust` capacity row belongs to TASK-007's re-run and was not run here. Non-goals stayed excluded: no scoped result for a large repository, no new endpoint or clone, no publication from a truncated listing.
+
+Commands: `cargo test ... --lib truncated`, `mise run test:pipeline`, `mise run test:pipeline:journey`, `mise run fmt:check`, `mise run lints`, `mise run gate`, `git diff --check`.
