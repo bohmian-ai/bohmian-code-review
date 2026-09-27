@@ -24,9 +24,7 @@ use crate::identity::{Identity, ObjectSha};
 use crate::persistence::{PersistenceError, SnapshotPointer, SnapshotScope, SnapshotStore};
 use crate::storage::{ObjectDigest, ObjectKey, ObjectStorage, StorageError};
 use bohmian_code_review::Error as SymbolicError;
-use bohmian_code_review::{
-    EXTRACTION_VERSION, IndexedFileFacts, NodeKind, RelativePath, SymbolicContext,
-};
+use bohmian_code_review::{EXTRACTION_VERSION, IndexedFileFacts, RelativePath, SymbolicContext};
 use flate2::write::GzDecoder;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -943,10 +941,11 @@ impl Ingest {
             .collect();
         for facts in prior.facts {
             let path = facts.path.clone();
-            if unchanged.contains_key(&path) && self.context.load(facts).is_ok() {
-                self.pending.remove(&path);
-                self.indexed += 1;
+            if let Some(blob) = unchanged.get(&path)
+                && self.context.load(facts).is_ok()
+            {
                 self.stats.reused_files += 1;
+                self.settle(path, blob.clone());
             }
         }
         for skipped in prior.coverage.skipped {
@@ -994,25 +993,15 @@ impl Ingest {
     }
 
     /// Index verified `bytes` for `path`, or skip it for an LFS pointer, no
-    /// extractable declarations, or extractor failure. A no-facts file is
-    /// removed from the context so only indexed files carry facts. The bytes
-    /// are dropped by the caller afterwards.
+    /// persisted declarations, or extractor failure. The bytes are dropped
+    /// by the caller afterwards.
     pub(crate) fn ingest(&mut self, path: RelativePath, blob: ObjectSha, bytes: &[u8]) {
         if bytes.starts_with(LFS_POINTER_PREFIX) {
             self.skip(path, blob, SkipReason::LfsPointer);
             return;
         }
         match self.context.upsert(path.as_str(), bytes) {
-            Ok(facts) if facts.nodes.iter().all(|node| node.kind == NodeKind::File) => {
-                self.context
-                    .remove(path.as_str())
-                    .expect("a path upsert accepted is canonical");
-                self.skip(path, blob, SkipReason::NoFacts);
-            }
-            Ok(_) => {
-                self.pending.remove(&path);
-                self.indexed += 1;
-            }
+            Ok(_) => self.settle(path, blob),
             Err(error) => self.skip(
                 path,
                 blob,
@@ -1021,6 +1010,27 @@ impl Ingest {
                 },
             ),
         }
+    }
+
+    /// Count `path`, just upserted or loaded into the context, as indexed
+    /// when its exported record carries a declaration; otherwise remove it
+    /// and record a [`SkipReason::NoFacts`] skip, so every indexed file
+    /// persists at least one declaration. This is the only place the
+    /// no-facts outcome is decided.
+    ///
+    /// # Panics
+    ///
+    /// Never in practice: a path the context accepted is canonical.
+    fn settle(&mut self, path: RelativePath, blob: ObjectSha) {
+        if self.context.has_declarations(&path) {
+            self.pending.remove(&path);
+            self.indexed += 1;
+            return;
+        }
+        self.context
+            .remove(path.as_str())
+            .expect("a path the context accepted is canonical");
+        self.skip(path, blob, SkipReason::NoFacts);
     }
 
     /// Record a skip and stop wanting the path.
@@ -1090,6 +1100,9 @@ pub(crate) mod tests {
         b"version https://git-lfs.github.com/spec/v1\noid sha256:0000\nsize 12\n";
     /// A parse-error file whose recovered tree holds no declarations.
     const BROKEN: &[u8] = b"export function (\n";
+    /// A valid file whose only facts are a file node and an import, neither
+    /// of which is a persisted declaration.
+    const IMPORT_ONLY: &[u8] = b"import { X } from './x';\n";
 
     /// Forty copies of `ch` as an object id.
     pub(crate) fn sha(ch: char) -> ObjectSha {
@@ -1535,19 +1548,23 @@ pub(crate) mod tests {
         );
     }
 
-    /// A verified file that extracts to no declarations is a recorded
-    /// content skip carrying its blob identity; the build stays complete
-    /// and publishes.
+    /// A verified file with no persisted declarations, whether malformed or
+    /// a valid import-only file, is a recorded content skip carrying its
+    /// blob identity and no fact record; the build stays complete and
+    /// publishes.
     ///
     /// # Panics
     ///
-    /// Panics if the build fails, does not publish, or records a different skip.
+    /// Panics if the build fails, does not publish, records different
+    /// skips, or persists a fact record for a skipped file.
     #[tokio::test]
     async fn no_facts_file_is_a_recorded_skip_in_a_published_build() {
-        let repo = FakeRepo::new(
-            &[file("src/user.ts", USER), file("src/broken.ts", BROKEN)],
-            &[("src/user.ts", USER), ("src/broken.ts", BROKEN)],
-        );
+        let files = [
+            ("src/user.ts", USER),
+            ("src/broken.ts", BROKEN),
+            ("src/only.ts", IMPORT_ONLY),
+        ];
+        let repo = FakeRepo::new(&files.map(|(path, bytes)| file(path, bytes)), &files);
         let client = repo.client();
         let storage = MemoryStorage::default();
         let persistence = MemorySnapshotStore::default();
@@ -1561,15 +1578,92 @@ pub(crate) mod tests {
             result.outcome
         );
         assert!(result.coverage.is_complete());
-        assert_eq!((result.coverage.eligible, result.coverage.indexed), (2, 1));
+        assert_eq!((result.coverage.eligible, result.coverage.indexed), (3, 1));
+        let no_facts = |path: &str, bytes: &[u8]| SkippedFile {
+            path: RelativePath::new(path).expect("path"),
+            blob: blob_sha(bytes),
+            reason: SkipReason::NoFacts,
+        };
         assert_eq!(
             result.coverage.skipped,
-            [SkippedFile {
-                path: RelativePath::new("src/broken.ts").expect("path"),
-                blob: blob_sha(BROKEN),
-                reason: SkipReason::NoFacts,
-            }]
+            [
+                no_facts("src/broken.ts", BROKEN),
+                no_facts("src/only.ts", IMPORT_ONLY)
+            ]
         );
+        let ColdBuildOutcome::Published(pointer) = result.outcome else {
+            unreachable!("publication asserted above");
+        };
+        let bytes = storage.read(&pointer.key).await.expect("object");
+        let snapshot = Snapshot::decode(&bytes, &identity(), &repo.tree).expect("decode");
+        let paths: Vec<&str> = snapshot.facts.iter().map(|f| f.path.as_str()).collect();
+        assert_eq!(paths, ["src/user.ts"]);
+    }
+
+    /// The shared ingest that update reuse and PR head overlays route
+    /// through classifies an import-only file as `NoFacts` whether it is
+    /// freshly extracted or reused from a prior empty-declaration record,
+    /// and neither leaves an indexed file or a posting behind.
+    ///
+    /// # Panics
+    ///
+    /// Panics if either path counts the file indexed, records a different
+    /// skip, or leaves it in the context.
+    #[test]
+    fn empty_declaration_projection_is_no_facts_on_ingest_and_reuse() {
+        let path = RelativePath::new("src/only.ts").expect("path");
+        let blob = blob_sha(IMPORT_ONLY);
+        let entries = [TreeEntry {
+            path: path.clone(),
+            mode: TreeEntryMode::File,
+            sha: blob.clone(),
+            size: Some(IMPORT_ONLY.len() as u64),
+        }];
+        let fresh = || {
+            Ingest::new(
+                &entries,
+                0,
+                &RootAttributes::default(),
+                MAX_ELIGIBLE_FILE_BYTES,
+            )
+        };
+        let expected = [SkippedFile {
+            path: path.clone(),
+            blob: blob.clone(),
+            reason: SkipReason::NoFacts,
+        }];
+
+        let mut ingest = fresh();
+        ingest.ingest(path.clone(), blob.clone(), IMPORT_ONLY);
+        let (coverage, _, files, context) = ingest.finish();
+        assert_eq!(
+            (coverage.indexed, coverage.skipped.as_slice()),
+            (0, &expected[..])
+        );
+        assert!(context.export().is_empty() && context.lookup("X").is_empty());
+
+        let mut ingest = fresh();
+        ingest.reuse(Snapshot {
+            format_version: SNAPSHOT_FORMAT_VERSION,
+            extraction_version: EXTRACTION_VERSION.to_owned(),
+            identity: identity(),
+            tree: sha('7'),
+            files,
+            facts: vec![IndexedFileFacts {
+                path: path.clone(),
+                extraction_version: EXTRACTION_VERSION.to_owned(),
+                byte_len: IMPORT_ONLY.len(),
+                declarations: Vec::new(),
+            }],
+            coverage: Coverage::default(),
+        });
+        assert_eq!(ingest.pending(), 0);
+        let (coverage, _, _, context) = ingest.finish();
+        assert_eq!(
+            (coverage.indexed, coverage.skipped.as_slice()),
+            (0, &expected[..])
+        );
+        assert!(context.export().is_empty());
     }
 
     /// Scenario 2: a truncated tree, an exhausted fallback
