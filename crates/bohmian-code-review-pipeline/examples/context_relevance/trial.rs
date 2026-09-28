@@ -1443,8 +1443,11 @@ mod tests {
                     Some("@@ -7 +7 @@\n-    return 0\n+    return 1"),
                 ),
             ];
-            let head = String::from_utf8_lossy(base[&path(caller)].as_slice())
-                .replacen("    return 0\n", "    return y()\n", 1);
+            let head = String::from_utf8_lossy(base[&path(caller)].as_slice()).replacen(
+                "    return 0\n",
+                "    return y()\n",
+                1,
+            );
             let heads: BTreeMap<RelativePath, Vec<u8>> = BTreeMap::from([
                 (path("pkg/b.py"), b"def y():\n    return 2\n".to_vec()),
                 (path(caller), head.into_bytes()),
