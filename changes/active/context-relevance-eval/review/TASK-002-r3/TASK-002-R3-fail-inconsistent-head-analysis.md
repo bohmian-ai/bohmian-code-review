@@ -29,3 +29,17 @@ At `Change::new`, propagate post-parse facade analysis failures using the existi
 3. The correction changes only the evaluator `trial.rs` and its inline no-network tests, unless the shared correction demonstrably requires another evaluator file. No public or production behavior, persisted format, provider flow, or gate changes.
 
 Record RED and GREEN for the exact focused command after naming the regression test, then run `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --example context_relevance --all-features trial::` and `report::`. Run sequentially: `mise run test:pipeline`, `mise run test:pipeline:journey`, `mise run test:symbolic-context:journey`, `mise run fmt:check`, `mise run lints`, and `git diff --check`. Inspect the cumulative base-to-new-candidate diff for boundaries and review it against the original task plus R1–R3. Route directly to `$cr-implement`.
+
+## Implementation Evidence
+
+Regression test: `trial::tests::parsed_patch_beyond_verified_head_fails_the_run`. Focused command: `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --example context_relevance --all-features trial::tests::parsed_patch_beyond_verified_head_fails_the_run`. RED: 1 failed (`evaluate` returned `Ok` with the head omitted). GREEN: 1 passed.
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| Parsed nonempty patch beyond its verified head returns `TrialError::Symbolic`, no trial or report | `trial.rs` `Change::new` maps post-parse facade `rank`/`extract` errors to `TrialError::Symbolic` | `parsed_patch_beyond_verified_head_fails_the_run` (`@@ -1 +4 @@` over a two-line head) | PASS |
+| Missing/malformed patch stays an omission; missing head/base stays a run failure; R1, R2, A, packing, report tests green | Patch-omission branches and `MissingSource` paths unchanged | `trial::` 7 passed (incl. `withholding_…` missing patch, `packing_…` malformed patch, `variants_…` `MissingSource`, R1/R2 regressions); `report::` 1 passed | PASS |
+| Only evaluator `trial.rs` and its inline tests change | `trial.rs` code, rustdoc (`Change::new`, `FileOmission::reason`, `evaluate`), one test | `git diff` of the R3 commit | PASS |
+
+Verification, sequential, exit 0 each: `mise run test:pipeline`, `mise run test:pipeline:journey` (2 passed), `mise run test:symbolic-context:journey` (6 passed), `mise run fmt:check`, `mise run lints`, `git diff --check`, `mise run gate`.
+
+Boundaries: only Python/Rust listing entries reach `Change::new` (`Screen::new`), so unsupported languages cannot newly fail a run; a non-UTF-8 or unextractable changed head now fails the run instead of being omitted. Cumulative base-to-candidate diff still touches only `examples/context_relevance/{main,trial,report}.rs` and the `mise.toml` description; no production crate, public API, report format, `PrContext`, replay, or gate change.
