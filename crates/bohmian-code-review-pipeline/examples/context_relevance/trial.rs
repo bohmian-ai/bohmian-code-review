@@ -741,7 +741,7 @@ fn score(
         }
         for bindings in users {
             let module = (rule == Rule::Scoped)
-                .then(|| bound(bindings, name).filter(|module| declaring.contains_key(*module)))
+                .then(|| bound(bindings, name))
                 .flatten();
             if rule == Rule::Scoped {
                 *if module.is_some() {
@@ -1482,6 +1482,57 @@ mod tests {
         assert_eq!((b.d.rank, b.d.score), (b.c.rank, b.c.score));
         assert!(b.d.rank.is_some());
         assert_eq!(b.names_scoped, 0);
+    }
+
+    /// An explicit import resolved to an indexed module that does not
+    /// declare the name stays scoped: C ranks an unrelated declarer, D
+    /// credits nothing. An unresolved import still falls back to C.
+    #[test]
+    fn resolved_import_without_declaration_keeps_scope() {
+        let run = |module: &str| {
+            let caller = format!("from {module} import wanted\n\ndef call():\n    return 0\n");
+            let base = sources(&[
+                ("pkg/a.py", "def other():\n    return 0\n".to_owned()),
+                ("pkg/b.py", "def wanted():\n    return 1\n".to_owned()),
+                ("pkg/caller.py", caller.clone()),
+            ]);
+            let files = vec![
+                listed(
+                    "pkg/b.py",
+                    FileStatus::Modified,
+                    Some("@@ -2 +2 @@\n-    return 1\n+    return 2"),
+                ),
+                listed(
+                    "pkg/caller.py",
+                    FileStatus::Modified,
+                    Some("@@ -4 +4 @@\n-    return 0\n+    return wanted()"),
+                ),
+            ];
+            let heads: BTreeMap<RelativePath, Vec<u8>> = BTreeMap::from([
+                (path("pkg/b.py"), b"def wanted():\n    return 2\n".to_vec()),
+                (
+                    path("pkg/caller.py"),
+                    caller
+                        .replace("    return 0\n", "    return wanted()\n")
+                        .into_bytes(),
+                ),
+            ]);
+            let view = borrowed(&base);
+            let trials = evaluate(4, base_index(&view), &view, &files, &borrowed(&heads), 0)
+                .expect("trials");
+            withheld(&trials, "pkg/b.py").clone()
+        };
+
+        let b = run("pkg.a");
+        assert!(b.c.rank.is_some());
+        assert_eq!((b.d.rank, b.d.score), (None, 0.0));
+        assert_eq!(b.d.sent, Sent::Unranked);
+        assert_eq!((b.names_scoped, b.names_unscoped), (1, 0));
+
+        let b = run("pkg.missing");
+        assert!(b.d.rank.is_some());
+        assert_eq!((b.d.rank, b.d.score), (b.c.rank, b.c.score));
+        assert_eq!((b.names_scoped, b.names_unscoped), (0, 1));
     }
 
     /// Scenario 3: under the common allowance the withheld file is sent
