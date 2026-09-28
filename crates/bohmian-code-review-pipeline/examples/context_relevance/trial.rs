@@ -914,10 +914,7 @@ fn outcome(corpus: &Corpus<'_>, candidates: &[Candidate], target: &RelativePath)
             |candidate: &Candidate| snippet_tokens(corpus.blobs[&candidate.path], &candidate.spans);
         let (sent, snippet_tokens) = if whole_tokens <= remaining {
             remaining -= whole_tokens;
-            (
-                Sent::Whole,
-                is_target.then(|| snippet(candidate)).unwrap_or_default(),
-            )
+            (Sent::Whole, if is_target { snippet(candidate) } else { 0 })
         } else {
             let tokens = snippet(candidate);
             if tokens <= remaining {

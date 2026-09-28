@@ -1,5 +1,6 @@
 //! Context-relevance evaluation: select each evaluated repository's PR
-//! sample through the real GitHub API, read-only.
+//! sample and run its leave-one-out relevance trials through the real
+//! GitHub API, read-only.
 //!
 //! Configuration comes from the environment:
 //!
@@ -10,20 +11,26 @@
 //! For each repository the command discovers merged default-branch PRs,
 //! reads each candidate's file listing once, builds its base commit's
 //! snapshot in memory, and keeps the [`SAMPLE_SIZE`] most recently merged
-//! qualifying PRs. It prints one JSON record per repository of the cutoff
-//! and each sampled PR's commits, changed source paths, and patch
-//! omissions, and exits nonzero on any run-level sampling failure. Nothing
-//! is written to GitHub and no source leaves memory.
+//! qualifying PRs. For each sampled PR it fetches the hash-verified base
+//! blob of every indexed file and the head blob of every changed source
+//! file with changed lines, then runs one trial per withholdable file. It
+//! prints one source-free JSON report per repository: the cutoff, the
+//! sample's commits, changed source paths, and patch omissions, every
+//! trial, per-variant aggregates over all and non-test trials, and every
+//! miss. It exits nonzero on any run-level failure. Nothing is written to
+//! GitHub and no source leaves memory.
 
+mod report;
 mod sample;
 mod trial;
 
-use bohmian_code_review::{EXTRACTION_VERSION, RelativePath, SymbolicContext};
+use bohmian_code_review::{EXTRACTION_VERSION, RelativePath, SymbolicContext, parse_hunks};
 use bohmian_code_review_pipeline::testing::{MemorySnapshotStore, MemoryStorage};
 use bohmian_code_review_pipeline::{
-    ColdBuild, ColdBuildLimits, ColdBuildOutcome, FileOutcome, GitHubClient, GitHubHost, Identity,
-    InstallationId, InstallationToken, RepositoryIdentity, RequestLimits, SNAPSHOT_FORMAT_VERSION,
-    Snapshot, SnapshotScope, Snapshots, TenantId,
+    ColdBuild, ColdBuildLimits, ColdBuildOutcome, FileOutcome, FileStatus, GitHubClient,
+    GitHubHost, Identity, InstallationId, InstallationToken, ObjectSha, PrContextLimits,
+    RepositoryIdentity, RequestLimits, SNAPSHOT_FORMAT_VERSION, Snapshot, SnapshotScope, Snapshots,
+    TenantId,
 };
 use sample::{
     Discovery, ListedPr, Listing, MergedPr, OmittedReason, SAMPLE_SIZE, SampleError, Screen,
@@ -31,9 +38,13 @@ use sample::{
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
 use serde_json::json;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 use std::error::Error;
+use trial::{
+    CANDIDATE_ALLOWANCE, DF_CEILING, PROMPT_RESERVE, RARITY_RULE, TOKEN_ESTIMATE, Trial,
+    estimate_tokens, evaluate,
+};
 
 /// Repositories evaluated, by `<owner>/<name>`.
 const REPOSITORIES: [&str; 2] = ["pydantic/pydantic-ai", "tokio-rs/tokio"];
@@ -50,6 +61,8 @@ struct Sampled {
     screen: Screen,
     /// Complete declaration facts of its base commit.
     snapshot: Snapshot,
+    /// Estimated tokens of every patch in its listing.
+    patch_tokens: usize,
 }
 
 /// Wire shape of `GET /repos/{owner}/{repo}`.
@@ -170,6 +183,12 @@ impl Api {
         pr: MergedPr,
     ) -> Result<Option<Sampled>, Box<dyn Error>> {
         let listed = self.listing(&identity.repository, pr.number).await?;
+        let patch_tokens = listed
+            .files
+            .iter()
+            .filter_map(|file| file.patch.as_deref())
+            .map(estimate_tokens)
+            .sum();
         let screen = Screen::new(pr.number, listed, |path| {
             symbolic
                 .path_language(path.as_str())
@@ -194,17 +213,80 @@ impl Api {
             pr,
             screen,
             snapshot,
+            patch_tokens,
         }))
     }
 
-    /// Select `repo`'s sample: discover merged PRs newest-updated first and
+    /// Run `sampled`'s trials, fetching each base and head blob it needs
+    /// that `cache` lacks through the hash-verifying client.
+    ///
+    /// # Errors
+    ///
+    /// Returns provider errors, including a blob that is missing, oversize,
+    /// or fails verification, and [`trial::TrialError`]s.
+    async fn trials(
+        &self,
+        repository: &RepositoryIdentity,
+        sampled: &Sampled,
+        cache: &mut BTreeMap<ObjectSha, Vec<u8>>,
+    ) -> Result<Vec<Trial>, Box<dyn Error>> {
+        let base: Vec<(&RelativePath, &ObjectSha)> = sampled
+            .snapshot
+            .files
+            .iter()
+            .filter_map(|outcome| match outcome {
+                FileOutcome::Indexed(file) => Some((&file.facts().path, file.blob())),
+                FileOutcome::Skipped(_) => None,
+            })
+            .collect();
+        let head: Vec<(&RelativePath, &ObjectSha)> = sampled
+            .screen
+            .source
+            .iter()
+            .filter(|file| {
+                file.status != FileStatus::Removed
+                    && file.patch.as_deref().is_some_and(|patch| {
+                        parse_hunks(patch).is_ok_and(|ranges| !ranges.is_empty())
+                    })
+            })
+            .map(|file| (&file.path, &file.sha))
+            .collect();
+        let max_file_bytes = ColdBuildLimits::default().max_file_bytes;
+        // ponytail: every distinct blob of the run stays cached, trading
+        // memory for requests across overlapping base trees.
+        for (_, sha) in base.iter().chain(&head) {
+            if !cache.contains_key(*sha) {
+                let bytes = self.client.blob(repository, sha, max_file_bytes).await?;
+                cache.insert((*sha).clone(), bytes);
+            }
+        }
+        let view = |files: &[(&RelativePath, &ObjectSha)]| -> BTreeMap<RelativePath, &[u8]> {
+            files
+                .iter()
+                .filter_map(|(path, sha)| Some(((*path).clone(), cache.get(*sha)?.as_slice())))
+                .collect()
+        };
+        Ok(evaluate(
+            sampled.pr.number,
+            sampled.snapshot.clone().into_context()?,
+            &view(&base),
+            &sampled.screen.source,
+            &view(&head),
+            sampled.patch_tokens,
+        )?)
+    }
+
+    /// Select `repo`'s identity and sample: discover merged PRs newest-updated first and
     /// qualify each as soon as no unread PR can precede it.
     ///
     /// # Errors
     ///
     /// Returns [`SampleError::TooFew`] when the listing ends early, any other
     /// run-level [`SampleError`], and provider or storage errors.
-    async fn select(&self, repo: &str) -> Result<Vec<Sampled>, Box<dyn Error>> {
+    async fn select(
+        &self,
+        repo: &str,
+    ) -> Result<(RepositoryIdentity, Vec<Sampled>), Box<dyn Error>> {
         let (owner, name) = repo
             .split_once('/')
             .ok_or("repository must be <owner>/<name>")?;
@@ -234,7 +316,7 @@ impl Api {
                 if let Some(sampled) = self.qualify(&identity, &symbolic, pr).await? {
                     sample.push(sampled);
                     if sample.len() == SAMPLE_SIZE {
-                        return Ok(sample);
+                        return Ok((identity.repository, sample));
                     }
                 }
             }
@@ -269,7 +351,12 @@ async fn run() -> Result<(), Box<dyn Error>> {
         cutoff,
     };
     for repo in REPOSITORIES {
-        let sample = api.select(repo).await?;
+        let (repository, sample) = api.select(repo).await?;
+        let mut cache = BTreeMap::new();
+        let mut trials = Vec::new();
+        for sampled in &sample {
+            trials.extend(api.trials(&repository, sampled, &mut cache).await?);
+        }
         let prs: Vec<_> = sample
             .iter()
             .map(|sampled| {
@@ -291,7 +378,24 @@ async fn run() -> Result<(), Box<dyn Error>> {
                 })
             })
             .collect();
-        let record = json!({ "repository": repo, "cutoff": api.cutoff, "sample": prs });
+        let record = json!({
+            "repository": repo,
+            "cutoff": api.cutoff,
+            "command": format!("BCR_EVAL_CUTOFF={} mise run live:context-relevance", api.cutoff),
+            "token_estimate": TOKEN_ESTIMATE,
+            "candidate_allowance": CANDIDATE_ALLOWANCE,
+            "prompt_reserve": PROMPT_RESERVE,
+            "production_max_candidate_files": PrContextLimits::default().max_candidate_files,
+            "df_ceiling": DF_CEILING,
+            "rarity_rule": RARITY_RULE,
+            "sample": prs,
+            "trials": trials,
+            "summary": {
+                "all": report::summarize(trials.iter()),
+                "non_test": report::summarize(trials.iter().filter(|trial| !trial.test_file)),
+            },
+            "misses": report::misses(&trials),
+        });
         println!("{}", serde_json::to_string_pretty(&record)?);
     }
     Ok(())
