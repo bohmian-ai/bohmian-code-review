@@ -16,6 +16,7 @@
 //! is written to GitHub and no source leaves memory.
 
 mod sample;
+mod trial;
 
 use bohmian_code_review::{EXTRACTION_VERSION, RelativePath, SymbolicContext};
 use bohmian_code_review_pipeline::testing::{MemorySnapshotStore, MemoryStorage};
