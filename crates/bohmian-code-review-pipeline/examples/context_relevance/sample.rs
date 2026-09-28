@@ -234,8 +234,8 @@ impl Listing {
     pub fn push(&mut self, page: PullRequestFilesPage, last: bool) -> bool {
         self.files.extend(page.files);
         self.rejected.extend(page.rejected);
-        self.truncated = self.files.len() + self.rejected.len() >= MAX_LISTED_FILES
-            || (page.has_next && last);
+        self.truncated =
+            self.files.len() + self.rejected.len() >= MAX_LISTED_FILES || (page.has_next && last);
         page.has_next && !self.truncated
     }
 }
@@ -562,7 +562,10 @@ mod tests {
             Screen::new(3, listing, language).err()
         };
         let capped = (1..=30).map(|n| page(99, 1, n < 30)).collect();
-        assert_eq!(fold(capped), Some(SampleError::IncompleteListing { number: 3 }));
+        assert_eq!(
+            fold(capped),
+            Some(SampleError::IncompleteListing { number: 3 })
+        );
         let advertised = (1..=30).map(|_| page(50, 0, true)).collect();
         assert_eq!(
             fold(advertised),
