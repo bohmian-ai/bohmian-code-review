@@ -107,7 +107,7 @@ pub struct Outcome {
 pub struct FileOmission {
     /// Head-side path.
     pub path: RelativePath,
-    /// Missing patch, malformed patch, or analysis failure.
+    /// Missing or malformed patch.
     pub reason: String,
 }
 
@@ -530,13 +530,13 @@ impl<'a> Change<'a> {
     /// Prepare `file` of PR `pr` from its patch, its base file in
     /// `corpus`, and its head blob in `heads`.
     ///
-    /// A missing or malformed patch, or a head the facade cannot rank, is
-    /// an omission that supplies no names.
+    /// A missing or malformed patch is an omission that supplies no names.
     ///
     /// # Errors
     ///
     /// [`TrialError::MissingSource`] when a head blob with changed lines
-    /// was not supplied.
+    /// was not supplied, and [`TrialError::Symbolic`] when the facade
+    /// rejects that head or its parsed changed lines.
     fn new(
         pr: u64,
         corpus: &Corpus<'_>,
@@ -587,14 +587,11 @@ impl<'a> Change<'a> {
                 pr,
                 path: file.path.clone(),
             })?;
-        let analyzed = corpus
+        let (nodes, references) = corpus
             .index
             .rank(file.path.as_str(), head, ranges.clone())
-            .and_then(|_| extract(scratch, &file.path, head));
-        let (nodes, references) = match analyzed {
-            Ok(extracted) => extracted,
-            Err(error) => return Ok(change.omit(format!("analysis failed: {error}"))),
-        };
+            .and_then(|_| extract(scratch, &file.path, head))
+            .map_err(|error| TrialError::Symbolic { pr, error })?;
         let on_changed = |start: u32, end: u32| {
             ranges
                 .iter()
@@ -1023,7 +1020,8 @@ fn trial(
 /// # Errors
 ///
 /// [`TrialError::MissingSource`] for a missing base or head blob, and
-/// [`TrialError::Symbolic`] for base source the facade rejects.
+/// [`TrialError::Symbolic`] for base source, or a head and its parsed
+/// changed lines, the facade rejects.
 pub fn evaluate(
     pr: u64,
     index: SymbolicContext,
@@ -1533,6 +1531,44 @@ mod tests {
         assert!(b.d.rank.is_some());
         assert_eq!((b.d.rank, b.d.score), (b.c.rank, b.c.score));
         assert_eq!((b.names_scoped, b.names_unscoped), (0, 1));
+    }
+
+    /// A parsed patch whose changed lines lie beyond its verified head is
+    /// provider inconsistency: the run fails instead of omitting that
+    /// head's names from every trial.
+    #[test]
+    fn parsed_patch_beyond_verified_head_fails_the_run() {
+        let base = sources(&[
+            ("pkg/a.py", "def wanted():\n    return 1\n".to_owned()),
+            ("pkg/caller.py", "def call():\n    return 0\n".to_owned()),
+        ]);
+        let files = vec![
+            listed(
+                "pkg/a.py",
+                FileStatus::Modified,
+                Some("@@ -2 +2 @@\n-    return 1\n+    return 2"),
+            ),
+            listed(
+                "pkg/caller.py",
+                FileStatus::Modified,
+                Some("@@ -1 +4 @@\n-old\n+wanted()"),
+            ),
+        ];
+        let heads = BTreeMap::from([
+            (
+                path("pkg/a.py"),
+                b"def wanted():\n    return 2\n".as_slice(),
+            ),
+            (
+                path("pkg/caller.py"),
+                b"def call():\n    return wanted()\n".as_slice(),
+            ),
+        ]);
+        let view = borrowed(&base);
+        assert!(matches!(
+            evaluate(5, base_index(&view), &view, &files, &heads, 0),
+            Err(TrialError::Symbolic { pr: 5, .. })
+        ));
     }
 
     /// Scenario 3: under the common allowance the withheld file is sent
