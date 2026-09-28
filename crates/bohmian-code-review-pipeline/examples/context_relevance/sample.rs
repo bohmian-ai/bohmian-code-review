@@ -10,7 +10,9 @@
 //! listings fail the run.
 
 use bohmian_code_review::{Language, RelativePath, parse_hunks};
-use bohmian_code_review_pipeline::{FileStatus, ObjectSha, PullRequestFile, RejectedPath};
+use bohmian_code_review_pipeline::{
+    FileStatus, ObjectSha, PullRequestFile, PullRequestFilesPage, RejectedPath,
+};
 use serde::Deserialize;
 use std::collections::BTreeSet;
 use thiserror::Error;
@@ -21,6 +23,9 @@ pub const SAMPLE_SIZE: usize = 50;
 const MIN_SOURCE_FILES: usize = 2;
 /// Most changed Python or Rust files a sampled PR may have.
 const MAX_SOURCE_FILES: usize = 15;
+/// Most entries GitHub's PR-files endpoint returns; a listing this long
+/// cannot prove it ended.
+const MAX_LISTED_FILES: usize = 3_000;
 
 /// Why sampling cannot produce a trustworthy sample; the run stops.
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -50,7 +55,8 @@ pub enum SampleError {
         /// The rejected entry.
         rejected: RejectedPath,
     },
-    /// A PR's file listing did not end within the provider's page limit.
+    /// A PR's file listing did not provably end within the provider's
+    /// page or file limit.
     #[error("PR #{number} file listing is incomplete")]
     IncompleteListing {
         /// PR number.
@@ -214,8 +220,24 @@ pub struct Listing {
     pub files: Vec<PullRequestFile>,
     /// Entries the provider client rejected.
     pub rejected: Vec<RejectedPath>,
-    /// Whether the last page read still advertised a next page.
+    /// Whether the listing may be cut: the last page read still
+    /// advertised a next page, or the provider's file ceiling was reached.
     pub truncated: bool,
+}
+
+impl Listing {
+    /// Fold one provider `page` into the listing; `last` marks the final
+    /// page the caller will read. Accepted and rejected entries both count
+    /// toward [`MAX_LISTED_FILES`].
+    ///
+    /// Returns whether another page must be read.
+    pub fn push(&mut self, page: PullRequestFilesPage, last: bool) -> bool {
+        self.files.extend(page.files);
+        self.rejected.extend(page.rejected);
+        self.truncated = self.files.len() + self.rejected.len() >= MAX_LISTED_FILES
+            || (page.has_next && last);
+        page.has_next && !self.truncated
+    }
 }
 
 /// A PR's changed Python or Rust files, screened from its listing without
@@ -257,18 +279,18 @@ impl Screen {
     ///
     /// # Errors
     ///
-    /// [`SampleError::RejectedFile`] for any rejected entry and
-    /// [`SampleError::IncompleteListing`] for a truncated listing.
+    /// [`SampleError::IncompleteListing`] for a truncated listing, then
+    /// [`SampleError::RejectedFile`] for any rejected entry.
     pub fn new(
         number: u64,
         listing: Listing,
         language: impl Fn(&RelativePath) -> Option<Language>,
     ) -> Result<Screen, SampleError> {
-        if let Some(rejected) = listing.rejected.into_iter().next() {
-            return Err(SampleError::RejectedFile { number, rejected });
-        }
         if listing.truncated {
             return Err(SampleError::IncompleteListing { number });
+        }
+        if let Some(rejected) = listing.rejected.into_iter().next() {
+            return Err(SampleError::RejectedFile { number, rejected });
         }
         let mut screen = Screen {
             source: Vec::new(),
@@ -319,6 +341,8 @@ impl Screen {
     }
 }
 
+/// Sampler contract checks: discovery ordering and settlement, listing
+/// completeness, and PR qualification, all on in-memory inputs.
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -359,6 +383,7 @@ mod tests {
         }
     }
 
+    /// A one-hunk patch changing head-side line 1.
     const PATCH: &str = "@@ -1 +1 @@\n-a\n+b";
 
     /// Discovery keeps merged PRs before the cutoff on the base branch and
@@ -506,5 +531,43 @@ mod tests {
             Screen::new(3, listing, language).err(),
             Some(SampleError::IncompleteListing { number: 3 })
         );
+    }
+
+    /// A listing folded from provider pages is incomplete when a page past
+    /// the last is advertised or when accepted plus rejected entries reach
+    /// the provider's file ceiling, even with no next page; a shorter
+    /// terminal page is complete.
+    #[test]
+    fn listing_fails_at_provider_limits() {
+        let page = |accepted: usize, rejected: usize, has_next: bool| PullRequestFilesPage {
+            files: (0..accepted)
+                .map(|i| file(&format!("docs/f{i}.md"), FileStatus::Modified, Some(PATCH)))
+                .collect(),
+            rejected: (0..rejected)
+                .map(|i| RejectedPath {
+                    path: format!("../r{i}"),
+                    reason: "not canonical".to_owned(),
+                })
+                .collect(),
+            has_next,
+        };
+        let fold = |pages: Vec<PullRequestFilesPage>| {
+            let mut listing = Listing::default();
+            let last = pages.len();
+            for (read, page) in pages.into_iter().enumerate() {
+                if !listing.push(page, read + 1 == last) {
+                    break;
+                }
+            }
+            Screen::new(3, listing, language).err()
+        };
+        let capped = (1..=30).map(|n| page(99, 1, n < 30)).collect();
+        assert_eq!(fold(capped), Some(SampleError::IncompleteListing { number: 3 }));
+        let advertised = (1..=30).map(|_| page(50, 0, true)).collect();
+        assert_eq!(
+            fold(advertised),
+            Some(SampleError::IncompleteListing { number: 3 })
+        );
+        assert_eq!(fold(vec![page(100, 0, true), page(40, 0, false)]), None);
     }
 }

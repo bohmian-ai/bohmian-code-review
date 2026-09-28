@@ -38,7 +38,7 @@ use std::error::Error;
 const REPOSITORIES: [&str; 2] = ["pydantic/pydantic-ai", "tokio-rs/tokio"];
 /// PRs per discovery page, GitHub's maximum.
 const PRS_PER_PAGE: usize = 100;
-/// File-listing pages GitHub serves at most (3,000 files).
+/// File-listing pages read at most: 3,000 files at 100 per page.
 const MAX_FILE_PAGES: u32 = 30;
 
 /// A qualifying PR with the inputs its relevance trials run on.
@@ -87,7 +87,8 @@ impl Api {
     }
 }
 
-/// Read PR `number`'s file listing once, following its pages.
+/// Read PR `number`'s file listing once, following its pages until
+/// [`Listing::push`] ends it.
 ///
 /// # Errors
 ///
@@ -100,10 +101,7 @@ async fn listing(
     let mut listing = Listing::default();
     for page in 1..=MAX_FILE_PAGES {
         let read = client.pull_request_files(repository, number, page).await?;
-        listing.files.extend(read.files);
-        listing.rejected.extend(read.rejected);
-        listing.truncated = read.has_next && page == MAX_FILE_PAGES;
-        if !read.has_next {
+        if !listing.push(read, page == MAX_FILE_PAGES) {
             break;
         }
     }
