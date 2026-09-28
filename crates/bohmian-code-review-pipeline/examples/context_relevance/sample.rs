@@ -1,11 +1,10 @@
 //! PR sample selection for the context-relevance evaluation.
 //!
-//! Discovery reads closed PRs newest-updated first. A PR's merge time never
-//! exceeds its update time, so once the listing has passed update time `t`,
-//! every PR merged after `t` is known and can be settled in final order:
-//! merge time descending, then PR number descending. Each settled PR is
-//! qualified from its one file listing, path eligibility, and its base
-//! snapshot's declarations. Missing or malformed patches are file-local
+//! Discovery reads every PR oldest-created first before qualifying any, so
+//! activity during the read can only append to the listing, never shift a
+//! page already read. Merged PRs are then ordered by merge time descending,
+//! then PR number descending. Each is qualified in that order from its one
+//! file listing, path eligibility, and its base snapshot's declarations. Missing or malformed patches are file-local
 //! omissions; unusable identities, rejected entries, and incomplete
 //! listings fail the run.
 
@@ -118,8 +117,8 @@ pub struct MergedPr {
     pub head: ObjectSha,
 }
 
-/// Merged PRs discovered so far, released in final sample order once no
-/// unread PR can precede them.
+/// Merged PRs discovered so far, released in final sample order once the
+/// listing has been read to its end.
 ///
 /// Invariant: every PR in `pending` merged into `branch` strictly before
 /// `cutoff`, and each PR number is offered at most once.
@@ -194,17 +193,12 @@ impl Discovery {
         Ok(())
     }
 
-    /// Remove and return, in sample order, every pending PR merged strictly
-    /// after `read_until`, the oldest update time read so far; `None` once
-    /// the listing is exhausted releases everything.
-    pub fn settled(&mut self, read_until: Option<&str>) -> Vec<MergedPr> {
-        let (mut settled, pending): (Vec<_>, Vec<_>) = self
-            .pending
-            .drain(..)
-            .partition(|pr| read_until.is_none_or(|until| pr.merged_at.as_str() > until));
-        self.pending = pending;
-        settled.sort_by(|a, b| (&b.merged_at, b.number).cmp(&(&a.merged_at, a.number)));
-        settled
+    /// Every kept PR in sample order: merge time, then number, descending.
+    /// Call only after the whole listing has been offered.
+    pub fn into_sample(mut self) -> Vec<MergedPr> {
+        self.pending
+            .sort_by(|a, b| (&b.merged_at, b.number).cmp(&(&a.merged_at, a.number)));
+        self.pending
     }
 }
 
@@ -379,7 +373,7 @@ impl Screen {
     }
 }
 
-/// Sampler contract checks: discovery ordering and settlement, listing
+/// Sampler contract checks: discovery ordering, listing
 /// completeness, and PR qualification, all on in-memory inputs.
 #[cfg(test)]
 mod tests {
@@ -424,11 +418,10 @@ mod tests {
     /// A one-hunk patch changing head-side line 1.
     const PATCH: &str = "@@ -1 +1 @@\n-a\n+b";
 
-    /// Discovery keeps merged PRs before the cutoff on the base branch and
-    /// releases only those no unread PR can precede, merge time then
-    /// number descending.
+    /// Discovery keeps merged PRs before the cutoff on the base branch,
+    /// merge time then number descending.
     #[test]
-    fn discovery_orders_and_settles_merged_prs() {
+    fn discovery_orders_merged_prs() {
         let mut discovery = Discovery::new("main", "2026-01-10T00:00:00Z").expect("valid cutoff");
         for pr in [
             listed(1, "2026-01-12T00:00:00Z", Some("2026-01-11T00:00:00Z")),
@@ -442,13 +435,8 @@ mod tests {
         let mut other = listed(6, "2026-01-07T00:00:00Z", Some("2026-01-07T00:00:00Z"));
         other.base.name = "release".to_owned();
         discovery.offer(other).expect("usable PR");
-        assert!(discovery.settled(Some("2026-01-08T00:00:00Z")).is_empty());
-        let numbers = |prs: Vec<MergedPr>| prs.iter().map(|pr| pr.number).collect::<Vec<_>>();
-        assert_eq!(
-            numbers(discovery.settled(Some("2026-01-07T00:00:00Z"))),
-            [5]
-        );
-        assert_eq!(numbers(discovery.settled(None)), [4, 3]);
+        let numbers: Vec<_> = discovery.into_sample().iter().map(|pr| pr.number).collect();
+        assert_eq!(numbers, [5, 4, 3]);
     }
 
     /// Unusable identities, duplicates, and a bad cutoff stop the run.
@@ -709,13 +697,13 @@ mod tests {
         ] {
             discovery.offer(pr).expect("real instants");
         }
-        let numbers: Vec<_> = discovery.settled(None).iter().map(|pr| pr.number).collect();
+        let numbers: Vec<_> = discovery.into_sample().iter().map(|pr| pr.number).collect();
         assert_eq!(numbers, [12, 11, 13]);
     }
 
-    /// A merge after the PR's last update contradicts the settlement
-    /// premise and stops the run before the PR can be queued; equal times
-    /// and an update after merge settle in the usual order.
+    /// A merge after the PR's last update is impossible provider data and
+    /// stops the run before the PR can be kept; equal times and an update
+    /// after merge are kept in the usual order.
     #[test]
     fn discovery_rejects_merge_after_update() {
         let mut discovery = Discovery::new("main", "2026-01-10T00:00:00Z").expect("valid cutoff");
@@ -727,14 +715,13 @@ mod tests {
             )),
             Err(SampleError::UnusablePr { number: 14, .. })
         ));
-        assert!(discovery.settled(None).is_empty());
         for pr in [
             listed(15, "2026-01-06T00:00:00Z", Some("2026-01-06T00:00:00Z")),
             listed(16, "2026-01-06T00:00:00Z", Some("2026-01-04T00:00:00Z")),
         ] {
             discovery.offer(pr).expect("consistent chronology");
         }
-        let numbers: Vec<_> = discovery.settled(None).iter().map(|pr| pr.number).collect();
+        let numbers: Vec<_> = discovery.into_sample().iter().map(|pr| pr.number).collect();
         assert_eq!(numbers, [15, 16]);
     }
 }

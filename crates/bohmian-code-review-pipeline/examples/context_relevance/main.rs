@@ -8,8 +8,8 @@
 //! - `BCR_EVAL_CUTOFF` (required): only PRs merged strictly before this
 //!   `YYYY-MM-DDTHH:MM:SSZ` time are sampled.
 //!
-//! For each repository the command discovers merged default-branch PRs,
-//! reads each candidate's file listing once, builds its base commit's
+//! For each repository the command reads every PR oldest-created first,
+//! keeps merged default-branch PRs, reads each candidate's file listing once, builds its base commit's
 //! snapshot in memory, and keeps the [`SAMPLE_SIZE`] most recently merged
 //! qualifying PRs. For each sampled PR it fetches the hash-verified base
 //! blob of every indexed file and the head blob of every changed source
@@ -276,12 +276,13 @@ impl Api {
         )?)
     }
 
-    /// Select `repo`'s identity and sample: discover merged PRs newest-updated first and
-    /// qualify each as soon as no unread PR can precede it.
+    /// Select `repo`'s identity and sample: read every PR oldest-created
+    /// first, then qualify merged PRs in sample order until
+    /// [`SAMPLE_SIZE`] qualify.
     ///
     /// # Errors
     ///
-    /// Returns [`SampleError::TooFew`] when the listing ends early, any other
+    /// Returns [`SampleError::TooFew`] when fewer qualify, any other
     /// run-level [`SampleError`], and provider or storage errors.
     async fn select(
         &self,
@@ -298,30 +299,27 @@ impl Api {
         };
         let symbolic = SymbolicContext::new();
         let mut discovery = Discovery::new(&wire.default_branch, &self.cutoff)?;
-        let mut sample = Vec::new();
         for page in 1.. {
             let listed: Vec<ListedPr> = self
                 .get(&format!(
-                    "/repos/{repo}/pulls?state=closed&base={}&sort=updated&direction=desc&per_page={PRS_PER_PAGE}&page={page}",
-                    wire.default_branch
+                    "/repos/{repo}/pulls?state=all&sort=created&direction=asc&per_page={PRS_PER_PAGE}&page={page}"
                 ))
                 .await?;
             let exhausted = listed.len() < PRS_PER_PAGE;
-            let read_until = listed.iter().map(|pr| pr.updated_at.clone()).min();
             for pr in listed {
                 discovery.offer(pr)?;
             }
-            let read_until = if exhausted { None } else { read_until };
-            for pr in discovery.settled(read_until.as_deref()) {
-                if let Some(sampled) = self.qualify(&identity, &symbolic, pr).await? {
-                    sample.push(sampled);
-                    if sample.len() == SAMPLE_SIZE {
-                        return Ok((identity.repository, sample));
-                    }
-                }
-            }
             if exhausted {
                 break;
+            }
+        }
+        let mut sample = Vec::new();
+        for pr in discovery.into_sample() {
+            if let Some(sampled) = self.qualify(&identity, &symbolic, pr).await? {
+                sample.push(sampled);
+                if sample.len() == SAMPLE_SIZE {
+                    return Ok((identity.repository, sample));
+                }
             }
         }
         Err(SampleError::TooFew {
