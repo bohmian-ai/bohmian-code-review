@@ -156,7 +156,7 @@ impl Discovery {
     ///
     /// [`SampleError::DuplicatePr`] for a number already offered and
     /// [`SampleError::UnusablePr`] for an unusable number, update or merge
-    /// time, or base/head commit.
+    /// time, a merge time after the update time, or base/head commit.
     pub fn offer(&mut self, listed: ListedPr) -> Result<(), SampleError> {
         let number = listed.number;
         let unusable = |detail: String| SampleError::UnusablePr { number, detail };
@@ -174,6 +174,12 @@ impl Discovery {
         };
         if !is_timestamp(&merged_at) {
             return Err(unusable(format!("merge time `{merged_at}`")));
+        }
+        if merged_at > listed.updated_at {
+            return Err(unusable(format!(
+                "merge time `{merged_at}` after update time `{}`",
+                listed.updated_at
+            )));
         }
         if listed.base.name != self.branch || merged_at >= self.cutoff {
             return Ok(());
@@ -705,5 +711,26 @@ mod tests {
         }
         let numbers: Vec<_> = discovery.settled(None).iter().map(|pr| pr.number).collect();
         assert_eq!(numbers, [12, 11, 13]);
+    }
+
+    /// A merge after the PR's last update contradicts the settlement
+    /// premise and stops the run before the PR can be queued; equal times
+    /// and an update after merge settle in the usual order.
+    #[test]
+    fn discovery_rejects_merge_after_update() {
+        let mut discovery = Discovery::new("main", "2026-01-10T00:00:00Z").expect("valid cutoff");
+        assert!(matches!(
+            discovery.offer(listed(14, "2026-01-05T00:00:00Z", Some("2026-01-06T00:00:00Z"))),
+            Err(SampleError::UnusablePr { number: 14, .. })
+        ));
+        assert!(discovery.settled(None).is_empty());
+        for pr in [
+            listed(15, "2026-01-06T00:00:00Z", Some("2026-01-06T00:00:00Z")),
+            listed(16, "2026-01-06T00:00:00Z", Some("2026-01-04T00:00:00Z")),
+        ] {
+            discovery.offer(pr).expect("consistent chronology");
+        }
+        let numbers: Vec<_> = discovery.settled(None).iter().map(|pr| pr.number).collect();
+        assert_eq!(numbers, [15, 16]);
     }
 }
