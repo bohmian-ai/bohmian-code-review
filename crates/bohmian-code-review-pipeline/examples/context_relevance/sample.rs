@@ -202,15 +202,34 @@ impl Discovery {
     }
 }
 
-/// Whether `text` is a `YYYY-MM-DDTHH:MM:SSZ` timestamp, the one format
-/// whose text order is time order.
+/// Whether `text` is a `YYYY-MM-DDTHH:MM:SSZ` timestamp naming a real
+/// Gregorian UTC instant; this fixed-width form is the one whose text
+/// order is time order.
 fn is_timestamp(text: &str) -> bool {
     const SHAPE: &[u8; 20] = b"dddd-dd-ddTdd:dd:ddZ";
-    text.len() == SHAPE.len()
+    let shaped = text.len() == SHAPE.len()
         && text.bytes().zip(SHAPE).all(|(byte, &shape)| match shape {
             b'd' => byte.is_ascii_digit(),
             other => byte == other,
-        })
+        });
+    if !shaped {
+        return false;
+    }
+    let field = |range: std::ops::Range<usize>| {
+        text[range]
+            .bytes()
+            .fold(0_u32, |value, digit| value * 10 + u32::from(digit - b'0'))
+    };
+    let (year, month, day) = (field(0..4), field(5..7), field(8..10));
+    let leap = year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
+    let days = match month {
+        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
+        4 | 6 | 9 | 11 => 30,
+        2 if leap => 29,
+        2 => 28,
+        _ => return false,
+    };
+    (1..=days).contains(&day) && field(11..13) < 24 && field(14..16) < 60 && field(17..19) < 60
 }
 
 /// One PR's complete file listing, as read once from the provider.
@@ -223,16 +242,29 @@ pub struct Listing {
     /// Whether the listing may be cut: the last page read still
     /// advertised a next page, or the provider's file ceiling was reached.
     pub truncated: bool,
+    /// Paths of `files`, so a repeated path is caught at the fold.
+    paths: BTreeSet<RelativePath>,
 }
 
 impl Listing {
     /// Fold one provider `page` into the listing; `last` marks the final
     /// page the caller will read. Accepted and rejected entries both count
-    /// toward [`MAX_LISTED_FILES`].
+    /// toward [`MAX_LISTED_FILES`]. An entry whose path is already listed,
+    /// within this page or an earlier one, is rejected rather than kept, so
+    /// `files` holds distinct paths in provider order.
     ///
     /// Returns whether another page must be read.
     pub fn push(&mut self, page: PullRequestFilesPage, last: bool) -> bool {
-        self.files.extend(page.files);
+        for file in page.files {
+            if self.paths.insert(file.path.clone()) {
+                self.files.push(file);
+            } else {
+                self.rejected.push(RejectedPath {
+                    path: file.path.as_str().to_owned(),
+                    reason: "path listed twice".to_owned(),
+                });
+            }
+        }
         self.rejected.extend(page.rejected);
         self.truncated =
             self.files.len() + self.rejected.len() >= MAX_LISTED_FILES || (page.has_next && last);
@@ -539,18 +571,25 @@ mod tests {
     /// terminal page is complete.
     #[test]
     fn listing_fails_at_provider_limits() {
-        let page = |accepted: usize, rejected: usize, has_next: bool| PullRequestFilesPage {
-            files: (0..accepted)
-                .map(|i| file(&format!("docs/f{i}.md"), FileStatus::Modified, Some(PATCH)))
-                .collect(),
-            rejected: (0..rejected)
-                .map(|i| RejectedPath {
-                    path: format!("../r{i}"),
-                    reason: "not canonical".to_owned(),
-                })
-                .collect(),
-            has_next,
-        };
+        let page =
+            |n: usize, accepted: usize, rejected: usize, has_next: bool| PullRequestFilesPage {
+                files: (0..accepted)
+                    .map(|i| {
+                        file(
+                            &format!("docs/p{n}/f{i}.md"),
+                            FileStatus::Modified,
+                            Some(PATCH),
+                        )
+                    })
+                    .collect(),
+                rejected: (0..rejected)
+                    .map(|i| RejectedPath {
+                        path: format!("../r{i}"),
+                        reason: "not canonical".to_owned(),
+                    })
+                    .collect(),
+                has_next,
+            };
         let fold = |pages: Vec<PullRequestFilesPage>| {
             let mut listing = Listing::default();
             let last = pages.len();
@@ -561,16 +600,110 @@ mod tests {
             }
             Screen::new(3, listing, language).err()
         };
-        let capped = (1..=30).map(|n| page(99, 1, n < 30)).collect();
+        let capped = (1..=30).map(|n| page(n, 99, 1, n < 30)).collect();
         assert_eq!(
             fold(capped),
             Some(SampleError::IncompleteListing { number: 3 })
         );
-        let advertised = (1..=30).map(|_| page(50, 0, true)).collect();
+        let advertised = (1..=30).map(|n| page(n, 50, 0, true)).collect();
         assert_eq!(
             fold(advertised),
             Some(SampleError::IncompleteListing { number: 3 })
         );
-        assert_eq!(fold(vec![page(100, 0, true), page(40, 0, false)]), None);
+        assert_eq!(
+            fold(vec![page(1, 100, 0, true), page(2, 40, 0, false)]),
+            None
+        );
+    }
+
+    /// A canonical path listed twice, within one page or across pages and
+    /// whatever its status or patch, is a rejected entry that fails the run
+    /// before qualification; distinct paths still qualify.
+    #[test]
+    fn listing_rejects_repeated_paths() {
+        let fold = |pages: Vec<Vec<PullRequestFile>>| {
+            let mut listing = Listing::default();
+            let last = pages.len();
+            for (read, files) in pages.into_iter().enumerate() {
+                let page = PullRequestFilesPage {
+                    files,
+                    rejected: Vec::new(),
+                    has_next: read + 1 < last,
+                };
+                if !listing.push(page, read + 1 == last) {
+                    break;
+                }
+            }
+            Screen::new(4, listing, language)
+        };
+        let repeated = |result: Result<Screen, SampleError>| match result {
+            Err(SampleError::RejectedFile { number, rejected }) => {
+                number == 4 && rejected.path == "src/a.py"
+            }
+            _ => false,
+        };
+        let first = file("src/a.py", FileStatus::Modified, Some(PATCH));
+        let again = file("src/a.py", FileStatus::Added, None);
+        assert!(repeated(fold(vec![vec![first.clone(), again.clone()]])));
+        assert!(repeated(fold(vec![vec![first.clone()], vec![again]])));
+        let distinct = fold(vec![
+            vec![first],
+            vec![file("src/b.py", FileStatus::Added, Some(PATCH))],
+        ])
+        .expect("distinct paths");
+        assert_eq!(distinct.source.len(), 2);
+        assert!(distinct.qualifies(|_| true));
+    }
+
+    /// Cutoff, update, and merge times must name real Gregorian UTC
+    /// instants; a real leap day is accepted and ordering is unchanged.
+    #[test]
+    fn discovery_rejects_impossible_timestamps() {
+        let impossible = [
+            "2026-02-30T00:00:00Z",
+            "2026-02-29T00:00:00Z",
+            "1900-02-29T00:00:00Z",
+            "2026-04-31T00:00:00Z",
+            "2026-00-10T00:00:00Z",
+            "2026-13-10T00:00:00Z",
+            "2026-01-00T00:00:00Z",
+            "2026-01-10T24:00:00Z",
+            "2026-01-10T00:60:00Z",
+            "2026-01-10T00:00:60Z",
+            "2026-02-30T25:61:61Z",
+        ];
+        for text in impossible {
+            assert_eq!(
+                Discovery::new("main", text).err(),
+                Some(SampleError::InvalidCutoff(text.to_owned())),
+                "cutoff {text}"
+            );
+            let mut discovery =
+                Discovery::new("main", "2030-01-01T00:00:00Z").expect("valid cutoff");
+            assert!(
+                matches!(
+                    discovery.offer(listed(9, text, None)),
+                    Err(SampleError::UnusablePr { number: 9, .. })
+                ),
+                "update {text}"
+            );
+            assert!(
+                matches!(
+                    discovery.offer(listed(10, "2026-01-10T00:00:00Z", Some(text))),
+                    Err(SampleError::UnusablePr { number: 10, .. })
+                ),
+                "merge {text}"
+            );
+        }
+        let mut discovery = Discovery::new("main", "2024-02-29T23:59:59Z").expect("leap day");
+        for pr in [
+            listed(11, "2024-03-01T00:00:00Z", Some("2024-02-29T12:00:00Z")),
+            listed(12, "2024-03-01T00:00:00Z", Some("2024-02-29T12:00:00Z")),
+            listed(13, "2024-03-01T00:00:00Z", Some("2000-02-29T23:59:59Z")),
+        ] {
+            discovery.offer(pr).expect("real instants");
+        }
+        let numbers: Vec<_> = discovery.settled(None).iter().map(|pr| pr.number).collect();
+        assert_eq!(numbers, [12, 11, 13]);
     }
 }
