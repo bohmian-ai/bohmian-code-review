@@ -29,3 +29,17 @@ At the existing `Discovery::offer` input boundary, reject a merged PR when its m
 3. Run `mise run test:pipeline`, `mise run fmt:check`, `mise run lints`, and `git diff --check`. Inspect the cumulative diff for unchanged production crates, public APIs, persisted formats, gate, `PrContext`, second listing, provider replay, and trial source blobs.
 
 Write set: `crates/bohmian-code-review-pipeline/examples/context_relevance/sample.rs` and this task's implementation evidence. The correction belongs in the existing discovery owner; no production behavior or additional evaluation scope is requested. Route directly to `$cr-implement`, then review the full cumulative candidate against the original task.
+
+## Implementation evidence
+
+`Discovery::offer` in `sample.rs` now rejects a merged PR whose valid merge time is later than its valid update time through `SampleError::UnusablePr`, after both instants are validated and before branch/cutoff filtering or queuing. Equal times and update-after-merge remain accepted.
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| 1. `merged_at > updated_at` fails with `UnusablePr` before selection; equal and earlier merge times settle in order | `Discovery::offer` in `sample.rs` | `sample::tests::discovery_rejects_merge_after_update` | PASS |
+| 2. Focused RED/GREEN recorded; seven prior sampler tests preserved | — | RED/GREEN below; `sample::` 8 passed | PASS |
+| 3. Pipeline, format, lint, diff checks; cumulative diff audit | — | Commands below | PASS |
+
+Focused: `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --example context_relevance --all-features <selector>`. RED (`discovery_rejects_merge_after_update`): 1 failed, 7 filtered out — `offer` accepted PR #14 updated `2026-01-05T00:00:00Z`, merged `2026-01-06T00:00:00Z`. GREEN (`sample::`): 8 passed, including `listing_fails_at_provider_limits` (R1 cap), `listing_rejects_repeated_paths`, and `discovery_rejects_impossible_timestamps` (R2). `mise run test:pipeline`, `mise run fmt:check`, `mise run lints`, `git diff --check`, and `mise run gate` exited 0.
+
+Non-goals held: R3 write set is `sample.rs` and this file. Cumulative diff from `e665bc1` touches only the `context_relevance` example, the pipeline `Cargo.toml` example entry, `mise.toml` live task, and change-packet docs; no production crate source, public API, persisted format, gate, `PrContext`, second listing, provider replay, or trial source blobs.
