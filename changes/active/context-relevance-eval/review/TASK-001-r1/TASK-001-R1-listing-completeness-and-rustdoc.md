@@ -1,7 +1,7 @@
 ---
 id: TASK-001-R1
 kind: remediation
-status: proposed
+status: implemented
 spec: SPEC-context-relevance-eval
 spec_revision: 4
 requirements: [REQ-002, AC-005]
@@ -31,3 +31,17 @@ Write set: the opt-in example's `main.rs` and `sample.rs`, plus this task's impl
 3. Run the exact focused sampler test command, `mise run test:pipeline`, `mise run fmt:check`, `mise run lints`, and `git diff --check`. Record the focused RED failure, GREEN result, and final commands. The credentialed live sample and reproducibility comparison remain TASK-003 obligations.
 
 Route this remediation directly to `$cr-implement`.
+
+## Implementation evidence
+
+`Listing::push` in `sample.rs` folds each provider page and marks the listing truncated when accepted plus rejected entries reach `MAX_LISTED_FILES` (3,000) or the final readable page advertises `next`; `listing` in `main.rs` delegates to it. `Screen::new` now checks truncation before rejected entries, so a capped listing reports `IncompleteListing` regardless of rejections.
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| 1. 30-page, 3,000-entry listing with no final `next` → `IncompleteListing`; accepted and rejected entries count; shorter terminal page complete; advertised next page still fails | `Listing::push`, `Screen::new` in `sample.rs`; `listing` in `main.rs` | `listing_fails_at_provider_limits` (99 accepted + 1 rejected × 30 pages; 50 × 30 with `next`; 100 + 40 terminal) | PASS |
+| 2. Rustdoc on the test module and `PATCH` fixture | `sample.rs` `mod tests`, `PATCH` | Source inspection | PASS |
+| 3. Focused, pipeline, format, lint, diff checks | — | Commands below | PASS |
+
+Focused: `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --example context_relevance --all-features sample::`. RED: `no method named push found for struct sample::Listing` (plus unresolved `PullRequestFilesPage`). GREEN: 5 passed. `mise run test:pipeline`, `mise run fmt:check`, `mise run lints`, `git diff --check`, and `mise run gate` exited 0.
+
+Non-goals held: no trial blob fetch, provider abstraction, persisted-format, gate, production ranking, or `PrContext` change; write set is `main.rs`, `sample.rs`, and this file. Live sample and reproducibility remain TASK-003.
