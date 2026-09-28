@@ -720,7 +720,11 @@ mod tests {
     fn discovery_rejects_merge_after_update() {
         let mut discovery = Discovery::new("main", "2026-01-10T00:00:00Z").expect("valid cutoff");
         assert!(matches!(
-            discovery.offer(listed(14, "2026-01-05T00:00:00Z", Some("2026-01-06T00:00:00Z"))),
+            discovery.offer(listed(
+                14,
+                "2026-01-05T00:00:00Z",
+                Some("2026-01-06T00:00:00Z")
+            )),
             Err(SampleError::UnusablePr { number: 14, .. })
         ));
         assert!(discovery.settled(None).is_empty());
