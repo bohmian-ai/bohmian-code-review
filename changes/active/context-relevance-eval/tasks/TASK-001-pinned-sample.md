@@ -1,7 +1,7 @@
 ---
 id: TASK-001
 kind: implementation
-status: proposed
+status: review
 spec: SPEC-context-relevance-eval
 spec_revision: 4
 requirements: [REQ-001, REQ-002, REQ-003, REQ-007, INV-001, INV-003, INV-004, INV-005, AC-005]
@@ -74,3 +74,19 @@ Stop if the specified sample cannot be selected from one PR listing plus the bas
 ## Authority Links
 
 [Approved spec](../spec.md); [contributor rules](../../../../AGENTS.md); [design](../../../../architecture/bohmian-code-review-design.md).
+
+## Implementation Evidence
+
+Focused test: `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --example context_relevance --all-features sample::`. RED: `error: no example target named context_relevance` (no sampler). GREEN: 4 passed (`discovery_orders_and_settles_merged_prs`, `discovery_fails_on_unusable_input`, `screen_qualifies_and_records_omissions`, `screen_fails_on_rejected_or_incomplete_listing`). The example sets `test = true`, so `mise run test:pipeline` runs these tests.
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| One logical PR file listing, path eligibility, and base snapshot declarations; no `PrContext` or replay | `examples/context_relevance/main.rs` `listing`, `qualify`, `base_snapshot`; `sample.rs` `Screen` | `screen_qualifies_and_records_omissions`; diff grep finds no `PrContext`/replay | PASS |
+| 50 PRs in deterministic order or a clear run failure; only specified failures stop; omissions file-local; no reconciliation | `sample.rs` `Discovery::settled` (merge time, then number, descending; settles only PRs no unread PR can precede), `SampleError`, `Screen::new` omissions; `main.rs` `select` returns `TooFew` | `discovery_orders_and_settles_merged_prs`, `discovery_fails_on_unusable_input`, `screen_fails_on_rejected_or_incomplete_listing`, `screen_qualifies_and_records_omissions` | PASS |
+| No source blobs retained or prepared; no new public production contract | Only listing metadata and the source-free `Snapshot` are kept; changes confined to the example, its `[[example]]` entry, and `mise.toml` | `git diff --stat` (no `src/` change) | PASS |
+
+Commands (all exit 0): `mise run test:pipeline`, `mise run fmt:check`, `mise run lints`, `git diff --check`, `mise run gate`. The opt-in lane is `mise run live:context-relevance` (`GITHUB_TOKEN`, `BCR_EVAL_CUTOFF`), outside `gate`; live sample completeness is proved in TASK-003.
+
+Non-goals: no trial source blobs, second listing, `PrContext`, provider replay, production API, persisted-format, or gate change.
+
+Material limits: discovery walks closed PRs by update time, so a PR updated while pages are read can shift pages; a resulting duplicate fails the run, and a skipped PR is caught by the INV-003 rerun comparison. A listing that still advertises a next page at GitHub's 30-page file limit fails the run as incomplete.
