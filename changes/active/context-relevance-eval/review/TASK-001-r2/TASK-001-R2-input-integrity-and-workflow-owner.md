@@ -1,7 +1,7 @@
 ---
 id: TASK-001-R2
 kind: remediation
-status: ready
+status: review
 spec: SPEC-context-relevance-eval
 spec_revision: 4
 requirements: [REQ-002, REQ-003, INV-003, AC-005]
@@ -40,3 +40,18 @@ Write set: `crates/bohmian-code-review-pipeline/examples/context_relevance/sampl
 4. Record focused RED and GREEN outcomes using the exact implemented test selectors under `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --example context_relevance --all-features`; confirm each selector runs at least one test. Then run `mise run test:pipeline`, `mise run fmt:check`, `mise run lints`, and `git diff --check`. Preserve the R1 focused cap test. The credentialed live sample and reproducibility comparison remain TASK-003 obligations.
 
 Route this remediation directly to `$cr-implement`.
+
+## Implementation evidence
+
+`Listing::push` in `sample.rs` tracks listed paths and turns any repeated canonical path, within or across pages, into a `RejectedPath` ("path listed twice") that `Screen::new` reports as `SampleError::RejectedFile`; `files` holds distinct paths in provider order. `is_timestamp` keeps the fixed-width shape and now also requires a real Gregorian date and a 00:00:00–23:59:59 UTC clock, serving cutoff, update, and merge ingress. `Api` in `main.rs` now owns the GitHub client and cutoff; `listing`, `base_snapshot`, `qualify`, and `select` are its inherent methods with the same call chain; `run` and `main` remain entry points. The R1 cap fixture now names page-unique paths so it still exercises only the file ceiling.
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| 1. FIND-TASK-001-3: repeated path fails before qualification, within one page or across pages, regardless of status/patch; distinct paths still qualify | `Listing::push`, `Listing::paths` in `sample.rs` | `sample::tests::listing_rejects_repeated_paths` | PASS |
+| 2. FIND-TASK-001-4: impossible day, non-leap Feb 29 (2026, 1900), month 0/13, hour 24, minute/second 60 rejected for cutoff, update, merge; real leap days accepted; merge-time/PR-number order retained | `is_timestamp` in `sample.rs` | `sample::tests::discovery_rejects_impossible_timestamps` | PASS |
+| 3. FIND-TASK-001-5: four IO workflows owned by concrete `Api`; `run`/`main` stay entry points; prior five sampler tests pass | `Api` impl in `main.rs` | Source inspection; `sample::` 7 passed | PASS |
+| 4. Focused RED/GREEN, pipeline, format, lint, diff checks; R1 cap test preserved | — | Commands below | PASS |
+
+Focused: `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --example context_relevance --all-features <selector>`. RED (`sample::`): `listing_rejects_repeated_paths` failed (duplicate within one page accepted) and `discovery_rejects_impossible_timestamps` failed (`2026-02-30T00:00:00Z` accepted as cutoff); 5 passed. GREEN: `sample::tests::listing_rejects_repeated_paths` 1 passed, `sample::tests::discovery_rejects_impossible_timestamps` 1 passed, `sample::tests::listing_fails_at_provider_limits` 1 passed, `sample::` 7 passed. `mise run test:pipeline`, `mise run fmt:check`, `mise run lints`, `git diff --check`, and `mise run gate` exited 0.
+
+Non-goals held: no deduplication into a complete listing, second listing, `PrContext`, replay, trial blobs, dependency, production API, persisted-format, or gate change; write set is `main.rs`, `sample.rs`, and this file. Live sample and reproducibility remain TASK-003.
