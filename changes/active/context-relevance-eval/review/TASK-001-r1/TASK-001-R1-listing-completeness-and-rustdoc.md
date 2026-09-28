@@ -1,7 +1,7 @@
 ---
 id: TASK-001-R1
 kind: remediation
-status: implemented
+status: review
 spec: SPEC-context-relevance-eval
 spec_revision: 4
 requirements: [REQ-002, AC-005]
