@@ -1,7 +1,7 @@
 ---
 id: TASK-002-R1
 kind: remediation
-status: ready
+status: review
 spec: SPEC-context-relevance-eval
 spec_revision: 4
 requirements: [REQ-004, REQ-005, INV-002, AC-003]
@@ -29,3 +29,17 @@ Approved spec: `changes/active/context-relevance-eval/spec.md` revision 4. Origi
 For each new focused test, record the exact `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --example context_relevance --all-features <selector>` command and actual RED/GREEN results. Then run sequentially: `mise run test:pipeline`, `mise run test:pipeline:journey`, `mise run test:symbolic-context:journey`, `mise run fmt:check`, `mise run lints`, and `git diff --check`. Inspect the cumulative base-to-new-candidate diff and rerun task review on that immutable candidate.
 
 Expected write set: `crates/bohmian-code-review-pipeline/examples/context_relevance/trial.rs` and its inline no-network tests. Extend it only where closing the two validated root causes actually requires another evaluator file. This task changes no approved product or architecture decision.
+
+## Implementation Evidence
+
+Focused command: `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --example context_relevance --all-features trial::`. RED: `scoped_upstream_keeps_declaring_count_in_credit` failed at the D score assertion (inflated `1/df`), and `same_line_python_imports_bind_their_own_module` failed with D rank `None` for the upstream same-line binding. GREEN: 5 passed. One hand-computed expectation was wrong in the first draft (C ranks `pkg/util.py` third: `legacy` ties it at 1/6 and sorts first by path) and was corrected from the tie rule, not from output.
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| D keeps only the uniquely imported declarer with C's exact `1 / (df × declaring_file_count)` credit; competing candidate exposes the old credit; C and B unchanged | `trial.rs` `score`: upstream weight uses `declaring.len()` for C and D; module filter unchanged | `scoped_upstream_keeps_declaring_count_in_credit`: `helper` declared by `util` and `legacy` (df 3), D score 1/6, rank 2 behind `rare` (1/4; old 1/3 would rank 1), sent whole; C score 1/6 rank 3; B rank 3; scoped/unscoped 2/0 | PASS |
+| Same-line Python `from` imports bind their actual statement on remaining-head upstream and base-candidate downstream paths; repeated-name same-line case falls back to C; prior cases green | `trial.rs` `bindings`: a Python import reference binds only when exactly one import node's line/column span contains it and that node is not the reference's own module | `same_line_python_imports_bind_their_own_module`: upstream `b` D rank 1; downstream `user` D rank equals C and is downstream; `from pkg.a import y; from pkg.b import y` gives D rank and score equal to C with zero scoped names; existing Python/Rust, unresolved-import, and missing-base-blob assertions pass | PASS |
+| No production, persisted-format, public-API, sample-discovery, or live-lane change; reports source-free | Diff touches only `examples/context_relevance/trial.rs` and this task record | Diff inspection; existing source-text serialization assertion passes | PASS |
+
+Verification, sequential, exit 0 each: `mise run test:pipeline` (77 + 2 + 14 + 1 passed), `mise run test:pipeline:journey` (2 passed), `mise run test:symbolic-context:journey` (6 passed), `mise run fmt:check`, `mise run lints`, `git diff --check`, `mise run gate`.
+
+Material limits: a Python `import a, b` reference lies inside several import nodes and never binds (previously it could bind to a sibling module); `from a import a` does not bind and falls back to C.
