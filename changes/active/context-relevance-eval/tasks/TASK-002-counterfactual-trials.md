@@ -1,7 +1,7 @@
 ---
 id: TASK-002
 kind: implementation
-status: proposed
+status: review
 spec: SPEC-context-relevance-eval
 spec_revision: 4
 requirements: [REQ-004, REQ-005, REQ-006, INV-001, INV-002, INV-003, INV-004, INV-005, AC-003, AC-004, AC-005]
@@ -85,3 +85,20 @@ Stop if the approved C/D semantics cannot be expressed from existing public extr
 ## Authority Links
 
 [Approved spec](../spec.md); [contributor rules](../../../../AGENTS.md); [design](../../../../architecture/bohmian-code-review-design.md); [symbolic context](../../../../architecture/references/domain/symbolic-context.md).
+
+## Implementation Evidence
+
+Focused command: `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --example context_relevance --all-features trial::` (and `report::`). RED: 65 compile errors, `evaluate`, `rank_a`, `excluded`, `estimate_tokens` not found. GREEN: 3 passed (`withholding_keeps_base_file_rankable_and_a_is_production`, `variants_score_direction_rarity_and_imports`, `packing_records_whole_spans_omitted_and_unranked`); `report::tests::summaries_and_misses_follow_outcomes` passed. Two hand-computed expectations were wrong in the first draft (trial order is listing order; B ranks `pkg/models.py` fourth behind `loose` score 2 and the `far`/`legacy` path ties) and were corrected from the scoring rule, not from output.
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| A ranking matches production on identical counterfactual inputs; production packing distinct from common experimental sent result | `trial.rs` `rank_a` (facade `rank_files` over the snapshot-loaded index, remaining changed paths excluded), `trial` (`build_candidate_context` with production `max_candidate_files` and 100,000 tokens → `production_selected`), `outcome` (common policy) | `withholding_keeps_base_file_rankable_and_a_is_production` asserts `rank_a` equals a fresh facade `rank_files`; `packing_…` asserts `production_selected` separately from `sent` | PASS |
+| B–D implement approved lookup, scoring, fallback, deterministic ordering over full indexed base references; missing base source fails | `Corpus::new` extracts every indexed base blob; `score` with `Rule::{Directional,Rare,Scoped}`; `bindings`/`python_module`/`rust_module` from public extraction import facts; `removed_lines` for base-side names; `TrialError::MissingSource` | `variants_score_direction_rarity_and_imports`: Python and Rust, far-away base reference, explicit, relative (unresolved), and aliased-module imports, removed `gone` declaration, exact B/C/D ranks, C score 1/6, scoped/unscoped 3/2, missing `tokio/src/alt.rs` → `MissingSource` | PASS |
+| Every REQ-005–REQ-006 trial field and aggregate present; no source text serialized | `Trial`/`Outcome` (rank or `"unranked"`, score, names, direction, whole/snippet tokens, sent, diff tokens, omissions, production), `report.rs` (hit rate at 1/5/10/50, unranked, whole, spans-only, hit/miss score distributions, all and non-test, misses), `main.rs` report header (cutoff, command, estimate, allowance, prompt reserve, df ceiling, rarity rule) | `packing_…` serializes trials and asserts no fixture source text; `summaries_and_misses_follow_outcomes` | PASS |
+| No-network trial proves withheld, excluded, unranked, whole, spans-only, omitted, malformed-patch outcomes | `evaluate` | `withholding_…` (withheld/excluded, added file with missing patch recorded), `packing_…` (whole, spans-only, omitted, unranked for all variants, malformed patch excluded and recorded) | PASS |
+
+Verification, sequential, exit 0 each: `mise run test:pipeline` (77 + 2 + 12 + 1 passed), `mise run test:pipeline:journey` (2 passed), `mise run test:symbolic-context:journey` (6 passed), `mise run fmt:check`, `mise run lints`, `git diff --check`, `mise run gate`.
+
+Boundaries: diff touches only `examples/context_relevance/{main,trial,report}.rs` and the `live:context-relevance` description in `mise.toml`; no production crate, `PrContext` call, replay layer, or gate change. Report serialization holds paths, commits, names, ranks, scores, and counts only.
+
+Material limits: "hit" in score distributions and misses means sent (whole or spans) under the common policy. D scoping counts one lookup per name and referencing file. Python modules resolve by unique path suffix; relative Python imports and Rust paths outside `crate`/`self`/`super` stay unscoped; a Rust `use … as alias` or Python `import … as` binds the alias, which never declares, so it falls back to C. A remaining changed file whose base is not indexed contributes no base-side names. Every distinct blob of a repository run stays cached in memory to bound provider requests; TASK-003 will show whether live request volume fits the token's rate limit.
