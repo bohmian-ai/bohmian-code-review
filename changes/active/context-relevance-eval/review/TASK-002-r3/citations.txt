@@ -1,0 +1,6 @@
+[review:verify-citations] $ python3 scripts/verify_review_citations.py changes/…
+SOURCE-1	OK
+SOURCE-1	OK
+TASK-A-1	REJECT	snippet not found at crates/bohmian-code-review-pipeline/examples/context_relevance/trial.rs:410
+TASK-A-1	REJECT	snippet not found at crates/bohmian-code-review-pipeline/examples/context_relevance/trial.rs:411
+TASK-A-1	REJECT	snippet not found at crates/bohmian-code-review-pipeline/examples/context_relevance/trial.rs:412
