@@ -367,7 +367,11 @@ fn is_declaration(node: &Node) -> bool {
 /// import `references`, each resolved against the indexed `paths`.
 ///
 /// Python binds each name imported by `from <module> import` to the module
-/// file `<module>.py` or `<module>/__init__.py` matched by path suffix.
+/// file `<module>.py` or `<module>/__init__.py` matched by path suffix. The
+/// import statement is the one import node whose line and column span
+/// contains the reference, so several statements on one line bind
+/// independently; a reference inside several import nodes (`import a, b`)
+/// or naming its own module never binds.
 /// Rust binds the last segment of a `crate::`, `self::`, or `super::` use
 /// path to the module file below the nearest `src/` directory. Relative
 /// Python, external Rust, wildcard, and aliased-away imports never scope.
@@ -384,20 +388,22 @@ fn bindings(
         .filter(|reference| reference.reference_kind.wire_name() == "imports")
     {
         let binding = if python {
-            nodes
+            let position = (reference.line, reference.column);
+            let statements: Vec<&Node> = nodes
                 .iter()
-                .find(|node| {
+                .filter(|node| {
                     node.kind.wire_name() == "import"
-                        && node.start_line <= reference.line
-                        && reference.line <= node.end_line
-                        && node.name != reference.reference_name
+                        && (node.start_line, node.start_column) <= position
+                        && position <= (node.end_line, node.end_column)
                 })
-                .map(|node| {
-                    (
-                        reference.reference_name.as_str(),
-                        python_module(paths, &node.name),
-                    )
-                })
+                .collect();
+            match statements.as_slice() {
+                [node] if node.name != reference.reference_name => Some((
+                    reference.reference_name.as_str(),
+                    python_module(paths, &node.name),
+                )),
+                _ => None,
+            }
         } else {
             reference
                 .reference_name
@@ -744,14 +750,13 @@ fn score(
                     &mut unscoped
                 } += 1;
             }
-            let count = if module.is_some() { 1 } else { declaring.len() };
             for (path, spans) in &declaring {
                 if excluded.contains(path) || module.is_some_and(|module| module != path) {
                     continue;
                 }
                 let weight = match rule {
                     Rule::Directional => 1.0,
-                    _ => 1.0 / (df * count) as f64,
+                    _ => 1.0 / (df * declaring.len()) as f64,
                 };
                 credit(path, name, weight, true, spans.clone());
             }
@@ -1343,6 +1348,137 @@ mod tests {
             evaluate(2, base_index(&view), &missing, &files, &heads, 0),
             Err(TrialError::MissingSource { pr: 2, .. })
         ));
+    }
+
+    /// D keeps only the uniquely imported declarer of an ambiguous name but
+    /// credits it C's `1 / (df × declaring_file_count)`, so a rarer
+    /// single-declarer name outranks it.
+    #[test]
+    fn scoped_upstream_keeps_declaring_count_in_credit() {
+        let base = sources(&[
+            ("pkg/util.py", "def helper(x):\n    return x\n".to_owned()),
+            ("pkg/legacy.py", "def helper(x):\n    return -x\n".to_owned()),
+            ("pkg/rare.py", "def rare():\n    return 0\n".to_owned()),
+            ("pkg/r1.py", "from pkg.rare import rare\n".to_owned()),
+            ("pkg/r2.py", "from pkg.rare import rare\n".to_owned()),
+            (
+                "pkg/caller.py",
+                "from pkg.util import helper\nfrom pkg.rare import rare\n\ndef call():\n    return 0\n"
+                    .to_owned(),
+            ),
+        ]);
+        let files = vec![
+            listed(
+                "pkg/util.py",
+                FileStatus::Modified,
+                Some("@@ -2 +2 @@\n-    return x\n+    return x + 1"),
+            ),
+            listed(
+                "pkg/caller.py",
+                FileStatus::Modified,
+                Some("@@ -5 +5 @@\n-    return 0\n+    return helper(0) + rare()"),
+            ),
+        ];
+        let heads = BTreeMap::from([
+            (path("pkg/util.py"), b"def helper(x):\n    return x + 1\n".as_slice()),
+            (
+                path("pkg/caller.py"),
+                b"from pkg.util import helper\nfrom pkg.rare import rare\n\ndef call():\n    return helper(0) + rare()\n"
+                    .as_slice(),
+            ),
+        ]);
+        let view = borrowed(&base);
+        let trials = evaluate(4, base_index(&view), &view, &files, &heads, 0).expect("trials");
+        let trial = withheld(&trials, "pkg/util.py");
+        // helper: declared by util and legacy, referenced by caller: df 3,
+        // credit 1/(3*2). rare: declared by rare, referenced by caller, r1,
+        // r2: df 4, credit 1/4. C: rare, then the legacy/util tie by path.
+        // D scopes helper to util only, which stays behind rare.
+        assert!((trial.c.score - 1.0 / 6.0).abs() < 1e-12);
+        assert!((trial.d.score - 1.0 / 6.0).abs() < 1e-12);
+        assert_eq!(trial.c.rank, Some(3));
+        assert_eq!(trial.d.rank, Some(2));
+        assert_eq!(trial.d.sent, Sent::Whole);
+        assert_eq!(trial.b.rank, Some(3));
+        assert_eq!((trial.names_scoped, trial.names_unscoped), (2, 0));
+    }
+
+    /// Two Python `from` imports on one line bind each name to its own
+    /// statement's module, upstream from a remaining head and downstream
+    /// from an indexed base candidate; a name bound by both falls back to C.
+    #[test]
+    fn same_line_python_imports_bind_their_own_module() {
+        let base = sources(&[
+            ("pkg/a.py", "def x():\n    return 0\n\ndef y():\n    return 0\n".to_owned()),
+            ("pkg/b.py", "def y():\n    return 1\n".to_owned()),
+            (
+                "pkg/caller.py",
+                "from pkg.a import x; from pkg.b import y\n\ndef call():\n    return 0\n".to_owned(),
+            ),
+            (
+                "pkg/user.py",
+                "from pkg.a import x; from pkg.b import y\n\ndef use():\n    return y()\n\ndef other():\n    return 0\n"
+                    .to_owned(),
+            ),
+            (
+                "pkg/both.py",
+                "from pkg.a import y; from pkg.b import y\n\ndef both():\n    return 0\n".to_owned(),
+            ),
+        ]);
+        let run = |caller: &str| {
+            let files = vec![
+                listed(
+                    "pkg/b.py",
+                    FileStatus::Modified,
+                    Some("@@ -2 +2 @@\n-    return 1\n+    return 2"),
+                ),
+                listed(
+                    caller,
+                    FileStatus::Modified,
+                    Some("@@ -4 +4 @@\n-    return 0\n+    return y()"),
+                ),
+                listed(
+                    "pkg/user.py",
+                    FileStatus::Modified,
+                    Some("@@ -7 +7 @@\n-    return 0\n+    return 1"),
+                ),
+            ];
+            let head = String::from_utf8_lossy(base[&path(caller)].as_slice())
+                .replacen("    return 0\n", "    return y()\n", 1);
+            let heads: BTreeMap<RelativePath, Vec<u8>> = BTreeMap::from([
+                (path("pkg/b.py"), b"def y():\n    return 2\n".to_vec()),
+                (path(caller), head.into_bytes()),
+                (
+                    path("pkg/user.py"),
+                    base[&path("pkg/user.py")]
+                        .strip_suffix(b"    return 0\n")
+                        .expect("fixture tail")
+                        .iter()
+                        .chain(b"    return 1\n")
+                        .copied()
+                        .collect(),
+                ),
+            ]);
+            let view = borrowed(&base);
+            evaluate(5, base_index(&view), &view, &files, &borrowed(&heads), 0).expect("trials")
+        };
+
+        let trials = run("pkg/caller.py");
+        // Upstream: caller's y is bound to b, not a.
+        let b = withheld(&trials, "pkg/b.py");
+        assert_eq!(b.d.rank, Some(1));
+        assert_eq!(b.d.direction, Some(Direction::Upstream));
+        // Downstream: user's base y is bound to b, which the change edits.
+        let user = withheld(&trials, "pkg/user.py");
+        assert_eq!(user.d.rank, user.c.rank);
+        assert!(user.d.rank.is_some());
+        assert_eq!(user.d.direction, Some(Direction::Downstream));
+
+        let trials = run("pkg/both.py");
+        let b = withheld(&trials, "pkg/b.py");
+        assert_eq!((b.d.rank, b.d.score), (b.c.rank, b.c.score));
+        assert!(b.d.rank.is_some());
+        assert_eq!(b.names_scoped, 0);
     }
 
     /// Scenario 3: under the common allowance the withheld file is sent
