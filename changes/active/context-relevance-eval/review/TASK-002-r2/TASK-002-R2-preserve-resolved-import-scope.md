@@ -29,3 +29,15 @@ Keep the uniquely resolved module as the D scope even when it has no matching de
 3. No production symbolic or pipeline behavior, persisted format, public API, live-lane gate, provider flow, or report source-lifetime rule changes. The write set is the evaluator's `trial.rs` and its inline no-network test, extended only if the shared correction actually requires another evaluator file.
 
 Record RED and GREEN for the exact focused command `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --example context_relevance --all-features trial::tests::resolved_import_without_declaration_keeps_scope -- --exact`, then run the full `trial::` and `report::` focused selectors. Run sequentially: `mise run test:pipeline`, `mise run test:pipeline:journey`, `mise run test:symbolic-context:journey`, `mise run fmt:check`, `mise run lints`, and `git diff --check`. Inspect the cumulative base-to-new-candidate diff for production, public API, gate, source-text, PR-context, and replay changes. Re-review the immutable cumulative candidate against the original task and both remediation tasks.
+
+## Implementation evidence
+
+Fix commit `2da9a16`. `score` keeps the uniquely bound module from `bound` without filtering it against `declaring`; the existing module filter then admits no other declarer.
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| 1. Resolved import to a module lacking the name stays scoped; D leaves the unrelated declarer unranked; counts scoped | `trial.rs` `score` module binding | `trial::tests::resolved_import_without_declaration_keeps_scope` RED (D `(Some(1), 0.5)`), then GREEN | PASS |
+| 2. Unresolved/ambiguous imports keep C fallback; R1 tests green | Same test (`pkg.missing` case); existing `same_line_python_imports_bind_their_own_module` (ambiguous) | `trial::` 6 passed; `report::` 1 passed | PASS |
+| 3. No production, public API, persisted format, gate, provider, or source-lifetime change | Write set: `trial.rs` and this record | Cumulative base diff outside `changes/`: evaluator example and `mise.toml` description only | PASS |
+
+Commands (all exit 0, run sequentially): focused exact test, `trial::`, `report::`, `mise run test:pipeline`, `mise run test:pipeline:journey`, `mise run test:symbolic-context:journey`, `mise run fmt:check`, `mise run lints`, `git diff --check`, `mise run gate`. Non-goals stayed excluded. No live GitHub run; TASK-003 owns it.
