@@ -73,6 +73,10 @@ run = [
 description = "AC-006 controlled-provider contract, explicitly invoked and never in gate: read-only production client cases at a fixed commit (GITHUB_TOKEN, BCR_REPO_ID, BCR_COMMIT; BCR_REPO, BCR_PR optional)"
 run = "cargo run --locked --release -p bohmian-code-review-pipeline --example provider_contract --all-features"
 
+[tasks."live:context-relevance"]
+description = "Context-relevance evaluation, explicitly invoked and never in gate: select each evaluated repository's merged-PR sample, read-only (GITHUB_TOKEN, BCR_EVAL_CUTOFF)"
+run = "cargo run --locked --release -p bohmian-code-review-pipeline --example context_relevance --all-features"
+
 [tasks."test:rust"]
 description = "Run every component lane and the public journey"
 depends = [
