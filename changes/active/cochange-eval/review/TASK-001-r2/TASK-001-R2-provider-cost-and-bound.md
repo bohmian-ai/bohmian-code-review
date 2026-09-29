@@ -30,3 +30,15 @@ Expected write set: `crates/bohmian-code-review-pipeline/examples/context_releva
 - For `FIND-TASK-001-5`, feed a valid 200 JSON response just above `RequestLimits::max_json_bytes` through the existing fake direct transport and prove failure before full buffering and report emission. A response at the limit must still decode. Because all direct reads share `Api::get`, this proves the rule for repository metadata, listing pages, and commit timestamps at their common owner.
 
 Run exact focused new test selectors, `mise run test:pipeline`, `mise run fmt:check`, `mise run lints`, and `git diff --check`. Run `mise run gate` for the cumulative candidate before its next immutable review. Route directly to `$cr-implement`.
+
+## Implementation evidence
+
+Commit `c12e8b7`. Write set: `crates/bohmian-code-review-pipeline/examples/context_relevance/{main,history}.rs` only; `sample.rs`, production crates, public APIs, persisted formats, grammar pins, historical reports, and `gate` unchanged.
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| `FIND-TASK-001-3`: actual file-page requests survive into `Requests` and `record`; logical one-listing-per-PR kept separate | `Api::listing` returns `(Listing, pages)`; qualification cache stores `(Changed, pages)`; `History::build` sums cold pages and records `ListingReads::incremental` pages by PR; report emits `cold_build`, `incremental_update.page_requests_by_merged_pr`, and `aggregate_page_requests_through_newest_base` | `tests::run_reads_each_input_once_and_reports_costs`: history-only paginated cold PR 15 gives `cold_build` 13; cached paginated incremental PR 40 appears as 2 pages, aggregate 50; each listing URL read once, 50 timestamp reads, no per-trial reads; `history::tests::history_is_cold_depth_plus_time_eligible_increments` asserts per-PR incremental pages | PASS |
+| Complete failure at the page ceiling on both listing paths | Unchanged `history::changed` completeness check | `tests::run_fails_without_report_on_missing_incomplete_or_rate_limited_reads`: PR 14 (history-only) and PR 30 (cached) each read 30 pages then fail with `IncompleteListing`, no report | PASS |
+| `FIND-TASK-001-5`: direct JSON bounded by `RequestLimits::max_json_bytes` before buffering | `Api::get` rejects a chunk that would pass the limit before appending; single attempt, non-200 failure, and decoding unchanged | `tests::direct_json_is_bounded_by_the_client_limit`: body at the limit decodes; limit + 1 fails the run with no report and no listing reads | PASS |
+
+Commands, all exit 0 in this session: `cargo test --locked -p bohmian-code-review-pipeline --example context_relevance --all-features` (24 passed), `mise run test:pipeline`, `mise run fmt:check`, `mise run lints`, `git diff --check`, `mise run gate`. Non-goals (ranking arms, packing claims, co-change store, ancestry lookups, per-trial reads) remain excluded. Limit: no live credentialed run.
