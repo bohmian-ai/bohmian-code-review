@@ -1582,7 +1582,7 @@ pub(crate) mod tests {
                 .iter()
                 .map(|(number, at, _)| {
                     format!(
-                        r#"{{"number":{number},"updated_at":"{at}","merged_at":"{at}","base":{{"ref":"main","sha":"{}"}},"head":{{"ref":"f","sha":"{}"}}}}"#,
+                        r#"{{"number":{number},"updated_at":"{at}","merged_at":"{at}","base":{{"ref":"main","sha":"{}","repo":{{"id":1296269}}}},"head":{{"ref":"f","sha":"{}"}}}}"#,
                         sha('a'),
                         sha('b')
                     )
@@ -1619,7 +1619,7 @@ pub(crate) mod tests {
                         200,
                         vec![("link".to_owned(), r#"<x>; rel="next""#.to_owned())],
                         format!(
-                            r#"[{{"number":{number},"updated_at":"2026-03-{:02}T00:00:00Z","merged_at":null,"base":{{"ref":"main","sha":"{}"}},"head":{{"ref":"f","sha":"{}"}}}}]"#,
+                            r#"[{{"number":{number},"updated_at":"2026-03-{:02}T00:00:00Z","merged_at":null,"base":{{"ref":"main","sha":"{}","repo":{{"id":1296269}}}},"head":{{"ref":"f","sha":"{}"}}}}]"#,
                             30 - page,
                             sha('a'),
                             sha('b')
@@ -1643,7 +1643,7 @@ pub(crate) mod tests {
                     false => "null".to_owned(),
                 };
                 format!(
-                    r#"{{"number":{number},"updated_at":"{at}","merged_at":{merged_at},"base":{{"ref":"main","sha":"{}"}},"head":{{"ref":"f","sha":"{}"}}}}"#,
+                    r#"{{"number":{number},"updated_at":"{at}","merged_at":{merged_at},"base":{{"ref":"main","sha":"{}","repo":{{"id":1296269}}}},"head":{{"ref":"f","sha":"{}"}}}}"#,
                     sha('a'),
                     sha('b')
                 )
@@ -1681,7 +1681,7 @@ pub(crate) mod tests {
         pub(crate) fn moving_history(&self) {
             let entry = |number: u64, hour: u32| {
                 format!(
-                    r#"{{"number":{number},"updated_at":"2026-02-03T{hour:02}:00:00Z","merged_at":"2026-02-03T{hour:02}:00:00Z","base":{{"ref":"main","sha":"{}"}},"head":{{"ref":"f","sha":"{}"}}}}"#,
+                    r#"{{"number":{number},"updated_at":"2026-02-03T{hour:02}:00:00Z","merged_at":"2026-02-03T{hour:02}:00:00Z","base":{{"ref":"main","sha":"{}","repo":{{"id":1296269}}}},"head":{{"ref":"f","sha":"{}"}}}}"#,
                     sha('a'),
                     sha('b')
                 )
@@ -2441,9 +2441,10 @@ pub(crate) mod tests {
 
     /// Cold build history is complete or fails before publication: a
     /// genuinely exhausted empty listing publishes empty history, while a
-    /// listing still advertising pages at the page bound, or one whose
-    /// page 1 gained an entry below its first while page 2 was read,
-    /// fails the build and publishes no pointer.
+    /// listing still advertising pages at the page bound, one listing a PR
+    /// into another repository, or one whose page 1 gained an entry below
+    /// its first while page 2 was read, fails the build and publishes no
+    /// pointer.
     #[tokio::test]
     async fn cold_build_history_is_complete_or_unpublished() {
         let identity = identity();
@@ -2480,6 +2481,23 @@ pub(crate) mod tests {
             Err(ColdBuildError::History(HistoryError::UnprovedHistory {
                 found: 0
             }))
+        ));
+        assert_eq!(pointer, None);
+        assert!(storage.keys().is_empty());
+
+        let foreign = FakeRepo::new(&standard_files(), &standard_archive());
+        foreign.transport.json(
+            &closed_pulls(1),
+            &format!(
+                r#"[{{"number":1,"updated_at":"2026-01-01T00:00:00Z","merged_at":"2026-01-01T00:00:00Z","base":{{"ref":"main","sha":"{}","repo":{{"id":7}}}},"head":{{"ref":"f","sha":"{}"}}}}]"#,
+                sha('a'),
+                sha('b')
+            ),
+        );
+        let (result, pointer, storage) = build(&foreign).await;
+        assert!(matches!(
+            result,
+            Err(ColdBuildError::GitHub(GitHubError::IdentityMismatch { .. }))
         ));
         assert_eq!(pointer, None);
         assert!(storage.keys().is_empty());

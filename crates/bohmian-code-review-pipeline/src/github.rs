@@ -744,12 +744,14 @@ struct ListedPullRequestWire {
     head: ListedRefWire,
 }
 
-/// Base or head of a listed pull request.
+/// Base or head of a listed pull request; `repo` is absent or null for a
+/// deleted fork head.
 #[derive(Deserialize)]
 struct ListedRefWire {
     #[serde(rename = "ref")]
     name: String,
     sha: ObjectSha,
+    repo: Option<PullRepoWire>,
 }
 
 /// Any object reference carrying only a `sha`.
@@ -859,16 +861,28 @@ pub struct PullRequestsPage {
     pub has_next: bool,
 }
 
-/// `wire` from `resource` as a [`ListedPullRequest`].
+/// `wire` from `resource`, a listing of `repository`, as a
+/// [`ListedPullRequest`]. Only the base repository is checked; the head
+/// may be a fork.
 ///
 /// # Errors
 ///
-/// [`GitHubError::MalformedResponse`] for PR number 0, a time that is not
-/// `YYYY-MM-DDTHH:MM:SSZ`, or a merge after the last update.
+/// [`GitHubError::IdentityMismatch`] when the base repository id is absent
+/// or is not `repository`'s, and [`GitHubError::MalformedResponse`] for PR
+/// number 0, a time that is not `YYYY-MM-DDTHH:MM:SSZ`, or a merge after
+/// the last update.
 fn listed_pull_request(
     wire: ListedPullRequestWire,
+    repository: &RepositoryIdentity,
     resource: &str,
 ) -> Result<ListedPullRequest, GitHubError> {
+    let base_repo = wire.base.repo.as_ref().map(|repo| repo.id);
+    if base_repo != Some(repository.id()) {
+        return Err(GitHubError::IdentityMismatch {
+            expected: format!("PR #{} in repository {}", wire.number, repository.id()),
+            actual: format!("PR #{} in repository {:?}", wire.number, base_repo),
+        });
+    }
     let malformed = |detail: String| GitHubError::MalformedResponse {
         resource: resource.to_owned(),
         detail: format!("PR #{}: {detail}", wire.number),
@@ -1557,7 +1571,8 @@ impl GitHubClient {
     /// # Errors
     ///
     /// [`GitHubError::IdentityMismatch`] for an entry into another base
-    /// branch, [`GitHubError::MalformedResponse`] for PR number 0, a time
+    /// branch or whose base repository id is absent or not `repository`'s,
+    /// [`GitHubError::MalformedResponse`] for PR number 0, a time
     /// that is not `YYYY-MM-DDTHH:MM:SSZ`, or a merge after the last
     /// update, plus any policy or transport error. One bad entry fails the
     /// page, so a listing is never silently partial.
@@ -1593,7 +1608,7 @@ impl GitHubClient {
             has_next,
         };
         for wire in wire {
-            let pr = listed_pull_request(wire, &resource)?;
+            let pr = listed_pull_request(wire, repository, &resource)?;
             if pr.base_branch != base {
                 return Err(GitHubError::IdentityMismatch {
                     expected: format!("PR into `{base}`"),
@@ -1658,9 +1673,11 @@ impl GitHubClient {
     ///
     /// # Errors
     ///
-    /// [`GitHubError::MalformedResponse`] for PR number 0, a time that is
-    /// not `YYYY-MM-DDTHH:MM:SSZ`, or a merge after the last update, plus
-    /// any policy or transport error. One bad entry fails the page.
+    /// [`GitHubError::IdentityMismatch`] for an entry whose base repository
+    /// id is absent or not `repository`'s, [`GitHubError::MalformedResponse`]
+    /// for PR number 0, a time that is not `YYYY-MM-DDTHH:MM:SSZ`, or a
+    /// merge after the last update, plus any policy or transport error. One
+    /// bad entry fails the page.
     pub async fn pull_requests(
         &self,
         repository: &RepositoryIdentity,
@@ -1686,7 +1703,7 @@ impl GitHubClient {
         let wire: Vec<ListedPullRequestWire> = parse_json(&bytes, &resource)?;
         let prs = wire
             .into_iter()
-            .map(|wire| listed_pull_request(wire, &resource))
+            .map(|wire| listed_pull_request(wire, repository, &resource))
             .collect::<Result<_, _>>()?;
         Ok(PullRequestsPage { prs, has_next })
     }
@@ -2151,7 +2168,9 @@ mod tests {
     /// a repository looked up by name comes back with its verified
     /// identity, and one naming another repository is rejected; the
     /// all-PR listing keeps every state and base, reports its next page,
-    /// and fails the page on an unusable entry or a provider error.
+    /// and fails the page on an unusable entry or a provider error. Both
+    /// listings accept a forked head of the requested base repository and
+    /// reject an entry whose base repository id is missing or another's.
     #[tokio::test]
     async fn repository_lookup_and_pull_request_listing_are_verified() {
         let (client, fake) = client();
@@ -2175,12 +2194,15 @@ mod tests {
         fake.push(404, &[], "");
         assert!(client.find_repository("octocat", "gone").await.is_err());
 
-        let entry = |number: u64, merged: &str, base: &str| {
+        let listed = |number: u64, merged: &str, base: &str, repo: &str| {
             format!(
-                r#"{{"number":{number},"updated_at":"2026-01-02T00:00:00Z","merged_at":{merged},"base":{{"ref":"{base}","sha":"{}"}},"head":{{"ref":"f","sha":"{}"}}}}"#,
+                r#"{{"number":{number},"updated_at":"2026-01-02T00:00:00Z","merged_at":{merged},"base":{{"ref":"{base}","sha":"{}"{repo}}},"head":{{"ref":"f","sha":"{}","repo":{{"id":99}}}}}}"#,
                 sha('a'),
                 sha('b')
             )
+        };
+        let entry = |number: u64, merged: &str, base: &str| {
+            listed(number, merged, base, r#","repo":{"id":1296269}"#)
         };
         fake.push(
             200,
@@ -2230,6 +2252,27 @@ mod tests {
         }
         fake.push(404, &[], "");
         assert!(client.pull_requests(&repo(), 2).await.is_err());
+
+        let merged = r#""2026-01-01T00:00:00Z""#;
+        fake.push_json(&format!("[{}]", entry(1, merged, "main")));
+        let closed = client
+            .closed_pull_requests(&repo(), "main", 1)
+            .await
+            .expect("closed page");
+        assert_eq!(closed.merged.len(), 1);
+        for repo_field in ["", r#","repo":null"#, r#","repo":{"id":7}"#] {
+            let foreign = format!("[{}]", listed(1, merged, "main", repo_field));
+            fake.push_json(&foreign);
+            assert!(matches!(
+                client.pull_requests(&repo(), 1).await,
+                Err(GitHubError::IdentityMismatch { .. })
+            ));
+            fake.push_json(&foreign);
+            assert!(matches!(
+                client.closed_pull_requests(&repo(), "main", 1).await,
+                Err(GitHubError::IdentityMismatch { .. })
+            ));
+        }
     }
 
     /// Every remaining chunk of `archive`, concatenated.

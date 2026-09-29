@@ -144,7 +144,7 @@ impl FakeGitHub {
             .iter()
             .map(|(number, at, _)| {
                 json!({"number": number, "updated_at": at, "merged_at": at,
-                       "base": {"ref": "main", "sha": sha('c').as_str()},
+                       "base": {"ref": "main", "sha": sha('c').as_str(), "repo": {"id": 1296269}},
                        "head": {"ref": "topic", "sha": sha('b').as_str()}})
             })
             .collect();

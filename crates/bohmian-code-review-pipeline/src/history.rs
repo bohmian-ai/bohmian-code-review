@@ -504,7 +504,7 @@ mod tests {
             "null".to_owned()
         };
         format!(
-            r#"{{"number":{number},"updated_at":"{updated}","merged_at":{merged_at},"base":{{"ref":"main","sha":"{a}"}},"head":{{"ref":"f","sha":"{b}"}}}}"#,
+            r#"{{"number":{number},"updated_at":"{updated}","merged_at":{merged_at},"base":{{"ref":"main","sha":"{a}","repo":{{"id":1}}}},"head":{{"ref":"f","sha":"{b}"}}}}"#,
             a = "a".repeat(40),
             b = "b".repeat(40)
         )

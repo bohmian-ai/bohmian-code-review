@@ -617,7 +617,7 @@ mod tests {
             let listed: Vec<_> = (1..=65)
                 .map(|n| {
                     json!({"number": n, "updated_at": at(n, 30), "merged_at": at(n, 30),
-                    "base": {"ref": "main", "sha": sha(0xba5e, n)},
+                    "base": {"ref": "main", "sha": sha(0xba5e, n), "repo": {"id": 1}},
                     "head": {"ref": "topic", "sha": sha(0x4ead, n)}})
                 })
                 .collect();
@@ -1042,7 +1042,7 @@ mod tests {
         impossible.client.json(
             "/repos/o/n/pulls?state=all&sort=created&direction=asc&per_page=100&page=1",
             &json!([{"number": 1, "updated_at": at(1, 0), "merged_at": at(1, 30),
-                "base": {"ref": "main", "sha": sha(0xba5e, 1)},
+                "base": {"ref": "main", "sha": sha(0xba5e, 1), "repo": {"id": 1}},
                 "head": {"ref": "topic", "sha": sha(0x4ead, 1)}}])
             .to_string(),
         );
