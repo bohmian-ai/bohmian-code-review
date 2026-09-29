@@ -406,9 +406,10 @@ fn rank_c(
     )
 }
 
-/// E: for each remaining changed file `d` touched by `n(d) > 0` of the
-/// `history` PRs' paths, credit each indexed, non-`excluded` candidate `f`
-/// with `n(d, f) / n(d)`, summed over `d`.
+/// E: for each indexed remaining changed file `d` touched by `n(d) > 0` of
+/// the `history` PRs' paths, credit each indexed, non-`excluded` candidate
+/// `f` with `n(d, f) / n(d)`, summed over `d`. A remaining path absent
+/// from the base contributes nothing.
 fn rank_e(
     corpus: &Corpus,
     remaining: &[&Change<'_>],
@@ -416,7 +417,10 @@ fn rank_e(
     history: &[&[RelativePath]],
 ) -> Vec<(RelativePath, f64)> {
     let mut scores: BTreeMap<RelativePath, f64> = BTreeMap::new();
-    for change in remaining {
+    for change in remaining
+        .iter()
+        .filter(|change| corpus.declarations.contains_key(&change.file.path))
+    {
         let touching: Vec<&[RelativePath]> = history
             .iter()
             .copied()
@@ -1043,6 +1047,57 @@ mod tests {
         let with_future =
             evaluate(99, base_index(&view), &view, &files, &heads, &leaked).expect("trials");
         assert_ne!(with_future, trials);
+    }
+
+    /// Scenario 2: a remaining changed path absent from the base anchors
+    /// no co-change history, so it lends E and F nothing, while an indexed
+    /// remaining path still credits `n(d, f) / n(d)`.
+    #[test]
+    fn absent_base_changed_path_anchors_no_cochange() {
+        let def = |name: &str| format!("def {name}():\n    return 0\n");
+        let base = sources(&[
+            ("pkg/a.py", def("a")),
+            ("pkg/c.py", def("c")),
+            ("pkg/w.py", def("w")),
+        ]);
+        let files = vec![
+            listed("pkg/a.py", FileStatus::Modified, None),
+            listed("pkg/c.py", FileStatus::Modified, None),
+            listed("pkg/u.py", FileStatus::Added, None),
+        ];
+        let owned: Vec<Vec<RelativePath>> = [
+            ["pkg/u.py", "pkg/a.py"],
+            ["pkg/u.py", "pkg/a.py"],
+            ["pkg/c.py", "pkg/w.py"],
+            ["pkg/c.py", "pkg/w.py"],
+            ["pkg/c.py", "pkg/a.py"],
+        ]
+        .iter()
+        .map(|pr| pr.iter().copied().map(path).collect())
+        .collect();
+        let history: Vec<&[RelativePath]> = owned.iter().map(Vec::as_slice).collect();
+
+        let view = borrowed(&base);
+        let heads = BTreeMap::new();
+        let mut scratch = SymbolicContext::new();
+        let corpus = Corpus::new(7, base_index(&view), &view, &mut scratch).expect("corpus");
+        let changes = files
+            .iter()
+            .map(|file| Change::new(7, &corpus, &mut scratch, file, &heads))
+            .collect::<Result<Vec<_>, _>>()
+            .expect("changes");
+        let remaining: Vec<&Change<'_>> = changes[1..].iter().collect();
+        let excluded = excluded(&remaining, &path("pkg/a.py"));
+        // u is absent from the base; only c anchors: n(c) = 3, w 2/3, a 1/3.
+        let e = rank_e(&corpus, &remaining, &excluded, &history);
+        assert_eq!(paths(&e), ["pkg/w.py", "pkg/a.py"]);
+        assert!((e[0].1 - 2.0 / 3.0).abs() < 1e-12);
+        assert!((e[1].1 - 1.0 / 3.0).abs() < 1e-12);
+
+        let trials =
+            evaluate(7, base_index(&view), &view, &files, &heads, &history).expect("trials");
+        let a = withheld(&trials, "pkg/a.py");
+        assert_eq!((a.c.rank, a.e.rank, a.f.rank), (None, Some(2), Some(2)));
     }
 
     /// Scenario 3: a trial records only the withheld path and each arm's
