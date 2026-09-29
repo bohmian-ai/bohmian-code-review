@@ -1,0 +1,24 @@
+# Domain review: provider trust and consumer pipeline
+
+**Subject:** `322a2b9e0984062625d54274798a9c32cb01142d..e52510f112b822f7f7692535b26ae81e53ac4b03`
+**Boundary:** GitHub source identity, eval provider reads, one-store `ReviewPipeline`, context publication and read-back.
+**Authority:** `changes/reviews/ranker-pipeline/intent.md` decisions 3, 7, 8; R1 FIND-3; `architecture/references/domain/pipeline-consumer-ergonomics.md`; `AGENTS.md:23`; `architecture/bohmian-code-review-design.md` pipeline and eval ownership.
+**Result:** **FAIL**.
+
+## Coverage and verification limits
+
+Reviewed the cumulative base-to-candidate file list and current `github.rs`, `history.rs`, `review.rs`, `pull_request.rs`, `context.rs`, `update.rs`, the eval `live.rs` provider path, and focused fake-provider and public pipeline journey tests. `Api` owns only `GitHubClient`: repository discovery, PR listing, base commit, and blobs pass through pipeline types, closing R1 FIND-3's direct-provider-IO class. `ReviewPipeline` uses one storage/store and one effective `max_file_bytes`, takes `GitHubClient` per call, cold-builds only for an absent pointer, wraps update in `refresh`, and reads by context ID without GitHub access. Context read-back checks the store-scoped identity, key, digest, format, and record fields. No authenticated live request was available; provider behavior was checked from the fake transport and source. The subject remained at the stated candidate commit.
+
+## Proposed finding
+
+### DOMAIN-PROVIDER-1 — listed PR base repository identity is discarded
+
+- **Classification:** VIOLATION, source trust. **Defect class:** listed-PR decoding drops the base repository id before validation. The candidate-owned wire shape permits the defect.
+- **Root owner and siblings:** `ListedRefWire` in `github.rs:749-753` retains only branch name and SHA. `listed_pull_request` at `github.rs:868-899` cannot compare a base repository id to the requested `RepositoryIdentity`. Both `closed_pull_requests` at `github.rs:1595-1605` and `pull_requests` at `github.rs:1686-1691` call it and return the entry. The existing single-PR reader at `github.rs:1476-1481` verifies precisely this id. No caller-side guard closes either listing sink.
+- **Violated obligation:** `AGENTS.md:23` assigns Git identity verification to the pipeline crate; intent decision 7 requires the history of PRs merged into the requested repository's default branch. R1 FIND-3 moves eval listing to the pipeline to use that source-trust owner.
+- **Evidence and observable consequence:** A 200 listing body can identify the requested branch and valid times/SHAs while carrying `base.repo.id` for another repository (or omitting it). Serde ignores that field and accepts the entry. The closed listing reaches `CoChangeHistory::read` at `history.rs:408-415`, then cold-build or update snapshot publication; foreign paths can affect fused ranking. The all-PR listing reaches eval `Api::select` at `live.rs:277-285`, so the sample can include a foreign PR. The current fake listing at `github.rs:2178-2194` omits `base.repo` and expects success.
+- **Testable correction:** Decode and verify each listed PR's base repository id against the requested identity in the shared provider conversion before returning either page. Reuse the single-PR reader's `PullRepoWire`/`IdentityMismatch` policy; keep existing branch, number, and time checks. Prove both listing operations reject a mismatched or absent base repository id with fake responses.
+
+```citations
+[{"id":"DOMAIN-PROVIDER-1","path":"crates/bohmian-code-review-pipeline/src/github.rs","line":749,"snippet":"struct ListedRefWire {","symbols":["ListedRefWire","listed_pull_request"]},{"id":"DOMAIN-PROVIDER-1","path":"crates/bohmian-code-review-pipeline/src/github.rs","line":868,"snippet":"fn listed_pull_request(","symbols":["listed_pull_request"]},{"id":"DOMAIN-PROVIDER-1","path":"crates/bohmian-code-review-pipeline/src/github.rs","line":1596,"snippet":"            let pr = listed_pull_request(wire, &resource)?;","symbols":["closed_pull_requests","listed_pull_request"]},{"id":"DOMAIN-PROVIDER-1","path":"crates/bohmian-code-review-pipeline/src/github.rs","line":1689,"snippet":"            .map(|wire| listed_pull_request(wire, &resource))","symbols":["pull_requests","listed_pull_request"]},{"id":"DOMAIN-PROVIDER-1","path":"crates/bohmian-code-review-pipeline/src/github.rs","line":1476,"snippet":"        let base_repo = wire.base.repo.as_ref().map(|repo| repo.id);","symbols":["pull_request"]},{"id":"DOMAIN-PROVIDER-1","path":"crates/bohmian-code-review-pipeline/src/history.rs","line":408,"snippet":"            let page = client","symbols":["CoChangeHistory::read"]},{"id":"DOMAIN-PROVIDER-1","path":"crates/bohmian-code-review-eval/src/live.rs","line":278,"snippet":"            let listed = self","symbols":["select"]}]
+```
