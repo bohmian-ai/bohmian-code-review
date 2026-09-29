@@ -1,0 +1,4 @@
+Command: mise run review:verify-citations changes/active/context-relevance-eval/review/TASK-003-r1 989f212b4f747cde51d37bde15737a7f5fc893a5
+Exit: 0
+Output: [review:verify-citations] $ python3 scripts/verify_review_citations.py changes/…
+Wave 1 proposed no findings; all four citations blocks are empty. Rejected citations: none.
