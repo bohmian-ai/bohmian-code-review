@@ -124,11 +124,11 @@ struct CommitterWire {
 }
 
 /// Provider requests of one repository's run, by who would need them.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct Requests {
     /// Merged-PR listing pages read, once per repository.
     listing_pages: usize,
-    /// History file-listing reads by production step.
+    /// History file-listing page requests by production step.
     history: history::ListingReads,
     /// Evaluation-only base-commit reads for committer times.
     timestamp_reads: usize,
@@ -158,11 +158,14 @@ struct Api {
 }
 
 impl Api {
-    /// GET `resource` from the public API once and decode its JSON body.
+    /// GET `resource` from the public API once and decode its JSON body,
+    /// read no further than the client's `max_json_bytes` limit.
     ///
     /// # Errors
     ///
-    /// Returns transport, non-200 status, and decoding failures.
+    /// Returns transport, non-200 status, oversize body, and decoding
+    /// failures. An oversize body fails at the chunk that would pass the
+    /// limit, before that chunk is buffered.
     async fn get<T: DeserializeOwned>(&self, resource: &str) -> Result<T, Box<dyn Error>> {
         let mut response = self
             .direct
@@ -180,15 +183,20 @@ impl Api {
         if response.status != 200 {
             return Err(format!("GET {resource} returned status {}", response.status).into());
         }
+        let limit = RequestLimits::default().max_json_bytes;
         let mut bytes = Vec::new();
         while let Some(chunk) = response.body.chunk().await? {
+            if chunk.len() > limit - bytes.len() {
+                return Err(format!("GET {resource} body exceeds {limit} bytes").into());
+            }
             bytes.extend(chunk);
         }
         Ok(serde_json::from_slice(&bytes)?)
     }
 
     /// Read PR `number`'s file listing once, following at most `max_pages`
-    /// pages until [`Listing::push`] ends it.
+    /// pages until [`Listing::push`] ends it; returns it with the page
+    /// requests it took.
     ///
     /// # Errors
     ///
@@ -198,18 +206,20 @@ impl Api {
         repository: &RepositoryIdentity,
         number: u64,
         max_pages: u32,
-    ) -> Result<Listing, Box<dyn Error>> {
+    ) -> Result<(Listing, usize), Box<dyn Error>> {
         let mut listing = Listing::default();
+        let mut pages = 0;
         for page in 1..=max_pages {
             let read = self
                 .client
                 .pull_request_files(repository, number, page)
                 .await?;
+            pages += 1;
             if !listing.push(read, page == max_pages) {
                 break;
             }
         }
-        Ok(listing)
+        Ok((listing, pages))
     }
 
     /// Build `pr`'s complete base snapshot in memory and read it back.
@@ -279,8 +289,8 @@ impl Api {
         Ok(wire.committer.date)
     }
 
-    /// Qualify `pr` from one file listing, recorded in `listed` as history,
-    /// then from its base snapshot only when the listing alone could
+    /// Qualify `pr` from one file listing, recorded in `listed` as history
+    /// with its page requests, then from its base snapshot only when the listing alone could
     /// qualify.
     ///
     /// # Errors
@@ -291,12 +301,12 @@ impl Api {
         identity: &Identity,
         eligible: impl Fn(&RelativePath) -> bool,
         pr: &MergedPr,
-        listed: &mut BTreeMap<u64, Changed>,
+        listed: &mut BTreeMap<u64, (Changed, usize)>,
     ) -> Result<Option<Sampled>, Box<dyn Error>> {
-        let listing = self
+        let (listing, pages) = self
             .listing(&identity.repository, pr.number, MAX_FILE_PAGES)
             .await?;
-        listed.insert(pr.number, history::changed(pr.number, &listing)?);
+        listed.insert(pr.number, (history::changed(pr.number, &listing)?, pages));
         let patch_tokens = listing
             .files
             .iter()
@@ -456,14 +466,14 @@ impl Api {
         );
         let repository = &identity.repository;
         let history = History::build(&merged, cold_point, newest_base, async |number| {
-            if let Some(changed) = listed.remove(&number) {
-                return Ok(changed);
+            if let Some(read) = listed.remove(&number) {
+                return Ok(read);
             }
-            let listing = self.listing(repository, number, MAX_FILE_PAGES).await?;
-            Ok::<_, Box<dyn Error>>(history::changed(number, &listing)?)
+            let (listing, pages) = self.listing(repository, number, MAX_FILE_PAGES).await?;
+            Ok::<_, Box<dyn Error>>((history::changed(number, &listing)?, pages))
         })
         .await?;
-        requests.history = history.reads;
+        requests.history = history.reads.clone();
         Ok(Selected {
             repository: identity.repository,
             sample,
@@ -543,7 +553,7 @@ fn record(repo: &Repository, selected: &Selected, trials: &[Trial]) -> serde_jso
             })
         })
         .collect();
-    let requests = selected.requests;
+    let requests = &selected.requests;
     json!({
         "repository": repo.name,
         "cutoff": repo.cutoff,
@@ -553,8 +563,9 @@ fn record(repo: &Repository, selected: &Selected, trials: &[Trial]) -> serde_jso
             "production": {
                 "cold_build": requests.listing_pages + requests.history.cold,
                 "incremental_update": {
-                    "per_merged_pr": 1,
-                    "aggregate_through_newest_base": requests.history.incremental,
+                    "page_requests_by_merged_pr": requests.history.incremental,
+                    "aggregate_page_requests_through_newest_base":
+                        requests.history.incremental.values().sum::<usize>(),
                 },
                 "review": 0,
             },
@@ -680,8 +691,9 @@ mod tests {
 
     /// A fake repository `o/n` with 65 merged PRs, one per minute. PRs
     /// 16..=65 qualify, modifying `src/a.py` and `src/b.py` on base
-    /// commits all holding one tree; PRs 1..=15 change docs only, and PR
-    /// 15 is a 31-file mass edit listed over two pages. Direct REST reads
+    /// commits all holding one tree, and PR 40 lists them over two pages;
+    /// PRs 1..=15 change docs only, and PR 15 is a 31-file mass edit
+    /// listed over two pages. Direct REST reads
     /// and client reads have separate transports so each can be counted.
     struct Fake {
         direct: Arc<RoutedTransport>,
@@ -728,13 +740,13 @@ mod tests {
                 fake.client
                     .route(&format!("/git/blobs/{}", blob_sha(bytes)), 200, bytes);
             }
-            let changed = json!([
-                {"filename": "src/a.py", "status": "modified", "sha": blob_sha(A_HEAD),
-                 "patch": "@@ -2 +2 @@\n-    return 1\n+    return 2"},
-                {"filename": "src/b.py", "status": "modified", "sha": blob_sha(B_HEAD),
-                 "patch": "@@ -4 +4 @@\n-    return alpha()\n+    return alpha() + 1"},
-            ])
-            .to_string();
+            let (a, b) = (
+                json!({"filename": "src/a.py", "status": "modified", "sha": blob_sha(A_HEAD),
+                 "patch": "@@ -2 +2 @@\n-    return 1\n+    return 2"}),
+                json!({"filename": "src/b.py", "status": "modified", "sha": blob_sha(B_HEAD),
+                 "patch": "@@ -4 +4 @@\n-    return alpha()\n+    return alpha() + 1"}),
+            );
+            let changed = json!([a, b]).to_string();
             for n in 16..=65 {
                 let base = sha(0xba5e, n);
                 fake.direct.json(
@@ -747,6 +759,20 @@ mod tests {
                 );
                 fake.client.json(&files_page(n, 1), &changed);
             }
+            fake.client.respond(
+                &files_page(40, 1),
+                vec![(
+                    200,
+                    vec![(
+                        "link".to_owned(),
+                        r#"<https://x/?page=2>; rel="next""#.to_owned(),
+                    )],
+                    json!([a]).to_string().into_bytes(),
+                )],
+            );
+            fake.client
+                .json(&files_page(40, 2), &json!([b]).to_string());
+
             for n in 1..=14 {
                 fake.client
                     .json(&files_page(n, 1), &entries(&[format!("docs/{n}.md")]));
@@ -792,10 +818,11 @@ mod tests {
     }
 
     /// One run over the fake reads the merged-PR listing once, each
-    /// needed PR file listing once (both pages of the history-only mass
-    /// edit), and each sampled base commit's time once, with no provider
-    /// read per trial; its report separates cold, per-PR incremental,
-    /// aggregate incremental, review, and evaluation-only costs.
+    /// needed PR file listing once (both pages of the history-only cold
+    /// mass edit and of the cached incremental PR 40), and each sampled
+    /// base commit's time once, with no provider read per trial; its report
+    /// counts every page request in cold, per-PR incremental, and aggregate
+    /// incremental costs, apart from review and evaluation-only costs.
     #[tokio::test]
     async fn run_reads_each_input_once_and_reports_costs() {
         let fake = Fake::new();
@@ -813,7 +840,16 @@ mod tests {
         }));
         assert_eq!(fake.direct.seen(), direct);
         let page = |n, p| format!("https://api.github.com{}", files_page(n, p));
-        let mut listings: Vec<_> = (16..=65).rev().map(|n| page(n, 1)).collect();
+        let mut listings: Vec<_> = (16..=65)
+            .rev()
+            .flat_map(|n| {
+                if n == 40 {
+                    vec![page(n, 1), page(n, 2)]
+                } else {
+                    vec![page(n, 1)]
+                }
+            })
+            .collect();
         listings.extend([page(15, 1), page(15, 2)]);
         listings.extend((5..=14).rev().map(|n| page(n, 1)));
         assert_eq!(fake.listing_reads(), listings);
@@ -823,12 +859,18 @@ mod tests {
         };
         assert_eq!(record["cold_point"], at(16, 0));
         assert_eq!(record["sample"].as_array().map(Vec::len), Some(SAMPLE_SIZE));
+        let incremental: BTreeMap<u64, usize> = (16..=64)
+            .map(|n| (n, if n == 40 { 2 } else { 1 }))
+            .collect();
         assert_eq!(
             record["requests"],
             json!({
                 "production": {
-                    "cold_build": 1 + 11,
-                    "incremental_update": {"per_merged_pr": 1, "aggregate_through_newest_base": 49},
+                    "cold_build": 13,
+                    "incremental_update": {
+                        "page_requests_by_merged_pr": incremental,
+                        "aggregate_page_requests_through_newest_base": 50,
+                    },
                     "review": 0,
                 },
                 "evaluation_only": {"base_commit_timestamps": SAMPLE_SIZE},
@@ -838,7 +880,8 @@ mod tests {
         assert_eq!(trials.len(), 2 * SAMPLE_SIZE);
     }
 
-    /// A missing base-commit response, an incomplete history-only listing,
+    /// A missing base-commit response, a history-only (PR 14) or cached
+    /// qualification (PR 30) listing still paginated at the page ceiling,
     /// and a rate limit the client cannot wait out each fail the run with
     /// no report.
     #[tokio::test]
@@ -854,24 +897,32 @@ mod tests {
             .expect_err("missing read fails");
         assert!(error.to_string().contains("returned status 404"), "{error}");
 
-        let incomplete = Fake::new();
-        for page in 1..=MAX_FILE_PAGES {
-            incomplete.client.respond(
-                &files_page(14, page),
-                vec![(
-                    200,
-                    vec![("link".to_owned(), r#"<https://x/>; rel="next""#.to_owned())],
-                    entries(&[format!("docs/{page}.md")]).into_bytes(),
-                )],
+        for number in [14, 30] {
+            let incomplete = Fake::new();
+            for page in 1..=MAX_FILE_PAGES {
+                incomplete.client.respond(
+                    &files_page(number, page),
+                    vec![(
+                        200,
+                        vec![("link".to_owned(), r#"<https://x/>; rel="next""#.to_owned())],
+                        entries(&[format!("docs/{page}.md")]).into_bytes(),
+                    )],
+                );
+            }
+            let error = run(&incomplete.api(), &[FAKE])
+                .await
+                .expect_err("incomplete listing fails");
+            assert_eq!(
+                error.downcast_ref::<SampleError>(),
+                Some(&SampleError::IncompleteListing { number })
             );
+            let pages = incomplete
+                .listing_reads()
+                .iter()
+                .filter(|url| url.contains(&format!("/pulls/{number}/files?")))
+                .count();
+            assert_eq!(pages, MAX_FILE_PAGES as usize);
         }
-        let error = run(&incomplete.api(), &[FAKE])
-            .await
-            .expect_err("incomplete listing fails");
-        assert_eq!(
-            error.downcast_ref::<SampleError>(),
-            Some(&SampleError::IncompleteListing { number: 14 })
-        );
 
         let limited = Fake::new();
         limited.client.respond(
@@ -892,6 +943,40 @@ mod tests {
             ),
             "{error}"
         );
+    }
+
+    /// A direct JSON body of exactly the client's `max_json_bytes` still
+    /// decodes; one byte more fails the run with no report. Repository
+    /// metadata, merged-PR pages, and commit times all read through
+    /// [`Api::get`], so this bounds each of them.
+    #[tokio::test]
+    async fn direct_json_is_bounded_by_the_client_limit() {
+        let limit = RequestLimits::default().max_json_bytes;
+        let padded = |len: usize| {
+            let mut body = r#"{"id":1,"default_branch":"main"}"#.to_owned();
+            body.push_str(&" ".repeat(len - body.len()));
+            body
+        };
+
+        let at_limit = Fake::new();
+        at_limit.direct.json("/repos/o/n", &padded(limit));
+        let wire: RepositoryWire = at_limit
+            .api()
+            .get("/repos/o/n")
+            .await
+            .expect("body at the limit decodes");
+        assert_eq!((wire.id, wire.default_branch.as_str()), (1, "main"));
+
+        let over = Fake::new();
+        over.direct.json("/repos/o/n", &padded(limit + 1));
+        let error = run(&over.api(), &[FAKE])
+            .await
+            .expect_err("oversize body fails");
+        assert_eq!(
+            error.to_string(),
+            format!("GET /repos/o/n body exceeds {limit} bytes")
+        );
+        assert!(over.listing_reads().is_empty());
     }
 
     /// Each fixed repository has a valid cutoff and a nonempty language

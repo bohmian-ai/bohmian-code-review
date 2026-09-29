@@ -12,6 +12,7 @@
 
 use crate::sample::{Listing, MergedPr, SampleError};
 use bohmian_code_review::RelativePath;
+use std::collections::BTreeMap;
 
 /// Non-mass-edit PRs in cold-build history.
 pub const COLD_DEPTH: usize = 10;
@@ -59,15 +60,19 @@ pub struct HistoryPr {
     pub paths: Vec<RelativePath>,
 }
 
-/// File-listing reads by the production step that would need them.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+/// File-page requests of history listings by the production step that
+/// would need them. Each PR is one complete logical listing that may take
+/// several page requests.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ListingReads {
-    /// Listings of PRs merged before the cold build point, mass edits
-    /// included, until [`COLD_DEPTH`] non-mass-edit PRs were found.
+    /// Page requests of the listings of PRs merged before the cold build
+    /// point, mass edits included, until [`COLD_DEPTH`] non-mass-edit PRs
+    /// were found.
     pub cold: usize,
-    /// Listings of PRs merged from the cold build point up to the newest
-    /// sampled base, mass edits included.
-    pub incremental: usize,
+    /// Page requests of each listing of a PR merged from the cold build
+    /// point up to the newest sampled base, mass edits included, by PR
+    /// number.
+    pub incremental: BTreeMap<u64, usize>,
 }
 
 /// A repository's co-change history through its newest sampled base.
@@ -81,15 +86,16 @@ pub struct History {
     pub cold_point: String,
     /// Non-mass-edit history PRs.
     prs: Vec<HistoryPr>,
-    /// Listing reads the history needed.
+    /// Listing page requests the history needed.
     pub reads: ListingReads,
 }
 
 impl History {
     /// Build history from `merged`, every merged PR in sample order, for
     /// sampled base times from `cold_point` through `newest_base`. `read`
-    /// yields one PR's [`Changed`] and is called at most once per PR, only
-    /// for PRs merged before `newest_base`.
+    /// yields one PR's [`Changed`] with the file-page requests its listing
+    /// took, and is called at most once per PR, only for PRs merged before
+    /// `newest_base`.
     ///
     /// # Errors
     ///
@@ -100,7 +106,7 @@ impl History {
         merged: &[MergedPr],
         cold_point: &str,
         newest_base: &str,
-        mut read: impl AsyncFnMut(u64) -> Result<Changed, E>,
+        mut read: impl AsyncFnMut(u64) -> Result<(Changed, usize), E>,
     ) -> Result<History, E> {
         let mut history = History {
             cold_point: cold_point.to_owned(),
@@ -116,11 +122,11 @@ impl History {
             if before_cold && cold == COLD_DEPTH {
                 break;
             }
-            let changed = read(pr.number).await?;
+            let (changed, pages) = read(pr.number).await?;
             if before_cold {
-                history.reads.cold += 1;
+                history.reads.cold += pages;
             } else {
-                history.reads.incremental += 1;
+                history.reads.incremental.insert(pr.number, pages);
             }
             let Some(paths) = changed else {
                 continue;
@@ -190,7 +196,8 @@ mod tests {
     }
 
     /// Build history over PRs 1..=`last`, one per day, where PRs in `mass`
-    /// are mass edits; returns it with the PR numbers read, in order.
+    /// are mass edits and PR 17's listing takes two pages; returns it with
+    /// the PR numbers read, in order.
     async fn build(
         last: u32,
         mass: &[u64],
@@ -203,7 +210,10 @@ mod tests {
         let history = History::build(&prs, cold_point, newest_base, async |number| {
             calls.borrow_mut().push(number);
             let files = if mass.contains(&number) { 31 } else { 30 };
-            changed(number, &listing(files))
+            Ok((
+                changed(number, &listing(files))?,
+                if number == 17 { 2 } else { 1 },
+            ))
         })
         .await;
         (history, calls.into_inner())
@@ -220,7 +230,8 @@ mod tests {
     /// Cold history is the ten most recent non-mass PRs before the cold
     /// point; later PRs join a trial's history only when merged strictly
     /// before its base time; mass edits never appear; each needed listing
-    /// is read once and nothing after the newest base is read.
+    /// is read once, its page requests counted, and nothing after the
+    /// newest base is read.
     #[tokio::test]
     async fn history_is_cold_depth_plus_time_eligible_increments() {
         let (history, calls) =
@@ -231,7 +242,7 @@ mod tests {
             history.reads,
             ListingReads {
                 cold: 11,
-                incremental: 4
+                incremental: BTreeMap::from([(16, 1), (17, 2), (18, 1), (19, 1)]),
             }
         );
         let cold = [15, 14, 13, 12, 11, 10, 9, 7, 6, 5];
@@ -329,7 +340,7 @@ mod tests {
                 if number == 9 {
                     Err(SampleError::IncompleteListing { number })
                 } else {
-                    Ok(Some(Vec::new()))
+                    Ok((Some(Vec::new()), 1))
                 }
             },
         )
