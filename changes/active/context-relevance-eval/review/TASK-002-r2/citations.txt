@@ -1,7 +1,0 @@
-BUDGET-1	REJECT	symbol 'Corpus::declaring' not in crates/bohmian-code-review-pipeline/examples/context_relevance/trial.rs
-BUDGET-1	OK
-STD-R2-1	REJECT	symbol 'SymbolicContext::rank' not in crates/bohmian-code-review-pipeline/examples/context_relevance/trial.rs
-STD-R2-1	REJECT	symbol 'Change::omit' not in crates/bohmian-code-review-pipeline/examples/context_relevance/trial.rs
-TASK-A-1	OK
-TASK-A-1	OK
-TASK-A-1	OK
