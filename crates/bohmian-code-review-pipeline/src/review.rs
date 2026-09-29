@@ -20,16 +20,48 @@ use thiserror::Error;
 
 /// Ceilings for every stage the pipeline runs.
 ///
-/// `cold.max_file_bytes` and `pr.max_file_bytes` select the snapshot scope
-/// each stage uses and must agree, as the defaults do; otherwise reviews
-/// never find the snapshot a refresh publishes and fall back to scoped
-/// context.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+/// The largest eligible file also selects the snapshot scope, so the
+/// pipeline sets it once in `max_file_bytes` and passes it to every stage;
+/// the stages' own `max_file_bytes` fields are ignored. A refresh and a
+/// review therefore always agree on which snapshot they share.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PipelineLimits {
-    /// Cold-build and update ceilings.
+    /// Largest eligible file, shared by every stage.
+    pub max_file_bytes: u64,
+    /// Cold-build and update ceilings; `max_file_bytes` is ignored.
     pub cold: ColdBuildLimits,
-    /// PR-context ceilings.
+    /// PR-context ceilings; `max_file_bytes` is ignored.
     pub pr: PrContextLimits,
+}
+
+impl Default for PipelineLimits {
+    /// The stage defaults, sharing their 1 MiB file ceiling.
+    fn default() -> PipelineLimits {
+        let cold = ColdBuildLimits::default();
+        PipelineLimits {
+            max_file_bytes: cold.max_file_bytes,
+            cold,
+            pr: PrContextLimits::default(),
+        }
+    }
+}
+
+impl PipelineLimits {
+    /// Cold-build and update ceilings with the shared file ceiling.
+    fn cold(&self) -> ColdBuildLimits {
+        ColdBuildLimits {
+            max_file_bytes: self.max_file_bytes,
+            ..self.cold.clone()
+        }
+    }
+
+    /// PR-context ceilings with the shared file ceiling.
+    fn pr(&self) -> PrContextLimits {
+        PrContextLimits {
+            max_file_bytes: self.max_file_bytes,
+            ..self.pr.clone()
+        }
+    }
 }
 
 /// Why a pipeline call failed; the stage error is kept whole so its retry
@@ -83,7 +115,7 @@ impl<'a, O: ObjectStorage, S: SnapshotStore + ContextStore> ReviewPipeline<'a, O
         identity: &Identity,
         pr: u64,
     ) -> Result<PrContextResult, PipelineError> {
-        let scope = snapshot_scope(identity, self.limits.cold.max_file_bytes);
+        let scope = snapshot_scope(identity, self.limits.max_file_bytes);
         if self
             .store
             .snapshot_pointer(&scope)
@@ -99,7 +131,7 @@ impl<'a, O: ObjectStorage, S: SnapshotStore + ContextStore> ReviewPipeline<'a, O
             self.store,
             self.storage,
             self.store,
-            self.limits.pr.clone(),
+            self.limits.pr(),
         )
         .run(identity, pr)
         .await?;
@@ -117,7 +149,7 @@ impl<'a, O: ObjectStorage, S: SnapshotStore + ContextStore> ReviewPipeline<'a, O
         client: &GitHubClient,
         identity: &Identity,
     ) -> Result<ColdBuildResult, PipelineError> {
-        let result = Update::new(client, self.storage, self.store, self.limits.cold.clone())
+        let result = Update::new(client, self.storage, self.store, self.limits.cold())
             .run(identity)
             .await?;
         Ok(result)
@@ -138,5 +170,28 @@ impl<'a, O: ObjectStorage, S: SnapshotStore + ContextStore> ReviewPipeline<'a, O
             .read(identity, id)
             .await?;
         Ok(context)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Conflicting stage file ceilings cannot split the snapshot scope: both
+    /// stages receive the pipeline's one ceiling.
+    #[test]
+    fn stages_share_the_pipeline_file_ceiling() {
+        let mut limits = PipelineLimits {
+            max_file_bytes: 5,
+            ..PipelineLimits::default()
+        };
+        limits.cold.max_file_bytes = 1;
+        limits.pr.max_file_bytes = 2;
+        assert_eq!(limits.cold().max_file_bytes, 5);
+        assert_eq!(limits.pr().max_file_bytes, 5);
+        assert_eq!(
+            PipelineLimits::default().max_file_bytes,
+            PrContextLimits::default().max_file_bytes
+        );
     }
 }
