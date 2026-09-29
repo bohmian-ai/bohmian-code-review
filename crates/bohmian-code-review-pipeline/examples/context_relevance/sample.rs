@@ -241,11 +241,18 @@ pub fn is_timestamp(text: &str) -> bool {
 }
 
 /// Whether `path` is repository source: the public path-eligibility query
-/// routes it to one of `languages`.
-pub fn eligible(symbolic: &SymbolicContext, languages: &[Language], path: &RelativePath) -> bool {
-    symbolic
-        .path_language(path.as_str())
-        .is_ok_and(|language| language.is_some_and(|language| languages.contains(&language)))
+/// routes it to one of `languages` and, when `suffixes` is set, the path
+/// ends with one of them.
+pub fn eligible(
+    symbolic: &SymbolicContext,
+    languages: &[Language],
+    suffixes: Option<&[&str]>,
+    path: &RelativePath,
+) -> bool {
+    suffixes.is_none_or(|suffixes| suffixes.iter().any(|suffix| path.as_str().ends_with(suffix)))
+        && symbolic
+            .path_language(path.as_str())
+            .is_ok_and(|language| language.is_some_and(|language| languages.contains(&language)))
 }
 
 /// One PR's complete file listing, as read once from the provider.
@@ -423,6 +430,7 @@ mod tests {
         eligible(
             &SymbolicContext::new(),
             &[Language::Python, Language::Rust],
+            None,
             path,
         )
     }
@@ -543,31 +551,48 @@ mod tests {
         assert!(!screen(many).plausible());
     }
 
-    /// A TypeScript repository's source is exactly what the public query
-    /// routes to TypeScript or TSX, so `.ts` and `.tsx` files screen in and
-    /// JavaScript, Python, and docs screen out.
+    /// A TypeScript repository's source is what the public query routes to
+    /// TypeScript or TSX with a `.ts` or `.tsx` suffix, so `.mts`, `.cts`,
+    /// JavaScript, Python, and docs screen out and never count toward
+    /// qualification.
     #[test]
     fn typescript_eligibility_uses_public_query() {
         let symbolic = SymbolicContext::new();
-        let typescript = [Language::Typescript, Language::Tsx];
-        let screen = Screen::new(
-            5,
-            Listing {
-                files: vec![
-                    file("src/a.ts", FileStatus::Modified, Some(PATCH)),
-                    file("src/b.tsx", FileStatus::Modified, Some(PATCH)),
-                    file("src/c.js", FileStatus::Modified, Some(PATCH)),
-                    file("src/d.py", FileStatus::Modified, Some(PATCH)),
-                    file("README.md", FileStatus::Modified, Some(PATCH)),
-                ],
-                ..Listing::default()
-            },
-            |path| eligible(&symbolic, &typescript, path),
-        )
-        .expect("complete listing");
-        let paths: Vec<_> = screen.source.iter().map(|f| f.path.as_str()).collect();
+        let screen = |files: Vec<PullRequestFile>| {
+            Screen::new(
+                5,
+                Listing {
+                    files,
+                    ..Listing::default()
+                },
+                |path| {
+                    eligible(
+                        &symbolic,
+                        &[Language::Typescript, Language::Tsx],
+                        Some(&[".ts", ".tsx"]),
+                        path,
+                    )
+                },
+            )
+            .expect("complete listing")
+        };
+        let modified = |path: &str| file(path, FileStatus::Modified, Some(PATCH));
+        let mixed = screen(vec![
+            modified("src/a.ts"),
+            modified("src/b.tsx"),
+            modified("src/c.mts"),
+            modified("src/d.cts"),
+            modified("src/e.js"),
+            modified("src/f.py"),
+            modified("README.md"),
+        ]);
+        let paths: Vec<_> = mixed.source.iter().map(|f| f.path.as_str()).collect();
         assert_eq!(paths, ["src/a.ts", "src/b.tsx"]);
-        assert!(screen.qualifies(|_| true));
+        assert!(mixed.qualifies(|_| true));
+        assert!(!screen(vec![modified("src/a.ts"), modified("src/c.mts")]).plausible());
+        let mut many: Vec<_> = (0..15).map(|i| modified(&format!("src/f{i}.ts"))).collect();
+        many.push(modified("src/g.cts"));
+        assert!(screen(many).plausible());
     }
 
     /// A rejected entry or a truncated listing fails the run.

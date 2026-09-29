@@ -21,18 +21,16 @@ pub const MASS_EDIT_FILES: usize = 30;
 /// A history PR's changed paths, or `None` for a mass edit.
 pub type Changed = Option<Vec<RelativePath>>;
 
-/// Classify PR `number`'s `listing` as history: a mass edit when accepted
-/// plus rejected entries exceed [`MASS_EDIT_FILES`], otherwise its paths.
-/// A listing read only up to its first page is enough to classify.
+/// Classify PR `number`'s complete `listing` as history: a mass edit when
+/// it lists more than [`MASS_EDIT_FILES`] files, otherwise its paths.
+/// Completeness is checked first, so an incomplete listing never passes as
+/// a mass edit.
 ///
 /// # Errors
 ///
-/// For a listing that is not a mass edit, [`SampleError::IncompleteListing`]
-/// when it may be cut and [`SampleError::RejectedFile`] for a rejected entry.
+/// [`SampleError::IncompleteListing`] when the listing may be cut, then
+/// [`SampleError::RejectedFile`] for a rejected entry.
 pub fn changed(number: u64, listing: &Listing) -> Result<Changed, SampleError> {
-    if listing.files.len() + listing.rejected.len() > MASS_EDIT_FILES {
-        return Ok(None);
-    }
     if listing.truncated {
         return Err(SampleError::IncompleteListing { number });
     }
@@ -41,6 +39,9 @@ pub fn changed(number: u64, listing: &Listing) -> Result<Changed, SampleError> {
             number,
             rejected: rejected.clone(),
         });
+    }
+    if listing.files.len() > MASS_EDIT_FILES {
+        return Ok(None);
     }
     Ok(Some(
         listing.files.iter().map(|file| file.path.clone()).collect(),
@@ -264,7 +265,8 @@ mod tests {
     }
 
     /// Fewer than ten non-mass PRs before the cold point, an incomplete
-    /// listing, or a rejected entry fail the whole build.
+    /// listing, or a rejected entry fail the whole build, even above the
+    /// mass-edit threshold; only a complete listing of 31 files is dropped.
     #[tokio::test]
     async fn history_fails_on_short_or_incomplete_input() {
         let (short, _) = build(12, &[1, 2], "2026-01-11T00:00:00Z", "2026-01-12T00:00:00Z").await;
@@ -289,13 +291,27 @@ mod tests {
                 rejected: entry
             })
         );
-        let mut mass = listing(30);
+        let mut mass = listing(31);
         mass.rejected.push(RejectedPath {
             path: "../y.py".to_owned(),
             reason: "not canonical".to_owned(),
         });
-        mass.truncated = true;
-        assert_eq!(changed(7, &mass), Ok(None));
+        assert!(matches!(
+            changed(7, &mass),
+            Err(SampleError::RejectedFile { number: 7, .. })
+        ));
+        let mut ceiling = Listing::default();
+        let page = PullRequestFilesPage {
+            files: listing(31).files,
+            rejected: Vec::new(),
+            has_next: true,
+        };
+        assert!(!ceiling.push(page, true));
+        assert_eq!(
+            changed(7, &ceiling),
+            Err(SampleError::IncompleteListing { number: 7 })
+        );
+        assert_eq!(changed(7, &listing(31)), Ok(None));
         assert_eq!(
             changed(7, &listing(30)).map(|c| c.map(|p| p.len())),
             Ok(Some(30))

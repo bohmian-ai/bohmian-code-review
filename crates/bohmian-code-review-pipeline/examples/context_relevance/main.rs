@@ -57,6 +57,9 @@ struct Repository {
     cutoff: &'static str,
     /// Languages whose files are its source.
     languages: &'static [Language],
+    /// Path suffixes its source is limited to, when the languages' routing
+    /// admits more.
+    suffixes: Option<&'static [&'static str]>,
 }
 
 /// Repositories evaluated, with their fixed cutoffs and source languages.
@@ -65,16 +68,19 @@ const REPOSITORIES: [Repository; 3] = [
         name: "pydantic/pydantic-ai",
         cutoff: "2026-08-23T19:15:42Z",
         languages: &[Language::Python],
+        suffixes: None,
     },
     Repository {
         name: "tokio-rs/tokio",
         cutoff: "2026-05-21T13:41:55Z",
         languages: &[Language::Rust],
+        suffixes: None,
     },
     Repository {
         name: "colinhacks/zod",
         cutoff: "2026-09-01T00:00:00Z",
         languages: &[Language::Typescript, Language::Tsx],
+        suffixes: Some(&[".ts", ".tsx"]),
     },
 ];
 /// PRs per discovery page, GitHub's maximum.
@@ -419,7 +425,7 @@ impl Api {
         let mut listed = BTreeMap::new();
         let mut sample = Vec::new();
         for pr in &merged {
-            let eligible = |path: &RelativePath| eligible(&symbolic, repo.languages, path);
+            let eligible = |path: &RelativePath| eligible(&symbolic, repo.languages, repo.suffixes, path);
             if let Some(sampled) = self.qualify(&identity, eligible, pr, &mut listed).await? {
                 sample.push(sampled);
                 if sample.len() == SAMPLE_SIZE {
@@ -444,7 +450,7 @@ impl Api {
             if let Some(changed) = listed.remove(&number) {
                 return Ok(changed);
             }
-            let listing = self.listing(repository, number, 1).await?;
+            let listing = self.listing(repository, number, MAX_FILE_PAGES).await?;
             Ok::<_, Box<dyn Error>>(history::changed(number, &listing)?)
         })
         .await?;
