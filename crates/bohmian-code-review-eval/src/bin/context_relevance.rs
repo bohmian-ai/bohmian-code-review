@@ -5,7 +5,7 @@
 use bohmian_code_review::{
     CoChange, DEFAULT_RANKER, Language, Ranker, RaritySymbol, SymbolOverlap,
 };
-use bohmian_code_review_eval::live::{Repository, print};
+use bohmian_code_review_eval::live::{LiveError, Repository, print};
 use bohmian_code_review_eval::report::Arms;
 
 /// Repositories evaluated, with their fixed cutoffs and source languages.
@@ -45,7 +45,7 @@ const ARMS: [(&str, &dyn Ranker); 4] = [
 async fn main() {
     let result = match Arms::new(&ARMS, "C", "F") {
         Ok(arms) => print(&REPOSITORIES, arms).await,
-        Err(error) => Err(error.into()),
+        Err(error) => Err(LiveError::from(error)),
     };
     if let Err(error) = result {
         eprintln!("context_relevance failed: {error}");

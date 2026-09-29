@@ -22,26 +22,72 @@
 //! source leaves memory.
 
 use crate::report::{
-    self, ADOPTION_THRESHOLD, Arms, BOOTSTRAP_SEED, Effect, Evaluation, RESAMPLES, Summary,
-    VALIDITY_THREATS, Verdict,
+    self, ADOPTION_THRESHOLD, Arms, ArmsError, BOOTSTRAP_SEED, Effect, Evaluation, RESAMPLES,
+    Summary, VALIDITY_THREATS, Verdict,
 };
 use crate::sample::{Discovery, OmittedReason, SAMPLE_SIZE, SampleError, Screen, eligible};
-use crate::trial::{HIT_RANK, RARITY_RULE, TRIAL_RULE};
+use crate::trial::{HIT_RANK, RARITY_RULE, TRIAL_RULE, TrialError};
 use bohmian_code_review::{
-    DF_CEILING, EXTRACTION_VERSION, FUSION_CONSTANT, Language, RelativePath, SymbolicContext,
-    parse_hunks,
+    DF_CEILING, EXTRACTION_VERSION, Error as SymbolicError, FUSION_CONSTANT, Language,
+    RelativePath, SymbolicContext, parse_hunks,
 };
 use bohmian_code_review_pipeline::testing::{MemorySnapshotStore, MemoryStorage};
 use bohmian_code_review_pipeline::{
-    ColdBuild, ColdBuildLimits, ColdBuildOutcome, FileOutcome, FileStatus, GitHubClient,
-    GitHubHost, History, Identity, InstallationId, InstallationToken, Listing, ListingReads,
-    MAX_LISTING_PAGES, MergedPr, ObjectSha, RepositoryIdentity, RequestLimits,
-    SNAPSHOT_FORMAT_VERSION, Snapshot, SnapshotScope, Snapshots, TenantId,
+    ColdBuild, ColdBuildError, ColdBuildLimits, ColdBuildOutcome, FileOutcome, FileStatus,
+    GitHubClient, GitHubError, GitHubHost, History, HistoryError, Identity, InstallationId,
+    InstallationToken, InvalidIdentity, Listing, ListingReads, MAX_LISTING_PAGES, MergedPr,
+    ObjectSha, RepositoryIdentity, RequestLimits, SNAPSHOT_FORMAT_VERSION, Snapshot, SnapshotScope,
+    Snapshots, TenantId, TransportError,
 };
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 use std::env;
-use std::error::Error;
+use thiserror::Error;
+
+/// Why a live evaluation run failed. Every variant is run-level: the run
+/// stops and returns no report. Provider, history, snapshot, sample, trial,
+/// and symbolic failures keep their typed cause, so a caller matches the
+/// failure class without downcasting or reading the message.
+#[derive(Debug, Error)]
+pub enum LiveError {
+    /// `GITHUB_TOKEN` is unset or not Unicode.
+    #[error("GITHUB_TOKEN is required")]
+    MissingToken,
+    /// A [`Repository::name`] is not `<owner>/<name>`.
+    #[error("repository `{0}` must be <owner>/<name>")]
+    InvalidRepository(String),
+    /// The token or the evaluation identity is invalid.
+    #[error(transparent)]
+    Identity(#[from] InvalidIdentity),
+    /// The GitHub client's transport could not be built.
+    #[error(transparent)]
+    Transport(#[from] TransportError),
+    /// The caller-named arms are invalid.
+    #[error(transparent)]
+    Arms(#[from] ArmsError),
+    /// A provider read failed or returned an untrusted response.
+    #[error(transparent)]
+    GitHub(#[from] GitHubError),
+    /// A PR file listing or the co-change history it feeds cannot be
+    /// trusted.
+    #[error(transparent)]
+    History(#[from] HistoryError),
+    /// A base snapshot could not be built or read back.
+    #[error(transparent)]
+    Snapshot(#[from] ColdBuildError),
+    /// Sampling failed at run level.
+    #[error(transparent)]
+    Sample(#[from] SampleError),
+    /// A base snapshot's persisted facts do not load into the facade.
+    #[error(transparent)]
+    Symbolic(#[from] SymbolicError),
+    /// A relevance trial could not be run.
+    #[error(transparent)]
+    Trial(#[from] TrialError),
+    /// A report could not be serialised.
+    #[error(transparent)]
+    Serialize(#[from] serde_json::Error),
+}
 
 /// One evaluated repository.
 pub struct Repository {
@@ -109,13 +155,14 @@ impl Api {
     ///
     /// # Errors
     ///
-    /// Returns [`SampleError::IncompleteSnapshot`] when the base tree was not
-    /// fully indexed, plus provider and storage errors.
+    /// Returns [`LiveError::Sample`] with [`SampleError::IncompleteSnapshot`]
+    /// when the base tree was not fully indexed, and [`LiveError::Snapshot`]
+    /// for provider and storage failures.
     async fn base_snapshot(
         &self,
         identity: &Identity,
         pr: &MergedPr,
-    ) -> Result<Snapshot, Box<dyn Error>> {
+    ) -> Result<Snapshot, LiveError> {
         let (storage, store) = (MemoryStorage::default(), MemorySnapshotStore::default());
         let limits = ColdBuildLimits::default();
         let max_file_bytes = limits.max_file_bytes;
@@ -150,14 +197,16 @@ impl Api {
     ///
     /// # Errors
     ///
-    /// Returns run-level [`SampleError`]s and provider or storage errors.
+    /// Returns [`LiveError::GitHub`] for provider reads,
+    /// [`LiveError::History`] for an untrusted listing, and
+    /// [`Api::base_snapshot`]'s errors.
     async fn qualify(
         &self,
         identity: &Identity,
         eligible: impl Fn(&RelativePath) -> bool,
         pr: &MergedPr,
         listed: &mut BTreeMap<u64, (Option<Vec<RelativePath>>, usize)>,
-    ) -> Result<Option<Sampled>, Box<dyn Error>> {
+    ) -> Result<Option<Sampled>, LiveError> {
         let (listing, pages) = Listing::read(
             &self.client,
             &identity.repository,
@@ -201,9 +250,9 @@ impl Api {
     ///
     /// # Errors
     ///
-    /// Returns provider errors, including a blob that is missing, oversize,
-    /// or fails verification, snapshot facts that do not load, and
-    /// [`crate::trial::TrialError`]s.
+    /// Returns [`LiveError::GitHub`] for a blob that is missing, oversize,
+    /// or fails verification, [`LiveError::Symbolic`] for snapshot facts
+    /// that do not load, and [`LiveError::Trial`].
     async fn trials(
         &self,
         repository: &RepositoryIdentity,
@@ -211,7 +260,7 @@ impl Api {
         history: &History,
         cache: &mut BTreeMap<ObjectSha, Vec<u8>>,
         evaluation: &mut Evaluation<'_>,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<(), LiveError> {
         let head: Vec<(&RelativePath, &ObjectSha)> = sampled
             .screen
             .source
@@ -258,13 +307,16 @@ impl Api {
     ///
     /// # Errors
     ///
-    /// Returns [`SampleError::TooFew`] when fewer qualify, any other
-    /// run-level [`SampleError`], and provider or storage errors.
-    async fn select(&self, repo: &Repository) -> Result<Selected, Box<dyn Error>> {
+    /// Returns [`LiveError::InvalidRepository`] before any read for a
+    /// malformed name, [`LiveError::Sample`] with [`SampleError::TooFew`]
+    /// when fewer qualify or any other run-level [`SampleError`],
+    /// [`LiveError::History`] for an untrusted history listing, and
+    /// provider, snapshot, and storage errors.
+    async fn select(&self, repo: &Repository) -> Result<Selected, LiveError> {
         let (owner, name) = repo
             .name
             .split_once('/')
-            .ok_or("repository must be <owner>/<name>")?;
+            .ok_or_else(|| LiveError::InvalidRepository(repo.name.to_owned()))?;
         let (repository, described) = self.client.find_repository(owner, name).await?;
         let identity = Identity {
             tenant: TenantId::new("eval")?,
@@ -309,8 +361,11 @@ impl Api {
         requests.timestamp_reads = sample.len();
         let times = sample.iter().map(|sampled| sampled.base_time.as_str());
         let (cold_point, newest_base) = (
-            times.clone().min().ok_or("empty sample")?,
-            times.max().ok_or("empty sample")?,
+            times
+                .clone()
+                .min()
+                .expect("the sample holds SAMPLE_SIZE PRs"),
+            times.max().expect("the sample holds SAMPLE_SIZE PRs"),
         );
         let repository = &identity.repository;
         let history = History::build(&merged, cold_point, newest_base, async |number| {
@@ -319,7 +374,7 @@ impl Api {
             }
             let (listing, pages) =
                 Listing::read(&self.client, repository, number, MAX_LISTING_PAGES).await?;
-            Ok::<_, Box<dyn Error>>((listing.history_paths(number)?, pages))
+            Ok::<_, LiveError>((listing.history_paths(number)?, pages))
         })
         .await?;
         requests.history = history.reads.clone();
@@ -336,9 +391,11 @@ impl Api {
 ///
 /// # Errors
 ///
-/// Returns a missing or unusable token and TLS initialisation failures.
-pub fn live() -> Result<Api, Box<dyn Error>> {
-    let token = env::var("GITHUB_TOKEN").map_err(|_| "GITHUB_TOKEN is required")?;
+/// Returns [`LiveError::MissingToken`], [`LiveError::Identity`] for an
+/// unusable token, and [`LiveError::Transport`] for TLS initialisation
+/// failures.
+pub fn live() -> Result<Api, LiveError> {
+    let token = env::var("GITHUB_TOKEN").map_err(|_| LiveError::MissingToken)?;
     Ok(Api::new(GitHubClient::new(
         GitHubHost::public(),
         InstallationToken::new(&token)?,
@@ -353,12 +410,8 @@ pub fn live() -> Result<Api, Box<dyn Error>> {
 ///
 /// # Errors
 ///
-/// Returns sampling, history, provider, and trial failures.
-pub async fn run(
-    api: &Api,
-    repos: &[Repository],
-    arms: Arms<'_>,
-) -> Result<Vec<Value>, Box<dyn Error>> {
+/// Returns the first repository's [`LiveError`] from selection or trials.
+pub async fn run(api: &Api, repos: &[Repository], arms: Arms<'_>) -> Result<Vec<Value>, LiveError> {
     let mut records = Vec::new();
     for repo in repos {
         let selected = api.select(repo).await?;
@@ -489,8 +542,8 @@ fn effect_record(effect: &Effect) -> Value {
 ///
 /// # Errors
 ///
-/// Returns [`live`], [`run`], and serialisation failures.
-pub async fn print(repos: &[Repository], arms: Arms<'_>) -> Result<(), Box<dyn Error>> {
+/// Returns [`live`] and [`run`] failures and [`LiveError::Serialize`].
+pub async fn print(repos: &[Repository], arms: Arms<'_>) -> Result<(), LiveError> {
     let records = run(&live()?, repos, arms).await?;
     for record in records {
         println!("{}", serde_json::to_string_pretty(&record)?);
@@ -506,10 +559,7 @@ mod tests {
     use super::*;
     use bohmian_code_review::{CoChange, DEFAULT_RANKER, Ranker, RaritySymbol, SymbolOverlap};
     use bohmian_code_review_pipeline::testing::RoutedTransport;
-    use bohmian_code_review_pipeline::{
-        BoxFuture, GitHubError, HistoryError, HttpRequest, HttpResponse, HttpTransport,
-        TransportError,
-    };
+    use bohmian_code_review_pipeline::{BoxFuture, HttpRequest, HttpResponse, HttpTransport};
     use sha1::{Digest, Sha1};
     use std::sync::Arc;
 
@@ -964,8 +1014,10 @@ mod tests {
                 .expect_err("unusable base time fails");
             assert!(
                 matches!(
-                    error.downcast_ref::<GitHubError>(),
-                    Some(GitHubError::NotFound { .. } | GitHubError::IdentityMismatch { .. })
+                    error,
+                    LiveError::GitHub(
+                        GitHubError::NotFound { .. } | GitHubError::IdentityMismatch { .. }
+                    )
                 ),
                 "{error}"
             );
@@ -986,9 +1038,13 @@ mod tests {
             let error = run(&incomplete.api(), &[FAKE], arms())
                 .await
                 .expect_err("incomplete listing fails");
-            assert_eq!(
-                error.downcast_ref::<HistoryError>(),
-                Some(&HistoryError::IncompleteListing { number })
+            assert!(
+                matches!(
+                    error,
+                    LiveError::History(HistoryError::IncompleteListing { number: failed })
+                        if failed == number
+                ),
+                "{error}"
             );
             let pages = incomplete
                 .listing_reads()
@@ -1011,10 +1067,7 @@ mod tests {
             .await
             .expect_err("rate limit fails");
         assert!(
-            matches!(
-                error.downcast_ref::<GitHubError>(),
-                Some(GitHubError::RateLimited { .. })
-            ),
+            matches!(error, LiveError::GitHub(GitHubError::RateLimited { .. })),
             "{error}"
         );
     }
@@ -1034,8 +1087,8 @@ mod tests {
             .await
             .expect_err("another repository fails");
         assert!(matches!(
-            error.downcast_ref::<GitHubError>(),
-            Some(GitHubError::IdentityMismatch { .. })
+            error,
+            LiveError::GitHub(GitHubError::IdentityMismatch { .. })
         ));
 
         let impossible = Fake::new();
@@ -1050,17 +1103,36 @@ mod tests {
             .await
             .expect_err("merge after update fails");
         assert!(matches!(
-            error.downcast_ref::<GitHubError>(),
-            Some(GitHubError::MalformedResponse { .. })
+            error,
+            LiveError::GitHub(GitHubError::MalformedResponse { .. })
         ));
         for fake in [renamed, impossible] {
             assert!(fake.listing_reads().is_empty());
         }
     }
 
+    /// A repository name without an owner is a typed configuration failure
+    /// raised before any provider read.
+    #[tokio::test]
+    async fn malformed_repository_name_fails_before_any_read() {
+        let fake = Fake::new();
+        let unnamed = Repository {
+            name: "pydantic",
+            ..FAKE
+        };
+        let error = run(&fake.api(), &[unnamed], arms())
+            .await
+            .expect_err("malformed name fails");
+        assert!(
+            matches!(&error, LiveError::InvalidRepository(name) if name == "pydantic"),
+            "{error}"
+        );
+        assert!(fake.client.seen().is_empty());
+    }
+
     /// Provider IO belongs to the pipeline: no production source of this
     /// crate builds, authenticates, sends, or decodes a raw provider
-    /// request.
+    /// request, nor erases a library error behind `dyn Error`.
     #[test]
     fn eval_has_no_raw_provider_request_path() {
         let sources = [
@@ -1087,6 +1159,8 @@ mod tests {
                 "Deserialize",
                 "from_slice",
                 "/repos/",
+                "dyn Error",
+                "std::error",
             ] {
                 assert!(!production.contains(raw), "{file} uses `{raw}`");
             }
