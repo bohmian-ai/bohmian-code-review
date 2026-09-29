@@ -571,7 +571,7 @@ fn record(repo: &Repository, selected: &Selected, trials: &[Trial]) -> (Value, V
         "repository": repo.name,
         "cutoff": repo.cutoff,
         "cold_point": selected.history.cold_point,
-        "command": "GITHUB_TOKEN=<read-only token> mise run live:context-relevance",
+        "command": "mise run live:context-relevance",
         "outcome": "hit@10",
         "bootstrap": {
             "seed": BOOTSTRAP_SEED,
@@ -913,10 +913,7 @@ mod tests {
         };
 
         assert_eq!(record["cutoff"], FAKE.cutoff);
-        assert_eq!(
-            record["command"],
-            "GITHUB_TOKEN=<read-only token> mise run live:context-relevance"
-        );
+        assert_eq!(record["command"], "mise run live:context-relevance");
         assert_eq!(record["outcome"], "hit@10");
         assert_eq!(record["bootstrap"]["seed"], BOOTSTRAP_SEED);
         assert_eq!(record["bootstrap"]["resamples"], RESAMPLES);

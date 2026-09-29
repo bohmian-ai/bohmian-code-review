@@ -5,7 +5,7 @@
     "seed": 2316549133261119870
   },
   "cold_point": "2025-12-28T11:01:05Z",
-  "command": "GITHUB_TOKEN=<read-only token> mise run live:context-relevance",
+  "command": "mise run live:context-relevance",
   "cutoff": "2026-05-21T13:41:55Z",
   "decision": {
     "adopt_f": true,
