@@ -35,7 +35,8 @@ pub const COLD_DEPTH: usize = 10;
 /// oldest beyond it.
 pub const MAX_HISTORY_PRS: usize = 1_000;
 /// Closed-PR listing pages read per history read: 1,000 PRs at 100 per
-/// page. Past it, history stops at the oldest PR the pages proved.
+/// page. A read that reaches it with more pages advertised succeeds only
+/// when it already proved [`COLD_DEPTH`] PRs.
 pub const MAX_DISCOVERY_PAGES: u32 = 10;
 /// Most changed files a history PR may have before it is a mass edit.
 pub const MASS_EDIT_FILES: usize = 30;
@@ -70,10 +71,20 @@ pub enum HistoryError {
         /// Non-mass-edit PRs found.
         found: usize,
     },
-    /// A closed PR was updated while the closed-PR listing was paged, so a
+    /// A closed-PR listing page changed while later pages were read, so a
     /// page may have skipped a merged PR; a retry may succeed.
     #[error("closed pull requests changed while they were listed")]
     ListingMoved,
+    /// The closed-PR listing reached [`MAX_DISCOVERY_PAGES`] with more
+    /// pages advertised before it proved [`COLD_DEPTH`] non-mass-edit PRs
+    /// or reached the prior history's time.
+    #[error(
+        "closed-PR listing ended at its page bound after proving only {found} non-mass-edit PRs"
+    )]
+    UnprovedHistory {
+        /// Non-mass-edit PRs proved before the bound.
+        found: usize,
+    },
 }
 
 /// A merged PR with validated identity.
@@ -327,15 +338,18 @@ impl CoChangeHistory {
     /// with one complete listing. Without `prior` reading stops at
     /// [`COLD_DEPTH`] non-mass-edit PRs; with it, at the first PR merged
     /// before `prior.before`, and `prior`'s entries follow. When the pages
-    /// run out first, history is only what they proved and `prior` is
-    /// dropped, so the span stays contiguous. At most [`MAX_HISTORY_PRS`]
-    /// are kept. A listing read over more than one page is checked again at
-    /// its first page, so an update that shifted entries mid-read fails.
+    /// run out, history is what they proved; when the page bound is
+    /// reached with more pages advertised, the read succeeds only with
+    /// [`COLD_DEPTH`] proved PRs and drops `prior`, so the span stays
+    /// contiguous. At most [`MAX_HISTORY_PRS`] are kept. Every page read
+    /// before the last is read again afterwards and must list the same
+    /// entries, so a listing that shifted mid-read fails.
     ///
     /// # Errors
     ///
-    /// Provider errors, the errors of [`Listing::history_paths`], and
-    /// [`HistoryError::ListingMoved`], a retry state.
+    /// Provider errors, the errors of [`Listing::history_paths`],
+    /// [`HistoryError::UnprovedHistory`], and [`HistoryError::ListingMoved`],
+    /// a retry state.
     pub(crate) async fn read<E: From<GitHubError> + From<HistoryError>>(
         client: &GitHubClient,
         repository: &RepositoryIdentity,
@@ -350,7 +364,7 @@ impl CoChangeHistory {
             prs: Vec::new(),
         };
         let (mut known, mut seen) = (Vec::<MergedPr>::new(), BTreeSet::new());
-        let (mut pages, mut first, mut horizon, mut more) = (0, None, None::<String>, true);
+        let (mut pages, mut horizon, mut more) = (Vec::new(), None::<String>, true);
         let joined = loop {
             if since.is_none() && history.prs.len() == COLD_DEPTH {
                 break false;
@@ -382,16 +396,19 @@ impl CoChangeHistory {
             if !more || below_since {
                 break true;
             }
-            if pages == MAX_DISCOVERY_PAGES {
+            if pages.len() == MAX_DISCOVERY_PAGES as usize {
+                if history.prs.len() < COLD_DEPTH {
+                    return Err(HistoryError::UnprovedHistory {
+                        found: history.prs.len(),
+                    }
+                    .into());
+                }
                 break false;
             }
-            pages += 1;
             let page = client
-                .closed_pull_requests(repository, branch, pages)
+                .closed_pull_requests(repository, branch, pages.len() as u32 + 1)
                 .await?;
-            if pages == 1 {
-                first = page.first.clone();
-            }
+            pages.push(page.listed);
             known.extend(
                 page.merged
                     .into_iter()
@@ -404,9 +421,11 @@ impl CoChangeHistory {
                 false => None,
             };
         };
-        if pages > 1 {
-            let again = client.closed_pull_requests(repository, branch, 1).await?;
-            if again.first != first {
+        for (index, listed) in pages.iter().enumerate().take(pages.len().saturating_sub(1)) {
+            let again = client
+                .closed_pull_requests(repository, branch, index as u32 + 1)
+                .await?;
+            if again.listed != *listed {
                 return Err(HistoryError::ListingMoved.into());
             }
         }
@@ -661,11 +680,11 @@ mod tests {
         assert_eq!(numbers(&cold), [14, 12, 11, 10, 9, 8, 7, 6, 5, 4]);
     }
 
-    /// No merged PRs is valid empty history; pages that never prove the
-    /// span back to the prior time stop at the page bound and drop the
-    /// prior entries rather than leave a gap.
+    /// No merged PRs is valid empty history; pages still advertised at the
+    /// page bound that never prove cold depth or reach the prior time fail
+    /// instead of returning a partial span, with or without a prior.
     #[tokio::test]
-    async fn empty_and_page_bounded_history_is_valid() {
+    async fn empty_history_is_valid_and_an_unproved_bound_fails() {
         let transport = RoutedTransport::default();
         transport.respond(&closed(1), vec![page(&[], false)]);
         let client = GitHubClient::with_transport(
@@ -679,20 +698,22 @@ mod tests {
             .expect("history");
         assert!(empty.prs.is_empty());
 
-        let transport = RoutedTransport::default();
-        for n in 1..=MAX_DISCOVERY_PAGES {
-            let updated = format!("2026-01-{:02}T00:00:00Z", 30 - n);
-            transport.respond(
-                &closed(n),
-                vec![page(&[listed(u64::from(n), &updated, false)], true)],
-            );
-        }
-        let client = GitHubClient::with_transport(
-            GitHubHost::public(),
-            InstallationToken::new("ghs_token").expect("token"),
-            RequestLimits::default(),
-            Box::new(transport),
-        );
+        let bounded = || {
+            let transport = RoutedTransport::default();
+            for n in 1..=MAX_DISCOVERY_PAGES {
+                let updated = format!("2026-01-{:02}T00:00:00Z", 30 - n);
+                transport.respond(
+                    &closed(n),
+                    vec![page(&[listed(u64::from(n), &updated, false)], true)],
+                );
+            }
+            GitHubClient::with_transport(
+                GitHubHost::public(),
+                InstallationToken::new("ghs_token").expect("token"),
+                RequestLimits::default(),
+                Box::new(transport),
+            )
+        };
         let prior = CoChangeHistory {
             before: "2026-01-02T00:00:00Z".to_owned(),
             prs: vec![HistoryPr {
@@ -701,13 +722,53 @@ mod tests {
                 paths: Vec::new(),
             }],
         };
-        let bounded = read(&client, "2026-01-31T00:00:00Z", Some(&prior))
-            .await
-            .expect("history");
-        assert!(bounded.prs.is_empty(), "{bounded:?}");
+        for prior in [Some(&prior), None] {
+            let client = bounded();
+            assert_eq!(
+                read(&client, "2026-01-31T00:00:00Z", prior).await,
+                Err(HistoryError::UnprovedHistory { found: 0 })
+            );
+            assert_eq!(
+                client.calls().get(Operation::PullRequests),
+                u64::from(MAX_DISCOVERY_PAGES)
+            );
+        }
+    }
+
+    /// A page-2 entry that moves into page 1 below its unchanged first
+    /// entry is caught by the full page-1 re-read, so the skipped merged PR
+    /// fails the read as a retry state instead of leaving a gap.
+    #[tokio::test]
+    async fn entry_moving_below_the_first_fails() {
+        let transport = RoutedTransport::default();
+        let at = |day: u64| format!("2026-01-{day:02}T12:00:00Z");
+        transport.respond(
+            &closed(1),
+            vec![
+                page(&[listed(5, &at(5), true), listed(4, &at(4), true)], true),
+                page(
+                    &[
+                        listed(5, &at(5), true),
+                        listed(3, &at(3), true),
+                        listed(4, &at(4), true),
+                    ],
+                    true,
+                ),
+            ],
+        );
+        transport.respond(&closed(2), vec![page(&[listed(2, &at(2), true)], false)]);
+        for number in 2..=5 {
+            route_listing(&transport, number, 1);
+        }
+        let client = GitHubClient::with_transport(
+            GitHubHost::public(),
+            InstallationToken::new("ghs_token").expect("token"),
+            RequestLimits::default(),
+            Box::new(transport),
+        );
         assert_eq!(
-            client.calls().get(Operation::PullRequests),
-            u64::from(MAX_DISCOVERY_PAGES) + 1
+            read(&client, "2026-01-20T00:00:00Z", None).await,
+            Err(HistoryError::ListingMoved)
         );
     }
 

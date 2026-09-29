@@ -50,9 +50,9 @@ pub use eligibility::ExclusionReason;
 pub use github::{
     Archive, BoxFuture, BranchHead, CallCounts, ClosedPullRequestsPage, Commit, Comparison,
     Disposition, FileStatus, GitHubClient, GitHubError, HttpBody, HttpRequest, HttpResponse,
-    HttpTransport, Operation, PullRequest, PullRequestFile, PullRequestFilesPage, PullRequestState,
-    RejectedPath, Repository, RequestLimits, ReqwestTransport, TransportError, TreeEntry,
-    TreeEntryMode, TreeListing,
+    HttpTransport, ListedPullRequest, Operation, PullRequest, PullRequestFile,
+    PullRequestFilesPage, PullRequestState, PullRequestsPage, RejectedPath, Repository,
+    RequestLimits, ReqwestTransport, TransportError, TreeEntry, TreeEntryMode, TreeListing,
 };
 pub use history::{
     COLD_DEPTH, CoChangeHistory, History, HistoryError, HistoryPr, Listing, ListingReads,

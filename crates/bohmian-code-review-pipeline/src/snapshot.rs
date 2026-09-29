@@ -1599,6 +1599,70 @@ pub(crate) mod tests {
             }
         }
 
+        /// Route a closed-PR listing that advertises another page at every
+        /// page through the page bound, each page one closed unmerged PR
+        /// updated in March, so history can never be proved.
+        pub(crate) fn unproved_history(&self) {
+            for page in 1..=crate::history::MAX_DISCOVERY_PAGES {
+                let number = u64::from(page) + 100;
+                self.transport.respond(
+                    &closed_pulls(page),
+                    vec![(
+                        200,
+                        vec![("link".to_owned(), r#"<x>; rel="next""#.to_owned())],
+                        format!(
+                            r#"[{{"number":{number},"updated_at":"2026-03-{:02}T00:00:00Z","merged_at":null,"base":{{"ref":"main","sha":"{}"}},"head":{{"ref":"f","sha":"{}"}}}}]"#,
+                            30 - page,
+                            sha('a'),
+                            sha('b')
+                        )
+                        .into_bytes(),
+                    )],
+                );
+            }
+        }
+
+        /// Route a two-page closed-PR listing, PRs merged early on 2026-02-03,
+        /// whose page 1 gains PR 3, a page-2 entry, below its unchanged
+        /// first entry before it is read again, so page 2 as read skipped
+        /// PR 3.
+        pub(crate) fn moving_history(&self) {
+            let entry = |number: u64, hour: u32| {
+                format!(
+                    r#"{{"number":{number},"updated_at":"2026-02-03T{hour:02}:00:00Z","merged_at":"2026-02-03T{hour:02}:00:00Z","base":{{"ref":"main","sha":"{}"}},"head":{{"ref":"f","sha":"{}"}}}}"#,
+                    sha('a'),
+                    sha('b')
+                )
+            };
+            let next = vec![("link".to_owned(), r#"<x>; rel="next""#.to_owned())];
+            self.transport.respond(
+                &closed_pulls(1),
+                vec![
+                    (
+                        200,
+                        next,
+                        format!("[{},{}]", entry(5, 5), entry(4, 4)).into_bytes(),
+                    ),
+                    (
+                        200,
+                        Vec::new(),
+                        format!("[{},{},{}]", entry(5, 5), entry(3, 3), entry(4, 4)).into_bytes(),
+                    ),
+                ],
+            );
+            self.transport
+                .json(&closed_pulls(2), &format!("[{}]", entry(2, 2)));
+            for number in 2..=5 {
+                self.transport.json(
+                    &format!("/pulls/{number}/files?per_page=100&page=1"),
+                    &format!(
+                        r#"[{{"filename":"src/p{number}.ts","status":"modified","sha":"{}","patch":"@@ -1 +1 @@\n-a\n+b"}}]"#,
+                        sha('e')
+                    ),
+                );
+            }
+        }
+
         /// Move the branch to `commit`/`tree` listing `files`, routing its
         /// blobs, tree, directories, a tarball of `archive`, and a compare
         /// from every earlier pushed commit; earlier routes stay.
@@ -2287,6 +2351,62 @@ pub(crate) mod tests {
                 .await,
             Err(ColdBuildError::Corrupt { .. })
         ));
+    }
+
+    /// Cold build history is complete or fails before publication: a
+    /// genuinely exhausted empty listing publishes empty history, while a
+    /// listing still advertising pages at the page bound, or one whose
+    /// page 1 gained an entry below its first while page 2 was read,
+    /// fails the build and publishes no pointer.
+    #[tokio::test]
+    async fn cold_build_history_is_complete_or_unpublished() {
+        let identity = identity();
+        let build = async |repo: &FakeRepo| {
+            let (storage, store) = (MemoryStorage::default(), MemorySnapshotStore::default());
+            let client = repo.client();
+            let result = ColdBuild::new(&client, &storage, &store, ColdBuildLimits::default())
+                .run(&identity)
+                .await;
+            let pointer = store
+                .snapshot_pointer(&scope(&identity))
+                .await
+                .expect("pointer");
+            (result, pointer, storage)
+        };
+
+        let empty = FakeRepo::new(&standard_files(), &standard_archive());
+        let (result, pointer, storage) = build(&empty).await;
+        let ColdBuildOutcome::Published(published) = result.expect("empty history").outcome else {
+            panic!("empty history publishes");
+        };
+        assert_eq!(pointer, Some(published.clone()));
+        let snapshot = Snapshots::new(&storage, &MemorySnapshotStore::default())
+            .read(&scope(&identity), &published)
+            .await
+            .expect("read back");
+        assert!(snapshot.history.prs.is_empty());
+
+        let unproved = FakeRepo::new(&standard_files(), &standard_archive());
+        unproved.unproved_history();
+        let (result, pointer, storage) = build(&unproved).await;
+        assert!(matches!(
+            result,
+            Err(ColdBuildError::History(HistoryError::UnprovedHistory {
+                found: 0
+            }))
+        ));
+        assert_eq!(pointer, None);
+        assert!(storage.keys().is_empty());
+
+        let moving = FakeRepo::new(&standard_files(), &standard_archive());
+        moving.moving_history();
+        let (result, pointer, storage) = build(&moving).await;
+        assert!(matches!(
+            result,
+            Err(ColdBuildError::History(HistoryError::ListingMoved))
+        ));
+        assert_eq!(pointer, None);
+        assert!(storage.keys().is_empty());
     }
 
     /// Scenario 2: an exhausted fallback

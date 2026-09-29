@@ -254,7 +254,7 @@ pub enum Operation {
     PullRequestFiles,
     /// `GET /repos/{owner}/{repo}/compare/{base}...{head}`.
     Compare,
-    /// `GET /repos/{owner}/{repo}/pulls?state=closed`, one page.
+    /// `GET /repos/{owner}/{repo}/pulls`, one page.
     PullRequests,
 }
 
@@ -734,7 +734,7 @@ struct CommitterWire {
     date: String,
 }
 
-/// One entry of `GET /repos/{owner}/{repo}/pulls?state=closed`.
+/// One entry of `GET /repos/{owner}/{repo}/pulls`.
 #[derive(Deserialize)]
 struct ListedPullRequestWire {
     number: u64,
@@ -819,14 +819,84 @@ struct PullRequestFileWire {
 pub struct ClosedPullRequestsPage {
     /// The page's merged pull requests in listing order.
     pub merged: Vec<MergedPr>,
-    /// `(number, updated_at)` of the page's first entry, merged or not.
-    pub first: Option<(u64, String)>,
+    /// `(number, updated_at)` of every entry in listing order, merged or
+    /// not, so a re-read can prove the page did not change.
+    pub listed: Vec<(u64, String)>,
     /// Update time of the page's last entry, merged or not. Every closed
     /// PR updated after it was listed on this page or an earlier one, and
     /// a PR merges no later than its last update.
     pub oldest_update: Option<String>,
     /// Whether the provider advertised a further page.
     pub has_next: bool,
+}
+
+/// One listed pull request with a validated number, times, and commits.
+///
+/// Invariant: `number` is nonzero, both times are `YYYY-MM-DDTHH:MM:SSZ`,
+/// and `merged_at`, when present, is no later than `updated_at`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ListedPullRequest {
+    /// PR number.
+    pub number: u64,
+    /// Last update time.
+    pub updated_at: String,
+    /// Merge time, absent when not merged.
+    pub merged_at: Option<String>,
+    /// Base branch name.
+    pub base_branch: String,
+    /// Base commit.
+    pub base: ObjectSha,
+    /// Head commit.
+    pub head: ObjectSha,
+}
+
+/// One page of every pull request, oldest created first.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PullRequestsPage {
+    /// The page's pull requests in listing order.
+    pub prs: Vec<ListedPullRequest>,
+    /// Whether the provider advertised a further page.
+    pub has_next: bool,
+}
+
+/// `wire` from `resource` as a [`ListedPullRequest`].
+///
+/// # Errors
+///
+/// [`GitHubError::MalformedResponse`] for PR number 0, a time that is not
+/// `YYYY-MM-DDTHH:MM:SSZ`, or a merge after the last update.
+fn listed_pull_request(
+    wire: ListedPullRequestWire,
+    resource: &str,
+) -> Result<ListedPullRequest, GitHubError> {
+    let malformed = |detail: String| GitHubError::MalformedResponse {
+        resource: resource.to_owned(),
+        detail: format!("PR #{}: {detail}", wire.number),
+    };
+    if wire.number == 0 {
+        return Err(malformed("number 0".to_owned()));
+    }
+    let updated_at = timestamp(wire.updated_at, resource)?;
+    let merged_at = wire
+        .merged_at
+        .map(|merged_at| timestamp(merged_at, resource))
+        .transpose()?;
+    if let Some(merged_at) = merged_at
+        .as_ref()
+        .filter(|merged_at| **merged_at > updated_at)
+    {
+        return Err(malformed(format!(
+            "merged at {merged_at} after its update at {updated_at}"
+        )));
+    }
+    Ok(ListedPullRequest {
+        number: wire.number,
+        updated_at,
+        merged_at,
+        base_branch: wire.base.name,
+        base: wire.base.sha,
+        head: wire.head.sha,
+    })
 }
 
 /// Wire shape of `GET /repos/{owner}/{repo}/compare/{base}...{head}`.
@@ -1518,45 +1588,107 @@ impl GitHubClient {
         let wire: Vec<ListedPullRequestWire> = parse_json(&bytes, &resource)?;
         let mut listed = ClosedPullRequestsPage {
             merged: Vec::new(),
-            first: None,
+            listed: Vec::new(),
             oldest_update: None,
             has_next,
         };
-        for pr in wire {
-            let malformed = |detail: String| GitHubError::MalformedResponse {
-                resource: resource.clone(),
-                detail: format!("PR #{}: {detail}", pr.number),
-            };
-            if pr.number == 0 {
-                return Err(malformed("number 0".to_owned()));
-            }
-            if pr.base.name != base {
+        for wire in wire {
+            let pr = listed_pull_request(wire, &resource)?;
+            if pr.base_branch != base {
                 return Err(GitHubError::IdentityMismatch {
                     expected: format!("PR into `{base}`"),
-                    actual: format!("PR #{} into `{}`", pr.number, pr.base.name),
+                    actual: format!("PR #{} into `{}`", pr.number, pr.base_branch),
                 });
             }
-            let updated_at = timestamp(pr.updated_at, &resource)?;
-            listed
-                .first
-                .get_or_insert_with(|| (pr.number, updated_at.clone()));
+            listed.listed.push((pr.number, pr.updated_at.clone()));
             if let Some(merged_at) = pr.merged_at {
-                let merged_at = timestamp(merged_at, &resource)?;
-                if merged_at > updated_at {
-                    return Err(malformed(format!(
-                        "merged at {merged_at} after its update at {updated_at}"
-                    )));
-                }
                 listed.merged.push(MergedPr {
                     number: pr.number,
                     merged_at,
-                    base: pr.base.sha,
-                    head: pr.head.sha,
+                    base: pr.base,
+                    head: pr.head,
                 });
             }
-            listed.oldest_update = Some(updated_at);
+            listed.oldest_update = Some(pr.updated_at);
         }
         Ok(listed)
+    }
+
+    /// Look up `owner/name` and return its verified identity with its
+    /// description, for a caller that knows only the name.
+    ///
+    /// # Errors
+    ///
+    /// [`GitHubError::IdentityMismatch`] when the provider names another
+    /// repository, [`GitHubError::MalformedResponse`] for an unusable id or
+    /// name, plus any policy or transport error.
+    pub async fn find_repository(
+        &self,
+        owner: &str,
+        name: &str,
+    ) -> Result<(RepositoryIdentity, Repository), GitHubError> {
+        let resource = format!("/repos/{}/{}", encode_segment(owner), encode_segment(name));
+        let wire: RepositoryWire = self
+            .get_json(Operation::Repository, &resource, ACCEPT_JSON)
+            .await?;
+        let identity = RepositoryIdentity::new(wire.id, owner, name).map_err(|error| {
+            GitHubError::MalformedResponse {
+                resource: resource.clone(),
+                detail: error.to_string(),
+            }
+        })?;
+        if !wire.full_name.eq_ignore_ascii_case(&identity.full_name()) {
+            return Err(GitHubError::IdentityMismatch {
+                expected: identity.full_name(),
+                actual: wire.full_name,
+            });
+        }
+        Ok((
+            identity,
+            Repository {
+                full_name: wire.full_name,
+                default_branch: wire.default_branch,
+                private: wire.private,
+            },
+        ))
+    }
+
+    /// Fetch one page (1-based) of every pull request in any state, oldest
+    /// created first, so pages already read can only be appended to.
+    ///
+    /// # Errors
+    ///
+    /// [`GitHubError::MalformedResponse`] for PR number 0, a time that is
+    /// not `YYYY-MM-DDTHH:MM:SSZ`, or a merge after the last update, plus
+    /// any policy or transport error. One bad entry fails the page.
+    pub async fn pull_requests(
+        &self,
+        repository: &RepositoryIdentity,
+        page: u32,
+    ) -> Result<PullRequestsPage, GitHubError> {
+        let resource = format!(
+            "/repos/{}/pulls?state=all&sort=created&direction=asc&per_page={PULL_REQUESTS_PER_PAGE}&page={page}",
+            repository.full_name()
+        );
+        let mut response = self
+            .request(Operation::PullRequests, &resource, ACCEPT_JSON, true)
+            .await?;
+        expect_status(&response, 200, &resource)?;
+        let has_next = response
+            .header("link")
+            .is_some_and(|link| link.contains("rel=\"next\""));
+        let bytes = read_bounded(
+            response.body.as_mut(),
+            self.limits.max_json_bytes,
+            &resource,
+        )
+        .await?;
+        let wire: Vec<ListedPullRequestWire> = parse_json(&bytes, &resource)?;
+        let prs = wire
+            .into_iter()
+            .map(|wire| listed_pull_request(wire, &resource))
+            .collect::<Result<_, _>>()?;
+        Ok(PullRequestsPage { prs, has_next })
     }
 
     /// GET `resource` from the API host, require 200, and parse bounded JSON.
@@ -2013,6 +2145,91 @@ mod tests {
             client.compare(&repo, &base, &head).await,
             Err(GitHubError::MalformedResponse { .. })
         ));
+    }
+
+    /// Name-only discovery reads for a caller that knows no repository id:
+    /// a repository looked up by name comes back with its verified
+    /// identity, and one naming another repository is rejected; the
+    /// all-PR listing keeps every state and base, reports its next page,
+    /// and fails the page on an unusable entry or a provider error.
+    #[tokio::test]
+    async fn repository_lookup_and_pull_request_listing_are_verified() {
+        let (client, fake) = client();
+        fake.push_json(
+            r#"{"id":1296269,"full_name":"Octocat/Hello-World","default_branch":"main","private":false}"#,
+        );
+        let (identity, repository) = client
+            .find_repository("octocat", "Hello-World")
+            .await
+            .expect("repository");
+        assert_eq!(identity, repo());
+        assert_eq!(repository.default_branch, "main");
+        assert!(fake.seen()[0].0.ends_with("/repos/octocat/Hello-World"));
+        fake.push_json(
+            r#"{"id":7,"full_name":"other/repo","default_branch":"main","private":false}"#,
+        );
+        assert!(matches!(
+            client.find_repository("octocat", "Hello-World").await,
+            Err(GitHubError::IdentityMismatch { .. })
+        ));
+        fake.push(404, &[], "");
+        assert!(client.find_repository("octocat", "gone").await.is_err());
+
+        let entry = |number: u64, merged: &str, base: &str| {
+            format!(
+                r#"{{"number":{number},"updated_at":"2026-01-02T00:00:00Z","merged_at":{merged},"base":{{"ref":"{base}","sha":"{}"}},"head":{{"ref":"f","sha":"{}"}}}}"#,
+                sha('a'),
+                sha('b')
+            )
+        };
+        fake.push(
+            200,
+            &[("link", r#"<x>; rel="next""#)],
+            format!(
+                "[{},{}]",
+                entry(1, r#""2026-01-01T00:00:00Z""#, "main"),
+                entry(2, "null", "release")
+            ),
+        );
+        let page = client.pull_requests(&repo(), 1).await.expect("page");
+        assert!(page.has_next);
+        assert_eq!(
+            page.prs,
+            [
+                ListedPullRequest {
+                    number: 1,
+                    updated_at: "2026-01-02T00:00:00Z".to_owned(),
+                    merged_at: Some("2026-01-01T00:00:00Z".to_owned()),
+                    base_branch: "main".to_owned(),
+                    base: sha('a'),
+                    head: sha('b'),
+                },
+                ListedPullRequest {
+                    number: 2,
+                    updated_at: "2026-01-02T00:00:00Z".to_owned(),
+                    merged_at: None,
+                    base_branch: "release".to_owned(),
+                    base: sha('a'),
+                    head: sha('b'),
+                },
+            ]
+        );
+        assert!(fake.seen().last().expect("seen").0.ends_with(
+            "/repos/octocat/Hello-World/pulls?state=all&sort=created&direction=asc&per_page=100&page=1"
+        ));
+        for bad in [
+            entry(0, "null", "main"),
+            entry(3, r#""2026-01-03T00:00:00Z""#, "main"),
+            entry(3, r#""yesterday""#, "main"),
+        ] {
+            fake.push_json(&format!("[{bad}]"));
+            assert!(matches!(
+                client.pull_requests(&repo(), 1).await,
+                Err(GitHubError::MalformedResponse { .. })
+            ));
+        }
+        fake.push(404, &[], "");
+        assert!(client.pull_requests(&repo(), 2).await.is_err());
     }
 
     /// Every remaining chunk of `archive`, concatenated.

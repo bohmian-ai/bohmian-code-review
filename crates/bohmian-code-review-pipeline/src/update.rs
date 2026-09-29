@@ -269,6 +269,7 @@ mod tests {
     use super::*;
     use crate::eligibility::ExclusionReason;
     use crate::github::{GitHubError, Operation};
+    use crate::history::HistoryError;
     use crate::persistence::SnapshotScope;
     use crate::snapshot::tests::{
         FakeRepo, File, HANDLER, LFS, OMITTED, bad_sha, blob_sha, file, identity, scope, sha,
@@ -504,6 +505,41 @@ mod tests {
         let retry = update.run(&identity).await.expect("retry");
         assert!(matches!(retry.outcome, ColdBuildOutcome::Published(_)));
         assert_eq!(pointer(&store, &identity).await.map(|p| p.tree), Some(tree));
+    }
+
+    /// Update history is complete or fails before publication: a listing
+    /// still advertising pages at the page bound without reaching the prior
+    /// history's time, or one whose page 1 gained an entry below its first
+    /// while page 2 was read, fails the update and keeps the prior pointer.
+    #[tokio::test]
+    async fn update_history_is_complete_or_unpublished() {
+        for moving in [false, true] {
+            let repo = FakeRepo::new(&standard_files(), &standard_archive());
+            let storage = MemoryStorage::default();
+            let store = MemorySnapshotStore::default();
+            let identity = identity();
+            let old = cold(&repo, &storage, &store).await;
+            repo.push(&sha('d'), &sha('8'), &pushed_files(), &pushed_archive());
+            match moving {
+                true => repo.moving_history(),
+                false => repo.unproved_history(),
+            }
+            let client = repo.client();
+            let error = Update::new(&client, &storage, &store, ColdBuildLimits::default())
+                .run(&identity)
+                .await
+                .expect_err("history is unproved");
+            let expected = match moving {
+                true => HistoryError::ListingMoved,
+                false => HistoryError::UnprovedHistory { found: 0 },
+            };
+            assert!(
+                matches!(&error, ColdBuildError::History(found) if *found == expected),
+                "{error:?}"
+            );
+            assert_eq!(pointer(&store, &identity).await, Some(old.clone()));
+            assert_eq!(storage.keys(), std::slice::from_ref(&old.key));
+        }
     }
 
     /// A push whose changed path's directory listing has a malformed entry
