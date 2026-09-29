@@ -31,3 +31,16 @@ Preserve all sample, trial, effect, cost, decision, and validity data; keep the 
 - Run the exact focused report test through `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --example context_relevance --all-features tests::run_report_is_complete_and_source_free -- --exact`, verifying it selects and passes one test. Then run `mise run test:pipeline`, `mise run fmt:check`, `mise run lints`, `mise run gate`, and `git diff --check`. Check the report diff to confirm only the command metadata changed.
 
 Route this task to `$cr-implement`. A later review reassesses the original TASK-003 against the cumulative candidate.
+
+## Implementation evidence
+
+Commit `fix(cochange-eval): record executable rerun command in reports`.
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| Producer, no-network test, and three reports agree on `mise run live:context-relevance`; no credential placeholder in any `command` field | `crates/bohmian-code-review-pipeline/examples/context_relevance/main.rs` `record` and `run_report_is_complete_and_source_free`; `changes/active/cochange-eval/reports/{pydantic-ai,tokio,zod}.json` line 8 | Exact focused test: 1 passed, 27 filtered out; `rg 'read-only token'` finds no `command` value | PASS |
+| Recorded command parses and reaches the task; without a token it fails at the existing credential check before provider access | Unchanged `live()` and `mise.toml` `live:context-relevance` | `env -u GITHUB_TOKEN zsh -c 'mise run live:context-relevance'` ran the example and exited 1 with `context_relevance failed: GITHUB_TOKEN is required` | PASS |
+| Only command metadata changed in reports; sample, trial, effect, cost, decision, and validity data preserved | Report diff: one line per file, `command` only | `git diff --stat`: 3 reports × 1 line, `main.rs` producer and assertion | PASS |
+| Lanes | — | `mise run test:pipeline`, `fmt:check`, `lints`, `gate`, `git diff --check` all exited 0 | PASS |
+
+Non-goals held: no production ranking, packing, persistence, public API, provider, or historical report change; the live command stays opt-in and outside `gate`. The credentialed live experiment was not rerun (no `GITHUB_TOKEN` needed for this metadata-only correction).
