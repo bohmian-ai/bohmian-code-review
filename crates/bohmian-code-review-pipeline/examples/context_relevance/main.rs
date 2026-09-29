@@ -35,6 +35,9 @@ use bohmian_code_review_pipeline::{
     SnapshotScope, Snapshots, TenantId,
 };
 use history::{Changed, History};
+use report::{
+    ADOPTION_THRESHOLD, BOOTSTRAP_SEED, DECISION_RULE, RESAMPLES, VALIDITY_THREATS, Verdict,
+};
 use sample::{
     Discovery, ListedPr, Listing, MergedPr, OmittedReason, SAMPLE_SIZE, SampleError, Screen,
     eligible, is_timestamp,
@@ -499,6 +502,7 @@ fn live() -> Result<Api, Box<dyn Error>> {
 
 /// Select every repository in `repos`, run its trials, and return every
 /// report only once all repositories succeed, so a failure leaves none.
+/// Each report records the repository-wide adoption decision.
 ///
 /// # Errors
 ///
@@ -517,11 +521,21 @@ async fn run(api: &Api, repos: &[Repository]) -> Result<Vec<Value>, Box<dyn Erro
         }
         records.push(record(repo, &selected, &trials));
     }
-    Ok(records)
+    let verdicts: Vec<Verdict> = records.iter().map(|(_, verdict)| *verdict).collect();
+    let adopt = report::adopt(&verdicts);
+    Ok(records
+        .into_iter()
+        .map(|(mut record, _)| {
+            record["decision"]["adopt_f"] = json!(adopt);
+            record
+        })
+        .collect())
 }
 
-/// `repo`'s source-free JSON report of `selected` and its `trials`.
-fn record(repo: &Repository, selected: &Selected, trials: &[Trial]) -> Value {
+/// `repo`'s source-free JSON report of `selected` and its `trials`, with
+/// its F − C verdict; the caller adds the repository-wide adoption.
+fn record(repo: &Repository, selected: &Selected, trials: &[Trial]) -> (Value, Verdict) {
+    let means = report::pr_means(trials);
     let prs: Vec<_> = selected
         .sample
         .iter()
@@ -533,6 +547,7 @@ fn record(repo: &Repository, selected: &Selected, trials: &[Trial]) -> Value {
                 "base_time": sampled.base_time,
                 "head": sampled.pr.head.as_str(),
                 "base_tree": sampled.snapshot.tree.as_str(),
+                "hit_at_10_means": means.iter().find(|means| means.pr == sampled.pr.number),
                 "history_size": selected.history
                     .for_trial(sampled.pr.number, &sampled.base_time)
                     .count(),
@@ -549,11 +564,20 @@ fn record(repo: &Repository, selected: &Selected, trials: &[Trial]) -> Value {
         })
         .collect();
     let requests = &selected.requests;
-    json!({
+    let e_minus_c = report::effect(&means, |pr| pr.e, BOOTSTRAP_SEED);
+    let f_minus_c = report::effect(&means, |pr| pr.f, BOOTSTRAP_SEED);
+    let verdict = report::verdict(&f_minus_c);
+    let record = json!({
         "repository": repo.name,
         "cutoff": repo.cutoff,
         "cold_point": selected.history.cold_point,
-        "command": "mise run live:context-relevance",
+        "command": "GITHUB_TOKEN=<read-only token> mise run live:context-relevance",
+        "outcome": "hit@10",
+        "bootstrap": {
+            "seed": BOOTSTRAP_SEED,
+            "resamples": RESAMPLES,
+            "interval": "95% percentile over PRs",
+        },
         "requests": {
             "production": {
                 "cold_build": requests.listing_pages + requests.history.cold,
@@ -575,8 +599,15 @@ fn record(repo: &Repository, selected: &Selected, trials: &[Trial]) -> Value {
         "hit_rank": HIT_RANK,
         "sample": prs,
         "trials": trials,
-        "summary": report::summarize(trials),
-    })
+        "effects": {"E-C": e_minus_c, "F-C": f_minus_c},
+        "decision": {
+            "rule": DECISION_RULE,
+            "threshold": ADOPTION_THRESHOLD,
+            "repository_f_minus_c": verdict,
+        },
+        "validity_threats": BTreeMap::from(VALIDITY_THREATS),
+    });
+    (record, verdict)
 }
 
 /// Print every live report, or only the failure on stderr with exit 1.
@@ -868,6 +899,81 @@ mod tests {
         );
         let trials = record["trials"].as_array().expect("trials");
         assert_eq!(trials.len(), 2 * SAMPLE_SIZE);
+    }
+
+    /// A fake run's report records the rerun inputs, per-PR history sizes
+    /// and arm means, both seeded effects, the decision, and every validity
+    /// threat, and carries no source text or packing outcome.
+    #[tokio::test]
+    async fn run_report_is_complete_and_source_free() {
+        let fake = Fake::new();
+        let records = run(&fake.api(), &[FAKE]).await.expect("fake run succeeds");
+        let [record] = records.as_slice() else {
+            panic!("one report per repository");
+        };
+
+        assert_eq!(record["cutoff"], FAKE.cutoff);
+        assert_eq!(
+            record["command"],
+            "GITHUB_TOKEN=<read-only token> mise run live:context-relevance"
+        );
+        assert_eq!(record["outcome"], "hit@10");
+        assert_eq!(record["bootstrap"]["seed"], BOOTSTRAP_SEED);
+        assert_eq!(record["bootstrap"]["resamples"], RESAMPLES);
+        let sample = record["sample"].as_array().expect("sample");
+        for (pr, n) in sample.iter().zip((16..=65).rev()) {
+            assert_eq!(pr["number"], n);
+            assert_eq!(pr["base"], sha(0xba5e, n));
+            assert_eq!(pr["head"], sha(0x4ead, n));
+            assert_eq!(pr["hit_at_10_means"]["pr"], n);
+            assert_eq!(pr["hit_at_10_means"]["trials"], 2);
+            for arm in ["C", "E", "F"] {
+                assert!(pr["hit_at_10_means"][arm].is_f64(), "PR {n} {arm}");
+            }
+        }
+        assert_eq!(sample[SAMPLE_SIZE - 1]["history_size"], 10);
+        assert_eq!(sample[0]["history_size"], 10 + 49);
+        for trial in record["trials"].as_array().expect("trials") {
+            assert!(trial["withheld"].is_string());
+            for arm in ["C", "E", "F"] {
+                assert!(trial[arm]["hit_at_10"].is_boolean());
+            }
+        }
+        for effect in ["E-C", "F-C"] {
+            assert!(record["effects"][effect]["mean"].is_f64(), "{effect}");
+            assert_eq!(
+                record["effects"][effect]["ci_95"].as_array().map(Vec::len),
+                Some(2)
+            );
+        }
+        assert_eq!(record["decision"]["rule"], DECISION_RULE);
+        assert_eq!(record["decision"]["threshold"], ADOPTION_THRESHOLD);
+        assert!(record["decision"]["repository_f_minus_c"].is_string());
+        assert!(record["decision"]["adopt_f"].is_boolean());
+        let threats: Vec<&str> = record["validity_threats"]
+            .as_object()
+            .expect("threats")
+            .keys()
+            .map(String::as_str)
+            .collect();
+        assert_eq!(
+            threats,
+            [
+                "circular_label",
+                "one_repository_per_language",
+                "proxy_for_relevance",
+                "small_sample"
+            ]
+        );
+        let text = record.to_string();
+        for source in [A, B, A_HEAD, B_HEAD] {
+            let source = std::str::from_utf8(source).expect("fixture is UTF-8");
+            for line in source.lines().filter(|line| !line.is_empty()) {
+                assert!(!text.contains(line.trim()), "report leaks `{line}`");
+            }
+        }
+        assert!(!text.contains("pack"), "report claims a packing outcome");
+        assert!(record.get("summary").is_none());
     }
 
     /// A missing base-commit response, a history-only (PR 14) or cached
