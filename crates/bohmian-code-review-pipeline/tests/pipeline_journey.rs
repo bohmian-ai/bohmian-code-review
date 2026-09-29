@@ -638,7 +638,11 @@ async fn review_pipeline_cold_builds_refreshes_and_ranks_co_change() {
         .await
         .expect("first context");
     assert_eq!(client.calls().get(Operation::Archive), 1);
-    assert!(first.context.coverage.is_full(), "{:?}", first.context.coverage);
+    assert!(
+        first.context.coverage.is_full(),
+        "{:?}",
+        first.context.coverage
+    );
     assert_eq!(first.context.coverage.snapshot_tree, Some(sha('7')));
 
     github.merged(&[
@@ -679,7 +683,11 @@ async fn review_pipeline_cold_builds_refreshes_and_ranks_co_change() {
         .await
         .expect("second context");
     let calls = client.calls();
-    for operation in [Operation::BranchHead, Operation::Archive, Operation::Compare] {
+    for operation in [
+        Operation::BranchHead,
+        Operation::Archive,
+        Operation::Compare,
+    ] {
         assert_eq!(calls.get(operation), before[&operation], "{operation:?}");
     }
     let context = &second.context;
