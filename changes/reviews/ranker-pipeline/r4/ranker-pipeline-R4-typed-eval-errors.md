@@ -22,3 +22,16 @@ Correct this once in the existing eval live owner: expose a typed `thiserror` er
 | Preserved evaluation and command behavior | The existing custom-arm fake-provider report remains unchanged; the checked-in fixed C/E/F report regression passes; the binary still reports failure and exits nonzero without partial reports. |
 
 Record the exact focused test command and observed result for the typed failure and report-preservation cases. Run `mise run test:eval`, `mise run fmt:check`, `mise run lints`, `mise run gate`, and `git diff --check` for the cumulative range. A credentialed live run remains conditional on a supplied token; the fake-provider proof is required regardless.
+
+## Implementation evidence
+
+Commit `7e1201f`. Write set: `crates/bohmian-code-review-eval/src/live.rs` and the `bin/context_relevance.rs` call site (`Err(LiveError::from(error))`).
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| One typed error for `live`, `run`, `print`, `Api::base_snapshot`, `qualify`, `trials`, `select`, and the history read; no `Box<dyn Error>` | `live.rs` `LiveError` (`thiserror`) with typed causes `GitHub`, `History`, `Snapshot` (`ColdBuildError`), `Sample`, `Symbolic`, `Trial`, `Arms`, `Identity`, `Transport`, `Serialize`; the history closure returns `LiveError` | `eval_has_no_raw_provider_request_path` now also forbids `dyn Error` and `std::error` in every production source of the crate | PASS |
+| Fake-provider `run` failure matched by typed provider or history cause without downcast | Former `downcast_ref` assertions replaced by `LiveError::GitHub(..)` / `LiveError::History(HistoryError::IncompleteListing { .. })` matches | `run_fails_without_report_on_missing_incomplete_or_rate_limited_reads`, `discovery_reads_are_verified_by_the_pipeline_client` | PASS |
+| Configuration failure is typed | `LiveError::MissingToken`, `LiveError::InvalidRepository` | `malformed_repository_name_fails_before_any_read` (no provider read) | PASS |
+| Custom-arm report, fixed C/E/F report, and binary failure/exit preserved | Report code unchanged; binary still prints `context_relevance failed: {error}` and exits 1 before any report | `run_report_names_the_callers_decision_pair`, `checked_in_reports_are_reproduced_from_their_trials`, `repositories_and_arms_are_the_fixed_experiment` | PASS |
+
+Commands, all exit 0 in this session: `mise run test:eval` (27 + 1 passed), `mise run fmt:check`, `mise run lints`, `git diff --check`, `mise run gate`. The `"the sample holds SAMPLE_SIZE PRs"` `expect` replaces an unreachable string error after the `TooFew` check. Non-goals held: no pipeline, symbolic, provider, storage, ranking, report-schema, or dependency change; `changes/active/impact-map/` untouched. The credentialed live run was not executed (no token supplied).
