@@ -1,10 +1,11 @@
 //! In-memory symbol-to-file postings over extracted facts.
 //!
 //! [`SymbolIndex`] holds only what callers supplied: per-file declaration
-//! facts and byte lengths, never source bytes. It describes the supplied
-//! files alone and makes no repository coverage claim. Lookup is exact and
-//! case-sensitive over simple and qualified names and returns every hit, so
-//! ambiguity stays visible to later stages.
+//! facts, distinct referenced names, and byte lengths, never source bytes.
+//! It describes the supplied files alone and makes no repository coverage
+//! claim. Lookup is exact and case-sensitive over simple and qualified
+//! names and returns every hit, so ambiguity stays visible to later stages;
+//! [`SymbolIndex::referencing`] answers which files use a name.
 
 use bohmian_code_review_core::{
     DeclarationFact, IndexedFileFacts, InvalidFact, Node, NodeKind, RelativePath,
@@ -27,6 +28,8 @@ struct IndexedFile {
     byte_len: usize,
     /// Extracted node facts in extractor order.
     nodes: Vec<Node>,
+    /// Distinct names the file references, without positions.
+    references: BTreeSet<String>,
 }
 
 impl IndexedFile {
@@ -43,6 +46,7 @@ impl IndexedFile {
                 .filter(|node| is_declaration(node.kind))
                 .map(DeclarationFact::from_node)
                 .collect(),
+            references: self.references.iter().cloned().collect(),
         }
     }
 }
@@ -61,6 +65,8 @@ pub struct SymbolIndex {
     files: BTreeMap<RelativePath, IndexedFile>,
     /// Exact simple and qualified names to ordered postings.
     postings: HashMap<String, BTreeSet<Posting>>,
+    /// Exact referenced names to the files referencing them.
+    referenced: HashMap<String, BTreeSet<RelativePath>>,
 }
 
 impl SymbolIndex {
@@ -70,12 +76,26 @@ impl SymbolIndex {
         SymbolIndex::default()
     }
 
-    /// Replaces every fact and posting for `path` with `nodes`.
+    /// Replaces every fact and posting for `path` with `nodes` and the
+    /// distinct names in `references`.
     ///
     /// Old postings are removed before the new ones are inserted within this
-    /// call; other files are untouched. Only `nodes` and `byte_len` are kept.
-    pub fn upsert(&mut self, path: RelativePath, byte_len: usize, nodes: Vec<Node>) {
+    /// call; other files are untouched. Only `nodes`, `references`, and
+    /// `byte_len` are kept.
+    pub fn upsert(
+        &mut self,
+        path: RelativePath,
+        byte_len: usize,
+        nodes: Vec<Node>,
+        references: BTreeSet<String>,
+    ) {
         self.remove(&path);
+        for name in &references {
+            self.referenced
+                .entry(name.clone())
+                .or_default()
+                .insert(path.clone());
+        }
         for (slot, node) in nodes.iter().enumerate() {
             if !is_declaration(node.kind) {
                 continue;
@@ -94,7 +114,14 @@ impl SymbolIndex {
                     .insert(posting.clone());
             }
         }
-        self.files.insert(path, IndexedFile { byte_len, nodes });
+        self.files.insert(
+            path,
+            IndexedFile {
+                byte_len,
+                nodes,
+                references,
+            },
+        );
     }
 
     /// Removes every fact and posting for `path`.
@@ -111,6 +138,14 @@ impl SymbolIndex {
                     if set.is_empty() {
                         self.postings.remove(name);
                     }
+                }
+            }
+        }
+        for name in &file.references {
+            if let Some(set) = self.referenced.get_mut(name) {
+                set.remove(path);
+                if set.is_empty() {
+                    self.referenced.remove(name);
                 }
             }
         }
@@ -133,6 +168,12 @@ impl SymbolIndex {
                 })
             })
             .collect()
+    }
+
+    /// Every indexed file referencing `name` exactly, in canonical path
+    /// order; empty when none does.
+    pub fn referencing(&self, name: &str) -> impl Iterator<Item = &RelativePath> {
+        self.referenced.get(name).into_iter().flatten()
     }
 
     /// Exports every file's source-free declaration facts in canonical path
@@ -180,7 +221,8 @@ impl SymbolIndex {
             .into_iter()
             .map(|fact| fact.into_node(&facts.path))
             .collect();
-        self.upsert(facts.path, facts.byte_len, nodes);
+        let references = facts.references.into_iter().collect();
+        self.upsert(facts.path, facts.byte_len, nodes, references);
         Ok(())
     }
 
@@ -188,6 +230,12 @@ impl SymbolIndex {
     #[must_use]
     pub fn byte_len(&self, path: &RelativePath) -> Option<usize> {
         self.files.get(path).map(|file| file.byte_len)
+    }
+
+    /// Whether `path` is indexed.
+    #[must_use]
+    pub fn contains(&self, path: &RelativePath) -> bool {
+        self.files.contains_key(path)
     }
 
     /// Node facts retained for `path`, if indexed.
@@ -294,6 +342,7 @@ mod tests {
                 1,
                 "function:z",
             )],
+            BTreeSet::new(),
         );
         index.upsert(
             path("src/a.ts"),
@@ -340,6 +389,7 @@ mod tests {
                     "function:a0",
                 ),
             ],
+            BTreeSet::new(),
         );
 
         assert_eq!(
@@ -378,6 +428,7 @@ mod tests {
                 1,
                 "function:old",
             )],
+            BTreeSet::new(),
         );
         index.upsert(
             other.clone(),
@@ -390,6 +441,7 @@ mod tests {
                 2,
                 "function:other",
             )],
+            BTreeSet::new(),
         );
         index.upsert(
             user.clone(),
@@ -402,6 +454,7 @@ mod tests {
                 4,
                 "function:new",
             )],
+            BTreeSet::new(),
         );
 
         assert_eq!(
@@ -442,6 +495,7 @@ mod tests {
                     "function:z",
                 ),
             ],
+            BTreeSet::new(),
         );
         index.upsert(
             path("src/a.ts"),
@@ -454,6 +508,7 @@ mod tests {
                 9,
                 "method:a",
             )],
+            BTreeSet::new(),
         );
         let exported = index.export("v1");
         let summary: Vec<(&str, &str, usize, usize)> = exported
@@ -492,6 +547,41 @@ mod tests {
     }
 
     #[test]
+    /// Referenced names post to their files in path order, survive export
+    /// and load sorted, are replaced by a later upsert, and vanish on
+    /// removal; unknown names reference nothing.
+    fn referenced_names_post_replace_and_round_trip() {
+        let names = |raw: &[&str]| raw.iter().map(|&name| name.to_owned()).collect();
+        let referencing = |index: &SymbolIndex, name: &str| -> Vec<String> {
+            index
+                .referencing(name)
+                .map(|path| path.as_str().to_owned())
+                .collect()
+        };
+        let mut index = SymbolIndex::new();
+        index.upsert(path("src/z.ts"), 1, Vec::new(), names(&["save", "load"]));
+        index.upsert(path("src/a.ts"), 1, Vec::new(), names(&["load"]));
+        assert_eq!(referencing(&index, "load"), ["src/a.ts", "src/z.ts"]);
+        assert!(index.contains(&path("src/a.ts")));
+        assert!(!index.contains(&path("src/b.ts")));
+
+        let exported = index.export("v1");
+        assert_eq!(exported[1].references, ["load", "save"]);
+        let mut loaded = SymbolIndex::new();
+        for facts in exported {
+            loaded.load(facts).expect("valid facts");
+        }
+        assert_eq!(referencing(&loaded, "save"), ["src/z.ts"]);
+
+        loaded.upsert(path("src/z.ts"), 1, Vec::new(), names(&["other"]));
+        assert_eq!(referencing(&loaded, "load"), ["src/a.ts"]);
+        assert!(referencing(&loaded, "save").is_empty());
+        assert!(loaded.remove(&path("src/z.ts")));
+        assert!(referencing(&loaded, "other").is_empty());
+        assert!(referencing(&loaded, "missing").is_empty());
+    }
+
+    #[test]
     /// Successive one-file upserts retain every file's facts and byte length.
     fn successive_upserts_retain_facts_and_byte_lengths() {
         let mut index = SymbolIndex::new();
@@ -507,7 +597,7 @@ mod tests {
                 1,
                 &format!("function:{number}"),
             )];
-            index.upsert(path(&raw), source.len(), nodes);
+            index.upsert(path(&raw), source.len(), nodes, BTreeSet::new());
         }
 
         assert_eq!(index.file_count(), 50);

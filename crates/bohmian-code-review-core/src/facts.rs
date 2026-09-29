@@ -3,7 +3,8 @@
 //! [`IndexedFileFacts`] is the projection an index exports and reloads
 //! without reparsing. It keeps only what exact lookup, ranking reasons, and
 //! candidate spans need: names, IDs, kinds, languages, and line/column
-//! coordinates. Docstrings, signatures, decorators, return types, and any
+//! coordinates, plus the distinct names the file references, without their
+//! positions. Docstrings, signatures, decorators, return types, and any
 //! other verbatim source fragment are deliberately absent, so a persisted
 //! record never carries source text.
 
@@ -113,6 +114,9 @@ pub struct IndexedFileFacts {
     pub byte_len: usize,
     /// Declarations in extractor order.
     pub declarations: Vec<DeclarationFact>,
+    /// Distinct reference and extractor-candidate names the file uses, in
+    /// ascending order; names only, never positions or source.
+    pub references: Vec<String>,
 }
 
 impl IndexedFileFacts {
