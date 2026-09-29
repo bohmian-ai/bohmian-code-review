@@ -4,11 +4,12 @@
 //! activity during the read can only append to the listing, never shift a
 //! page already read. Merged PRs are then ordered by merge time descending,
 //! then PR number descending. Each is qualified in that order from its one
-//! file listing, path eligibility, and its base snapshot's declarations. Missing or malformed patches are file-local
+//! file listing, its repository's source-language eligibility, and its base
+//! snapshot's declarations. Missing or malformed patches are file-local
 //! omissions; unusable identities, rejected entries, and incomplete
 //! listings fail the run.
 
-use bohmian_code_review::{Language, RelativePath, parse_hunks};
+use bohmian_code_review::{Language, RelativePath, SymbolicContext, parse_hunks};
 use bohmian_code_review_pipeline::{
     FileStatus, ObjectSha, PullRequestFile, PullRequestFilesPage, RejectedPath,
 };
@@ -18,9 +19,9 @@ use thiserror::Error;
 
 /// PRs sampled per repository.
 pub const SAMPLE_SIZE: usize = 50;
-/// Fewest changed Python or Rust files a sampled PR may have.
+/// Fewest changed source files a sampled PR may have.
 const MIN_SOURCE_FILES: usize = 2;
-/// Most changed Python or Rust files a sampled PR may have.
+/// Most changed source files a sampled PR may have.
 const MAX_SOURCE_FILES: usize = 15;
 /// Most entries GitHub's PR-files endpoint returns; a listing this long
 /// cannot prove it ended.
@@ -70,6 +71,13 @@ pub enum SampleError {
         base: ObjectSha,
         /// Why the snapshot is incomplete.
         detail: String,
+    },
+    /// Fewer than [`crate::history::COLD_DEPTH`] non-mass-edit PRs merged
+    /// before the cold build point.
+    #[error("only {found} non-mass-edit PRs merged before the cold build point")]
+    ShortHistory {
+        /// Non-mass-edit PRs found.
+        found: usize,
     },
     /// Fewer than [`SAMPLE_SIZE`] PRs qualified before the listing ended.
     #[error("only {found} of {SAMPLE_SIZE} qualifying PRs before the cutoff")]
@@ -205,7 +213,7 @@ impl Discovery {
 /// Whether `text` is a `YYYY-MM-DDTHH:MM:SSZ` timestamp naming a real
 /// Gregorian UTC instant; this fixed-width form is the one whose text
 /// order is time order.
-fn is_timestamp(text: &str) -> bool {
+pub fn is_timestamp(text: &str) -> bool {
     const SHAPE: &[u8; 20] = b"dddd-dd-ddTdd:dd:ddZ";
     let shaped = text.len() == SHAPE.len()
         && text.bytes().zip(SHAPE).all(|(byte, &shape)| match shape {
@@ -230,6 +238,14 @@ fn is_timestamp(text: &str) -> bool {
         _ => return false,
     };
     (1..=days).contains(&day) && field(11..13) < 24 && field(14..16) < 60 && field(17..19) < 60
+}
+
+/// Whether `path` is repository source: the public path-eligibility query
+/// routes it to one of `languages`.
+pub fn eligible(symbolic: &SymbolicContext, languages: &[Language], path: &RelativePath) -> bool {
+    symbolic
+        .path_language(path.as_str())
+        .is_ok_and(|language| language.is_some_and(|language| languages.contains(&language)))
 }
 
 /// One PR's complete file listing, as read once from the provider.
@@ -272,15 +288,15 @@ impl Listing {
     }
 }
 
-/// A PR's changed Python or Rust files, screened from its listing without
-/// snapshot facts.
+/// A PR's changed source files, screened from its listing without snapshot
+/// facts.
 ///
-/// Invariant: `source` holds exactly the listing's Python or Rust entries
+/// Invariant: `source` holds exactly the listing's eligible entries
 /// in listing order, and `changed_lines` marks those whose patch parsed to
 /// at least one head-side changed line.
 #[derive(Debug, Clone)]
 pub struct Screen {
-    /// The PR's Python or Rust entries.
+    /// The PR's eligible source entries.
     pub source: Vec<PullRequestFile>,
     changed_lines: Vec<bool>,
     /// Source paths whose patch was missing or malformed.
@@ -306,8 +322,8 @@ pub enum OmittedReason {
 }
 
 impl Screen {
-    /// Screen `listing` for PR `number`, keeping entries `language` routes
-    /// to Python or Rust.
+    /// Screen `listing` for PR `number`, keeping entries `eligible` accepts
+    /// as the repository's source.
     ///
     /// # Errors
     ///
@@ -316,7 +332,7 @@ impl Screen {
     pub fn new(
         number: u64,
         listing: Listing,
-        language: impl Fn(&RelativePath) -> Option<Language>,
+        eligible: impl Fn(&RelativePath) -> bool,
     ) -> Result<Screen, SampleError> {
         if listing.truncated {
             return Err(SampleError::IncompleteListing { number });
@@ -330,10 +346,7 @@ impl Screen {
             omitted: Vec::new(),
         };
         for file in listing.files {
-            if !matches!(
-                language(&file.path),
-                Some(Language::Python | Language::Rust)
-            ) {
+            if !eligible(&file.path) {
                 continue;
             }
             let changed = match file.patch.as_deref().map(parse_hunks) {
@@ -405,14 +418,13 @@ mod tests {
         }
     }
 
-    /// Python for `.py`, Rust for `.rs`, anything else unsupported.
-    fn language(path: &RelativePath) -> Option<Language> {
-        match path.as_str().rsplit_once('.') {
-            Some((_, "py")) => Some(Language::Python),
-            Some((_, "rs")) => Some(Language::Rust),
-            Some((_, "ts")) => Some(Language::Typescript),
-            _ => None,
-        }
+    /// Python or Rust source through the public path-eligibility query.
+    fn language(path: &RelativePath) -> bool {
+        eligible(
+            &SymbolicContext::new(),
+            &[Language::Python, Language::Rust],
+            path,
+        )
     }
 
     /// A one-hunk patch changing head-side line 1.
@@ -529,6 +541,33 @@ mod tests {
             .map(|i| file(&format!("src/f{i}.rs"), FileStatus::Modified, Some(PATCH)))
             .collect();
         assert!(!screen(many).plausible());
+    }
+
+    /// A TypeScript repository's source is exactly what the public query
+    /// routes to TypeScript or TSX, so `.ts` and `.tsx` files screen in and
+    /// JavaScript, Python, and docs screen out.
+    #[test]
+    fn typescript_eligibility_uses_public_query() {
+        let symbolic = SymbolicContext::new();
+        let typescript = [Language::Typescript, Language::Tsx];
+        let screen = Screen::new(
+            5,
+            Listing {
+                files: vec![
+                    file("src/a.ts", FileStatus::Modified, Some(PATCH)),
+                    file("src/b.tsx", FileStatus::Modified, Some(PATCH)),
+                    file("src/c.js", FileStatus::Modified, Some(PATCH)),
+                    file("src/d.py", FileStatus::Modified, Some(PATCH)),
+                    file("README.md", FileStatus::Modified, Some(PATCH)),
+                ],
+                ..Listing::default()
+            },
+            |path| eligible(&symbolic, &typescript, path),
+        )
+        .expect("complete listing");
+        let paths: Vec<_> = screen.source.iter().map(|f| f.path.as_str()).collect();
+        assert_eq!(paths, ["src/a.ts", "src/b.tsx"]);
+        assert!(screen.qualifies(|_| true));
     }
 
     /// A rejected entry or a truncated listing fails the run.
