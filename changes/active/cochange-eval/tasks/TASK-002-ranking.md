@@ -82,3 +82,20 @@ Stop for spec authority if the approved candidate universe, C definition, histor
 - [Design](../../../../architecture/bohmian-code-review-design.md)
 - [Symbolic context](../../../../architecture/references/domain/symbolic-context.md)
 - [Testing workflow](../../../../architecture/references/languages/testing-workflows.md)
+
+## Implementation Evidence
+
+Candidate: `24fe346` (implementation) on `change/cochange-eval`. Write set: `crates/bohmian-code-review-pipeline/examples/context_relevance/{trial.rs,main.rs,report.rs}`.
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| At most five trials per PR, deterministic rule, all used when five or fewer | `trial.rs` `MAX_TRIALS`, `TRIAL_RULE`, `draw` (FNV-1a 64 of `"<pr>/<path>"`), `chosen`, `evaluate` | `trial_selection_is_bounded_and_deterministic` (5 → all, 7 → 5 by draw, repeated runs equal, listing order kept) | PASS |
+| C matches its approved rarity definition; E and F formulas, path ties, unranked rule over the same candidates | `rank_c` (unchanged rule, `DF_CEILING` 100), `rank_e`, `rank_f` (`FUSION_CONSTANT` 60), shared `ranked`, `excluded` | `c_ranks_by_direction_and_rarity` (exact C scores and ranks carried over from the prior B–D fixture), `withholding_keeps_base_file_rankable_and_excludes_remaining_paths`, `cochange_and_fused_ranks_use_only_eligible_history` | PASS |
+| Trial records hold withheld paths and only rank/hit@10 for C, E, F; no production ranking or packing change | `Trial`, `Outcome::of`, `HIT_RANK`; A/B/D, packing, token, and scoping code removed; `main.rs` passes `History::for_trial` paths; `report.rs` consumes `Trial::arms` | `trial_record_is_ranking_only` (rank 10 hit, 11 miss, unranked miss; exact JSON), `summaries_follow_each_arms_hits`; `git diff --stat` touches only the example | PASS |
+| No-network tests prove time isolation and a complete base-snapshot candidate universe | `evaluate` takes base index + all indexed blobs; E counts only indexed, non-excluded paths | `cochange_and_fused_ranks_use_only_eligible_history` builds `History` and shows a PR merged after the base changes results only when leaked; absent `pkg/y.py` scores nothing; `run_reads_each_input_once_and_reports_costs` whole-run fake | PASS |
+
+Commands (all exit 0 in this session): `mise run test:pipeline` (example target 23 passed), `mise run test:symbolic-context:journey` (6 passed), `mise run fmt:check`, `mise run lints`, `git diff --check HEAD~1 HEAD`, `mise run gate`.
+
+Non-goals stayed excluded: no production crate, public API, grammar pin, or `mise.toml` change; no packing or model-exposure output; no other arms. `report.rs` keeps only a per-arm hit@10 share; PR-level means, bootstrap, and decision stay with TASK-003.
+
+Limit: tests and implementation were written together, so per-scenario RED failures were not separately observed.
