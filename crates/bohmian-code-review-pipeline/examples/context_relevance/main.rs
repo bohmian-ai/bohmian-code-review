@@ -36,7 +36,7 @@ use bohmian_code_review_pipeline::{
 };
 use history::{Changed, History};
 use report::{
-    ADOPTION_THRESHOLD, BOOTSTRAP_SEED, DECISION_RULE, RESAMPLES, VALIDITY_THREATS, Verdict,
+    ADOPTION_THRESHOLD, BOOTSTRAP_SEED, DECISION_RULE, Effect, RESAMPLES, VALIDITY_THREATS, Verdict,
 };
 use sample::{
     Discovery, ListedPr, Listing, MergedPr, OmittedReason, SAMPLE_SIZE, SampleError, Screen,
@@ -599,7 +599,7 @@ fn record(repo: &Repository, selected: &Selected, trials: &[Trial]) -> (Value, V
         "hit_rank": HIT_RANK,
         "sample": prs,
         "trials": trials,
-        "effects": {"E-C": e_minus_c, "F-C": f_minus_c},
+        "effects": {"E-C": effect_record(&e_minus_c), "F-C": effect_record(&f_minus_c)},
         "decision": {
             "rule": DECISION_RULE,
             "threshold": ADOPTION_THRESHOLD,
@@ -608,6 +608,17 @@ fn record(repo: &Repository, selected: &Selected, trials: &[Trial]) -> (Value, V
         "validity_threats": BTreeMap::from(VALIDITY_THREATS),
     });
     (record, verdict)
+}
+
+/// `effect`'s report entry: its mean, interval, and whether the interval
+/// contains 0 and so is inconclusive. Only the interval decides this, so
+/// the adoption threshold stays with F − C's decision.
+fn effect_record(effect: &Effect) -> Value {
+    json!({
+        "mean": effect.mean,
+        "ci_95": effect.ci_95,
+        "inconclusive": report::verdict(effect) == Verdict::Inconclusive,
+    })
 }
 
 /// Print every live report, or only the failure on stderr with exit 1.
@@ -937,12 +948,27 @@ mod tests {
             }
         }
         for effect in ["E-C", "F-C"] {
-            assert!(record["effects"][effect]["mean"].is_f64(), "{effect}");
-            assert_eq!(
-                record["effects"][effect]["ci_95"].as_array().map(Vec::len),
-                Some(2)
-            );
+            let reported = &record["effects"][effect];
+            assert!(reported["mean"].is_f64(), "{effect}");
+            let [low, high] = [0, 1].map(|end| reported["ci_95"][end].as_f64().expect("bound"));
+            assert_eq!(reported["inconclusive"], low <= 0.0 && high >= 0.0);
         }
+        let straddles = Effect {
+            mean: 0.2,
+            ci_95: [-0.1, 0.5],
+        };
+        let excludes = Effect {
+            mean: 0.2,
+            ci_95: [0.1, 0.3],
+        };
+        assert_eq!(
+            effect_record(&straddles),
+            json!({"mean": 0.2, "ci_95": [-0.1, 0.5], "inconclusive": true})
+        );
+        assert_eq!(effect_record(&excludes)["inconclusive"], false);
+        let (e_record, f_verdict) = (effect_record(&excludes), report::verdict(&straddles));
+        assert!(e_record.get("verdict").is_none(), "E carries no F decision");
+        assert!(!report::adopt(&[f_verdict]), "E cannot adopt F");
         assert_eq!(record["decision"]["rule"], DECISION_RULE);
         assert_eq!(record["decision"]["threshold"], ADOPTION_THRESHOLD);
         assert!(record["decision"]["repository_f_minus_c"].is_string());
