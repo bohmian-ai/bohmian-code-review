@@ -1,20 +1,26 @@
 //! Outer review-context pipeline library: the only crate in this workspace
 //! with Git provider or storage IO.
 //!
-//! This crate obtains verified GitHub/GHES repository, commit, tree, blob,
-//! and pull-request identities through provider APIs ([`GitHubClient`]) and
-//! defines the narrow async [`ObjectStorage`], [`SnapshotStore`], and
-//! [`ContextStore`] traits the stage facades publish through. Every call is
-//! an `async fn` on tokio that the caller cancels by dropping its future. [`ColdBuild`] is the first facade: it
-//! streams a pinned default-branch archive into a complete, source-free
-//! [`Snapshot`] carrying bounded [`CoChangeHistory`] of recently merged
-//! PRs, and [`Snapshots`] reads snapshots back and removes those no pointer
-//! names. [`Update`] advances that pointer incrementally from tree
-//! differences, extends the history with PRs merged since, and reports
-//! review-time [`Freshness`]. [`PrContext`] overlays a pull request's
-//! pinned head on a private copy of that snapshot, or on a bounded scoped
-//! index, ranks candidates with the default ranker over the persisted
-//! history merged before its base commit, packs them, and
+//! Most consumers need one type: [`ReviewPipeline`], over their
+//! [`ObjectStorage`] and one store implementing both [`SnapshotStore`] and
+//! [`ContextStore`], with [`PipelineLimits`] and [`PipelineError`].
+//! [`ReviewPipeline::context`] builds and publishes a pull request's
+//! [`ReviewContext`], cold-building first only when no snapshot exists;
+//! [`ReviewPipeline::refresh`] advances the snapshot and its co-change
+//! history on a push; [`ReviewPipeline::read`] reads a context back by id.
+//! The [`GitHubClient`] is passed per call.
+//!
+//! The stage facades stay public for advanced callers. Every call is an
+//! `async fn` on tokio that the caller cancels by dropping its future.
+//! [`ColdBuild`] streams a pinned default-branch archive into a complete,
+//! source-free [`Snapshot`] carrying bounded [`CoChangeHistory`] of
+//! recently merged PRs, and [`Snapshots`] reads snapshots back and removes
+//! those no pointer names. [`Update`] advances that pointer incrementally
+//! from tree differences, extends the history with PRs merged since, and
+//! reports review-time [`Freshness`]. [`PrContext`] overlays a pull
+//! request's pinned head on a private copy of that snapshot, or on a
+//! bounded scoped index, ranks candidates with the default ranker over the
+//! persisted history merged before its base commit, packs them, and
 //! publishes one shared [`ReviewContext`] that [`Contexts`] reads back by
 //! id under the caller's identity until it expires. It never clones,
 //! checks out, or persists source; it depends on the public
@@ -28,6 +34,7 @@ pub mod history;
 pub mod identity;
 pub mod persistence;
 pub mod pull_request;
+pub mod review;
 pub mod snapshot;
 pub mod storage;
 #[cfg(any(test, feature = "testing"))]
@@ -61,6 +68,7 @@ pub use persistence::{
     SnapshotStore,
 };
 pub use pull_request::{PrContext, PrContextLimits, PrContextResult};
+pub use review::{PipelineError, PipelineLimits, ReviewPipeline};
 pub use snapshot::{
     ColdBuild, ColdBuildError, ColdBuildLimits, ColdBuildOutcome, ColdBuildResult, Coverage,
     FileOutcome, IncompleteReason, IndexedFile, IngestStats, SNAPSHOT_FORMAT_VERSION, SkipReason,
