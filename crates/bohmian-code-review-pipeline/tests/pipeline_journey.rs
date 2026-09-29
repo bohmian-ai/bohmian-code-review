@@ -1,22 +1,25 @@
-//! Public outer-crate journey: the cold-build, update, PR-context, and
-//! context-read facades called separately and then composed over one fake
-//! GitHub and one set of injected in-memory capabilities.
+//! Public outer-crate journey. The main flow drives [`ReviewPipeline`] alone
+//! over one fake GitHub, one in-memory storage, and one in-memory store
+//! serving snapshots and contexts, as a consumer does. The stage facades
+//! are then exercised separately for the advanced paths: cancellation,
+//! scoped fallback, and incremental update accounting.
 //!
 //! Only public items of `bohmian-code-review-pipeline` and the
 //! `bohmian-code-review` facade are used, so this proves a consumer can drive
 //! the whole pipeline with its own stores and cancellation, and that nothing
-//! keeps running once a facade future completes or is dropped.
+//! keeps running once a future completes or is dropped.
 
 use bohmian_code_review::{ChangedBlob, EXTRACTION_VERSION, LineRange, SymbolicContext};
 use bohmian_code_review_pipeline::testing::{
-    MemoryContextStore, MemorySnapshotStore, MemoryStorage, RoutedTransport,
+    MemoryContextStore, MemorySnapshotStore, MemoryStorage, MemoryStore, RoutedTransport,
 };
 use bohmian_code_review_pipeline::{
     BoxFuture, ColdBuild, ColdBuildLimits, ColdBuildOutcome, ContextError, Contexts, Freshness,
     GitHubClient, GitHubHost, HttpRequest, HttpResponse, HttpTransport, Identity, InstallationId,
-    InstallationToken, ObjectSha, Operation, PrContext, PrContextLimits, PrContextResult,
-    RepositoryIdentity, RequestLimits, SNAPSHOT_FORMAT_VERSION, Scope, SnapshotPointer,
-    SnapshotScope, Snapshots, TenantId, TransportError, Update,
+    InstallationToken, ObjectSha, Operation, PipelineLimits, PrContext, PrContextLimits,
+    PrContextResult, RepositoryIdentity, RequestLimits, ReviewPipeline, SNAPSHOT_FORMAT_VERSION,
+    Scope, SnapshotPointer, SnapshotScope, SnapshotStore, Snapshots, TenantId, TransportError,
+    Update,
 };
 use flate2::Compression;
 use flate2::write::GzEncoder;
@@ -578,15 +581,20 @@ fn main_v1_with_pr() -> Vec<(&'static str, &'static [u8])> {
     ]
 }
 
-/// The snapshot `pointer` names for [`identity`] under default limits.
-async fn snapshot_history(caps: &Capabilities, pointer: &SnapshotPointer) -> Vec<u64> {
+/// PR numbers in the history of the snapshot `pointer` names for
+/// [`identity`] under default limits.
+async fn snapshot_history<S: SnapshotStore>(
+    storage: &MemoryStorage,
+    store: &S,
+    pointer: &SnapshotPointer,
+) -> Vec<u64> {
     let scope = SnapshotScope {
         identity: identity(),
         extraction_version: EXTRACTION_VERSION.to_owned(),
         format_version: SNAPSHOT_FORMAT_VERSION,
         max_file_bytes: ColdBuildLimits::default().max_file_bytes,
     };
-    Snapshots::new(&caps.snapshot_storage, &caps.snapshot_store)
+    Snapshots::new(storage, store)
         .read(&scope, pointer)
         .await
         .expect("snapshot")
@@ -597,15 +605,17 @@ async fn snapshot_history(caps: &Capabilities, pointer: &SnapshotPointer) -> Vec
         .collect()
 }
 
-/// Pass one persists co-change history and pass two ranks with it. The
-/// cold build stores the PRs merged before commit `c`; a review of PR
-/// [`PR`] with no caller-supplied history packs `src/notes.ts`, which
-/// shares no symbol with the change and only co-changed with the handler.
-/// An update to commit `d`, whose PR changed `src/user.ts`, extends the
-/// history with the one PR merged since `c`, reading one more listing page
-/// and one PR file listing.
+/// The consumer path through [`ReviewPipeline`] only. The first `context`
+/// on a repository with no snapshot cold-builds, persisting the PRs merged
+/// before commit `c`, then publishes. After PR 5 merges and the branch
+/// moves to `d`, `refresh` extends the history incrementally, reading one
+/// more listing page and one PR file listing. The second `context` never
+/// reads the branch or refreshes, reviews on the refreshed snapshot with
+/// full coverage, and packs `src/notes.ts`, which shares no symbol with
+/// the change and only co-changed with the handler. `read` returns the
+/// published context with no provider calls.
 #[tokio::test]
-async fn persisted_history_ranks_a_co_change_only_file() {
+async fn review_pipeline_cold_builds_refreshes_and_ranks_co_change() {
     let mut files = main_v1();
     files.push(("src/notes.ts", NOTES));
     let github = FakeGitHub::new(&files);
@@ -614,32 +624,22 @@ async fn persisted_history_ranks_a_co_change_only_file() {
         (3, "2026-01-20T00:00:00Z", pair),
         (4, "2026-01-21T00:00:00Z", pair),
     ]);
-    let client = github.client();
-    let caps = Capabilities::default();
-
-    let built = caps
-        .cold(&client)
-        .run(&identity())
-        .await
-        .expect("cold build");
-    let ColdBuildOutcome::Published(first) = built.outcome else {
-        panic!("cold build did not publish: {:?}", built.outcome);
-    };
-    assert_eq!(snapshot_history(&caps, &first).await, [4, 3]);
-
     let mut head = files.clone();
     head[2] = ("src/handler.ts", PR_HANDLER);
     github.pull_request(&sha('c'), &head);
-    let (review, _) = caps.review(&client).await;
-    assert!(review.context.coverage.is_full());
-    assert!(!oracle_paths(&head).contains(&"src/notes.ts".to_owned()));
-    assert!(
-        review
-            .context
-            .spans
-            .iter()
-            .any(|span| span.path.as_str() == "src/notes.ts")
-    );
+    let client = github.client();
+    let storage = MemoryStorage::default();
+    let store = MemoryStore::default();
+    let pipeline = ReviewPipeline::new(&storage, &store, PipelineLimits::default());
+    let caller = identity();
+
+    let first = pipeline
+        .context(&client, &caller, PR)
+        .await
+        .expect("first context");
+    assert_eq!(client.calls().get(Operation::Archive), 1);
+    assert!(first.context.coverage.is_full(), "{:?}", first.context.coverage);
+    assert_eq!(first.context.coverage.snapshot_tree, Some(sha('7')));
 
     github.merged(&[
         (3, "2026-01-20T00:00:00Z", pair),
@@ -651,12 +651,17 @@ async fn persisted_history_ranks_a_co_change_only_file() {
     github.push((&sha('d'), D_AT), &sha('9'), &next);
     github.compare((&sha('c'), &files), (&sha('d'), &sha('9'), &next));
     let before = client.calls().snapshot();
-    let updated = caps.update(&client).run(&identity()).await.expect("update");
-    let ColdBuildOutcome::Published(second) = updated.outcome else {
-        panic!("update did not publish: {:?}", updated.outcome);
+    let refreshed = pipeline.refresh(&client, &caller).await.expect("refresh");
+    let ColdBuildOutcome::Published(pointer) = refreshed.outcome else {
+        panic!("refresh did not publish: {:?}", refreshed.outcome);
     };
-    assert_eq!(snapshot_history(&caps, &second).await, [5, 4, 3]);
+    assert_eq!(pointer.tree, sha('9'));
+    assert_eq!(
+        snapshot_history(&storage, &store, &pointer).await,
+        [5, 4, 3]
+    );
     let calls = client.calls();
+    assert_eq!(calls.get(Operation::Archive), before[&Operation::Archive]);
     for operation in [Operation::PullRequests, Operation::PullRequestFiles] {
         assert_eq!(
             calls.get(operation) - before[&operation],
@@ -664,4 +669,35 @@ async fn persisted_history_ranks_a_co_change_only_file() {
             "{operation:?}"
         );
     }
+
+    let mut head = next.clone();
+    head[2] = ("src/handler.ts", PR_HANDLER);
+    github.pull_request(&sha('d'), &head);
+    let before = client.calls().snapshot();
+    let second = pipeline
+        .context(&client, &caller, PR)
+        .await
+        .expect("second context");
+    let calls = client.calls();
+    for operation in [Operation::BranchHead, Operation::Archive, Operation::Compare] {
+        assert_eq!(calls.get(operation), before[&operation], "{operation:?}");
+    }
+    let context = &second.context;
+    assert!(context.coverage.is_full(), "{:?}", context.coverage);
+    assert_eq!(context.coverage.snapshot_tree, Some(sha('9')));
+    assert_eq!((&context.base, &context.head), (&sha('d'), &sha('a')));
+    assert!(!oracle_paths(&head).contains(&"src/notes.ts".to_owned()));
+    assert!(
+        context
+            .spans
+            .iter()
+            .any(|span| span.path.as_str() == "src/notes.ts")
+    );
+
+    let calls = client.calls().snapshot();
+    assert_eq!(
+        pipeline.read(&caller, &second.record.id).await,
+        Ok(second.context.clone())
+    );
+    assert_eq!(client.calls().snapshot(), calls);
 }

@@ -59,7 +59,7 @@ run = [
 ]
 
 [tasks."test:pipeline:journey"]
-description = "Run the outer pipeline's public four-facade journey over fake GitHub and injected in-memory stores"
+description = "Run the outer pipeline's public ReviewPipeline and stage-facade journeys over fake GitHub and injected in-memory stores"
 run = "cargo test --locked -p bohmian-code-review-pipeline --test pipeline_journey --all-features"
 
 [tasks."test:eval"]
