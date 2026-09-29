@@ -31,3 +31,15 @@ The write set is `crates/bohmian-code-review-pipeline/examples/context_relevance
 - Compare the corrected reports with the candidate artifacts after removing only the new interpretation field to show all numeric and existing metadata is unchanged. Run the exact focused example test through `mise exec -- cargo test --locked -p bohmian-code-review-pipeline --example context_relevance --all-features tests::run_report_is_complete_and_source_free -- --exact`, confirming it selects one test. Then run `mise run test:pipeline`, `mise run fmt:check`, `mise run lints`, `mise run gate`, and `git diff --check`.
 
 Route this task directly to `$cr-implement`. A later review reassesses the full cumulative candidate against the original TASK-003.
+
+## Implementation evidence
+
+Commit `0309f62`. `report.rs` untouched: `effect_record` in `main.rs` reuses `report::verdict`'s interval-only `Inconclusive` outcome, so the threshold and adoption stay with F − C's `decision`.
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| FIND-TASK-003-2 closed at producer and all three reports | `main.rs` `effect_record` for both effects; `reports/*.json` `effects.*.inconclusive` — E − C `true` for pydantic-ai and tokio, `false` for zod; `adopt_f` and `repository_f_minus_c` unchanged | `jq -S 'del(.effects[].inconclusive)'` of each report equals the `HEAD~1` report | PASS |
+| Focused no-network check: zero-containing and zero-excluding intervals, F-only adoption | `tests::run_report_is_complete_and_source_free` | Failed to compile before `effect_record` existed; after: `running 1 test … 1 passed` | PASS |
+| Lanes | — | `mise run test:pipeline`, `fmt:check`, `lints`, `gate`, `git diff --check HEAD~1 HEAD` all exited 0 | PASS |
+
+Non-goals held: no numeric, cost, validity-threat, command, or decision value changed; no provider, production, public API, gate, dependency, or historical-report change. The live experiment was not rerun; the reports were edited only by inserting the derived field.
