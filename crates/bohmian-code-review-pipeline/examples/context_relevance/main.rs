@@ -40,7 +40,7 @@ use sample::{
 };
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
-use serde_json::json;
+use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 use std::error::Error;
@@ -508,7 +508,7 @@ fn live() -> Result<Api, Box<dyn Error>> {
 /// # Errors
 ///
 /// Returns sampling, history, provider, and trial failures.
-async fn run(api: &Api, repos: &[Repository]) -> Result<Vec<serde_json::Value>, Box<dyn Error>> {
+async fn run(api: &Api, repos: &[Repository]) -> Result<Vec<Value>, Box<dyn Error>> {
     let mut records = Vec::new();
     for repo in repos {
         let selected = api.select(repo).await?;
@@ -526,7 +526,7 @@ async fn run(api: &Api, repos: &[Repository]) -> Result<Vec<serde_json::Value>, 
 }
 
 /// `repo`'s source-free JSON report of `selected` and its `trials`.
-fn record(repo: &Repository, selected: &Selected, trials: &[Trial]) -> serde_json::Value {
+fn record(repo: &Repository, selected: &Selected, trials: &[Trial]) -> Value {
     let prs: Vec<_> = selected
         .sample
         .iter()
