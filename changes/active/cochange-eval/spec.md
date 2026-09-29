@@ -1,12 +1,12 @@
 ---
 id: SPEC-cochange-eval
 revision: 1
-status: draft
+status: approved
 ---
 
 # Co-change ranking and extractor-gap evaluation
 
-Drafted 2026-09-29. Builds on the [completed context-relevance evaluation](../../completed/2026/context-relevance-eval.md) and its [reports](../../completed/2026/context-relevance-eval-reports/).
+Drafted 2026-09-29. Revision 1 approved by the maintainer 2026-09-29. Builds on the [completed context-relevance evaluation](../../completed/2026/context-relevance-eval.md) and its [reports](../../completed/2026/context-relevance-eval-reports/).
 
 ## Objective and user value
 
@@ -73,8 +73,8 @@ Adopting C, E, or F in production; a production co-change store or snapshot-form
 
 ## Open decisions
 
-1. **F's combination rule.** Proposed: reciprocal-rank fusion (`k = 60`), which needs no score normalization between C and E. The alternative is a fixed-weight sum of scores, which requires choosing a scale between C's and E's score ranges.
+None.
 
 ## Revision history
 
-- Revision 1 (2026-09-29): initial draft. History is built once at a simulated cold build and extended incrementally; history unit is merged PRs; design depth N = 10 with a fixed 50/200 sensitivity check; provider data is trusted apart from missing or incomplete responses.
+- Revision 1 (2026-09-29): approved by the maintainer. History is built once at a simulated cold build and extended incrementally; history unit is merged PRs; design depth N = 10 with a fixed 50/200 sensitivity check; provider data is trusted apart from missing or incomplete responses; F uses reciprocal-rank fusion with `k = 60`.
