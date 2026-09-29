@@ -31,7 +31,7 @@ use std::time::Duration;
 use thiserror::Error;
 
 /// Layout version of the serialized [`Snapshot`]; part of every snapshot key.
-pub const SNAPSHOT_FORMAT_VERSION: u32 = 3;
+pub const SNAPSHOT_FORMAT_VERSION: u32 = 4;
 
 /// Git LFS pointer files start with this line and are skipped by content.
 const LFS_POINTER_PREFIX: &[u8] = b"version https://git-lfs.github.com/spec/v1";
@@ -1824,7 +1824,12 @@ pub(crate) mod tests {
         assert_eq!(ObjectDigest::of(&bytes), pointer.digest);
         let text = String::from_utf8(bytes.clone()).expect("json");
         assert!(text.contains("lookupUser") && text.contains("omittedFn"));
-        for fragment in ["return { id }", "console.log", "return user.id", "stale"] {
+        for fragment in [
+            "return { id }",
+            "console.log(user.id)",
+            "return user.id",
+            "stale",
+        ] {
             assert!(
                 !text.contains(fragment),
                 "source fragment {fragment:?} persisted"

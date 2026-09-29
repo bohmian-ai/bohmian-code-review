@@ -11,7 +11,8 @@
 //! pointer names. [`Update`] advances that pointer incrementally from tree
 //! differences and reports review-time [`Freshness`]. [`PrContext`]
 //! overlays a pull request's pinned head on a private copy of that
-//! snapshot, or on a bounded scoped index, ranks and packs candidates, and
+//! snapshot, or on a bounded scoped index, ranks candidates with the
+//! default ranker over optional co-change [`History`], packs them, and
 //! publishes one shared [`ReviewContext`] that [`Contexts`] reads back by
 //! id under the caller's identity until it expires. It never clones,
 //! checks out, or persists source; it depends on the public
@@ -21,6 +22,7 @@ mod archive;
 pub mod context;
 pub mod eligibility;
 pub mod github;
+pub mod history;
 pub mod identity;
 pub mod persistence;
 pub mod pull_request;
@@ -41,6 +43,10 @@ pub use github::{
     GitHubClient, GitHubError, HttpBody, HttpRequest, HttpResponse, HttpTransport, Operation,
     PullRequest, PullRequestFile, PullRequestFilesPage, PullRequestState, RejectedPath, Repository,
     RequestLimits, ReqwestTransport, TransportError, TreeEntry, TreeEntryMode, TreeListing,
+};
+pub use history::{
+    COLD_DEPTH, History, HistoryError, HistoryPr, Listing, ListingReads, MASS_EDIT_FILES,
+    MAX_LISTING_PAGES, MergedPr,
 };
 pub use identity::{
     GitHubHost, Identity, InstallationId, InstallationToken, InvalidIdentity, ObjectSha,

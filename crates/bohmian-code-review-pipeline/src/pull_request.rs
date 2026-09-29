@@ -1,6 +1,7 @@
 //! The PR-context facade: pin a pull request, overlay its head tree on a
-//! private index, rank candidates from its changed lines, pack them under a
-//! token allowance, and publish one shared [`ReviewContext`].
+//! private index, rank candidates from its changed lines and optional
+//! co-change history, pack them under a token allowance, and publish one
+//! shared [`ReviewContext`].
 //!
 //! [`PrContext::run`] reads the PR's base/head before and after listing its
 //! files and retries when either moved. A compatible default-branch
@@ -10,6 +11,11 @@
 //! are never loaded. Without a usable snapshot, a bounded index of files near the changed paths is built
 //! instead and reported as scoped. Candidate blobs are fetched at their head
 //! identity only after ranking. Source bytes are dropped once packed.
+//!
+//! Ranking runs [`DEFAULT_RANKER`] over every PR file. Without history it
+//! orders candidates exactly as rarity-weighted symbol overlap. Production
+//! has no base-side facts for changed files, so no removed names are
+//! credited.
 
 use crate::context::{
     Budget, CONTEXT_FORMAT_VERSION, ContextCoverage, ContextError, Contexts, NotAnalyzed,
@@ -20,6 +26,7 @@ use crate::github::{
     FileStatus, GitHubClient, GitHubError, PR_FILES_PER_PAGE, PullRequest, PullRequestFile,
     RejectedPath, TreeEntry, TreeEntryMode, TreeListing,
 };
+use crate::history::History;
 use crate::identity::{Identity, ObjectSha};
 use crate::persistence::{ContextLifetime, ContextRecord, ContextStore, SnapshotStore};
 use crate::snapshot::{
@@ -29,9 +36,9 @@ use crate::snapshot::{
 use crate::storage::{ObjectStorage, StorageError};
 use bohmian_code_review::Error as SymbolicError;
 use bohmian_code_review::{
-    ChangedBlob, Context, ContextLimits, ContextSpan, EXTRACTION_VERSION, LineRange, Omission,
-    OmissionReason, RankedFile, RelativePath, SelectError, SpanKind, SymbolicContext,
-    build_candidate_context, parse_hunks,
+    ChangedBlob, ChangedFile, Context, ContextLimits, ContextSpan, DEFAULT_RANKER,
+    EXTRACTION_VERSION, HeadFacts, LineRange, Omission, OmissionReason, RankedFile, RelativePath,
+    SelectError, SpanKind, SymbolicContext, parse_hunks,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -77,7 +84,7 @@ impl Default for PrContextLimits {
 
 /// A published context: its record, whose id the caller hands downstream,
 /// and the stored object.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PrContextResult {
     /// Published metadata, including the context id.
     pub record: ContextRecord,
@@ -110,6 +117,7 @@ pub struct PrContext<'a, O, S, C> {
     snapshot_store: &'a S,
     contexts: Contexts<'a, O, C>,
     limits: PrContextLimits,
+    history: Option<&'a History>,
 }
 
 impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S, C> {
@@ -129,7 +137,16 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
             snapshot_store,
             contexts: Contexts::new(context_storage, context_store),
             limits,
+            history: None,
         }
+    }
+
+    /// Rank with co-change `history`; each review sees every history PR
+    /// but its own. Without it the default ranker sees empty history.
+    #[must_use]
+    pub fn with_history(mut self, history: &'a History) -> PrContext<'a, O, S, C> {
+        self.history = Some(history);
+        self
     }
 
     /// Build and publish the review context of pull request `number`.
@@ -300,7 +317,13 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
             .map(|file| &file.path)
             .chain(&rejected_changed)
             .collect();
-        let mut ranked = rank(&index, &heads, &mut not_analyzed)?;
+        let history: Vec<&[RelativePath]> = self
+            .history
+            .into_iter()
+            .flat_map(|history| history.for_review(pull_request.number))
+            .map(|pr| pr.paths.as_slice())
+            .collect();
+        let mut ranked = rank(&index, &pinned.files, &heads, &history, &mut not_analyzed);
         ranked.retain(|file| !changed.contains(&file.path));
         drop(heads);
         let diff_tokens = pinned
@@ -318,6 +341,7 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
             _ => {
                 self.pack(
                     identity,
+                    &index,
                     ranked,
                     &eligible,
                     context_allowance,
@@ -508,6 +532,7 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
     async fn pack(
         &self,
         identity: &Identity,
+        index: &SymbolicContext,
         mut ranked: Vec<RankedFile>,
         eligible: &[SnapshotFile],
         allowance: usize,
@@ -524,7 +549,7 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
                     .iter()
                     .map(|(path, bytes)| (path.clone(), bytes.as_slice()))
                     .collect();
-                match build_candidate_context(&ranked, &view, limits, estimate_tokens) {
+                match index.build_candidate_context(&ranked, &view, limits, estimate_tokens) {
                     Err(SymbolicError::Select(SelectError::MissingBlob { path })) => path,
                     packed => return Ok(packed?),
                 }
@@ -564,29 +589,30 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
     }
 }
 
-/// Rank candidates from every valid changed head, listing a head the
-/// symbolic library rejects as not analyzed without dropping the others.
-/// Only analyzed heads are excluded here; the caller also removes PR files
-/// that were not analyzed, so no changed path is ever a candidate.
-///
-/// # Errors
-///
-/// Returns a symbolic error only if the validated heads fail together.
+/// Rank candidates for every PR file with [`DEFAULT_RANKER`] over
+/// `history`, listing a head the symbolic library rejects as not analyzed
+/// without dropping the others. A rejected, removed, or unanalyzed file
+/// still anchors history and is excluded, but contributes no head facts.
+/// Added, renamed, and copied paths were absent at base, so they anchor no
+/// history. No base facts are read, so no removed names are credited.
 fn rank(
     index: &SymbolicContext,
+    files: &[PullRequestFile],
     heads: &[Head],
+    history: &[&[RelativePath]],
     not_analyzed: &mut Vec<NotAnalyzed>,
-) -> Result<Vec<RankedFile>, ContextError> {
-    let mut valid = Vec::with_capacity(heads.len());
+) -> Vec<RankedFile> {
+    let mut facts: BTreeMap<&RelativePath, HeadFacts> = BTreeMap::new();
     for head in heads {
-        // ponytail: validates by ranking each head alone, so heads are
-        // extracted twice; a per-file error from `rank_files` would avoid it.
-        match index.rank(head.path.as_str(), &head.bytes, head.changed.clone()) {
-            Ok(_) => valid.push(ChangedBlob {
-                path: head.path.as_str(),
-                head: &head.bytes,
-                changed: head.changed.clone(),
-            }),
+        let blob = ChangedBlob {
+            path: head.path.as_str(),
+            head: &head.bytes,
+            changed: head.changed.clone(),
+        };
+        match index.head_facts(&blob) {
+            Ok(head_facts) => {
+                facts.insert(&head.path, head_facts);
+            }
             Err(error) => not_analyzed.push(NotAnalyzed {
                 path: head.path.to_string(),
                 reason: NotAnalyzedReason::AnalysisFailed {
@@ -595,7 +621,20 @@ fn rank(
             }),
         }
     }
-    Ok(index.rank_files(&valid)?)
+    let changed: Vec<ChangedFile<'_>> = files
+        .iter()
+        .map(|file| ChangedFile {
+            path: &file.path,
+            previous_path: file.previous_path.as_ref(),
+            in_base: !matches!(
+                file.status,
+                FileStatus::Added | FileStatus::Renamed | FileStatus::Copied
+            ),
+            head: facts.get(&file.path).map(HeadFacts::head),
+            removed: Vec::new(),
+        })
+        .collect();
+    index.rank_with(&DEFAULT_RANKER, &changed, history)
 }
 
 /// Stored form of packed candidate spans, each with its head blob id.
@@ -678,6 +717,7 @@ mod tests {
     use crate::context::CONTEXT_LIFETIME;
     use crate::eligibility::ExclusionReason;
     use crate::github::Operation;
+    use crate::history::{HistoryError, MergedPr};
     use crate::snapshot::tests::{
         FORMAT, FakeRepo, File, USER, blob_sha, file, identity, sha, standard_archive,
         standard_files,
@@ -862,16 +902,17 @@ mod tests {
             .collect();
         let ranked = index.rank_files(&heads).expect("rank");
         let limits = PrContextLimits::default();
-        let context = build_candidate_context(
-            &ranked,
-            &blobs,
-            ContextLimits {
-                max_files: limits.max_candidate_files,
-                max_tokens: 1_000_000,
-            },
-            estimate_tokens,
-        )
-        .expect("pack");
+        let context = index
+            .build_candidate_context(
+                &ranked,
+                &blobs,
+                ContextLimits {
+                    max_files: limits.max_candidate_files,
+                    max_tokens: 1_000_000,
+                },
+                estimate_tokens,
+            )
+            .expect("pack");
         context
             .spans
             .into_iter()
@@ -1481,6 +1522,66 @@ mod tests {
                 assert_eq!(context.coverage.files.eligible, 7, "src/ and lib/");
             }
         }
+    }
+
+    /// Co-change history reaches the default ranker: a file that only
+    /// co-changed with the modified handler is packed with its indexed
+    /// declarations, while the reviewed PR's own history entry is ignored.
+    #[tokio::test]
+    async fn history_co_change_selects_files_the_symbols_miss() {
+        let path = |p: &str| RelativePath::new(p).expect("path");
+        let merged: Vec<MergedPr> = (1..=10)
+            .map(|number| MergedPr {
+                number,
+                merged_at: format!("2026-01-{:02}T12:00:00Z", 21 - number),
+                base: sha('a'),
+                head: sha('b'),
+            })
+            .collect();
+        let history = History::build(
+            &merged,
+            "2026-02-01T00:00:00Z",
+            "2026-03-01T00:00:00Z",
+            async |number| {
+                let paths = match number {
+                    1 => vec![path("src/handler.ts"), path("src/substituted.ts")],
+                    2 => vec![path("src/handler.ts"), path("src/omitted.ts")],
+                    _ => Vec::new(),
+                };
+                Ok::<_, HistoryError>((Some(paths), 1))
+            },
+        )
+        .await
+        .expect("history");
+        let spans_with = async |history: Option<&History>| {
+            let repo = FakeRepo::new(&standard_files(), &standard_archive());
+            let stores = Stores::default();
+            cold(&repo, &stores.snapshot_storage, &stores.snapshot_store).await;
+            let files = head_files(PR1_HANDLER, vec![file("src/pr1.ts", PR1_FILE)]);
+            let changes: [Change; 1] =
+                [("src/handler.ts", "modified", PR1_HANDLER, Some(PR1_PATCH))];
+            route_pr(&repo, 1, (&sha('1'), &sha('2')), &files, &changes);
+            let client = repo.client();
+            let facade = stores.facade(&client, PrContextLimits::default());
+            let facade = match history {
+                Some(history) => facade.with_history(history),
+                None => facade,
+            };
+            let result = facade.run(&identity(), 1).await.expect("context");
+            let paths: BTreeSet<String> = result
+                .context
+                .spans
+                .iter()
+                .map(|s| s.path.to_string())
+                .collect();
+            paths
+        };
+        let without = spans_with(None).await;
+        let with = spans_with(Some(&history)).await;
+        assert!(!without.contains("src/omitted.ts"), "{without:?}");
+        assert!(with.contains("src/omitted.ts"), "{with:?}");
+        assert!(!with.contains("src/substituted.ts"), "{with:?}");
+        assert!(with.is_superset(&without), "{with:?} ⊇ {without:?}");
     }
 
     /// Scenario 18: a 400-file PR is read across four pages; its head moves
