@@ -10,6 +10,7 @@
 //! policy and verification run against a scripted fake in tests and
 //! `reqwest` in production.
 
+use crate::history::{MergedPr, is_timestamp};
 use crate::identity::{GitHubHost, InstallationToken, ObjectSha, RepositoryIdentity};
 use crate::storage::hex;
 use bohmian_code_review::RelativePath;
@@ -36,6 +37,10 @@ const USER_AGENT: &str = "bohmian-code-review-pipeline";
 
 /// Files requested per PR-files page; the provider's maximum.
 pub(crate) const PR_FILES_PER_PAGE: u32 = 100;
+
+/// Pull requests requested per closed-PR listing page; the provider's
+/// maximum.
+const PULL_REQUESTS_PER_PAGE: u32 = 100;
 
 /// Boxed `Send` future returned by the object-safe transport and body seams.
 pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
@@ -249,11 +254,13 @@ pub enum Operation {
     PullRequestFiles,
     /// `GET /repos/{owner}/{repo}/compare/{base}...{head}`.
     Compare,
+    /// `GET /repos/{owner}/{repo}/pulls?state=closed`, one page.
+    PullRequests,
 }
 
 impl Operation {
     /// Every operation in accounting order.
-    const ALL: [Operation; 9] = [
+    const ALL: [Operation; 10] = [
         Operation::Repository,
         Operation::BranchHead,
         Operation::Commit,
@@ -263,12 +270,13 @@ impl Operation {
         Operation::PullRequest,
         Operation::PullRequestFiles,
         Operation::Compare,
+        Operation::PullRequests,
     ];
 }
 
 /// HTTP requests sent per operation, counting retries and redirect hops.
 #[derive(Debug, Default)]
-pub struct CallCounts([AtomicU64; 9]);
+pub struct CallCounts([AtomicU64; 10]);
 
 impl CallCounts {
     /// Record one request for `operation`.
@@ -409,15 +417,19 @@ pub struct BranchHead {
     pub commit: ObjectSha,
     /// Root tree of that commit.
     pub tree: ObjectSha,
+    /// Committer time of that commit as `YYYY-MM-DDTHH:MM:SSZ`.
+    pub committed_at: String,
 }
 
-/// A commit's root tree.
+/// A commit's root tree and committer time.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Commit {
     /// Commit id as requested.
     pub sha: ObjectSha,
     /// Root tree.
     pub tree: ObjectSha,
+    /// Committer time as `YYYY-MM-DDTHH:MM:SSZ`.
+    pub committed_at: String,
 }
 
 /// Git tree entry mode.
@@ -701,10 +713,11 @@ struct BranchCommitWire {
     commit: CommitBodyWire,
 }
 
-/// Inner commit body carrying the tree.
+/// Inner commit body carrying the tree and committer.
 #[derive(Deserialize)]
 struct CommitBodyWire {
     tree: ShaWire,
+    committer: CommitterWire,
 }
 
 /// Wire shape of `GET /repos/{owner}/{repo}/git/commits/{sha}`.
@@ -712,6 +725,31 @@ struct CommitBodyWire {
 struct CommitWire {
     sha: ObjectSha,
     tree: ShaWire,
+    committer: CommitterWire,
+}
+
+/// A commit's committer, reduced to its time.
+#[derive(Deserialize)]
+struct CommitterWire {
+    date: String,
+}
+
+/// One entry of `GET /repos/{owner}/{repo}/pulls?state=closed`.
+#[derive(Deserialize)]
+struct ListedPullRequestWire {
+    number: u64,
+    updated_at: String,
+    merged_at: Option<String>,
+    base: ListedRefWire,
+    head: ListedRefWire,
+}
+
+/// Base or head of a listed pull request.
+#[derive(Deserialize)]
+struct ListedRefWire {
+    #[serde(rename = "ref")]
+    name: String,
+    sha: ObjectSha,
 }
 
 /// Any object reference carrying only a `sha`.
@@ -775,6 +813,22 @@ struct PullRequestFileWire {
     previous_filename: Option<String>,
 }
 
+/// One page of closed pull requests into one base branch, most recently
+/// updated first.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClosedPullRequestsPage {
+    /// The page's merged pull requests in listing order.
+    pub merged: Vec<MergedPr>,
+    /// `(number, updated_at)` of the page's first entry, merged or not.
+    pub first: Option<(u64, String)>,
+    /// Update time of the page's last entry, merged or not. Every closed
+    /// PR updated after it was listed on this page or an earlier one, and
+    /// a PR merges no later than its last update.
+    pub oldest_update: Option<String>,
+    /// Whether the provider advertised a further page.
+    pub has_next: bool,
+}
+
 /// Wire shape of `GET /repos/{owner}/{repo}/compare/{base}...{head}`.
 #[derive(Deserialize)]
 struct CompareWire {
@@ -790,6 +844,21 @@ struct CompareFileWire {
     filename: String,
     status: String,
     previous_filename: Option<String>,
+}
+
+/// `text` when it is a `YYYY-MM-DDTHH:MM:SSZ` time from `resource`.
+///
+/// # Errors
+///
+/// [`GitHubError::MalformedResponse`] for any other text.
+fn timestamp(text: String, resource: &str) -> Result<String, GitHubError> {
+    if is_timestamp(&text) {
+        return Ok(text);
+    }
+    Err(GitHubError::MalformedResponse {
+        resource: resource.to_owned(),
+        detail: format!("time `{text}` is not YYYY-MM-DDTHH:MM:SSZ"),
+    })
 }
 
 /// Most files the compare API lists for one comparison.
@@ -982,7 +1051,8 @@ impl GitHubClient {
     /// # Errors
     ///
     /// [`GitHubError::IdentityMismatch`] when the provider names another
-    /// branch, plus any policy or transport error.
+    /// branch, [`GitHubError::MalformedResponse`] for a committer time that
+    /// is not `YYYY-MM-DDTHH:MM:SSZ`, plus any policy or transport error.
     pub async fn branch_head(
         &self,
         repository: &RepositoryIdentity,
@@ -1002,19 +1072,23 @@ impl GitHubClient {
                 actual: wire.name,
             });
         }
+        let committed_at = timestamp(wire.commit.commit.committer.date, &resource)?;
         Ok(BranchHead {
             name: wire.name,
             commit: wire.commit.sha,
             tree: wire.commit.commit.tree.sha,
+            committed_at,
         })
     }
 
-    /// Resolve `sha` to its root tree.
+    /// Resolve `sha` to its root tree and committer time.
     ///
     /// # Errors
     ///
     /// [`GitHubError::IdentityMismatch`] when the provider returns another
-    /// commit id, plus any policy or transport error.
+    /// commit id, [`GitHubError::MalformedResponse`] for a committer time
+    /// that is not `YYYY-MM-DDTHH:MM:SSZ`, plus any policy or transport
+    /// error.
     pub async fn commit(
         &self,
         repository: &RepositoryIdentity,
@@ -1033,6 +1107,7 @@ impl GitHubClient {
         Ok(Commit {
             sha: wire.sha,
             tree: wire.tree.sha,
+            committed_at: timestamp(wire.committer.date, &resource)?,
         })
     }
 
@@ -1404,6 +1479,84 @@ impl GitHubClient {
             rejected,
             has_next,
         })
+    }
+
+    /// Fetch one page (1-based) of the pull requests closed into `base`,
+    /// most recently updated first, keeping the merged ones.
+    ///
+    /// # Errors
+    ///
+    /// [`GitHubError::IdentityMismatch`] for an entry into another base
+    /// branch, [`GitHubError::MalformedResponse`] for PR number 0, a time
+    /// that is not `YYYY-MM-DDTHH:MM:SSZ`, or a merge after the last
+    /// update, plus any policy or transport error. One bad entry fails the
+    /// page, so a listing is never silently partial.
+    pub async fn closed_pull_requests(
+        &self,
+        repository: &RepositoryIdentity,
+        base: &str,
+        page: u32,
+    ) -> Result<ClosedPullRequestsPage, GitHubError> {
+        let resource = format!(
+            "/repos/{}/pulls?state=closed&base={}&sort=updated&direction=desc&per_page={PULL_REQUESTS_PER_PAGE}&page={page}",
+            repository.full_name(),
+            encode_segment(base)
+        );
+        let mut response = self
+            .request(Operation::PullRequests, &resource, ACCEPT_JSON, true)
+            .await?;
+        expect_status(&response, 200, &resource)?;
+        let has_next = response
+            .header("link")
+            .is_some_and(|link| link.contains("rel=\"next\""));
+        let bytes = read_bounded(
+            response.body.as_mut(),
+            self.limits.max_json_bytes,
+            &resource,
+        )
+        .await?;
+        let wire: Vec<ListedPullRequestWire> = parse_json(&bytes, &resource)?;
+        let mut listed = ClosedPullRequestsPage {
+            merged: Vec::new(),
+            first: None,
+            oldest_update: None,
+            has_next,
+        };
+        for pr in wire {
+            let malformed = |detail: String| GitHubError::MalformedResponse {
+                resource: resource.clone(),
+                detail: format!("PR #{}: {detail}", pr.number),
+            };
+            if pr.number == 0 {
+                return Err(malformed("number 0".to_owned()));
+            }
+            if pr.base.name != base {
+                return Err(GitHubError::IdentityMismatch {
+                    expected: format!("PR into `{base}`"),
+                    actual: format!("PR #{} into `{}`", pr.number, pr.base.name),
+                });
+            }
+            let updated_at = timestamp(pr.updated_at, &resource)?;
+            listed
+                .first
+                .get_or_insert_with(|| (pr.number, updated_at.clone()));
+            if let Some(merged_at) = pr.merged_at {
+                let merged_at = timestamp(merged_at, &resource)?;
+                if merged_at > updated_at {
+                    return Err(malformed(format!(
+                        "merged at {merged_at} after its update at {updated_at}"
+                    )));
+                }
+                listed.merged.push(MergedPr {
+                    number: pr.number,
+                    merged_at,
+                    base: pr.base.sha,
+                    head: pr.head.sha,
+                });
+            }
+            listed.oldest_update = Some(updated_at);
+        }
+        Ok(listed)
     }
 
     /// GET `resource` from the API host, require 200, and parse bounded JSON.
@@ -1911,17 +2064,19 @@ mod tests {
         );
 
         fake.push_json(&format!(
-            r#"{{"name":"main","commit":{{"sha":"{commit}","commit":{{"tree":{{"sha":"{tree}"}}}}}}}}"#
+            r#"{{"name":"main","commit":{{"sha":"{commit}","commit":{{"tree":{{"sha":"{tree}"}},"committer":{{"date":"2026-01-02T03:04:05Z"}}}}}}}}"#
         ));
         let head = client.branch_head(&repo, "main").await.expect("branch");
         assert_eq!((&head.commit, &head.tree), (&commit, &tree));
+        assert_eq!(head.committed_at, "2026-01-02T03:04:05Z");
 
         fake.push_json(&format!(
-            r#"{{"sha":"{commit}","tree":{{"sha":"{tree}"}}}}"#
+            r#"{{"sha":"{commit}","tree":{{"sha":"{tree}"}},"committer":{{"date":"2026-01-02T03:04:05Z"}}}}"#
         ));
+        let pinned = client.commit(&repo, &commit).await.expect("commit");
         assert_eq!(
-            client.commit(&repo, &commit).await.expect("commit").tree,
-            tree
+            (&pinned.tree, pinned.committed_at.as_str()),
+            (&tree, "2026-01-02T03:04:05Z")
         );
 
         fake.push_json(&format!(
@@ -2007,7 +2162,9 @@ mod tests {
             client.repository(&repo).await,
             Err(GitHubError::IdentityMismatch { .. })
         ));
-        fake.push_json(&format!(r#"{{"sha":"{tree}","tree":{{"sha":"{tree}"}}}}"#));
+        fake.push_json(&format!(
+            r#"{{"sha":"{tree}","tree":{{"sha":"{tree}"}},"committer":{{"date":"2026-01-02T03:04:05Z"}}}}"#
+        ));
         assert!(matches!(
             client.commit(&repo, &commit).await,
             Err(GitHubError::IdentityMismatch { .. })
@@ -2031,7 +2188,7 @@ mod tests {
             client.pull_request(&repo, 42).await,
             Err(GitHubError::IdentityMismatch { .. })
         ));
-        fake.push_json(r#"{"name":"other","commit":{"sha":"cccccccccccccccccccccccccccccccccccccccc","commit":{"tree":{"sha":"7777777777777777777777777777777777777777"}}}}"#);
+        fake.push_json(r#"{"name":"other","commit":{"sha":"cccccccccccccccccccccccccccccccccccccccc","commit":{"tree":{"sha":"7777777777777777777777777777777777777777"},"committer":{"date":"2026-01-02T03:04:05Z"}}}}"#);
         assert!(matches!(
             client.branch_head(&repo, "main").await,
             Err(GitHubError::IdentityMismatch { .. })

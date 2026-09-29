@@ -1,5 +1,5 @@
 //! The PR-context facade: pin a pull request, overlay its head tree on a
-//! private index, rank candidates from its changed lines and optional
+//! private index, rank candidates from its changed lines and the snapshot's
 //! co-change history, pack them under a token allowance, and publish one
 //! shared [`ReviewContext`].
 //!
@@ -12,7 +12,11 @@
 //! instead and reported as scoped. Candidate blobs are fetched at their head
 //! identity only after ranking. Source bytes are dropped once packed.
 //!
-//! Ranking runs [`DEFAULT_RANKER`] over every PR file. Without history it
+//! Ranking always runs [`DEFAULT_RANKER`] over every PR file and the
+//! loaded snapshot's persisted co-change history, restricted to PRs merged
+//! before the PR's base commit and never the PR itself; that costs one base
+//! commit read when the history is not empty. With empty history, as for a
+//! repository with no merged PRs or a scoped index without a snapshot, it
 //! orders candidates exactly as rarity-weighted symbol overlap. Production
 //! has no base-side facts for changed files, so no removed names are
 //! credited.
@@ -26,7 +30,7 @@ use crate::github::{
     FileStatus, GitHubClient, GitHubError, PR_FILES_PER_PAGE, PullRequest, PullRequestFile,
     RejectedPath, TreeEntry, TreeEntryMode, TreeListing,
 };
-use crate::history::History;
+use crate::history::CoChangeHistory;
 use crate::identity::{Identity, ObjectSha};
 use crate::persistence::{ContextLifetime, ContextRecord, ContextStore, SnapshotStore};
 use crate::snapshot::{
@@ -117,7 +121,6 @@ pub struct PrContext<'a, O, S, C> {
     snapshot_store: &'a S,
     contexts: Contexts<'a, O, C>,
     limits: PrContextLimits,
-    history: Option<&'a History>,
 }
 
 impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S, C> {
@@ -137,16 +140,7 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
             snapshot_store,
             contexts: Contexts::new(context_storage, context_store),
             limits,
-            history: None,
         }
-    }
-
-    /// Rank with co-change `history`; each review sees every history PR
-    /// but its own. Without it the default ranker sees empty history.
-    #[must_use]
-    pub fn with_history(mut self, history: &'a History) -> PrContext<'a, O, S, C> {
-        self.history = Some(history);
-        self
     }
 
     /// Build and publish the review context of pull request `number`.
@@ -159,8 +153,8 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
     ///
     /// # Errors
     ///
-    /// Returns provider errors for the PR, its files, head commit, tree, and
-    /// attributes; `PullRequestMoved`, a retry state, when base or head kept
+    /// Returns provider errors for the PR, its files, head and base commits,
+    /// tree, and attributes; `PullRequestMoved`, a retry state, when base or head kept
     /// changing; snapshot errors other than a missing object; symbolic,
     /// storage, and persistence failures. Per-file problems are not errors:
     /// they are listed in [`ReviewContext::not_analyzed`] and coverage.
@@ -225,7 +219,14 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
             self.limits.max_file_bytes,
         )
         .await?;
-        let snapshot = self.snapshot(identity).await?;
+        let mut snapshot = self.snapshot(identity).await?;
+        let history = snapshot
+            .as_mut()
+            .map(|snapshot| std::mem::take(&mut snapshot.history))
+            .unwrap_or_default();
+        let history = self
+            .review_history(identity, pull_request, &history)
+            .await?;
         let limits = &self.limits;
         let rejected_changed: Vec<RelativePath> = pinned
             .rejected
@@ -316,12 +317,6 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
             .iter()
             .map(|file| &file.path)
             .chain(&rejected_changed)
-            .collect();
-        let history: Vec<&[RelativePath]> = self
-            .history
-            .into_iter()
-            .flat_map(|history| history.for_review(pull_request.number))
-            .map(|pr| pr.paths.as_slice())
             .collect();
         let mut ranked = rank(&index, &pinned.files, &heads, &history, &mut not_analyzed);
         ranked.retain(|file| !changed.contains(&file.path));
@@ -440,6 +435,32 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
         let after = self.client.pull_request(repository, number).await?;
         let before = &pinned.pull_request;
         Ok(((&after.base, &after.head) == (&before.base, &before.head)).then_some(pinned))
+    }
+
+    /// The changed paths of every entry of `history` a review of
+    /// `pull_request` may see: merged before its base commit's committer
+    /// time, which is read only when `history` is not empty, and never the
+    /// PR itself.
+    ///
+    /// # Errors
+    ///
+    /// Returns the base commit provider error.
+    async fn review_history<'h>(
+        &self,
+        identity: &Identity,
+        pull_request: &PullRequest,
+        history: &'h CoChangeHistory,
+    ) -> Result<Vec<&'h [RelativePath]>, ContextError> {
+        if history.prs.is_empty() {
+            return Ok(Vec::new());
+        }
+        let base = self
+            .client
+            .commit(&identity.repository, &pull_request.base)
+            .await?;
+        Ok(history
+            .for_review(pull_request.number, &base.committed_at)
+            .collect())
     }
 
     /// The current compatible default-branch snapshot, or `None` when no
@@ -717,7 +738,6 @@ mod tests {
     use crate::context::CONTEXT_LIFETIME;
     use crate::eligibility::ExclusionReason;
     use crate::github::Operation;
-    use crate::history::{HistoryError, MergedPr};
     use crate::snapshot::tests::{
         FORMAT, FakeRepo, File, USER, blob_sha, file, identity, sha, standard_archive,
         standard_files,
@@ -821,7 +841,9 @@ mod tests {
         );
         transport.json(
             &format!("/git/commits/{head}"),
-            &json!({"sha": head.as_str(), "tree": {"sha": tree.as_str()}}).to_string(),
+            &json!({"sha": head.as_str(), "tree": {"sha": tree.as_str()},
+                    "committer": {"date": "2026-03-01T00:00:00Z"}})
+            .to_string(),
         );
         repo.route_tree(tree, files);
     }
@@ -900,7 +922,7 @@ mod tests {
                 changed: lines.clone(),
             })
             .collect();
-        let ranked = index.rank_files(&heads).expect("rank");
+        let ranked = index.rank_files(&heads, &[]).expect("rank");
         let limits = PrContextLimits::default();
         let context = index
             .build_candidate_context(
@@ -1524,64 +1546,75 @@ mod tests {
         }
     }
 
-    /// Co-change history reaches the default ranker: a file that only
-    /// co-changed with the modified handler is packed with its indexed
-    /// declarations, while the reviewed PR's own history entry is ignored.
+    /// Pass two always ranks with the snapshot's persisted co-change
+    /// history: a file that only co-changed with the modified handler, in
+    /// a PR merged before the reviewed PR's base commit, is packed with its
+    /// indexed declarations. The reviewed PR's own entry and a PR merged
+    /// after its base commit, though both persisted, never count; without
+    /// merged PRs the ranking is symbol-only.
     #[tokio::test]
-    async fn history_co_change_selects_files_the_symbols_miss() {
-        let path = |p: &str| RelativePath::new(p).expect("path");
-        let merged: Vec<MergedPr> = (1..=10)
-            .map(|number| MergedPr {
-                number,
-                merged_at: format!("2026-01-{:02}T12:00:00Z", 21 - number),
-                base: sha('a'),
-                head: sha('b'),
-            })
-            .collect();
-        let history = History::build(
-            &merged,
-            "2026-02-01T00:00:00Z",
-            "2026-03-01T00:00:00Z",
-            async |number| {
-                let paths = match number {
-                    1 => vec![path("src/handler.ts"), path("src/substituted.ts")],
-                    2 => vec![path("src/handler.ts"), path("src/omitted.ts")],
-                    _ => Vec::new(),
-                };
-                Ok::<_, HistoryError>((Some(paths), 1))
-            },
-        )
-        .await
-        .expect("history");
-        let spans_with = async |history: Option<&History>| {
+    async fn persisted_history_ranks_only_earlier_merges_but_its_own() {
+        let spans_with = async |merged: &[(u64, &str, &[&str])]| {
             let repo = FakeRepo::new(&standard_files(), &standard_archive());
+            repo.merged(merged);
             let stores = Stores::default();
             cold(&repo, &stores.snapshot_storage, &stores.snapshot_store).await;
             let files = head_files(PR1_HANDLER, vec![file("src/pr1.ts", PR1_FILE)]);
             let changes: [Change; 1] =
                 [("src/handler.ts", "modified", PR1_HANDLER, Some(PR1_PATCH))];
-            route_pr(&repo, 1, (&sha('1'), &sha('2')), &files, &changes);
+            let (head, base) = (sha('1'), sha('9'));
+            route_pr(&repo, 7, (&head, &sha('2')), &files, &changes);
+            repo.transport
+                .route("/pulls/7", 200, pr_json(7, &base, &head));
+            repo.transport.json(
+                &format!("/git/commits/{base}"),
+                &json!({"sha": base.as_str(), "tree": {"sha": sha('3').as_str()},
+                        "committer": {"date": "2026-01-22T00:00:00Z"}})
+                .to_string(),
+            );
             let client = repo.client();
-            let facade = stores.facade(&client, PrContextLimits::default());
-            let facade = match history {
-                Some(history) => facade.with_history(history),
-                None => facade,
-            };
-            let result = facade.run(&identity(), 1).await.expect("context");
+            let result = stores
+                .facade(&client, PrContextLimits::default())
+                .run(&identity(), 7)
+                .await
+                .expect("context");
+            let reads = client.calls().get(Operation::Commit);
             let paths: BTreeSet<String> = result
                 .context
                 .spans
                 .iter()
                 .map(|s| s.path.to_string())
                 .collect();
-            paths
+            (paths, reads)
         };
-        let without = spans_with(None).await;
-        let with = spans_with(Some(&history)).await;
+        let (without, plain_reads) = spans_with(&[]).await;
+        let (with, history_reads) = spans_with(&[
+            (
+                7,
+                "2026-01-20T12:00:00Z",
+                &["src/handler.ts", "src/substituted.ts"],
+            ),
+            (
+                3,
+                "2026-01-25T12:00:00Z",
+                &["src/handler.ts", "src/substituted.ts"],
+            ),
+            (
+                2,
+                "2026-01-19T12:00:00Z",
+                &["src/handler.ts", "src/omitted.ts"],
+            ),
+        ])
+        .await;
         assert!(!without.contains("src/omitted.ts"), "{without:?}");
         assert!(with.contains("src/omitted.ts"), "{with:?}");
         assert!(!with.contains("src/substituted.ts"), "{with:?}");
         assert!(with.is_superset(&without), "{with:?} ⊇ {without:?}");
+        assert_eq!(
+            history_reads,
+            plain_reads + 1,
+            "one base commit read, only with history"
+        );
     }
 
     /// Scenario 18: a 400-file PR is read across four pages; its head moves

@@ -12,7 +12,7 @@
 
 use bohmian_code_review::{Language, RelativePath, SymbolicContext, parse_hunks};
 use bohmian_code_review_pipeline::{
-    FileStatus, HistoryError, Listing, MergedPr, ObjectSha, PullRequestFile,
+    FileStatus, HistoryError, Listing, MergedPr, ObjectSha, PullRequestFile, is_timestamp,
 };
 use serde::Deserialize;
 use std::collections::BTreeSet;
@@ -174,36 +174,6 @@ impl Discovery {
             .sort_by(|a, b| (&b.merged_at, b.number).cmp(&(&a.merged_at, a.number)));
         self.pending
     }
-}
-
-/// Whether `text` is a `YYYY-MM-DDTHH:MM:SSZ` timestamp naming a real
-/// Gregorian UTC instant; this fixed-width form is the one whose text
-/// order is time order.
-pub fn is_timestamp(text: &str) -> bool {
-    const SHAPE: &[u8; 20] = b"dddd-dd-ddTdd:dd:ddZ";
-    let shaped = text.len() == SHAPE.len()
-        && text.bytes().zip(SHAPE).all(|(byte, &shape)| match shape {
-            b'd' => byte.is_ascii_digit(),
-            other => byte == other,
-        });
-    if !shaped {
-        return false;
-    }
-    let field = |range: std::ops::Range<usize>| {
-        text[range]
-            .bytes()
-            .fold(0_u32, |value, digit| value * 10 + u32::from(digit - b'0'))
-    };
-    let (year, month, day) = (field(0..4), field(5..7), field(8..10));
-    let leap = year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
-    let days = match month {
-        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
-        4 | 6 | 9 | 11 => 30,
-        2 if leap => 29,
-        2 => 28,
-        _ => return false,
-    };
-    (1..=days).contains(&day) && field(11..13) < 24 && field(14..16) < 60 && field(17..19) < 60
 }
 
 /// Whether `path` is repository source: the public path-eligibility query

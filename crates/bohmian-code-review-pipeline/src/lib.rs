@@ -7,12 +7,14 @@
 //! [`ContextStore`] traits the stage facades publish through. Every call is
 //! an `async fn` on tokio that the caller cancels by dropping its future. [`ColdBuild`] is the first facade: it
 //! streams a pinned default-branch archive into a complete, source-free
-//! [`Snapshot`], and [`Snapshots`] reads snapshots back and removes those no
-//! pointer names. [`Update`] advances that pointer incrementally from tree
-//! differences and reports review-time [`Freshness`]. [`PrContext`]
-//! overlays a pull request's pinned head on a private copy of that
-//! snapshot, or on a bounded scoped index, ranks candidates with the
-//! default ranker over optional co-change [`History`], packs them, and
+//! [`Snapshot`] carrying bounded [`CoChangeHistory`] of recently merged
+//! PRs, and [`Snapshots`] reads snapshots back and removes those no pointer
+//! names. [`Update`] advances that pointer incrementally from tree
+//! differences, extends the history with PRs merged since, and reports
+//! review-time [`Freshness`]. [`PrContext`] overlays a pull request's
+//! pinned head on a private copy of that snapshot, or on a bounded scoped
+//! index, ranks candidates with the default ranker over the persisted
+//! history merged before its base commit, packs them, and
 //! publishes one shared [`ReviewContext`] that [`Contexts`] reads back by
 //! id under the caller's identity until it expires. It never clones,
 //! checks out, or persists source; it depends on the public
@@ -39,14 +41,16 @@ pub use context::{
 };
 pub use eligibility::ExclusionReason;
 pub use github::{
-    Archive, BoxFuture, BranchHead, CallCounts, Commit, Comparison, Disposition, FileStatus,
-    GitHubClient, GitHubError, HttpBody, HttpRequest, HttpResponse, HttpTransport, Operation,
-    PullRequest, PullRequestFile, PullRequestFilesPage, PullRequestState, RejectedPath, Repository,
-    RequestLimits, ReqwestTransport, TransportError, TreeEntry, TreeEntryMode, TreeListing,
+    Archive, BoxFuture, BranchHead, CallCounts, ClosedPullRequestsPage, Commit, Comparison,
+    Disposition, FileStatus, GitHubClient, GitHubError, HttpBody, HttpRequest, HttpResponse,
+    HttpTransport, Operation, PullRequest, PullRequestFile, PullRequestFilesPage, PullRequestState,
+    RejectedPath, Repository, RequestLimits, ReqwestTransport, TransportError, TreeEntry,
+    TreeEntryMode, TreeListing,
 };
 pub use history::{
-    COLD_DEPTH, History, HistoryError, HistoryPr, Listing, ListingReads, MASS_EDIT_FILES,
-    MAX_LISTING_PAGES, MergedPr,
+    COLD_DEPTH, CoChangeHistory, History, HistoryError, HistoryPr, Listing, ListingReads,
+    MASS_EDIT_FILES, MAX_DISCOVERY_PAGES, MAX_HISTORY_PRS, MAX_LISTING_PAGES, MergedPr,
+    is_timestamp,
 };
 pub use identity::{
     GitHubHost, Identity, InstallationId, InstallationToken, InvalidIdentity, ObjectSha,

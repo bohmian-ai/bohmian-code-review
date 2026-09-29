@@ -25,7 +25,7 @@ use crate::report::{
     Verdict,
 };
 use crate::sample::{
-    Discovery, ListedPr, OmittedReason, SAMPLE_SIZE, SampleError, Screen, eligible, is_timestamp,
+    Discovery, ListedPr, OmittedReason, SAMPLE_SIZE, SampleError, Screen, eligible,
 };
 use crate::trial::{
     ARMS, BASELINE, DECISION_ARM, HIT_RANK, RARITY_RULE, TRIAL_RULE, Trial, evaluate,
@@ -40,7 +40,7 @@ use bohmian_code_review_pipeline::{
     GitHubHost, History, HttpRequest, HttpTransport, Identity, InstallationId, InstallationToken,
     Listing, ListingReads, MAX_LISTING_PAGES, MergedPr, ObjectSha, RepositoryIdentity,
     RequestLimits, ReqwestTransport, SNAPSHOT_FORMAT_VERSION, Snapshot, SnapshotScope, Snapshots,
-    TenantId,
+    TenantId, is_timestamp,
 };
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
@@ -728,6 +728,10 @@ mod tests {
                 })
                 .collect();
             fake.client.json(
+                "/pulls?state=closed&base=main&sort=updated&direction=desc&per_page=100&page=1",
+                "[]",
+            );
+            fake.client.json(
                 &format!("/git/trees/{tree}?recursive=1"),
                 &json!({"sha": tree, "truncated": false, "tree": tree_entries}).to_string(),
             );
@@ -750,7 +754,8 @@ mod tests {
                 );
                 fake.client.json(
                     &format!("/repos/o/n/git/commits/{base}"),
-                    &json!({"sha": base, "tree": {"sha": tree}}).to_string(),
+                    &json!({"sha": base, "tree": {"sha": tree}, "committer": {"date": at(n, 0)}})
+                        .to_string(),
                 );
                 fake.client.json(&files_page(n, 1), &changed);
             }

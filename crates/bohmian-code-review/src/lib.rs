@@ -5,8 +5,10 @@
 //! symbol index, or loads previously exported source-free facts stamped
 //! with [`EXTRACTION_VERSION`]; [`parse_unified_diff`] turns PR diff text
 //! into each changed file's head-side lines; pass two ranks other indexed
-//! files against one or many changed head-side blobs through a [`Ranker`],
-//! and [`build_context`] or [`SymbolicContext::build_candidate_context`]
+//! files against one or many changed head-side blobs and caller-supplied
+//! co-change history through a [`Ranker`], [`DEFAULT_RANKER`] unless the
+//! caller picks another, and [`build_context`] or
+//! [`SymbolicContext::build_candidate_context`]
 //! packs spans under caller limits. Nothing here reads disk, fetches
 //! source, or retains blobs; the index covers only files the caller
 //! supplied.
@@ -301,20 +303,27 @@ impl SymbolicContext {
     }
 
     /// Parses every changed head blob of a pull request and ranks other
-    /// indexed files with [`DEFAULT_RANKER`] and no co-change history, which
-    /// orders them exactly as [`RaritySymbol`].
+    /// indexed files with [`DEFAULT_RANKER`] over `history`, the changed
+    /// paths of each earlier merged change.
     ///
-    /// Every changed path is excluded from the candidates; files sort by
-    /// descending score then canonical path. No head blob is indexed. Pack
-    /// the result with [`SymbolicContext::build_candidate_context`]; use
-    /// [`SymbolicContext::rank_with`] to choose the ranker, history,
-    /// renames, and removed names.
+    /// The index is pass one's base, so a changed path it holds existed at
+    /// base and anchors co-change history. Empty history is valid and
+    /// orders files exactly as [`RaritySymbol`]. Every changed path is
+    /// excluded from the candidates; files sort by descending score then
+    /// canonical path. No head blob is indexed. Pack the result with
+    /// [`SymbolicContext::build_candidate_context`]; use
+    /// [`SymbolicContext::rank_with`] to choose the ranker, renames, and
+    /// removed names.
     ///
     /// # Errors
     ///
     /// Returns the first per-file error as [`SymbolicContext::head_facts`]
     /// does.
-    pub fn rank_files(&self, changed: &[ChangedBlob<'_>]) -> Result<Vec<RankedFile>, Error> {
+    pub fn rank_files(
+        &self,
+        changed: &[ChangedBlob<'_>],
+        history: &[&[RelativePath]],
+    ) -> Result<Vec<RankedFile>, Error> {
         let heads = changed
             .iter()
             .map(|blob| self.head_facts(blob))
@@ -324,12 +333,12 @@ impl SymbolicContext {
             .map(|head| ChangedFile {
                 path: &head.path,
                 previous_path: None,
-                in_base: false,
+                in_base: self.index.byte_len(&head.path).is_some(),
                 head: Some(head.head()),
                 removed: Vec::new(),
             })
             .collect();
-        Ok(self.rank_with(&DEFAULT_RANKER, &files, &[]))
+        Ok(self.rank_with(&DEFAULT_RANKER, &files, history))
     }
 
     /// Ranks indexed candidates for `changed` with `ranker` over `history`,

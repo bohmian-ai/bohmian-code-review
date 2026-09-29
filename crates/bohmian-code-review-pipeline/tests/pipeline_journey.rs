@@ -7,7 +7,7 @@
 //! the whole pipeline with its own stores and cancellation, and that nothing
 //! keeps running once a facade future completes or is dropped.
 
-use bohmian_code_review::{ChangedBlob, LineRange, SymbolicContext};
+use bohmian_code_review::{ChangedBlob, EXTRACTION_VERSION, LineRange, SymbolicContext};
 use bohmian_code_review_pipeline::testing::{
     MemoryContextStore, MemorySnapshotStore, MemoryStorage, RoutedTransport,
 };
@@ -15,7 +15,8 @@ use bohmian_code_review_pipeline::{
     BoxFuture, ColdBuild, ColdBuildLimits, ColdBuildOutcome, ContextError, Contexts, Freshness,
     GitHubClient, GitHubHost, HttpRequest, HttpResponse, HttpTransport, Identity, InstallationId,
     InstallationToken, ObjectSha, Operation, PrContext, PrContextLimits, PrContextResult,
-    RepositoryIdentity, RequestLimits, Scope, TenantId, TransportError, Update,
+    RepositoryIdentity, RequestLimits, SNAPSHOT_FORMAT_VERSION, Scope, SnapshotPointer,
+    SnapshotScope, Snapshots, TenantId, TransportError, Update,
 };
 use flate2::Compression;
 use flate2::write::GzEncoder;
@@ -34,6 +35,8 @@ const FORMAT: &[u8] = b"import { User } from \"./user\";\n\nexport function form
 const FORMAT_V2: &[u8] = b"import { User } from \"./user\";\n\nexport function formatUser(user: User): string {\n  return \"user:\" + user.id;\n}\n";
 /// Declares `handleRequest`.
 const HANDLER: &[u8] = b"import { lookupUser } from \"./user\";\n\nexport function handleRequest(id: string): string {\n  return lookupUser(id).id;\n}\n";
+/// Declares nothing the PR's handler uses; related to it only by co-change.
+const NOTES: &[u8] = b"export function unrelated(): number {\n  return 1;\n}\n";
 /// The PR's handler: formats the looked-up user.
 const PR_HANDLER: &[u8] = b"import { lookupUser } from \"./user\";\n\nexport function handleRequest(id: string): string {\n  return formatUser(lookupUser(id));\n}\n";
 /// Patch of [`PR_HANDLER`]: head line 4 added.
@@ -45,6 +48,11 @@ const PR: u64 = 7;
 const REVIEW_ALLOWANCE: Duration = Duration::from_secs(30 * 60);
 /// The caller's cold-build allowance.
 const BUILD_ALLOWANCE: Duration = Duration::from_secs(15 * 60);
+
+/// Committer time of default-branch commit `c`.
+const C_AT: &str = "2026-02-01T12:00:00Z";
+/// Committer time of default-branch commit `d`.
+const D_AT: &str = "2026-02-02T12:00:00Z";
 
 /// Forty copies of `ch` as an object id.
 fn sha(ch: char) -> ObjectSha {
@@ -110,22 +118,65 @@ impl HttpTransport for FakeGitHub {
 }
 
 impl FakeGitHub {
-    /// A repository whose default branch is at commit `c`, tree `7`.
+    /// A repository whose default branch is at commit `c`, tree `7`, with
+    /// no merged pull requests.
     fn new(files: &[(&str, &[u8])]) -> FakeGitHub {
         let github = FakeGitHub(Arc::new(RoutedTransport::default()));
         github.0.json(
             "/repos/octocat/Hello-World",
             r#"{"id":1296269,"full_name":"octocat/Hello-World","default_branch":"main","private":true}"#,
         );
-        github.push(&sha('c'), &sha('7'), files);
+        github.merged(&[]);
+        github.push((&sha('c'), C_AT), &sha('7'), files);
         github
     }
 
-    /// Move the default branch to `commit`/`tree` holding `files`.
-    fn push(&self, commit: &ObjectSha, tree: &ObjectSha, files: &[(&str, &[u8])]) {
+    /// Route the closed-PR listing of `prs` merged into `main`, each
+    /// `(number, merged_at, changed paths)` last updated when it merged,
+    /// and each PR's one-page file listing.
+    fn merged(&self, prs: &[(u64, &str, &[&str])]) {
+        let mut listed = prs.to_vec();
+        listed.sort_by(|a, b| b.1.cmp(a.1));
+        let listed: Vec<_> = listed
+            .iter()
+            .map(|(number, at, _)| {
+                json!({"number": number, "updated_at": at, "merged_at": at,
+                       "base": {"ref": "main", "sha": sha('c').as_str()},
+                       "head": {"ref": "topic", "sha": sha('b').as_str()}})
+            })
+            .collect();
+        self.0.json(
+            "/pulls?state=closed&base=main&sort=updated&direction=desc&per_page=100&page=1",
+            &serde_json::Value::from(listed).to_string(),
+        );
+        for (number, _, paths) in prs {
+            let files: Vec<_> = paths
+                .iter()
+                .map(|path| {
+                    json!({"filename": path, "status": "modified", "sha": sha('e').as_str(),
+                                   "patch": "@@ -1 +1 @@\n-a\n+b"})
+                })
+                .collect();
+            self.0.json(
+                &format!("/pulls/{number}/files?per_page=100&page=1"),
+                &serde_json::Value::from(files).to_string(),
+            );
+        }
+    }
+
+    /// Move the default branch to `commit`, committed at `at`, and `tree`
+    /// holding `files`.
+    fn push(&self, (commit, at): (&ObjectSha, &str), tree: &ObjectSha, files: &[(&str, &[u8])]) {
         self.0.json(
             "/branches/main",
-            &json!({"name": "main", "commit": {"sha": commit.as_str(), "commit": {"tree": {"sha": tree.as_str()}}}}).to_string(),
+            &json!({"name": "main", "commit": {"sha": commit.as_str(), "commit": {
+                "tree": {"sha": tree.as_str()}, "committer": {"date": at}}}})
+            .to_string(),
+        );
+        self.0.json(
+            &format!("/git/commits/{commit}"),
+            &json!({"sha": commit.as_str(), "tree": {"sha": tree.as_str()}, "committer": {"date": at}})
+                .to_string(),
         );
         self.tree(tree, files);
         self.0
@@ -229,7 +280,9 @@ impl FakeGitHub {
         );
         self.0.json(
             &format!("/git/commits/{head}"),
-            &json!({"sha": head.as_str(), "tree": {"sha": tree.as_str()}}).to_string(),
+            &json!({"sha": head.as_str(), "tree": {"sha": tree.as_str()},
+                    "committer": {"date": "2026-03-01T00:00:00Z"}})
+            .to_string(),
         );
         self.tree(&tree, files);
     }
@@ -349,11 +402,14 @@ fn oracle_paths(files: &[(&str, &[u8])]) -> Vec<String> {
         index.upsert(path, bytes).expect("upsert");
     }
     index
-        .rank_files(&[ChangedBlob {
-            path: "src/handler.ts",
-            head: PR_HANDLER,
-            changed: vec![LineRange { start: 4, end: 4 }],
-        }])
+        .rank_files(
+            &[ChangedBlob {
+                path: "src/handler.ts",
+                head: PR_HANDLER,
+                changed: vec![LineRange { start: 4, end: 4 }],
+            }],
+            &[],
+        )
         .expect("rank")
         .into_iter()
         .map(|ranked| ranked.path.to_string())
@@ -461,7 +517,7 @@ async fn cold_update_warm_review_and_read_compose() {
     };
     assert_eq!(first.tree, sha('7'));
 
-    github.push(&sha('d'), &sha('9'), &main_v2());
+    github.push((&sha('d'), D_AT), &sha('9'), &main_v2());
     github.compare((&sha('c'), &main_v1()), (&sha('d'), &sha('9'), &main_v2()));
     let before = client.calls().snapshot();
     let updated = caps.update(&client).run(&caller).await.expect("update");
@@ -520,4 +576,92 @@ fn main_v1_with_pr() -> Vec<(&'static str, &'static [u8])> {
         ("src/format.ts", FORMAT),
         ("src/handler.ts", PR_HANDLER),
     ]
+}
+
+/// The snapshot `pointer` names for [`identity`] under default limits.
+async fn snapshot_history(caps: &Capabilities, pointer: &SnapshotPointer) -> Vec<u64> {
+    let scope = SnapshotScope {
+        identity: identity(),
+        extraction_version: EXTRACTION_VERSION.to_owned(),
+        format_version: SNAPSHOT_FORMAT_VERSION,
+        max_file_bytes: ColdBuildLimits::default().max_file_bytes,
+    };
+    Snapshots::new(&caps.snapshot_storage, &caps.snapshot_store)
+        .read(&scope, pointer)
+        .await
+        .expect("snapshot")
+        .history
+        .prs
+        .iter()
+        .map(|pr| pr.number)
+        .collect()
+}
+
+/// Pass one persists co-change history and pass two ranks with it. The
+/// cold build stores the PRs merged before commit `c`; a review of PR
+/// [`PR`] with no caller-supplied history packs `src/notes.ts`, which
+/// shares no symbol with the change and only co-changed with the handler.
+/// An update to commit `d`, whose PR changed `src/user.ts`, extends the
+/// history with the one PR merged since `c`, reading one more listing page
+/// and one PR file listing.
+#[tokio::test]
+async fn persisted_history_ranks_a_co_change_only_file() {
+    let mut files = main_v1();
+    files.push(("src/notes.ts", NOTES));
+    let github = FakeGitHub::new(&files);
+    let pair: &[&str] = &["src/handler.ts", "src/notes.ts"];
+    github.merged(&[
+        (3, "2026-01-20T00:00:00Z", pair),
+        (4, "2026-01-21T00:00:00Z", pair),
+    ]);
+    let client = github.client();
+    let caps = Capabilities::default();
+
+    let built = caps
+        .cold(&client)
+        .run(&identity())
+        .await
+        .expect("cold build");
+    let ColdBuildOutcome::Published(first) = built.outcome else {
+        panic!("cold build did not publish: {:?}", built.outcome);
+    };
+    assert_eq!(snapshot_history(&caps, &first).await, [4, 3]);
+
+    let mut head = files.clone();
+    head[2] = ("src/handler.ts", PR_HANDLER);
+    github.pull_request(&sha('c'), &head);
+    let (review, _) = caps.review(&client).await;
+    assert!(review.context.coverage.is_full());
+    assert!(!oracle_paths(&head).contains(&"src/notes.ts".to_owned()));
+    assert!(
+        review
+            .context
+            .spans
+            .iter()
+            .any(|span| span.path.as_str() == "src/notes.ts")
+    );
+
+    github.merged(&[
+        (3, "2026-01-20T00:00:00Z", pair),
+        (4, "2026-01-21T00:00:00Z", pair),
+        (5, "2026-02-02T00:00:00Z", &["src/user.ts"]),
+    ]);
+    let mut next = files.clone();
+    next[0] = ("src/user.ts", FORMAT_V2);
+    github.push((&sha('d'), D_AT), &sha('9'), &next);
+    github.compare((&sha('c'), &files), (&sha('d'), &sha('9'), &next));
+    let before = client.calls().snapshot();
+    let updated = caps.update(&client).run(&identity()).await.expect("update");
+    let ColdBuildOutcome::Published(second) = updated.outcome else {
+        panic!("update did not publish: {:?}", updated.outcome);
+    };
+    assert_eq!(snapshot_history(&caps, &second).await, [5, 4, 3]);
+    let calls = client.calls();
+    for operation in [Operation::PullRequests, Operation::PullRequestFiles] {
+        assert_eq!(
+            calls.get(operation) - before[&operation],
+            1,
+            "{operation:?}"
+        );
+    }
 }

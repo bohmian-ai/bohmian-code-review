@@ -1,5 +1,14 @@
 //! Time-eligible co-change history read from merged pull requests.
 //!
+//! [`CoChangeHistory`] is the history a snapshot persists: every
+//! non-mass-edit PR merged into the default branch over a contiguous span
+//! ending strictly before the snapshot commit's committer time. A cold build
+//! reads the [`COLD_DEPTH`] most recent; an update extends the prior
+//! snapshot's history with every PR merged since, one listing each, keeping
+//! at most [`MAX_HISTORY_PRS`]. A review ranks with the entries merged
+//! before its base commit, never its own.
+//!
+//! [`History`] is the experiment's form of the same rule:
 //! A PR is merged before a commit when its merge time is earlier than the
 //! commit's committer time. The cold build point is the earliest time a
 //! caller ranks at; cold history is the [`COLD_DEPTH`] most recent
@@ -16,11 +25,18 @@ use crate::github::{
 };
 use crate::identity::{ObjectSha, RepositoryIdentity};
 use bohmian_code_review::RelativePath;
+use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use thiserror::Error;
 
 /// Non-mass-edit PRs in cold-build history.
 pub const COLD_DEPTH: usize = 10;
+/// Most non-mass-edit PRs a snapshot's history keeps; an update drops the
+/// oldest beyond it.
+pub const MAX_HISTORY_PRS: usize = 1_000;
+/// Closed-PR listing pages read per history read: 1,000 PRs at 100 per
+/// page. Past it, history stops at the oldest PR the pages proved.
+pub const MAX_DISCOVERY_PAGES: u32 = 10;
 /// Most changed files a history PR may have before it is a mass edit.
 pub const MASS_EDIT_FILES: usize = 30;
 /// File-listing pages read at most: 3,000 files at 100 per page.
@@ -30,7 +46,7 @@ pub const MAX_LISTING_PAGES: u32 = 30;
 const MAX_LISTED_FILES: usize = 3_000;
 
 /// Why history cannot be trusted; the caller must not rank with it.
-#[derive(Debug, Error, PartialEq, Eq)]
+#[derive(Debug, Clone, Error, PartialEq, Eq)]
 pub enum HistoryError {
     /// The provider rejected an entry of a PR's file listing.
     #[error("PR #{number} lists an unusable file `{}`: {}", .rejected.path, .rejected.reason)]
@@ -54,6 +70,10 @@ pub enum HistoryError {
         /// Non-mass-edit PRs found.
         found: usize,
     },
+    /// A closed PR was updated while the closed-PR listing was paged, so a
+    /// page may have skipped a merged PR; a retry may succeed.
+    #[error("closed pull requests changed while they were listed")]
+    ListingMoved,
 }
 
 /// A merged PR with validated identity.
@@ -173,7 +193,7 @@ impl Listing {
 }
 
 /// One non-mass-edit history PR.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HistoryPr {
     /// PR number.
     pub number: u64,
@@ -281,13 +301,439 @@ impl History {
     }
 }
 
+/// The co-change history a snapshot persists: source-free, only PR
+/// numbers, merge times, and changed paths.
+///
+/// Invariant: `prs` holds, merge time then number descending, every
+/// non-mass-edit PR merged into the default branch from the oldest entry's
+/// merge time up to, but excluding, `before`; the listing may have proved
+/// fewer than [`COLD_DEPTH`] exist. Empty history is valid.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CoChangeHistory {
+    /// Committer time of the snapshot commit.
+    pub before: String,
+    /// Non-mass-edit history PRs.
+    pub prs: Vec<HistoryPr>,
+}
+
+impl CoChangeHistory {
+    /// Read the history before commit time `before` on `branch`, extending
+    /// `prior` when its span ends no later than `before`.
+    ///
+    /// Closed PRs are paged most recently updated first, at most
+    /// [`MAX_DISCOVERY_PAGES`] pages. A PR merges no later than its last
+    /// update, so after each page every PR merged after that page's oldest
+    /// update is known; only those are read, newest merge first, each
+    /// with one complete listing. Without `prior` reading stops at
+    /// [`COLD_DEPTH`] non-mass-edit PRs; with it, at the first PR merged
+    /// before `prior.before`, and `prior`'s entries follow. When the pages
+    /// run out first, history is only what they proved and `prior` is
+    /// dropped, so the span stays contiguous. At most [`MAX_HISTORY_PRS`]
+    /// are kept. A listing read over more than one page is checked again at
+    /// its first page, so an update that shifted entries mid-read fails.
+    ///
+    /// # Errors
+    ///
+    /// Provider errors, the errors of [`Listing::history_paths`], and
+    /// [`HistoryError::ListingMoved`], a retry state.
+    pub(crate) async fn read<E: From<GitHubError> + From<HistoryError>>(
+        client: &GitHubClient,
+        repository: &RepositoryIdentity,
+        branch: &str,
+        before: &str,
+        prior: Option<&CoChangeHistory>,
+    ) -> Result<CoChangeHistory, E> {
+        let prior = prior.filter(|prior| prior.before.as_str() <= before);
+        let since = prior.map(|prior| prior.before.as_str());
+        let mut history = CoChangeHistory {
+            before: before.to_owned(),
+            prs: Vec::new(),
+        };
+        let (mut known, mut seen) = (Vec::<MergedPr>::new(), BTreeSet::new());
+        let (mut pages, mut first, mut horizon, mut more) = (0, None, None::<String>, true);
+        let joined = loop {
+            if since.is_none() && history.prs.len() == COLD_DEPTH {
+                break false;
+            }
+            let proven = known.first().filter(|pr| {
+                horizon
+                    .as_deref()
+                    .is_none_or(|horizon| pr.merged_at.as_str() > horizon)
+            });
+            if let Some(pr) = proven {
+                if since.is_some_and(|since| pr.merged_at.as_str() < since) {
+                    break true;
+                }
+                let pr = known.remove(0);
+                let (listing, _) =
+                    Listing::read(client, repository, pr.number, MAX_LISTING_PAGES).await?;
+                if let Some(paths) = listing.history_paths(pr.number)? {
+                    history.prs.push(HistoryPr {
+                        number: pr.number,
+                        merged_at: pr.merged_at,
+                        paths,
+                    });
+                }
+                continue;
+            }
+            let below_since = since
+                .zip(horizon.as_deref())
+                .is_some_and(|(since, horizon)| horizon < since);
+            if !more || below_since {
+                break true;
+            }
+            if pages == MAX_DISCOVERY_PAGES {
+                break false;
+            }
+            pages += 1;
+            let page = client
+                .closed_pull_requests(repository, branch, pages)
+                .await?;
+            if pages == 1 {
+                first = page.first.clone();
+            }
+            known.extend(
+                page.merged
+                    .into_iter()
+                    .filter(|pr| pr.merged_at.as_str() < before && seen.insert(pr.number)),
+            );
+            known.sort_by(|a, b| (&b.merged_at, b.number).cmp(&(&a.merged_at, a.number)));
+            more = page.has_next;
+            horizon = match more {
+                true => page.oldest_update.or(horizon),
+                false => None,
+            };
+        };
+        if pages > 1 {
+            let again = client.closed_pull_requests(repository, branch, 1).await?;
+            if again.first != first {
+                return Err(HistoryError::ListingMoved.into());
+            }
+        }
+        if let Some(prior) = prior.filter(|_| joined) {
+            history.prs.extend(prior.prs.iter().cloned());
+        }
+        history.prs.truncate(MAX_HISTORY_PRS);
+        Ok(history)
+    }
+
+    /// Changed paths of every history PR a review of PR `number` whose base
+    /// commit was committed at `base_time` may see: merged strictly before
+    /// `base_time`, never PR `number` itself.
+    pub fn for_review(
+        &self,
+        number: u64,
+        base_time: &str,
+    ) -> impl Iterator<Item = &[RelativePath]> {
+        self.prs
+            .iter()
+            .filter(move |pr| pr.number != number && pr.merged_at.as_str() < base_time)
+            .map(|pr| pr.paths.as_slice())
+    }
+}
+
+/// Whether `text` is a `YYYY-MM-DDTHH:MM:SSZ` timestamp naming a real
+/// Gregorian UTC instant; this fixed-width form is the one whose text
+/// order is time order.
+pub fn is_timestamp(text: &str) -> bool {
+    const SHAPE: &[u8; 20] = b"dddd-dd-ddTdd:dd:ddZ";
+    let shaped = text.len() == SHAPE.len()
+        && text.bytes().zip(SHAPE).all(|(byte, &shape)| match shape {
+            b'd' => byte.is_ascii_digit(),
+            other => byte == other,
+        });
+    if !shaped {
+        return false;
+    }
+    let field = |range: std::ops::Range<usize>| {
+        text[range]
+            .bytes()
+            .fold(0_u32, |value, digit| value * 10 + u32::from(digit - b'0'))
+    };
+    let (year, month, day) = (field(0..4), field(5..7), field(8..10));
+    let leap = year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
+    let days = match month {
+        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
+        4 | 6 | 9 | 11 => 30,
+        2 if leap => 29,
+        2 => 28,
+        _ => return false,
+    };
+    (1..=days).contains(&day) && field(11..13) < 24 && field(14..16) < 60 && field(17..19) < 60
+}
+
 /// History contract checks on in-memory merged PRs, a counting fake
 /// listing reader, and folded provider pages.
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::github::FileStatus;
+    use crate::github::{FileStatus, Operation, RequestLimits};
+    use crate::identity::{GitHubHost, InstallationToken};
+    use crate::testing::RoutedTransport;
     use std::cell::RefCell;
+
+    /// Closed-PR listing page `page` of `main`.
+    fn closed(page: u32) -> String {
+        format!(
+            "/pulls?state=closed&base=main&sort=updated&direction=desc&per_page=100&page={page}"
+        )
+    }
+
+    /// One listed closed PR updated at `updated`, merged then when `merged`.
+    fn listed(number: u64, updated: &str, merged: bool) -> String {
+        let merged_at = if merged {
+            format!("\"{updated}\"")
+        } else {
+            "null".to_owned()
+        };
+        format!(
+            r#"{{"number":{number},"updated_at":"{updated}","merged_at":{merged_at},"base":{{"ref":"main","sha":"{a}"}},"head":{{"ref":"f","sha":"{b}"}}}}"#,
+            a = "a".repeat(40),
+            b = "b".repeat(40)
+        )
+    }
+
+    /// A page response of `entries`, advertising a next page when `next`.
+    fn page(entries: &[String], next: bool) -> (u16, Vec<(String, String)>, Vec<u8>) {
+        let headers = match next {
+            true => vec![("link".to_owned(), "<x>; rel=\"next\"".to_owned())],
+            false => Vec::new(),
+        };
+        (
+            200,
+            headers,
+            format!("[{}]", entries.join(",")).into_bytes(),
+        )
+    }
+
+    /// Route PR `number`'s one-page listing of `count` files.
+    fn route_listing(transport: &RoutedTransport, number: u64, count: usize) {
+        let files: Vec<String> = (0..count)
+            .map(|i| {
+                format!(
+                    r#"{{"filename":"src/p{number}/f{i}.rs","status":"modified","sha":"{}","patch":"@@ -1 +1 @@\n-a\n+b"}}"#,
+                    "c".repeat(40)
+                )
+            })
+            .collect();
+        transport.json(
+            &format!("/pulls/{number}/files?per_page=100&page=1"),
+            &format!("[{}]", files.join(",")),
+        );
+    }
+
+    /// PRs 1..=14 merged at noon on their day of January 2026, PR 13 a
+    /// mass edit; PR 30 merged after the Jan 20 build point; PR 31 closed
+    /// unmerged. Listed most recently updated first, split after six
+    /// entries when `split`; page 1 answers `first_again` on a re-read.
+    fn repository(split: bool, first_again: Option<String>) -> GitHubClient {
+        let transport = RoutedTransport::default();
+        let at = |day: u64| format!("2026-01-{day:02}T12:00:00Z");
+        let mut entries = vec![listed(31, &at(25), false), listed(30, &at(21), true)];
+        entries.extend((1..=14).rev().map(|n| listed(n, &at(n), true)));
+        let (one, two) = entries.split_at(if split { 6 } else { entries.len() });
+        let mut first = vec![page(one, split)];
+        if let Some(again) = first_again {
+            first.push(page(&[again], false));
+        }
+        transport.respond(&closed(1), first);
+        transport.respond(&closed(2), vec![page(two, false)]);
+        for number in (1..=14).chain([30]) {
+            route_listing(&transport, number, if number == 13 { 31 } else { 1 });
+        }
+        GitHubClient::with_transport(
+            GitHubHost::public(),
+            InstallationToken::new("ghs_token").expect("token"),
+            RequestLimits::default(),
+            Box::new(transport),
+        )
+    }
+
+    /// Read history before `before` over `client`, extending `prior`.
+    async fn read(
+        client: &GitHubClient,
+        before: &str,
+        prior: Option<&CoChangeHistory>,
+    ) -> Result<CoChangeHistory, HistoryError> {
+        let repository = RepositoryIdentity::new(1, "o", "r").expect("repo");
+        CoChangeHistory::read::<GitHubOrHistory>(client, &repository, "main", before, prior)
+            .await
+            .map_err(|error| match error {
+                GitHubOrHistory::History(error) => error,
+                GitHubOrHistory::GitHub(error) => panic!("provider: {error}"),
+            })
+    }
+
+    /// Either failure of a history read.
+    #[derive(Debug)]
+    enum GitHubOrHistory {
+        /// A provider failure.
+        GitHub(GitHubError),
+        /// A history failure.
+        History(HistoryError),
+    }
+
+    impl From<GitHubError> for GitHubOrHistory {
+        /// Wraps a provider failure.
+        fn from(error: GitHubError) -> GitHubOrHistory {
+            GitHubOrHistory::GitHub(error)
+        }
+    }
+
+    impl From<HistoryError> for GitHubOrHistory {
+        /// Wraps a history failure.
+        fn from(error: HistoryError) -> GitHubOrHistory {
+            GitHubOrHistory::History(error)
+        }
+    }
+
+    /// Numbers of `history`'s PRs.
+    fn numbers(history: &CoChangeHistory) -> Vec<u64> {
+        history.prs.iter().map(|pr| pr.number).collect()
+    }
+
+    /// A cold read keeps the ten most recent non-mass PRs merged before the
+    /// build point, reading only PRs the pages proved, each listing once,
+    /// the mass edit included; a two-page read re-checks page 1.
+    #[tokio::test]
+    async fn cold_history_reads_ten_proven_prs_before_the_commit() {
+        let client = repository(true, None);
+        let history = read(&client, "2026-01-20T00:00:00Z", None)
+            .await
+            .expect("history");
+        assert_eq!(history.before, "2026-01-20T00:00:00Z");
+        assert_eq!(numbers(&history), [14, 12, 11, 10, 9, 8, 7, 6, 5, 4]);
+        assert_eq!(
+            history.prs[0].paths,
+            [RelativePath::new("src/p14/f0.rs").expect("path")]
+        );
+        let calls = client.calls();
+        assert_eq!(calls.get(Operation::PullRequests), 3);
+        assert_eq!(calls.get(Operation::PullRequestFiles), 11);
+    }
+
+    /// A closed PR updated while pages are read shifts the listing, so the
+    /// re-read of page 1 fails the read as a retry state.
+    #[tokio::test]
+    async fn listing_changed_mid_read_fails() {
+        let moved = listed(99, "2026-01-26T00:00:00Z", false);
+        let client = repository(true, Some(moved));
+        assert_eq!(
+            read(&client, "2026-01-20T00:00:00Z", None).await,
+            Err(HistoryError::ListingMoved)
+        );
+    }
+
+    /// An update reads one listing per PR merged since the prior history's
+    /// time, mass edits included, and keeps the prior entries after them;
+    /// a prior history from a later time is ignored.
+    #[tokio::test]
+    async fn update_extends_prior_history_with_one_listing_per_merge() {
+        let client = repository(false, None);
+        let entry = |number: u64| HistoryPr {
+            number,
+            merged_at: format!("2026-01-{number:02}T12:00:00Z"),
+            paths: Vec::new(),
+        };
+        let prior = CoChangeHistory {
+            before: "2026-01-10T00:00:00Z".to_owned(),
+            prs: vec![entry(9), entry(8)],
+        };
+        let history = read(&client, "2026-01-20T00:00:00Z", Some(&prior))
+            .await
+            .expect("history");
+        assert_eq!(numbers(&history), [14, 12, 11, 10, 9, 8]);
+        let calls = client.calls();
+        assert_eq!(calls.get(Operation::PullRequests), 1);
+        assert_eq!(calls.get(Operation::PullRequestFiles), 5);
+
+        let later = CoChangeHistory {
+            before: "2026-01-30T00:00:00Z".to_owned(),
+            ..prior
+        };
+        let cold = read(
+            &repository(false, None),
+            "2026-01-20T00:00:00Z",
+            Some(&later),
+        )
+        .await
+        .expect("history");
+        assert_eq!(numbers(&cold), [14, 12, 11, 10, 9, 8, 7, 6, 5, 4]);
+    }
+
+    /// No merged PRs is valid empty history; pages that never prove the
+    /// span back to the prior time stop at the page bound and drop the
+    /// prior entries rather than leave a gap.
+    #[tokio::test]
+    async fn empty_and_page_bounded_history_is_valid() {
+        let transport = RoutedTransport::default();
+        transport.respond(&closed(1), vec![page(&[], false)]);
+        let client = GitHubClient::with_transport(
+            GitHubHost::public(),
+            InstallationToken::new("ghs_token").expect("token"),
+            RequestLimits::default(),
+            Box::new(transport),
+        );
+        let empty = read(&client, "2026-01-20T00:00:00Z", None)
+            .await
+            .expect("history");
+        assert!(empty.prs.is_empty());
+
+        let transport = RoutedTransport::default();
+        for n in 1..=MAX_DISCOVERY_PAGES {
+            let updated = format!("2026-01-{:02}T00:00:00Z", 30 - n);
+            transport.respond(
+                &closed(n),
+                vec![page(&[listed(u64::from(n), &updated, false)], true)],
+            );
+        }
+        let client = GitHubClient::with_transport(
+            GitHubHost::public(),
+            InstallationToken::new("ghs_token").expect("token"),
+            RequestLimits::default(),
+            Box::new(transport),
+        );
+        let prior = CoChangeHistory {
+            before: "2026-01-02T00:00:00Z".to_owned(),
+            prs: vec![HistoryPr {
+                number: 1000,
+                merged_at: "2026-01-01T00:00:00Z".to_owned(),
+                paths: Vec::new(),
+            }],
+        };
+        let bounded = read(&client, "2026-01-31T00:00:00Z", Some(&prior))
+            .await
+            .expect("history");
+        assert!(bounded.prs.is_empty(), "{bounded:?}");
+        assert_eq!(
+            client.calls().get(Operation::PullRequests),
+            u64::from(MAX_DISCOVERY_PAGES) + 1
+        );
+    }
+
+    /// A review sees only history merged strictly before its base commit's
+    /// time and never its own PR.
+    #[test]
+    fn review_history_is_time_eligible_and_excludes_its_own_pr() {
+        let entry = |number: u64, merged_at: &str| HistoryPr {
+            number,
+            merged_at: merged_at.to_owned(),
+            paths: vec![RelativePath::new(&format!("src/{number}.rs")).expect("path")],
+        };
+        let history = CoChangeHistory {
+            before: "2026-01-30T00:00:00Z".to_owned(),
+            prs: vec![
+                entry(4, "2026-01-20T00:00:00Z"),
+                entry(3, "2026-01-10T00:00:00Z"),
+                entry(2, "2026-01-05T00:00:00Z"),
+            ],
+        };
+        let seen: Vec<&str> = history
+            .for_review(3, "2026-01-20T00:00:00Z")
+            .map(|paths| paths[0].as_str())
+            .collect();
+        assert_eq!(seen, ["src/2.rs"]);
+    }
 
     /// A PR merged on day `day` of January 2026 at noon.
     fn merged(number: u64, day: u32) -> MergedPr {

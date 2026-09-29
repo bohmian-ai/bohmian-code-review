@@ -5,7 +5,10 @@
 //! verifies every eligible entry against its Git blob id, falls back to
 //! bounded verified blob calls for anything the archive omitted or
 //! substituted, and indexes through the public [`SymbolicContext`]. Source
-//! bytes live only while one entry is being parsed.
+//! bytes live only while one entry is being parsed. Before any source is
+//! read, the build reads the default branch's [`CoChangeHistory`] before the
+//! pinned commit's committer time, which the snapshot persists beside the
+//! facts.
 //!
 //! A complete [`Snapshot`] is published in three idempotent steps: upsert
 //! its record (refreshing `touched_at`), create its object if absent, and
@@ -18,6 +21,7 @@
 use crate::archive::{TarStream, VerifiedEntry};
 use crate::eligibility::{ExclusionReason, MAX_ELIGIBLE_FILE_BYTES, RootAttributes, classify};
 use crate::github::{Archive, BranchHead, GitHubClient, GitHubError, TreeEntry, TreeEntryMode};
+use crate::history::{CoChangeHistory, HistoryError};
 use crate::identity::{Identity, ObjectSha};
 use crate::persistence::{PersistenceError, SnapshotPointer, SnapshotScope, SnapshotStore};
 use crate::storage::{ObjectDigest, ObjectKey, ObjectStorage, StorageError};
@@ -246,9 +250,10 @@ impl FileOutcome {
 
 /// The immutable, source-free object stored at a snapshot key.
 ///
-/// Creation time, branch commit, and per-attempt ingest counters live
-/// outside it, so the same identity, versions, and tree always serialize to
-/// the same bytes.
+/// It is keyed by commit because its co-change history depends on the
+/// commit's time. Creation time and per-attempt ingest counters live
+/// outside it, so the same identity, versions, commit, and history always
+/// serialize to the same bytes.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Snapshot {
     /// [`SNAPSHOT_FORMAT_VERSION`] this object was written under.
@@ -257,23 +262,28 @@ pub struct Snapshot {
     pub extraction_version: String,
     /// Caller identity the key was scoped to.
     pub identity: Identity,
+    /// Default-branch commit the snapshot was built at.
+    pub commit: ObjectSha,
     /// Tree the snapshot indexes.
     pub tree: ObjectSha,
     /// Outcome of every eligible file, in canonical path order.
     pub files: Vec<FileOutcome>,
+    /// Co-change history merged before `commit`'s committer time.
+    pub history: CoChangeHistory,
 }
 
 impl Snapshot {
-    /// Decode and validate object bytes against the identity and tree they
-    /// were published for.
+    /// Decode and validate object bytes against the identity, commit, and
+    /// tree they were published for.
     ///
     /// # Errors
     ///
     /// Returns [`ColdBuildError::Corrupt`] when the bytes do not decode,
-    /// name another identity, tree, or version, or are not complete.
+    /// name another identity, commit, tree, or version, or are not complete.
     fn decode(
         bytes: &[u8],
         identity: &Identity,
+        commit: &ObjectSha,
         tree: &ObjectSha,
     ) -> Result<Snapshot, ColdBuildError> {
         let corrupt = |detail: String| ColdBuildError::Corrupt { detail };
@@ -293,6 +303,12 @@ impl Snapshot {
         }
         if snapshot.identity != *identity {
             return Err(corrupt("identity mismatch".to_owned()));
+        }
+        if snapshot.commit != *commit {
+            return Err(corrupt(format!(
+                "commit {} is not {commit}",
+                snapshot.commit
+            )));
         }
         if snapshot.tree != *tree {
             return Err(corrupt(format!("tree {} is not {tree}", snapshot.tree)));
@@ -344,7 +360,7 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> Snapshots<'a, O, S> {
     /// Read and validate the snapshot a pointer names in `scope`.
     ///
     /// The pointer's key must equal the key this library builds for
-    /// `scope` and the pointer's tree before
+    /// `scope` and the pointer's commit before
     /// storage is touched, so a pointer row leaked or copied from another
     /// tenant or installation can never read that identity's object.
     ///
@@ -354,13 +370,13 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> Snapshots<'a, O, S> {
     /// key, [`ColdBuildError::Storage`] when the object is missing or the
     /// backend fails, and [`ColdBuildError::Corrupt`] when its bytes do not
     /// match the pointer's digest or do not decode as a complete snapshot of
-    /// that identity and tree.
+    /// that identity, commit, and tree.
     pub async fn read(
         &self,
         scope: &SnapshotScope,
         pointer: &SnapshotPointer,
     ) -> Result<Snapshot, ColdBuildError> {
-        let expected = snapshot_key(scope, &pointer.tree);
+        let expected = snapshot_key(scope, &pointer.commit);
         if pointer.key != expected {
             return Err(ColdBuildError::ForeignKey {
                 key: pointer.key.clone(),
@@ -372,7 +388,7 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> Snapshots<'a, O, S> {
                 detail: "digest mismatch".to_owned(),
             });
         }
-        Snapshot::decode(&bytes, &scope.identity, &pointer.tree)
+        Snapshot::decode(&bytes, &scope.identity, &pointer.commit, &pointer.tree)
     }
 
     /// Delete every snapshot of `identity` that no pointer names and no
@@ -442,14 +458,14 @@ pub(crate) fn snapshot_scope(identity: &Identity, max_file_bytes: u64) -> Snapsh
     }
 }
 
-/// The only key a snapshot of `tree` in `scope` may live at.
-fn snapshot_key(scope: &SnapshotScope, tree: &ObjectSha) -> ObjectKey {
+/// The only key a snapshot of `commit` in `scope` may live at.
+fn snapshot_key(scope: &SnapshotScope, commit: &ObjectSha) -> ObjectKey {
     ObjectKey::snapshot(
         &scope.identity,
         &scope.extraction_version,
         scope.format_version,
         scope.max_file_bytes,
-        tree,
+        commit,
     )
 }
 
@@ -557,6 +573,9 @@ pub enum ColdBuildError {
     /// Metadata persistence failed.
     #[error(transparent)]
     Persistence(#[from] PersistenceError),
+    /// Co-change history could not be read completely.
+    #[error(transparent)]
+    History(#[from] HistoryError),
     /// A pointer names a key other than the caller's own snapshot key.
     #[error("snapshot pointer names a foreign key: {key}")]
     ForeignKey {
@@ -610,19 +629,21 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
     ///
     /// # Errors
     ///
-    /// Returns provider errors for the repository, branch, tree, and
-    /// attributes calls, storage and persistence errors, `ForeignKey` or
+    /// Returns provider errors for the repository, branch, tree,
+    /// attributes, and history calls; `History` for a history listing that
+    /// is incomplete or rejected, or `History(ListingMoved)`, a retry state;
+    /// storage and persistence errors, `ForeignKey` or
     /// `Corrupt` for an unusable current pointer or existing object, and
     /// `PointerConflict`, a retry state, when another writer moved the
     /// pointer first, or `Persistence(Collecting)`, a retry state, when a
-    /// running collection claimed this tree's record. Per-file
+    /// running collection claimed this commit's record. Per-file
     /// failures and an unusable archive never error; they appear in
     /// coverage and ingest stats.
     pub async fn run(&self, identity: &Identity) -> Result<ColdBuildResult, ColdBuildError> {
         let scope = snapshot_scope(identity, self.limits.max_file_bytes);
         let current = self.store.snapshot_pointer(&scope).await?;
         let head = self.pin(identity).await?;
-        self.build(&scope, current.as_ref(), &head).await
+        self.build(&scope, current.as_ref(), &head, None).await
     }
 
     /// Build or reuse the snapshot for the caller-chosen `commit` instead of
@@ -650,8 +671,9 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
             name: repository.default_branch,
             commit: pinned.sha,
             tree: pinned.tree,
+            committed_at: pinned.committed_at,
         };
-        self.build(&scope, current.as_ref(), &head).await
+        self.build(&scope, current.as_ref(), &head, None).await
     }
 
     /// Pin the default branch's current commit and tree.
@@ -666,8 +688,9 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
             .await
     }
 
-    /// Reuse `current` when it already covers `head` and validates, else
-    /// ingest `head` from its archive and publish over `current`.
+    /// Reuse `current` when it already covers `head`'s tree and validates,
+    /// else read `head`'s co-change history, extending `prior` when given,
+    /// ingest `head` from its archive, and publish over `current`.
     ///
     /// # Errors
     ///
@@ -677,6 +700,7 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
         scope: &SnapshotScope,
         current: Option<&SnapshotPointer>,
         head: &BranchHead,
+        prior: Option<&CoChangeHistory>,
     ) -> Result<ColdBuildResult, ColdBuildError> {
         let identity = &scope.identity;
         if let Some(pointer) = current.filter(|pointer| pointer.tree == head.tree) {
@@ -696,13 +720,36 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
                 Err(error) => return Err(error),
             }
         }
+        let history = self.history(identity, head, prior).await?;
         let mut ingest = match self.start(identity, head).await? {
             Ok(ingest) => ingest,
             Err(truncated) => return Ok(truncated),
         };
         let archive_too_large = self.fetch(&mut ingest, identity, head).await;
-        self.complete(scope, current, head, ingest, archive_too_large)
+        self.complete(scope, current, head, ingest, archive_too_large, history)
             .await
+    }
+
+    /// `head`'s co-change history on its branch before its committer time,
+    /// extending `prior` when given.
+    ///
+    /// # Errors
+    ///
+    /// As [`CoChangeHistory::read`].
+    pub(crate) async fn history(
+        &self,
+        identity: &Identity,
+        head: &BranchHead,
+        prior: Option<&CoChangeHistory>,
+    ) -> Result<CoChangeHistory, ColdBuildError> {
+        CoChangeHistory::read(
+            self.client,
+            &identity.repository,
+            &head.name,
+            &head.committed_at,
+            prior,
+        )
+        .await
     }
 
     /// List and classify `head`'s tree, with every eligible file pending.
@@ -763,7 +810,7 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
     }
 
     /// Report an incomplete `ingest` without writing, or publish its
-    /// complete snapshot of `head` over `current`.
+    /// complete snapshot of `head` with `history` over `current`.
     ///
     /// # Errors
     ///
@@ -775,6 +822,7 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
         head: &BranchHead,
         ingest: Ingest,
         archive_too_large: bool,
+        history: CoChangeHistory,
     ) -> Result<ColdBuildResult, ColdBuildError> {
         let ingested = ingest.finish();
         let coverage = ingested.coverage();
@@ -801,12 +849,12 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
             format_version: SNAPSHOT_FORMAT_VERSION,
             extraction_version: EXTRACTION_VERSION.to_owned(),
             identity: scope.identity.clone(),
+            commit: head.commit.clone(),
             tree: head.tree.clone(),
             files: ingested.outcomes,
+            history,
         };
-        let pointer = self
-            .publish(scope, current, &head.commit, &snapshot)
-            .await?;
+        let pointer = self.publish(scope, current, &snapshot).await?;
         Ok(ColdBuildResult::new(
             head,
             coverage,
@@ -818,11 +866,11 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
     /// Publish `snapshot` in three idempotent steps: upsert its record,
     /// refreshing `touched_at`; create its object if absent, adopting an
     /// existing object only when its bytes equal the built bytes (which
-    /// embed identity, versions, and tree); then compare-and-swap the
-    /// pointer from `current`.
+    /// embed identity, versions, commit, tree, and history); then
+    /// compare-and-swap the pointer from `current`.
     ///
     /// Dropped after any step, the pointer is untouched and every object
-    /// has a record; a retry of the same tree reaches the same key and
+    /// has a record; a retry of the same commit reaches the same key and
     /// adopts what the dropped attempt wrote.
     ///
     /// # Errors
@@ -832,11 +880,10 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
         &self,
         scope: &SnapshotScope,
         current: Option<&SnapshotPointer>,
-        commit: &ObjectSha,
         snapshot: &Snapshot,
     ) -> Result<SnapshotPointer, ColdBuildError> {
         let identity = &scope.identity;
-        let key = snapshot_key(scope, &snapshot.tree);
+        let key = snapshot_key(scope, &snapshot.commit);
         let bytes = serde_json::to_vec(snapshot).map_err(|error| ColdBuildError::Corrupt {
             detail: error.to_string(),
         })?;
@@ -854,7 +901,7 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> ColdBuild<'a, O, S> {
         }
         let pointer = SnapshotPointer {
             tree: snapshot.tree.clone(),
-            commit: commit.clone(),
+            commit: snapshot.commit.clone(),
             key,
             digest: ObjectDigest::of(&bytes),
         };
@@ -1471,6 +1518,19 @@ pub(crate) mod tests {
     /// `(path, mode:content id)` of every file of one pushed tree.
     type PushedEntries = Vec<(String, String)>;
 
+    /// Closed-PR listing page `page` of the fake repository's `main`.
+    pub(crate) fn closed_pulls(page: u32) -> String {
+        format!(
+            "/pulls?state=closed&base=main&sort=updated&direction=desc&per_page=100&page={page}"
+        )
+    }
+
+    /// Committer time of the `n`th pushed commit: noon on day `n` of
+    /// February 2026.
+    pub(crate) fn pushed_at(n: usize) -> String {
+        format!("2026-02-{n:02}T12:00:00Z")
+    }
+
     /// A fake repository at commit `c`/tree `7` with routed responses.
     pub(crate) struct FakeRepo {
         pub(crate) transport: Arc<RoutedTransport>,
@@ -1482,8 +1542,9 @@ pub(crate) mod tests {
     }
 
     impl FakeRepo {
-        /// Route repository, branch, tree, every blob, and the tarball
-        /// containing `archive` entries under the GitHub prefix.
+        /// Route repository, branch, tree, every blob, the tarball
+        /// containing `archive` entries, and no merged PRs under the GitHub
+        /// prefix.
         pub(crate) fn new(files: &[File], archive: &[(&str, &[u8])]) -> FakeRepo {
             let transport = Arc::new(RoutedTransport::default());
             let (tree, commit) = (sha('7'), sha('c'));
@@ -1498,8 +1559,44 @@ pub(crate) mod tests {
                 limits: RequestLimits::default(),
                 history: Mutex::default(),
             };
+            repo.merged(&[]);
             repo.push(&repo.commit, &repo.tree, files, archive);
             repo
+        }
+
+        /// Route one closed-PR listing page of `prs` merged into `main`,
+        /// each `(number, merged_at, changed paths)` updated when it
+        /// merged, and each PR's one-page file listing.
+        pub(crate) fn merged(&self, prs: &[(u64, &str, &[&str])]) {
+            let mut listed: Vec<_> = prs.to_vec();
+            listed.sort_by(|a, b| b.1.cmp(a.1));
+            let entries: Vec<String> = listed
+                .iter()
+                .map(|(number, at, _)| {
+                    format!(
+                        r#"{{"number":{number},"updated_at":"{at}","merged_at":"{at}","base":{{"ref":"main","sha":"{}"}},"head":{{"ref":"f","sha":"{}"}}}}"#,
+                        sha('a'),
+                        sha('b')
+                    )
+                })
+                .collect();
+            self.transport
+                .json(&closed_pulls(1), &format!("[{}]", entries.join(",")));
+            for (number, _, paths) in prs {
+                let files: Vec<String> = paths
+                    .iter()
+                    .map(|path| {
+                        format!(
+                            r#"{{"filename":"{path}","status":"modified","sha":"{}","patch":"@@ -1 +1 @@\n-a\n+b"}}"#,
+                            sha('e')
+                        )
+                    })
+                    .collect();
+                self.transport.json(
+                    &format!("/pulls/{number}/files?per_page=100&page=1"),
+                    &format!("[{}]", files.join(",")),
+                );
+            }
         }
 
         /// Move the branch to `commit`/`tree` listing `files`, routing its
@@ -1513,11 +1610,16 @@ pub(crate) mod tests {
             archive: &[(&str, &[u8])],
         ) {
             let transport = &self.transport;
+            let at = pushed_at(self.history.lock().expect("history lock").len() + 1);
             transport.json(
                 "/branches/main",
                 &format!(
-                    r#"{{"name":"main","commit":{{"sha":"{commit}","commit":{{"tree":{{"sha":"{tree}"}}}}}}}}"#
+                    r#"{{"name":"main","commit":{{"sha":"{commit}","commit":{{"tree":{{"sha":"{tree}"}},"committer":{{"date":"{at}"}}}}}}}}"#
                 ),
+            );
+            transport.json(
+                &format!("/git/commits/{commit}"),
+                &format!(r#"{{"sha":"{commit}","tree":{{"sha":"{tree}"}},"committer":{{"date":"{at}"}}}}"#),
             );
             self.route_tree(tree, files);
             route_directories(transport, tree, files);
@@ -1707,13 +1809,6 @@ pub(crate) mod tests {
     #[tokio::test]
     async fn fixed_commit_build_ignores_head_advance_and_run_follows_it() {
         let repo = FakeRepo::new(&standard_files(), &standard_archive());
-        repo.transport.json(
-            &format!("/git/commits/{}", repo.commit),
-            &format!(
-                r#"{{"sha":"{}","tree":{{"sha":"{}"}}}}"#,
-                repo.commit, repo.tree
-            ),
-        );
         let client = repo.client();
         let (storage, store) = (MemoryStorage::default(), MemorySnapshotStore::default());
         let build = ColdBuild::new(&client, &storage, &store, ColdBuildLimits::default());
@@ -1765,7 +1860,7 @@ pub(crate) mod tests {
                 EXTRACTION_VERSION,
                 SNAPSHOT_FORMAT_VERSION,
                 MAX_ELIGIBLE_FILE_BYTES,
-                &repo.tree
+                &repo.commit
             )
         );
 
@@ -1835,7 +1930,8 @@ pub(crate) mod tests {
                 "source fragment {fragment:?} persisted"
             );
         }
-        let snapshot = Snapshot::decode(&bytes, &identity, &repo.tree).expect("decode");
+        let snapshot =
+            Snapshot::decode(&bytes, &identity, &repo.commit, &repo.tree).expect("decode");
         assert_eq!(
             snapshot.coverage(),
             Coverage {
@@ -1970,7 +2066,8 @@ pub(crate) mod tests {
             unreachable!("publication asserted above");
         };
         let bytes = storage.read(&pointer.key).await.expect("object");
-        let snapshot = Snapshot::decode(&bytes, &identity(), &repo.tree).expect("decode");
+        let snapshot =
+            Snapshot::decode(&bytes, &identity(), &repo.commit, &repo.tree).expect("decode");
         let indexed: Vec<&str> = snapshot
             .files
             .iter()
@@ -2030,8 +2127,10 @@ pub(crate) mod tests {
             format_version: SNAPSHOT_FORMAT_VERSION,
             extraction_version: EXTRACTION_VERSION.to_owned(),
             identity: identity(),
+            commit: sha('c'),
             tree: sha('7'),
             files: ingested.outcomes,
+            history: CoChangeHistory::default(),
         });
         assert!(ingest.pending.is_empty());
         let ingested = ingest.finish();
@@ -2117,7 +2216,7 @@ pub(crate) mod tests {
             let (storage, store, bytes, tree, commit) =
                 (&storage, &store, &old_bytes, &repo.tree, &repo.commit);
             async move {
-                let key = snapshot_key(&scope, tree);
+                let key = snapshot_key(&scope, commit);
                 store
                     .upsert_record(&scope.identity, &key)
                     .await
@@ -2161,7 +2260,8 @@ pub(crate) mod tests {
             }]
         );
         let bytes = storage.read(&pointer.key).await.expect("object");
-        let snapshot = Snapshot::decode(&bytes, &identity, &repo.tree).expect("decode");
+        let snapshot =
+            Snapshot::decode(&bytes, &identity, &repo.commit, &repo.tree).expect("decode");
         assert_eq!(snapshot.coverage(), built.coverage);
         assert!(
             matches!(&snapshot.files[1], FileOutcome::Indexed(file) if file.facts().path.as_str() == "src/user.ts")
@@ -2520,7 +2620,7 @@ pub(crate) mod tests {
         let repo = FakeRepo::new(&standard_files(), &standard_archive());
         let client = repo.client();
         let identity = identity();
-        let key = snapshot_key(&scope(&identity), &repo.tree);
+        let key = snapshot_key(&scope(&identity), &repo.commit);
         let prior = SnapshotPointer {
             tree: sha('0'),
             commit: sha('1'),
@@ -2597,7 +2697,7 @@ pub(crate) mod tests {
         let storage = MemoryStorage::default();
         let store = MemorySnapshotStore::default();
         let identity = identity();
-        let key = snapshot_key(&scope(&identity), &repo.tree);
+        let key = snapshot_key(&scope(&identity), &repo.commit);
         storage
             .create(&key, b"{\"not\":\"a snapshot\"}")
             .await
@@ -2648,7 +2748,7 @@ pub(crate) mod tests {
         );
         assert_eq!(
             build
-                .publish(&scope(&identity), Some(&pointer), &repo.commit, &snapshot)
+                .publish(&scope(&identity), Some(&pointer), &snapshot)
                 .await,
             Err(ColdBuildError::PointerConflict)
         );
@@ -2673,7 +2773,7 @@ pub(crate) mod tests {
         let repo = FakeRepo::new(&standard_files(), &standard_archive());
         let client = repo.client();
         let owner = identity();
-        let key = snapshot_key(&scope(&owner), &repo.tree);
+        let key = snapshot_key(&scope(&owner), &repo.commit);
         let recorded = || vec![(owner.clone(), key.clone())];
 
         let storage = MemoryStorage::default();
@@ -2984,7 +3084,7 @@ pub(crate) mod tests {
             installation: InstallationId::new(43).expect("installation"),
             ..owner.clone()
         };
-        let head = snapshot_key(&scope(&owner), &repo.tree);
+        let head = snapshot_key(&scope(&owner), &repo.commit);
         let stale = snapshot_key(&scope(&owner), &sha('1'));
         let gone = snapshot_key(&scope(&owner), &sha('2'));
         let foreign = snapshot_key(&scope(&other), &sha('1'));

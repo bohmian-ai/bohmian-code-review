@@ -539,7 +539,7 @@ fn multi_file_pr_ranks_union_of_changed_names_and_packs_candidates_only() {
             changed: vec![LineRange { start: 3, end: 3 }],
         },
     ];
-    let ranked = context.rank_files(&changed).expect("valid changes");
+    let ranked = context.rank_files(&changed, &[]).expect("valid changes");
     let scores: Vec<(&str, f64)> = ranked
         .iter()
         .map(|file| (file.path.as_str(), file.score))
@@ -635,11 +635,74 @@ fn multi_file_pr_ranks_union_of_changed_names_and_packs_candidates_only() {
             .all(|omission| matches!(omission.reason, OmissionReason::TokenLimit { .. }))
     );
     assert!(matches!(
-        context.rank_files(&[ChangedBlob {
-            path: "src/report.ts",
-            head: REPORT.as_bytes(),
-            changed: Vec::new(),
-        }]),
+        context.rank_files(
+            &[ChangedBlob {
+                path: "src/report.ts",
+                head: REPORT.as_bytes(),
+                changed: Vec::new(),
+            }],
+            &[]
+        ),
         Err(Error::Select(SelectError::DeletionOnly))
     ));
+}
+
+#[test]
+/// Pass one indexes the base; pass two ranks the changed handler over
+/// co-change history that pairs it only with `src/unrelated.ts`, a file
+/// sharing no symbol with it. Without history that file is not a
+/// candidate; with it, the fused ranker scores it as the top symbol match
+/// and a two-file budget packs both.
+fn co_change_history_ranks_and_packs_a_file_sharing_no_symbol() {
+    let context = indexed();
+    let changed = [ChangedBlob {
+        path: "src/handler.ts",
+        head: HANDLER.as_bytes(),
+        changed: vec![LineRange { start: 5, end: 8 }],
+    }];
+    let scores = |history: &[&[RelativePath]]| -> Vec<(String, f64)> {
+        context
+            .rank_files(&changed, history)
+            .expect("valid changes")
+            .into_iter()
+            .map(|file| (file.path.as_str().to_owned(), file.score))
+            .collect()
+    };
+    let top = 1.0 / 61.0;
+    assert_eq!(
+        scores(&[]),
+        [
+            ("src/user.ts".to_owned(), top),
+            ("src/format.ts".to_owned(), 1.0 / 62.0),
+        ]
+    );
+
+    let merged = [path("src/handler.ts"), path("src/unrelated.ts")];
+    let history = [&merged[..], &merged[..]];
+    assert_eq!(
+        scores(&history),
+        [
+            ("src/unrelated.ts".to_owned(), top),
+            ("src/user.ts".to_owned(), top),
+            ("src/format.ts".to_owned(), 1.0 / 62.0),
+        ]
+    );
+
+    let ranked = context
+        .rank_files(&changed, &history)
+        .expect("valid changes");
+    let packed = context
+        .build_candidate_context(
+            &ranked,
+            &blobs(&["src/unrelated.ts", "src/user.ts", "src/format.ts"]),
+            ContextLimits {
+                max_files: 2,
+                max_tokens: 100,
+            },
+            words,
+        )
+        .expect("packs");
+    let mut files: Vec<&str> = packed.spans.iter().map(|span| span.path.as_str()).collect();
+    files.dedup();
+    assert_eq!(files, ["src/unrelated.ts", "src/user.ts"]);
 }

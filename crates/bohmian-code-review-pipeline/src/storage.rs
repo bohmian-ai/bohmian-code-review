@@ -59,9 +59,9 @@ impl ObjectKey {
         )
     }
 
-    /// Key for a snapshot of `tree` produced under one extraction version,
-    /// format version, and file-size ceiling, so facts built under another
-    /// ceiling are never reused.
+    /// Key for a snapshot of `commit` produced under one extraction
+    /// version, format version, and file-size ceiling, so facts built under
+    /// another ceiling are never reused.
     ///
     /// The extraction version is hex-encoded because it is free text.
     pub fn snapshot(
@@ -69,10 +69,10 @@ impl ObjectKey {
         extraction_version: &str,
         format_version: u32,
         max_file_bytes: u64,
-        tree: &ObjectSha,
+        commit: &ObjectSha,
     ) -> ObjectKey {
         ObjectKey(format!(
-            "{}/snapshots/{}/{format_version}/{max_file_bytes}/{tree}",
+            "{}/snapshots/{}/{format_version}/{max_file_bytes}/{commit}",
             ObjectKey::prefix(identity),
             hex(extraction_version.as_bytes())
         ))
@@ -127,7 +127,7 @@ impl ObjectKey {
             repository.parse::<NonZeroU64>().ok()?
         );
         match rest {
-            ["snapshots", version, format_version, max_file_bytes, tree] => {
+            ["snapshots", version, format_version, max_file_bytes, commit] => {
                 let version_is_hex = !version.is_empty()
                     && version.len() % 2 == 0
                     && version
@@ -140,7 +140,7 @@ impl ObjectKey {
                     "{prefix}/snapshots/{version}/{}/{}/{}",
                     format_version.parse::<u32>().ok()?,
                     max_file_bytes.parse::<u64>().ok()?,
-                    ObjectSha::new(tree).ok()?
+                    ObjectSha::new(commit).ok()?
                 ))
             }
             ["contexts", id] => Some(format!("{prefix}/contexts/{}", ContextId::new(id).ok()?)),
@@ -149,7 +149,7 @@ impl ObjectKey {
     }
 
     /// Whether this is a snapshot key of `identity` under any extraction
-    /// version, format version, file ceiling, or tree.
+    /// version, format version, file ceiling, or commit.
     ///
     /// Keys only exist in the two validated layouts, so a prefix check is
     /// exact.
