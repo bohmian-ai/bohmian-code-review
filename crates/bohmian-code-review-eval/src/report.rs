@@ -2,12 +2,13 @@
 //!
 //! Each PR's arm score is its mean hit@10 over its own trials, so every PR
 //! counts equally however many trials it contributes. An effect is the mean
-//! per-PR difference against C with a percentile bootstrap interval over
-//! PRs from [`BOOTSTRAP_SEED`]. F is adopted only when every repository's
-//! F − C effect is [`Verdict::Met`].
+//! per-PR difference of one arm against [`BASELINE`] with a percentile
+//! bootstrap interval over PRs from [`BOOTSTRAP_SEED`]. F is adopted only
+//! when every repository's F − C effect is [`Verdict::Met`].
 
-use crate::trial::Trial;
+use crate::trial::{BASELINE, Trial};
 use serde::Serialize;
+use std::collections::BTreeMap;
 
 /// Seed of every bootstrap, recorded in the report.
 pub const BOOTSTRAP_SEED: u64 = 0x2026_0929_c0c4_a17e;
@@ -44,18 +45,19 @@ pub struct PrMeans {
     pub pr: u64,
     /// Trials the means cover.
     pub trials: usize,
-    /// C's mean hit@10.
-    #[serde(rename = "C")]
-    pub c: f64,
-    /// E's mean hit@10.
-    #[serde(rename = "E")]
-    pub e: f64,
-    /// F's mean hit@10.
-    #[serde(rename = "F")]
-    pub f: f64,
+    /// Each arm's mean hit@10 by arm id.
+    #[serde(flatten)]
+    pub arms: BTreeMap<&'static str, f64>,
 }
 
-/// A paired treatment − C effect over PRs.
+impl PrMeans {
+    /// Arm `id`'s mean hit@10; 0 for an arm no trial recorded.
+    pub fn arm(&self, id: &str) -> f64 {
+        self.arms.get(id).copied().unwrap_or_default()
+    }
+}
+
+/// A paired treatment − baseline effect over PRs.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 pub struct Effect {
     /// Mean per-PR difference.
@@ -80,38 +82,39 @@ pub enum Verdict {
 pub fn pr_means(trials: &[Trial]) -> Vec<PrMeans> {
     let mut means: Vec<PrMeans> = Vec::new();
     for trial in trials {
-        let hits = trial
-            .arms()
-            .map(|(_, outcome)| f64::from(u8::from(outcome.hit_at_10)));
-        match means.iter_mut().find(|means| means.pr == trial.pr) {
-            Some(pr) => {
-                pr.trials += 1;
-                pr.c += hits[0];
-                pr.e += hits[1];
-                pr.f += hits[2];
+        let index = match means.iter().position(|means| means.pr == trial.pr) {
+            Some(index) => index,
+            None => {
+                means.push(PrMeans {
+                    pr: trial.pr,
+                    trials: 0,
+                    arms: BTreeMap::new(),
+                });
+                means.len() - 1
             }
-            None => means.push(PrMeans {
-                pr: trial.pr,
-                trials: 1,
-                c: hits[0],
-                e: hits[1],
-                f: hits[2],
-            }),
+        };
+        let pr = &mut means[index];
+        pr.trials += 1;
+        for (id, outcome) in &trial.arms {
+            *pr.arms.entry(id).or_default() += f64::from(u8::from(outcome.hit_at_10));
         }
     }
     for pr in &mut means {
         let trials = pr.trials as f64;
-        pr.c /= trials;
-        pr.e /= trials;
-        pr.f /= trials;
+        for mean in pr.arms.values_mut() {
+            *mean /= trials;
+        }
     }
     means
 }
 
-/// The paired `treatment` − C effect over `means`, bootstrapped from
-/// `seed`. No PRs is a zero effect.
-pub fn effect(means: &[PrMeans], treatment: fn(&PrMeans) -> f64, seed: u64) -> Effect {
-    let differences: Vec<f64> = means.iter().map(|pr| treatment(pr) - pr.c).collect();
+/// The paired arm `treatment` − [`BASELINE`] effect over `means`,
+/// bootstrapped from `seed`. No PRs is a zero effect.
+pub fn effect(means: &[PrMeans], treatment: &str, seed: u64) -> Effect {
+    let differences: Vec<f64> = means
+        .iter()
+        .map(|pr| pr.arm(treatment) - pr.arm(BASELINE))
+        .collect();
     let count = differences.len();
     if count == 0 {
         return Effect {
@@ -185,9 +188,11 @@ mod tests {
         Trial {
             pr,
             withheld: RelativePath::new("src/a.py").expect("fixture path is canonical"),
-            c: outcome(hits[0]),
-            e: outcome(hits[1]),
-            f: outcome(hits[2]),
+            arms: BTreeMap::from([
+                ("C", outcome(hits[0])),
+                ("E", outcome(hits[1])),
+                ("F", outcome(hits[2])),
+            ]),
         }
     }
 
@@ -199,9 +204,7 @@ mod tests {
             .map(|(pr, value)| PrMeans {
                 pr: pr as u64,
                 trials: 1,
-                c: 0.0,
-                e: 0.0,
-                f: *value,
+                arms: BTreeMap::from([("C", 0.0), ("E", 0.0), ("F", *value)]),
             })
             .collect()
     }
@@ -226,10 +229,10 @@ mod tests {
             [(1, 3), (2, 1)]
         );
         assert_eq!(
-            (means[0].c, means[0].e, means[0].f),
+            (means[0].arm("C"), means[0].arm("E"), means[0].arm("F")),
             (1.0 / 3.0, 2.0 / 3.0, 2.0 / 3.0)
         );
-        let f_minus_c = effect(&means, |pr| pr.f, BOOTSTRAP_SEED);
+        let f_minus_c = effect(&means, "F", BOOTSTRAP_SEED);
         assert_eq!(f_minus_c.mean, (1.0 / 3.0 + 1.0) / 2.0);
         assert_eq!(f_minus_c.ci_95, [1.0 / 3.0, 1.0]);
         assert!(pr_means(&[]).is_empty());
@@ -240,19 +243,19 @@ mod tests {
     #[test]
     fn bootstrap_is_fixed_by_its_seed() {
         let means = differences(&[0.0, 0.2, 0.4, 1.0, -0.6, 0.8, 0.0, 0.2]);
-        let first = effect(&means, |pr| pr.f, BOOTSTRAP_SEED);
-        assert_eq!(first, effect(&means, |pr| pr.f, BOOTSTRAP_SEED));
+        let first = effect(&means, "F", BOOTSTRAP_SEED);
+        assert_eq!(first, effect(&means, "F", BOOTSTRAP_SEED));
         assert_eq!(first.ci_95, [-0.07499999999999998, 0.575]);
         assert!(first.ci_95[0] < first.mean && first.mean < first.ci_95[1]);
         assert_eq!(
-            effect(&differences(&[0.25; 50]), |pr| pr.f, BOOTSTRAP_SEED),
+            effect(&differences(&[0.25; 50]), "F", BOOTSTRAP_SEED),
             Effect {
                 mean: 0.25,
                 ci_95: [0.25, 0.25]
             }
         );
         assert_eq!(
-            effect(&[], |pr| pr.f, BOOTSTRAP_SEED),
+            effect(&[], "F", BOOTSTRAP_SEED),
             Effect {
                 mean: 0.0,
                 ci_95: [0.0, 0.0]
@@ -265,7 +268,7 @@ mod tests {
     /// contains 0: inconclusive, and F is not adopted.
     #[test]
     fn a_zero_containing_interval_is_inconclusive() {
-        let f_minus_c = effect(&differences(&[0.0, 1.0]), |pr| pr.f, BOOTSTRAP_SEED);
+        let f_minus_c = effect(&differences(&[0.0, 1.0]), "F", BOOTSTRAP_SEED);
         assert_eq!(
             f_minus_c,
             Effect {

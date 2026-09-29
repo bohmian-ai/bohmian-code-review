@@ -7,11 +7,12 @@
 //! file listing, its repository's source-language eligibility, and its base
 //! snapshot's declarations. Missing or malformed patches are file-local
 //! omissions; unusable identities, rejected entries, and incomplete
-//! listings fail the run.
+//! listings fail the run. Listings and merged-PR identities are the
+//! pipeline's history types.
 
 use bohmian_code_review::{Language, RelativePath, SymbolicContext, parse_hunks};
 use bohmian_code_review_pipeline::{
-    FileStatus, ObjectSha, PullRequestFile, PullRequestFilesPage, RejectedPath,
+    FileStatus, HistoryError, Listing, MergedPr, ObjectSha, PullRequestFile,
 };
 use serde::Deserialize;
 use std::collections::BTreeSet;
@@ -23,9 +24,6 @@ pub const SAMPLE_SIZE: usize = 50;
 const MIN_SOURCE_FILES: usize = 2;
 /// Most changed source files a sampled PR may have.
 const MAX_SOURCE_FILES: usize = 15;
-/// Most entries GitHub's PR-files endpoint returns; a listing this long
-/// cannot prove it ended.
-const MAX_LISTED_FILES: usize = 3_000;
 
 /// Why sampling cannot produce a trustworthy sample; the run stops.
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -47,21 +45,9 @@ pub enum SampleError {
     /// The configured cutoff is not a `YYYY-MM-DDTHH:MM:SSZ` timestamp.
     #[error("cutoff `{0}` is not a YYYY-MM-DDTHH:MM:SSZ timestamp")]
     InvalidCutoff(String),
-    /// The provider rejected an entry of a PR's file listing.
-    #[error("PR #{number} lists an unusable file `{}`: {}", .rejected.path, .rejected.reason)]
-    RejectedFile {
-        /// PR number.
-        number: u64,
-        /// The rejected entry.
-        rejected: RejectedPath,
-    },
-    /// A PR's file listing did not provably end within the provider's
-    /// page or file limit.
-    #[error("PR #{number} file listing is incomplete")]
-    IncompleteListing {
-        /// PR number.
-        number: u64,
-    },
+    /// A PR listing or the history it feeds cannot be trusted.
+    #[error(transparent)]
+    History(#[from] HistoryError),
     /// A PR's base snapshot does not cover its whole base tree.
     #[error("PR #{number} base snapshot at {base} is incomplete: {detail}")]
     IncompleteSnapshot {
@@ -71,13 +57,6 @@ pub enum SampleError {
         base: ObjectSha,
         /// Why the snapshot is incomplete.
         detail: String,
-    },
-    /// Fewer than [`crate::history::COLD_DEPTH`] non-mass-edit PRs merged
-    /// before the cold build point.
-    #[error("only {found} non-mass-edit PRs merged before the cold build point")]
-    ShortHistory {
-        /// Non-mass-edit PRs found.
-        found: usize,
     },
     /// Fewer than [`SAMPLE_SIZE`] PRs qualified before the listing ended.
     #[error("only {found} of {SAMPLE_SIZE} qualifying PRs before the cutoff")]
@@ -110,19 +89,6 @@ pub struct ListedRef {
     pub name: String,
     /// Commit id.
     pub sha: String,
-}
-
-/// A merged PR with validated identity, ready for qualification.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MergedPr {
-    /// PR number.
-    pub number: u64,
-    /// Merge time as `YYYY-MM-DDTHH:MM:SSZ`, ordered as text.
-    pub merged_at: String,
-    /// Base commit.
-    pub base: ObjectSha,
-    /// Head commit.
-    pub head: ObjectSha,
 }
 
 /// Merged PRs discovered so far, released in final sample order once the
@@ -258,46 +224,6 @@ pub fn eligible(
         .is_ok_and(|language| language.is_some_and(|language| languages.contains(&language)))
 }
 
-/// One PR's complete file listing, as read once from the provider.
-#[derive(Debug, Clone, Default)]
-pub struct Listing {
-    /// Valid entries in provider order.
-    pub files: Vec<PullRequestFile>,
-    /// Entries the provider client rejected.
-    pub rejected: Vec<RejectedPath>,
-    /// Whether the listing may be cut: the last page read still
-    /// advertised a next page, or the provider's file ceiling was reached.
-    pub truncated: bool,
-    /// Paths of `files`, so a repeated path is caught at the fold.
-    paths: BTreeSet<RelativePath>,
-}
-
-impl Listing {
-    /// Fold one provider `page` into the listing; `last` marks the final
-    /// page the caller will read. Accepted and rejected entries both count
-    /// toward [`MAX_LISTED_FILES`]. An entry whose path is already listed,
-    /// within this page or an earlier one, is rejected rather than kept, so
-    /// `files` holds distinct paths in provider order.
-    ///
-    /// Returns whether another page must be read.
-    pub fn push(&mut self, page: PullRequestFilesPage, last: bool) -> bool {
-        for file in page.files {
-            if self.paths.insert(file.path.clone()) {
-                self.files.push(file);
-            } else {
-                self.rejected.push(RejectedPath {
-                    path: file.path.as_str().to_owned(),
-                    reason: "path listed twice".to_owned(),
-                });
-            }
-        }
-        self.rejected.extend(page.rejected);
-        self.truncated =
-            self.files.len() + self.rejected.len() >= MAX_LISTED_FILES || (page.has_next && last);
-        page.has_next && !self.truncated
-    }
-}
-
 /// A PR's changed source files, screened from its listing without snapshot
 /// facts.
 ///
@@ -337,19 +263,13 @@ impl Screen {
     ///
     /// # Errors
     ///
-    /// [`SampleError::IncompleteListing`] for a truncated listing, then
-    /// [`SampleError::RejectedFile`] for any rejected entry.
+    /// [`SampleError::History`] with the error of [`Listing::complete`].
     pub fn new(
         number: u64,
         listing: Listing,
         eligible: impl Fn(&RelativePath) -> bool,
     ) -> Result<Screen, SampleError> {
-        if listing.truncated {
-            return Err(SampleError::IncompleteListing { number });
-        }
-        if let Some(rejected) = listing.rejected.into_iter().next() {
-            return Err(SampleError::RejectedFile { number, rejected });
-        }
+        listing.complete(number)?;
         let mut screen = Screen {
             source: Vec::new(),
             changed_lines: Vec::new(),
@@ -401,6 +321,19 @@ impl Screen {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bohmian_code_review_pipeline::{PullRequestFilesPage, RejectedPath};
+
+    /// A complete one-page listing of `files`.
+    fn listing(files: Vec<PullRequestFile>) -> Listing {
+        let mut listing = Listing::default();
+        let page = PullRequestFilesPage {
+            files,
+            rejected: Vec::new(),
+            has_next: false,
+        };
+        listing.push(page, true);
+        listing
+    }
 
     /// A listed PR merged into `main` at `merged_at` (or unmerged).
     fn listed(number: u64, updated_at: &str, merged_at: Option<&str>) -> ListedPr {
@@ -495,15 +428,7 @@ mod tests {
     fn screen_qualifies_and_records_omissions() {
         let declared = |path: &RelativePath| path.as_str() != "src/new.py";
         let screen = |files: Vec<PullRequestFile>| {
-            Screen::new(
-                1,
-                Listing {
-                    files,
-                    ..Listing::default()
-                },
-                language,
-            )
-            .expect("complete listing")
+            Screen::new(1, listing(files), language).expect("complete listing")
         };
         let qualifying = screen(vec![
             file("src/a.py", FileStatus::Modified, Some(PATCH)),
@@ -562,21 +487,14 @@ mod tests {
     fn typescript_eligibility_uses_public_query() {
         let symbolic = SymbolicContext::new();
         let screen = |files: Vec<PullRequestFile>| {
-            Screen::new(
-                5,
-                Listing {
-                    files,
-                    ..Listing::default()
-                },
-                |path| {
-                    eligible(
-                        &symbolic,
-                        &[Language::Typescript, Language::Tsx],
-                        Some(&[".ts", ".tsx"]),
-                        path,
-                    )
-                },
-            )
+            Screen::new(5, listing(files), |path| {
+                eligible(
+                    &symbolic,
+                    &[Language::Typescript, Language::Tsx],
+                    Some(&[".ts", ".tsx"]),
+                    path,
+                )
+            })
             .expect("complete listing")
         };
         let modified = |path: &str| file(path, FileStatus::Modified, Some(PATCH));
@@ -598,122 +516,31 @@ mod tests {
         assert!(screen(many).plausible());
     }
 
-    /// A rejected entry or a truncated listing fails the run.
+    /// A rejected entry or a truncated listing fails the run with the
+    /// pipeline's history error.
     #[test]
     fn screen_fails_on_rejected_or_incomplete_listing() {
         let rejected = RejectedPath {
             path: "../x.py".to_owned(),
             reason: "not canonical".to_owned(),
         };
-        let listing = Listing {
-            rejected: vec![rejected.clone()],
-            ..Listing::default()
-        };
+        let mut listing = Listing::default();
+        listing.rejected.push(rejected.clone());
         assert_eq!(
             Screen::new(3, listing, language).err(),
-            Some(SampleError::RejectedFile {
+            Some(SampleError::History(HistoryError::RejectedFile {
                 number: 3,
                 rejected
-            })
+            }))
         );
-        let listing = Listing {
-            truncated: true,
-            ..Listing::default()
-        };
+        let mut listing = Listing::default();
+        listing.truncated = true;
         assert_eq!(
             Screen::new(3, listing, language).err(),
-            Some(SampleError::IncompleteListing { number: 3 })
+            Some(SampleError::History(HistoryError::IncompleteListing {
+                number: 3
+            }))
         );
-    }
-
-    /// A listing folded from provider pages is incomplete when a page past
-    /// the last is advertised or when accepted plus rejected entries reach
-    /// the provider's file ceiling, even with no next page; a shorter
-    /// terminal page is complete.
-    #[test]
-    fn listing_fails_at_provider_limits() {
-        let page =
-            |n: usize, accepted: usize, rejected: usize, has_next: bool| PullRequestFilesPage {
-                files: (0..accepted)
-                    .map(|i| {
-                        file(
-                            &format!("docs/p{n}/f{i}.md"),
-                            FileStatus::Modified,
-                            Some(PATCH),
-                        )
-                    })
-                    .collect(),
-                rejected: (0..rejected)
-                    .map(|i| RejectedPath {
-                        path: format!("../r{i}"),
-                        reason: "not canonical".to_owned(),
-                    })
-                    .collect(),
-                has_next,
-            };
-        let fold = |pages: Vec<PullRequestFilesPage>| {
-            let mut listing = Listing::default();
-            let last = pages.len();
-            for (read, page) in pages.into_iter().enumerate() {
-                if !listing.push(page, read + 1 == last) {
-                    break;
-                }
-            }
-            Screen::new(3, listing, language).err()
-        };
-        let capped = (1..=30).map(|n| page(n, 99, 1, n < 30)).collect();
-        assert_eq!(
-            fold(capped),
-            Some(SampleError::IncompleteListing { number: 3 })
-        );
-        let advertised = (1..=30).map(|n| page(n, 50, 0, true)).collect();
-        assert_eq!(
-            fold(advertised),
-            Some(SampleError::IncompleteListing { number: 3 })
-        );
-        assert_eq!(
-            fold(vec![page(1, 100, 0, true), page(2, 40, 0, false)]),
-            None
-        );
-    }
-
-    /// A canonical path listed twice, within one page or across pages and
-    /// whatever its status or patch, is a rejected entry that fails the run
-    /// before qualification; distinct paths still qualify.
-    #[test]
-    fn listing_rejects_repeated_paths() {
-        let fold = |pages: Vec<Vec<PullRequestFile>>| {
-            let mut listing = Listing::default();
-            let last = pages.len();
-            for (read, files) in pages.into_iter().enumerate() {
-                let page = PullRequestFilesPage {
-                    files,
-                    rejected: Vec::new(),
-                    has_next: read + 1 < last,
-                };
-                if !listing.push(page, read + 1 == last) {
-                    break;
-                }
-            }
-            Screen::new(4, listing, language)
-        };
-        let repeated = |result: Result<Screen, SampleError>| match result {
-            Err(SampleError::RejectedFile { number, rejected }) => {
-                number == 4 && rejected.path == "src/a.py"
-            }
-            _ => false,
-        };
-        let first = file("src/a.py", FileStatus::Modified, Some(PATCH));
-        let again = file("src/a.py", FileStatus::Added, None);
-        assert!(repeated(fold(vec![vec![first.clone(), again.clone()]])));
-        assert!(repeated(fold(vec![vec![first.clone()], vec![again]])));
-        let distinct = fold(vec![
-            vec![first],
-            vec![file("src/b.py", FileStatus::Added, Some(PATCH))],
-        ])
-        .expect("distinct paths");
-        assert_eq!(distinct.source.len(), 2);
-        assert!(distinct.qualifies(|_| true));
     }
 
     /// Cutoff, update, and merge times must name real Gregorian UTC

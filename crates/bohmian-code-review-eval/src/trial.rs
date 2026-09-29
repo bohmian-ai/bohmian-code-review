@@ -1,44 +1,50 @@
-//! Leave-one-out ranking trials for the co-change experiment.
+//! Leave-one-out ranking trials over the public rankers.
 //!
-//! For one sampled PR, [`evaluate`] builds the base candidate universe from
-//! the base snapshot's index and the hash-verified base blob of every
-//! indexed file, prepares each changed file from its patch and head blob,
-//! and runs up to [`MAX_TRIALS`] trials chosen by [`TRIAL_RULE`]: the
-//! withheld file leaves the change set and stays a candidate at its base
-//! version, and every other changed path is excluded from the candidates.
-//! C ranks by directional, rarity-weighted references; E by co-change in
-//! the trial's time-eligible history; F fuses the C and E ranks. Every arm
-//! ranks the same candidates. Source is read only while a PR is evaluated;
-//! trials carry the withheld path and each arm's rank and hit@10 only.
+//! For one sampled PR, [`evaluate`] reads the base snapshot's index,
+//! persisted declarations and reference names included, prepares each
+//! changed file from its patch and head blob, and runs up to [`MAX_TRIALS`]
+//! trials chosen by [`TRIAL_RULE`]: the withheld file leaves the change set
+//! and stays a candidate at its base version, and every other changed path
+//! is excluded from the candidates. Every arm in [`ARMS`] is a public
+//! [`Ranker`] over the same [`bohmian_code_review::RankInput`]. Source is read only while a PR is
+//! evaluated; trials carry the withheld path and each arm's rank and hit@10
+//! only.
 
 use bohmian_code_review::{
-    DeclarationFact, Error as SymbolicError, Node, RawReference, RelativePath, SymbolicContext,
-    parse_hunks,
+    ChangedBlob, ChangedFile, CoChange, DEFAULT_RANKER, Error as SymbolicError, HeadFacts,
+    RankedFile, Ranker, RaritySymbol, RelativePath, SymbolOverlap, SymbolicContext, parse_hunks,
 };
 use bohmian_code_review_pipeline::{FileStatus, PullRequestFile};
 use serde::{Serialize, Serializer};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use thiserror::Error;
 
-/// Names referenced or declared by more base files than this are ignored
-/// by C.
-pub const DF_CEILING: usize = 100;
-/// C's rarity rule as recorded in the report.
+/// Rarity rule of the C arm as recorded in the report.
 pub const RARITY_RULE: &str = "ignore a name when df(name) > 100; a downstream file referencing it earns 1/df(name); an upstream file declaring it earns 1/(df(name) * declaring_file_count(name)); a file matching both directions keeps the larger credit; score sums credits over distinct names";
 /// Most trials one PR contributes.
 pub const MAX_TRIALS: usize = 5;
 /// The trial selection rule as recorded in the report.
 pub const TRIAL_RULE: &str = "when more than 5 files are withholdable, keep the 5 with the smallest FNV-1a 64-bit hash of \"<pr>/<path>\", ties by path; otherwise keep all; trials run in listing order";
-/// Reciprocal-rank fusion constant of F.
-pub const FUSION_CONSTANT: usize = 60;
 /// Worst rank that is a hit.
 pub const HIT_RANK: usize = 10;
+/// The arm every effect is paired against.
+pub const BASELINE: &str = "C";
+/// The arm the adoption decision is about.
+pub const DECISION_ARM: &str = "F";
+/// Every arm by report id: S symbol overlap, C rarity-weighted symbols (the
+/// control), E co-change alone, and F the production default fusing C and
+/// E by reciprocal rank.
+pub const ARMS: [(&str, &dyn Ranker); 4] = [
+    ("S", &SymbolOverlap),
+    ("C", &RaritySymbol),
+    ("E", &CoChange),
+    ("F", &DEFAULT_RANKER),
+];
 
 /// Why a PR's trials cannot be run; the run stops.
 #[derive(Debug, Error)]
 pub enum TrialError {
-    /// A base blob of an indexed file, or a head blob a trial ranks, was
-    /// not supplied.
+    /// A head blob a trial ranks was not supplied.
     #[error("PR #{pr}: required source for `{path}` is missing")]
     MissingSource {
         /// PR number.
@@ -46,7 +52,7 @@ pub enum TrialError {
         /// File whose source is missing.
         path: RelativePath,
     },
-    /// The symbolic facade rejected base source or ranking input.
+    /// The symbolic facade rejected a head or its changed lines.
     #[error("PR #{pr}: {error}")]
     Symbolic {
         /// PR number.
@@ -68,10 +74,10 @@ pub struct Outcome {
 
 impl Outcome {
     /// `target`'s outcome in `ranked`, best first.
-    fn of(ranked: &[(RelativePath, f64)], target: &RelativePath) -> Outcome {
+    fn of(ranked: &[RankedFile], target: &RelativePath) -> Outcome {
         let rank = ranked
             .iter()
-            .position(|(path, _)| path == target)
+            .position(|file| &file.path == target)
             .map(|index| index + 1);
         Outcome {
             rank,
@@ -87,22 +93,9 @@ pub struct Trial {
     pub pr: u64,
     /// The withheld file, ranked at its base version.
     pub withheld: RelativePath,
-    /// Directional rarity-weighted references; the control.
-    #[serde(rename = "C")]
-    pub c: Outcome,
-    /// Co-change alone.
-    #[serde(rename = "E")]
-    pub e: Outcome,
-    /// C and E fused by reciprocal rank.
-    #[serde(rename = "F")]
-    pub f: Outcome,
-}
-
-impl Trial {
-    /// Each arm's id and outcome: C, E, F.
-    pub fn arms(&self) -> [(&'static str, &Outcome); 3] {
-        [("C", &self.c), ("E", &self.e), ("F", &self.f)]
-    }
+    /// Each arm's outcome by its id in [`ARMS`].
+    #[serde(flatten)]
+    pub arms: BTreeMap<&'static str, Outcome>,
 }
 
 /// Serializes an absent rank as `"unranked"`.
@@ -115,113 +108,6 @@ fn rank_or_unranked<S: Serializer>(rank: &Option<usize>, serializer: S) -> Resul
         Some(rank) => serializer.serialize_u64(*rank as u64),
         None => serializer.serialize_str("unranked"),
     }
-}
-
-/// The complete base candidate universe of one PR.
-///
-/// Invariant: `declarations` holds exactly the indexed paths of `index`,
-/// and `referenced` covers every reference in their base blobs.
-struct Corpus {
-    /// The base snapshot's index, for every declaration lookup.
-    index: SymbolicContext,
-    /// Persisted declarations per indexed file.
-    declarations: BTreeMap<RelativePath, Vec<DeclarationFact>>,
-    /// Name → base files referencing it.
-    referenced: BTreeMap<String, BTreeSet<RelativePath>>,
-}
-
-impl Corpus {
-    /// Build the corpus for PR `pr` from its base `index` and `sources`,
-    /// extracting each base blob's references with `scratch`.
-    ///
-    /// # Errors
-    ///
-    /// [`TrialError::MissingSource`] when an indexed file has no source,
-    /// and [`TrialError::Symbolic`] when its source does not extract.
-    fn new(
-        pr: u64,
-        index: SymbolicContext,
-        sources: &BTreeMap<RelativePath, &[u8]>,
-        scratch: &mut SymbolicContext,
-    ) -> Result<Corpus, TrialError> {
-        let facts = index.export();
-        let mut corpus = Corpus {
-            index,
-            declarations: BTreeMap::new(),
-            referenced: BTreeMap::new(),
-        };
-        for fact in facts {
-            let source = *sources
-                .get(&fact.path)
-                .ok_or_else(|| TrialError::MissingSource {
-                    pr,
-                    path: fact.path.clone(),
-                })?;
-            let (_, references) = extract(scratch, &fact.path, source)
-                .map_err(|error| TrialError::Symbolic { pr, error })?;
-            for reference in &references {
-                for name in reference_names(reference) {
-                    corpus
-                        .referenced
-                        .entry(name.to_owned())
-                        .or_default()
-                        .insert(fact.path.clone());
-                }
-            }
-            corpus.declarations.insert(fact.path, fact.declarations);
-        }
-        Ok(corpus)
-    }
-
-    /// Files declaring exactly `name`.
-    fn declaring(&self, name: &str) -> BTreeSet<RelativePath> {
-        self.index
-            .lookup(name)
-            .into_iter()
-            .map(|hit| hit.path.clone())
-            .collect()
-    }
-
-    /// Distinct base files declaring or referencing `name`.
-    fn document_frequency(&self, name: &str, declaring: &BTreeSet<RelativePath>) -> usize {
-        let referencing = self.referenced.get(name).into_iter().flatten();
-        declaring
-            .iter()
-            .chain(referencing)
-            .collect::<BTreeSet<_>>()
-            .len()
-    }
-}
-
-/// Extract `source` through the public facade without keeping it indexed.
-///
-/// # Errors
-///
-/// Returns the facade's path, UTF-8, or extraction error.
-fn extract(
-    scratch: &mut SymbolicContext,
-    path: &RelativePath,
-    source: &[u8],
-) -> Result<(Vec<Node>, Vec<RawReference>), SymbolicError> {
-    let facts = scratch.upsert(path.as_str(), source)?;
-    let extracted = (facts.nodes.to_vec(), facts.references);
-    scratch.remove(path.as_str())?;
-    Ok(extracted)
-}
-
-/// A reference's exact name and its candidate names, as production
-/// ranking reads them.
-fn reference_names(reference: &RawReference) -> impl Iterator<Item = &str> {
-    std::iter::once(reference.reference_name.as_str())
-        .chain(reference.candidates.iter().flatten().map(String::as_str))
-}
-
-/// Whether `node` is a declaration the index posts.
-fn is_declaration(node: &Node) -> bool {
-    !matches!(
-        node.kind.wire_name(),
-        "file" | "import" | "export" | "parameter"
-    )
 }
 
 /// The base-side lines a hunk-only `patch` removes; `patch` has already
@@ -247,16 +133,18 @@ fn removed_lines(patch: &str) -> Vec<u32> {
 struct Change<'a> {
     /// Its listing entry.
     file: &'a PullRequestFile,
-    /// Names referenced on its head changed lines.
-    used: BTreeSet<String>,
-    /// Names of head and base declarations its changes add, modify, or
-    /// remove.
-    changed: BTreeSet<String>,
+    /// Whether the base index holds its head path, so it anchors history.
+    in_base: bool,
+    /// Head facts when its patch parsed to head-side changed lines.
+    head: Option<HeadFacts>,
+    /// Simple and qualified names of base declarations its removed lines
+    /// touch.
+    removed: Vec<String>,
 }
 
 impl<'a> Change<'a> {
-    /// Prepare `file` of PR `pr` from its patch, its base file in
-    /// `corpus`, and its head blob in `heads`.
+    /// Prepare `file` of PR `pr` from its patch, its base facts in `index`,
+    /// and its head blob in `heads`.
     ///
     /// A missing or malformed patch supplies no names.
     ///
@@ -267,15 +155,15 @@ impl<'a> Change<'a> {
     /// rejects that head or its parsed changed lines.
     fn new(
         pr: u64,
-        corpus: &Corpus,
-        scratch: &mut SymbolicContext,
+        index: &SymbolicContext,
         file: &'a PullRequestFile,
         heads: &BTreeMap<RelativePath, &[u8]>,
     ) -> Result<Change<'a>, TrialError> {
         let mut change = Change {
             file,
-            used: BTreeSet::new(),
-            changed: BTreeSet::new(),
+            in_base: index.byte_len(&file.path).is_some(),
+            head: None,
+            removed: Vec::new(),
         };
         let Some((patch, Ok(ranges))) = file
             .patch
@@ -286,16 +174,16 @@ impl<'a> Change<'a> {
         };
         let base_path = file.previous_path.as_ref().unwrap_or(&file.path);
         if file.status != FileStatus::Added
-            && let Some(declarations) = corpus.declarations.get(base_path)
+            && let Some(facts) = index.export_file(base_path)
         {
             let removed = removed_lines(patch);
-            for fact in declarations {
+            for fact in facts.declarations {
                 if removed
                     .iter()
                     .any(|&line| fact.start_line <= line && line <= fact.end_line)
                 {
-                    change.changed.insert(fact.name.clone());
-                    change.changed.insert(fact.qualified_name.clone());
+                    change.removed.push(fact.name);
+                    change.removed.push(fact.qualified_name);
                 }
             }
         }
@@ -308,155 +196,40 @@ impl<'a> Change<'a> {
                 pr,
                 path: file.path.clone(),
             })?;
-        let (nodes, references) = corpus
-            .index
-            .rank(file.path.as_str(), head, ranges.clone())
-            .and_then(|_| extract(scratch, &file.path, head))
-            .map_err(|error| TrialError::Symbolic { pr, error })?;
-        let on_changed = |start: u32, end: u32| {
-            ranges
-                .iter()
-                .any(|range| range.start <= end && start <= range.end)
+        let blob = ChangedBlob {
+            path: file.path.as_str(),
+            head,
+            changed: ranges,
         };
-        for node in nodes
-            .iter()
-            .filter(|node| is_declaration(node) && on_changed(node.start_line, node.end_line))
-        {
-            change.changed.insert(node.name.clone());
-            change.changed.insert(node.qualified_name.clone());
-        }
-        for reference in references
-            .iter()
-            .filter(|reference| on_changed(reference.line, reference.line))
-        {
-            change
-                .used
-                .extend(reference_names(reference).map(str::to_owned));
-        }
+        change.head = Some(
+            index
+                .head_facts(&blob)
+                .map_err(|error| TrialError::Symbolic { pr, error })?,
+        );
         Ok(change)
     }
 }
 
-/// `scores` without zero scores, by descending score then path.
-fn ranked(scores: BTreeMap<RelativePath, f64>) -> Vec<(RelativePath, f64)> {
-    let mut ranked: Vec<(RelativePath, f64)> = scores
-        .into_iter()
-        .filter(|(_, score)| *score > 0.0)
-        .collect();
-    ranked.sort_by(|left, right| {
-        right
-            .1
-            .total_cmp(&left.1)
-            .then_with(|| left.0.cmp(&right.0))
-    });
-    ranked
-}
-
-/// C: rank the corpus for the names `remaining` uses and changes, skipping
-/// `excluded`, by [`RARITY_RULE`].
-fn rank_c(
-    corpus: &Corpus,
-    remaining: &[&Change<'_>],
-    excluded: &BTreeSet<RelativePath>,
-) -> Vec<(RelativePath, f64)> {
-    let mut credits: BTreeMap<RelativePath, BTreeMap<&str, f64>> = BTreeMap::new();
-    let mut credit = |path: &RelativePath, name, credit: f64| {
-        let held = credits
-            .entry(path.clone())
-            .or_default()
-            .entry(name)
-            .or_default();
-        *held = held.max(credit);
-    };
-    let used: BTreeSet<&str> = remaining
+/// The ranker input of every change but `changes[withheld]`. A previous
+/// path equal to the withheld path is dropped so the withheld file stays a
+/// candidate.
+fn remaining<'a>(changes: &'a [Change<'_>], withheld: usize) -> Vec<ChangedFile<'a>> {
+    let target = &changes[withheld].file.path;
+    changes
         .iter()
-        .flat_map(|change| change.used.iter().map(String::as_str))
-        .collect();
-    for name in used {
-        let declaring = corpus.declaring(name);
-        let df = corpus.document_frequency(name, &declaring);
-        if df > DF_CEILING {
-            continue;
-        }
-        for path in declaring.iter().filter(|path| !excluded.contains(*path)) {
-            credit(path, name, 1.0 / (df * declaring.len()) as f64);
-        }
-    }
-    let changed: BTreeSet<&str> = remaining
-        .iter()
-        .flat_map(|change| change.changed.iter().map(String::as_str))
-        .collect();
-    for name in changed {
-        let Some(referencing) = corpus.referenced.get(name) else {
-            continue;
-        };
-        let df = corpus.document_frequency(name, &corpus.declaring(name));
-        if df > DF_CEILING {
-            continue;
-        }
-        for path in referencing.iter().filter(|path| !excluded.contains(*path)) {
-            credit(path, name, 1.0 / df as f64);
-        }
-    }
-    ranked(
-        credits
-            .into_iter()
-            .map(|(path, names)| (path, names.values().sum()))
-            .collect(),
-    )
-}
-
-/// E: for each indexed remaining changed file `d` touched by `n(d) > 0` of
-/// the `history` PRs' paths, credit each indexed, non-`excluded` candidate
-/// `f` with `n(d, f) / n(d)`, summed over `d`. A remaining path absent
-/// from the base contributes nothing.
-fn rank_e(
-    corpus: &Corpus,
-    remaining: &[&Change<'_>],
-    excluded: &BTreeSet<RelativePath>,
-    history: &[&[RelativePath]],
-) -> Vec<(RelativePath, f64)> {
-    let mut scores: BTreeMap<RelativePath, f64> = BTreeMap::new();
-    for change in remaining
-        .iter()
-        .filter(|change| corpus.declarations.contains_key(&change.file.path))
-    {
-        let touching: Vec<&[RelativePath]> = history
-            .iter()
-            .copied()
-            .filter(|paths| paths.contains(&change.file.path))
-            .collect();
-        let mut together: BTreeMap<&RelativePath, usize> = BTreeMap::new();
-        for path in touching.iter().copied().flatten() {
-            if corpus.declarations.contains_key(path) && !excluded.contains(path) {
-                *together.entry(path).or_default() += 1;
-            }
-        }
-        for (path, count) in together {
-            *scores.entry(path.clone()).or_default() += count as f64 / touching.len() as f64;
-        }
-    }
-    ranked(scores)
-}
-
-/// F: `1 / (FUSION_CONSTANT + rank)` summed over the arms ranking a file.
-fn rank_f(c: &[(RelativePath, f64)], e: &[(RelativePath, f64)]) -> Vec<(RelativePath, f64)> {
-    let mut scores: BTreeMap<RelativePath, f64> = BTreeMap::new();
-    for arm in [c, e] {
-        for (index, (path, _)) in arm.iter().enumerate() {
-            *scores.entry(path.clone()).or_default() += 1.0 / (FUSION_CONSTANT + index + 1) as f64;
-        }
-    }
-    ranked(scores)
-}
-
-/// Every remaining changed head and previous path except `withheld`.
-fn excluded(remaining: &[&Change<'_>], withheld: &RelativePath) -> BTreeSet<RelativePath> {
-    remaining
-        .iter()
-        .flat_map(|change| std::iter::once(&change.file.path).chain(&change.file.previous_path))
-        .filter(|path| *path != withheld)
-        .cloned()
+        .enumerate()
+        .filter(|(index, _)| *index != withheld)
+        .map(|(_, change)| ChangedFile {
+            path: &change.file.path,
+            previous_path: change
+                .file
+                .previous_path
+                .as_ref()
+                .filter(|previous| *previous != target),
+            in_base: change.in_base,
+            head: change.head.as_ref().map(HeadFacts::head),
+            removed: change.removed.iter().map(String::as_str).collect(),
+        })
         .collect()
 }
 
@@ -483,30 +256,27 @@ fn chosen<'p>(pr: u64, paths: &[&'p RelativePath]) -> Vec<&'p RelativePath> {
         .collect()
 }
 
-/// Run the trial withholding `changes[withheld]` against `history`.
+/// Run the trial withholding `changes[withheld]` against `history` under
+/// every arm.
 fn trial(
     pr: u64,
-    corpus: &Corpus,
+    index: &SymbolicContext,
     changes: &[Change<'_>],
     withheld: usize,
     history: &[&[RelativePath]],
 ) -> Trial {
     let target = &changes[withheld].file.path;
-    let remaining: Vec<&Change<'_>> = changes
-        .iter()
-        .enumerate()
-        .filter_map(|(index, change)| (index != withheld).then_some(change))
-        .collect();
-    let excluded = excluded(&remaining, target);
-    let c = rank_c(corpus, &remaining, &excluded);
-    let e = rank_e(corpus, &remaining, &excluded, history);
-    let f = rank_f(&c, &e);
+    let changed = remaining(changes, withheld);
     Trial {
         pr,
         withheld: target.clone(),
-        c: Outcome::of(&c, target),
-        e: Outcome::of(&e, target),
-        f: Outcome::of(&f, target),
+        arms: ARMS
+            .iter()
+            .map(|(id, ranker)| {
+                let ranked = index.rank_with(*ranker, &changed, history);
+                (*id, Outcome::of(&ranked, target))
+            })
+            .collect(),
     }
 }
 
@@ -514,36 +284,30 @@ fn trial(
 /// and the base `index` declares, chosen by [`TRIAL_RULE`], in listing
 /// order.
 ///
-/// `sources` must hold the verified base blob of every file `index`
-/// declares; `heads` the head blob of every changed file with head-side
-/// changed lines; `history` the changed paths of each history PR merged
-/// before the PR's base commit.
+/// `index` must be the PR's complete base snapshot read back, so persisted
+/// reference names cover every indexed file; `heads` holds the head blob of
+/// every changed file with head-side changed lines; `history` the changed
+/// paths of each history PR merged before the PR's base commit.
 ///
 /// # Errors
 ///
-/// [`TrialError::MissingSource`] for a missing base or head blob, and
-/// [`TrialError::Symbolic`] for base source, or a head and its parsed
-/// changed lines, the facade rejects.
+/// [`TrialError::MissingSource`] for a missing head blob, and
+/// [`TrialError::Symbolic`] for a head and its parsed changed lines the
+/// facade rejects.
 pub fn evaluate(
     pr: u64,
-    index: SymbolicContext,
-    sources: &BTreeMap<RelativePath, &[u8]>,
+    index: &SymbolicContext,
     listed: &[PullRequestFile],
     heads: &BTreeMap<RelativePath, &[u8]>,
     history: &[&[RelativePath]],
 ) -> Result<Vec<Trial>, TrialError> {
-    let mut scratch = SymbolicContext::new();
-    let corpus = Corpus::new(pr, index, sources, &mut scratch)?;
     let changes = listed
         .iter()
-        .map(|file| Change::new(pr, &corpus, &mut scratch, file, heads))
+        .map(|file| Change::new(pr, index, file, heads))
         .collect::<Result<Vec<_>, _>>()?;
     let withholdable: Vec<&RelativePath> = changes
         .iter()
-        .filter(|change| {
-            change.file.status == FileStatus::Modified
-                && corpus.declarations.contains_key(&change.file.path)
-        })
+        .filter(|change| change.file.status == FileStatus::Modified && change.in_base)
         .map(|change| &change.file.path)
         .collect();
     let chosen = chosen(pr, &withholdable);
@@ -551,7 +315,7 @@ pub fn evaluate(
         .iter()
         .enumerate()
         .filter(|(_, change)| chosen.contains(&&change.file.path))
-        .map(|(withheld, _)| trial(pr, &corpus, &changes, withheld, history))
+        .map(|(withheld, _)| trial(pr, index, &changes, withheld, history))
         .collect())
 }
 
@@ -561,10 +325,9 @@ pub fn evaluate(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::history::{Changed, History};
-    use crate::sample::MergedPr;
-    use bohmian_code_review_pipeline::ObjectSha;
+    use bohmian_code_review_pipeline::{History, HistoryError, MergedPr, ObjectSha};
     use serde_json::json;
+    use std::collections::BTreeSet;
 
     /// Canonical fixture path.
     fn path(raw: &str) -> RelativePath {
@@ -584,11 +347,11 @@ mod tests {
 
     /// The base index exactly as a snapshot read-back builds it: facts
     /// exported after extraction and loaded into a fresh context.
-    fn base_index(sources: &BTreeMap<RelativePath, &[u8]>) -> SymbolicContext {
+    fn base_index(files: &[(&str, String)]) -> SymbolicContext {
         let mut extracted = SymbolicContext::new();
-        for (path, source) in sources {
+        for (raw, text) in files {
             extracted
-                .upsert(path.as_str(), source)
+                .upsert(raw, text.as_bytes())
                 .expect("fixture extracts");
         }
         let mut index = SymbolicContext::new();
@@ -596,22 +359,6 @@ mod tests {
             index.load(facts).expect("exported facts load");
         }
         index
-    }
-
-    /// Owned fixture sources keyed by path.
-    fn sources(files: &[(&str, String)]) -> BTreeMap<RelativePath, Vec<u8>> {
-        files
-            .iter()
-            .map(|(raw, text)| (path(raw), text.clone().into_bytes()))
-            .collect()
-    }
-
-    /// Borrowed view of `sources`.
-    fn borrowed(sources: &BTreeMap<RelativePath, Vec<u8>>) -> BTreeMap<RelativePath, &[u8]> {
-        sources
-            .iter()
-            .map(|(path, bytes)| (path.clone(), bytes.as_slice()))
-            .collect()
     }
 
     /// The trial withholding `raw`.
@@ -622,9 +369,43 @@ mod tests {
             .expect("trial for the withheld file")
     }
 
+    /// Rank of arm `id` in `trial`.
+    fn rank(trial: &Trial, id: &str) -> Option<usize> {
+        trial.arms[id].rank
+    }
+
+    /// `ranker`'s ranking with `changes[withheld]` withheld.
+    fn ranked(
+        index: &SymbolicContext,
+        changes: &[Change<'_>],
+        withheld: usize,
+        history: &[&[RelativePath]],
+        ranker: &dyn Ranker,
+    ) -> Vec<(String, f64)> {
+        index
+            .rank_with(ranker, &remaining(changes, withheld), history)
+            .into_iter()
+            .map(|file| (file.path.to_string(), file.score))
+            .collect()
+    }
+
     /// Paths of `ranked`, best first.
-    fn paths(ranked: &[(RelativePath, f64)]) -> Vec<&str> {
+    fn paths(ranked: &[(String, f64)]) -> Vec<&str> {
         ranked.iter().map(|(path, _)| path.as_str()).collect()
+    }
+
+    /// Prepared changes of `files`.
+    fn prepare<'f>(
+        pr: u64,
+        index: &SymbolicContext,
+        files: &'f [PullRequestFile],
+        heads: &BTreeMap<RelativePath, &[u8]>,
+    ) -> Vec<Change<'f>> {
+        files
+            .iter()
+            .map(|file| Change::new(pr, index, file, heads))
+            .collect::<Result<Vec<_>, _>>()
+            .expect("changes")
     }
 
     /// Scenario 1: a trial withholds one modified, declared file, keeps it
@@ -632,7 +413,7 @@ mod tests {
     /// path, even one C would otherwise rank.
     #[test]
     fn withholding_keeps_base_file_rankable_and_excludes_remaining_paths() {
-        let base = sources(&[
+        let index = base_index(&[
             (
                 "pkg/models.py",
                 "class Model:\n    def run(self):\n        return 1\n".to_owned(),
@@ -673,8 +454,7 @@ mod tests {
                 b"def render():\n    return Model\n".as_slice(),
             ),
         ]);
-        let view = borrowed(&base);
-        let trials = evaluate(9, base_index(&view), &view, &files, &heads, &[]).expect("trials");
+        let trials = evaluate(9, &index, &files, &heads, &[]).expect("trials");
         assert_eq!(
             trials
                 .iter()
@@ -682,31 +462,23 @@ mod tests {
                 .collect::<Vec<_>>(),
             ["pkg/models.py", "pkg/api.py", "pkg/views.py"]
         );
-        assert_eq!(withheld(&trials, "pkg/models.py").c.rank, Some(1));
+        assert_eq!(rank(withheld(&trials, "pkg/models.py"), "C"), Some(1));
 
-        let mut scratch = SymbolicContext::new();
-        let corpus = Corpus::new(9, base_index(&view), &view, &mut scratch).expect("corpus");
-        let changes = files
-            .iter()
-            .map(|file| Change::new(9, &corpus, &mut scratch, file, &heads))
-            .collect::<Result<Vec<_>, _>>()
-            .expect("changes");
-        let remaining: Vec<&Change<'_>> = changes
-            .iter()
-            .filter(|c| c.file.path.as_str() != "pkg/models.py")
-            .collect();
-        let excluded = excluded(&remaining, &path("pkg/models.py"));
+        let changes = prepare(9, &index, &files, &heads);
+        let changed = remaining(&changes, 0);
         assert_eq!(
-            excluded
-                .iter()
-                .map(RelativePath::as_str)
-                .collect::<Vec<_>>(),
-            ["pkg/api.py", "pkg/new.py", "pkg/views.py"]
+            changed.iter().map(|c| c.path.as_str()).collect::<Vec<_>>(),
+            ["pkg/api.py", "pkg/views.py", "pkg/new.py"]
         );
         // views declares render, which api uses, but is a remaining change.
-        let c = rank_c(&corpus, &remaining, &excluded);
+        let c = ranked(&index, &changes, 0, &[], &RaritySymbol);
         assert_eq!(paths(&c), ["pkg/models.py", "pkg/extra.py"]);
-        assert!(paths(&rank_c(&corpus, &remaining, &BTreeSet::new())).contains(&"pkg/views.py"));
+        let unexcluded = index.rank_with(&RaritySymbol, &changed[..1], &[]);
+        assert!(
+            unexcluded
+                .iter()
+                .any(|file| file.path.as_str() == "pkg/views.py")
+        );
     }
 
     /// Scenario 1: at most five withholdable files all get trials in
@@ -730,7 +502,7 @@ mod tests {
         assert_eq!(draw(3, &names[0]), draw(3, &path("pkg/m0.py")));
         assert_ne!(draw(3, &names[0]), draw(4, &names[0]));
 
-        let base = sources(
+        let index = base_index(
             &(0..7)
                 .map(|i| (names[i].as_str(), format!("def f{i}():\n    return 0\n")))
                 .collect::<Vec<_>>(),
@@ -743,6 +515,10 @@ mod tests {
                 )
             })
             .collect();
+        let heads: BTreeMap<RelativePath, &[u8]> = heads_owned
+            .iter()
+            .map(|(path, bytes)| (path.clone(), bytes.as_slice()))
+            .collect();
         let files: Vec<PullRequestFile> = names
             .iter()
             .map(|name| {
@@ -753,25 +529,23 @@ mod tests {
                 )
             })
             .collect();
-        let view = borrowed(&base);
-        let heads = borrowed(&heads_owned);
-        let run = || evaluate(3, base_index(&view), &view, &files, &heads, &[]).expect("trials");
+        let run = || evaluate(3, &index, &files, &heads, &[]).expect("trials");
         let trials = run();
         assert_eq!(
             trials.iter().map(|t| &t.withheld).collect::<Vec<_>>(),
             picked
         );
         assert_eq!(trials, run());
-        let five = evaluate(3, base_index(&view), &view, &files[..5], &heads, &[]).expect("trials");
+        let five = evaluate(3, &index, &files[..5], &heads, &[]).expect("trials");
         assert_eq!(five.len(), 5);
     }
 
     /// C regression: rarity weighting and ambiguous-declarer splitting in
-    /// Python, removed declarations contributing base names, Rust upstream
-    /// ambiguity, and a missing base blob failing the run.
+    /// Python, removed declarations contributing base names, and Rust
+    /// upstream ambiguity, all from persisted reference names.
     #[test]
     fn c_ranks_by_direction_and_rarity() {
-        let base = sources(&[
+        let index = base_index(&[
             ("pkg/util.py", "def helper(x):\n    return x\n\ndef gone():\n    return 0\n".to_owned()),
             ("pkg/legacy.py", "def helper(x):\n    return -x\n".to_owned()),
             ("pkg/models.py", "from pkg.util import helper\n\nclass Model:\n    def run(self):\n        return helper(1)\n".to_owned()),
@@ -803,20 +577,8 @@ mod tests {
             (path("pkg/util.py"), b"def helper(x):\n    return x + 1\n".as_slice()),
             (path("pkg/caller.py"), b"from pkg.util import helper\n\ndef call():\n    return helper(0)\n".as_slice()),
         ]);
-        let view = borrowed(&base);
-        let mut scratch = SymbolicContext::new();
-        let corpus = Corpus::new(1, base_index(&view), &view, &mut scratch).expect("corpus");
-        let changes = files
-            .iter()
-            .map(|file| Change::new(1, &corpus, &mut scratch, file, &heads))
-            .collect::<Result<Vec<_>, _>>()
-            .expect("changes");
-        let remaining: Vec<&Change<'_>> = changes[1..].iter().collect();
-        let c = rank_c(
-            &corpus,
-            &remaining,
-            &excluded(&remaining, &path("pkg/models.py")),
-        );
+        let changes = prepare(1, &index, &files, &heads);
+        let c = ranked(&index, &changes, 0, &[], &RaritySymbol);
         // Remaining util changes helper and removes gone; caller uses
         // helper. helper: declared by util and legacy, referenced by
         // models, far, loose, caller: df 6. gone: declared by util,
@@ -830,13 +592,13 @@ mod tests {
         ];
         assert_eq!(c.len(), expected.len());
         for ((path, score), (want, want_score)) in c.iter().zip(expected) {
-            assert_eq!(path.as_str(), want);
+            assert_eq!(path, want);
             assert!((score - want_score).abs() < 1e-12);
         }
-        let trials = evaluate(1, base_index(&view), &view, &files, &heads, &[]).expect("trials");
-        assert_eq!(withheld(&trials, "pkg/models.py").c.rank, Some(3));
+        let trials = evaluate(1, &index, &files, &heads, &[]).expect("trials");
+        assert_eq!(rank(withheld(&trials, "pkg/models.py"), "C"), Some(3));
 
-        let rust = sources(&[
+        let rust = base_index(&[
             (
                 "tokio/src/lib.rs",
                 "pub mod io;\npub mod alt;\npub mod net;\n".to_owned(),
@@ -882,16 +644,15 @@ mod tests {
                     .as_slice(),
             ),
         ]);
-        let view = borrowed(&rust);
-        let trials = evaluate(2, base_index(&view), &view, &files, &heads, &[]).expect("trials");
+        let trials = evaluate(2, &rust, &files, &heads, &[]).expect("trials");
         // user's read_all resolves upstream to io and alt equally; alt
         // wins the tie by path.
-        assert_eq!(withheld(&trials, "tokio/src/io.rs").c.rank, Some(2));
+        assert_eq!(rank(withheld(&trials, "tokio/src/io.rs"), "C"), Some(2));
 
-        let mut missing = view.clone();
-        missing.remove(&path("tokio/src/alt.rs"));
+        let mut missing = heads.clone();
+        missing.remove(&path("tokio/src/user.rs"));
         assert!(matches!(
-            evaluate(2, base_index(&view), &missing, &files, &heads, &[]),
+            evaluate(2, &rust, &files, &missing, &[]),
             Err(TrialError::MissingSource { pr: 2, .. })
         ));
     }
@@ -901,7 +662,7 @@ mod tests {
     /// head's names from every trial.
     #[test]
     fn parsed_patch_beyond_verified_head_fails_the_run() {
-        let base = sources(&[
+        let index = base_index(&[
             ("pkg/a.py", "def wanted():\n    return 1\n".to_owned()),
             ("pkg/caller.py", "def call():\n    return 0\n".to_owned()),
         ]);
@@ -927,9 +688,8 @@ mod tests {
                 b"def call():\n    return wanted()\n".as_slice(),
             ),
         ]);
-        let view = borrowed(&base);
         assert!(matches!(
-            evaluate(5, base_index(&view), &view, &files, &heads, &[]),
+            evaluate(5, &index, &files, &heads, &[]),
             Err(TrialError::Symbolic { pr: 5, .. })
         ));
     }
@@ -953,7 +713,7 @@ mod tests {
     #[tokio::test]
     async fn cochange_and_fused_ranks_use_only_eligible_history() {
         let def = |name: &str| format!("def {name}():\n    return 0\n");
-        let base = sources(&[
+        let index = base_index(&[
             ("pkg/a.py", def("a")),
             ("pkg/b.py", def("b")),
             ("pkg/c.py", def("c")),
@@ -973,13 +733,13 @@ mod tests {
             listed("pkg/c.py", FileStatus::Modified, Some(one)),
             listed("pkg/u.py", FileStatus::Added, None),
         ];
-        let heads_owned: BTreeMap<RelativePath, Vec<u8>> = BTreeMap::from([
-            (path("pkg/a.py"), b"def a():\n    return 1\n".to_vec()),
+        let heads = BTreeMap::from([
+            (path("pkg/a.py"), b"def a():\n    return 1\n".as_slice()),
             (
                 path("pkg/b.py"),
-                b"def b():\n    return helper()\n".to_vec(),
+                b"def b():\n    return helper()\n".as_slice(),
             ),
-            (path("pkg/c.py"), b"def c():\n    return 1\n".to_vec()),
+            (path("pkg/c.py"), b"def c():\n    return 1\n".as_slice()),
         ]);
         let changed_paths = |number: u64| -> Vec<&str> {
             match number {
@@ -999,8 +759,8 @@ mod tests {
             "2026-01-11T00:00:00Z",
             "2026-01-20T00:00:00Z",
             async |number| {
-                let changed: Changed = Some(changed_paths(number).into_iter().map(path).collect());
-                Ok::<_, crate::sample::SampleError>((changed, 1))
+                let changed = Some(changed_paths(number).into_iter().map(path).collect());
+                Ok::<_, HistoryError>((changed, 1))
             },
         )
         .await
@@ -1011,41 +771,32 @@ mod tests {
             .collect();
         assert_eq!(eligible.len(), 12);
 
-        let view = borrowed(&base);
-        let heads = borrowed(&heads_owned);
-        let mut scratch = SymbolicContext::new();
-        let corpus = Corpus::new(99, base_index(&view), &view, &mut scratch).expect("corpus");
-        let changes = files
-            .iter()
-            .map(|file| Change::new(99, &corpus, &mut scratch, file, &heads))
-            .collect::<Result<Vec<_>, _>>()
-            .expect("changes");
-        let remaining: Vec<&Change<'_>> = changes[1..].iter().collect();
-        let excluded = excluded(&remaining, &path("pkg/a.py"));
+        let changes = prepare(99, &index, &files, &heads);
         // n(b) = 3 (PRs 8, 9, 10): w and x 2/3, a 1/3, y absent, c excluded.
         // n(c) = 2 (PRs 10, 11): a 2/2. u has no history. PR 13 is future.
-        let e = rank_e(&corpus, &remaining, &excluded, &eligible);
+        let e = ranked(&index, &changes, 0, &eligible, &CoChange);
         assert_eq!(paths(&e), ["pkg/a.py", "pkg/w.py", "pkg/x.py"]);
         assert!((e[0].1 - (1.0 / 3.0 + 1.0)).abs() < 1e-12);
         assert!((e[1].1 - 2.0 / 3.0).abs() < 1e-12);
-        let c = rank_c(&corpus, &remaining, &excluded);
+        let c = ranked(&index, &changes, 0, &eligible, &RaritySymbol);
         assert_eq!(paths(&c), ["pkg/v.py"]);
         // F: a and v tie at 1/61 and sort by path; then w 1/62, x 1/63.
-        let f = rank_f(&c, &e);
+        let f = ranked(&index, &changes, 0, &eligible, &DEFAULT_RANKER);
         assert_eq!(paths(&f), ["pkg/a.py", "pkg/v.py", "pkg/w.py", "pkg/x.py"]);
         assert_eq!(f[0].1, 1.0 / 61.0);
         assert_eq!(f[3].1, 1.0 / 63.0);
 
-        let trials =
-            evaluate(99, base_index(&view), &view, &files, &heads, &eligible).expect("trials");
+        let trials = evaluate(99, &index, &files, &heads, &eligible).expect("trials");
         let a = withheld(&trials, "pkg/a.py");
-        assert_eq!((a.c.rank, a.e.rank, a.f.rank), (None, Some(1), Some(1)));
+        assert_eq!(
+            (rank(a, "C"), rank(a, "E"), rank(a, "F")),
+            (None, Some(1), Some(1))
+        );
         let leaked: Vec<&[RelativePath]> = history
             .for_trial(99, "2026-01-13T13:00:00Z")
             .map(|pr| pr.paths.as_slice())
             .collect();
-        let with_future =
-            evaluate(99, base_index(&view), &view, &files, &heads, &leaked).expect("trials");
+        let with_future = evaluate(99, &index, &files, &heads, &leaked).expect("trials");
         assert_ne!(with_future, trials);
     }
 
@@ -1055,7 +806,7 @@ mod tests {
     #[test]
     fn absent_base_changed_path_anchors_no_cochange() {
         let def = |name: &str| format!("def {name}():\n    return 0\n");
-        let base = sources(&[
+        let index = base_index(&[
             ("pkg/a.py", def("a")),
             ("pkg/c.py", def("c")),
             ("pkg/w.py", def("w")),
@@ -1077,27 +828,20 @@ mod tests {
         .collect();
         let history: Vec<&[RelativePath]> = owned.iter().map(Vec::as_slice).collect();
 
-        let view = borrowed(&base);
         let heads = BTreeMap::new();
-        let mut scratch = SymbolicContext::new();
-        let corpus = Corpus::new(7, base_index(&view), &view, &mut scratch).expect("corpus");
-        let changes = files
-            .iter()
-            .map(|file| Change::new(7, &corpus, &mut scratch, file, &heads))
-            .collect::<Result<Vec<_>, _>>()
-            .expect("changes");
-        let remaining: Vec<&Change<'_>> = changes[1..].iter().collect();
-        let excluded = excluded(&remaining, &path("pkg/a.py"));
+        let changes = prepare(7, &index, &files, &heads);
         // u is absent from the base; only c anchors: n(c) = 3, w 2/3, a 1/3.
-        let e = rank_e(&corpus, &remaining, &excluded, &history);
+        let e = ranked(&index, &changes, 0, &history, &CoChange);
         assert_eq!(paths(&e), ["pkg/w.py", "pkg/a.py"]);
         assert!((e[0].1 - 2.0 / 3.0).abs() < 1e-12);
         assert!((e[1].1 - 1.0 / 3.0).abs() < 1e-12);
 
-        let trials =
-            evaluate(7, base_index(&view), &view, &files, &heads, &history).expect("trials");
+        let trials = evaluate(7, &index, &files, &heads, &history).expect("trials");
         let a = withheld(&trials, "pkg/a.py");
-        assert_eq!((a.c.rank, a.e.rank, a.f.rank), (None, Some(2), Some(2)));
+        assert_eq!(
+            (rank(a, "C"), rank(a, "E"), rank(a, "F")),
+            (None, Some(2), Some(2))
+        );
     }
 
     /// Scenario 3: a trial records only the withheld path and each arm's
@@ -1105,8 +849,12 @@ mod tests {
     /// miss.
     #[test]
     fn trial_record_is_ranking_only() {
-        let ranked: Vec<(RelativePath, f64)> = (1..=11)
-            .map(|i| (path(&format!("pkg/f{i:02}.py")), 1.0 / f64::from(i)))
+        let ranked: Vec<RankedFile> = (1..=11)
+            .map(|i| RankedFile {
+                path: path(&format!("pkg/f{i:02}.py")),
+                score: 1.0 / f64::from(i),
+                reasons: Vec::new(),
+            })
             .collect();
         let tenth = Outcome::of(&ranked, &path("pkg/f10.py"));
         let eleventh = Outcome::of(&ranked, &path("pkg/f11.py"));
@@ -1117,20 +865,24 @@ mod tests {
         let trial = Trial {
             pr: 7,
             withheld: path("pkg/f10.py"),
-            c: unranked,
-            e: tenth,
-            f: eleventh,
+            arms: BTreeMap::from([
+                ("S", unranked),
+                ("C", unranked),
+                ("E", tenth),
+                ("F", eleventh),
+            ]),
         };
         assert_eq!(
             serde_json::to_value(&trial).expect("serializes"),
             json!({
                 "pr": 7,
                 "withheld": "pkg/f10.py",
+                "S": {"rank": "unranked", "hit_at_10": false},
                 "C": {"rank": "unranked", "hit_at_10": false},
                 "E": {"rank": 10, "hit_at_10": true},
                 "F": {"rank": 11, "hit_at_10": false},
             })
         );
-        assert_eq!(trial.arms().map(|(id, _)| id), ["C", "E", "F"]);
+        assert_eq!(ARMS.map(|(id, _)| id), ["S", "C", "E", "F"]);
     }
 }

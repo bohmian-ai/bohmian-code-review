@@ -8,6 +8,7 @@ members = [
     "crates/bohmian-code-review-select",
     "crates/bohmian-code-review",
     "crates/bohmian-code-review-pipeline",
+    "crates/bohmian-code-review-eval",
 ]
 
 [workspace.package]
@@ -25,6 +26,7 @@ bohmian-code-review-index = { path = "crates/bohmian-code-review-index" }
 bohmian-code-review-resolve = { path = "crates/bohmian-code-review-resolve" }
 bohmian-code-review-select = { path = "crates/bohmian-code-review-select" }
 bohmian-code-review = { path = "crates/bohmian-code-review" }
+bohmian-code-review-pipeline = { path = "crates/bohmian-code-review-pipeline" }
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

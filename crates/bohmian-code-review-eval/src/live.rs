@@ -11,36 +11,36 @@
 //! memory, and keeps the [`SAMPLE_SIZE`] most recently merged qualifying
 //! PRs. It reads each sampled base commit once for its committer time, then
 //! builds one [`History`] through the newest base, reusing listings already
-//! read. For each sampled PR it fetches the hash-verified base blob of every
-//! indexed file and the head blob of every changed source file with changed
-//! lines, then runs up to five trials over its withholdable files against the
-//! history merged before its base commit. Only after every
-//! repository succeeds does it print one source-free JSON report per
-//! repository; any run-level failure exits nonzero with no report. Nothing
-//! is written to GitHub and no source leaves memory.
+//! read. For each sampled PR it fetches the head blob of every changed
+//! source file with changed lines and ranks against the base snapshot's
+//! persisted declarations and reference names, so no base blob is read. It
+//! runs up to five trials over its withholdable files against the history
+//! merged before its base commit. Only after every repository succeeds does
+//! it print one source-free JSON report per repository; any run-level
+//! failure exits nonzero with no report. Nothing is written to GitHub and no
+//! source leaves memory.
 
-mod history;
-mod report;
-mod sample;
-mod trial;
-
+use crate::report::{
+    self, ADOPTION_THRESHOLD, BOOTSTRAP_SEED, DECISION_RULE, Effect, RESAMPLES, VALIDITY_THREATS,
+    Verdict,
+};
+use crate::sample::{
+    Discovery, ListedPr, OmittedReason, SAMPLE_SIZE, SampleError, Screen, eligible, is_timestamp,
+};
+use crate::trial::{
+    ARMS, BASELINE, DECISION_ARM, HIT_RANK, RARITY_RULE, TRIAL_RULE, Trial, evaluate,
+};
 use bohmian_code_review::{
-    EXTRACTION_VERSION, Language, RelativePath, SymbolicContext, parse_hunks,
+    DF_CEILING, EXTRACTION_VERSION, FUSION_CONSTANT, Language, RelativePath, SymbolicContext,
+    parse_hunks,
 };
 use bohmian_code_review_pipeline::testing::{MemorySnapshotStore, MemoryStorage};
 use bohmian_code_review_pipeline::{
     ColdBuild, ColdBuildLimits, ColdBuildOutcome, FileOutcome, FileStatus, GitHubClient,
-    GitHubHost, HttpRequest, HttpTransport, Identity, InstallationId, InstallationToken, ObjectSha,
-    RepositoryIdentity, RequestLimits, ReqwestTransport, SNAPSHOT_FORMAT_VERSION, Snapshot,
-    SnapshotScope, Snapshots, TenantId,
-};
-use history::{Changed, History};
-use report::{
-    ADOPTION_THRESHOLD, BOOTSTRAP_SEED, DECISION_RULE, Effect, RESAMPLES, VALIDITY_THREATS, Verdict,
-};
-use sample::{
-    Discovery, ListedPr, Listing, MergedPr, OmittedReason, SAMPLE_SIZE, SampleError, Screen,
-    eligible, is_timestamp,
+    GitHubHost, History, HttpRequest, HttpTransport, Identity, InstallationId, InstallationToken,
+    Listing, ListingReads, MAX_LISTING_PAGES, MergedPr, ObjectSha, RepositoryIdentity,
+    RequestLimits, ReqwestTransport, SNAPSHOT_FORMAT_VERSION, Snapshot, SnapshotScope, Snapshots,
+    TenantId,
 };
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
@@ -48,10 +48,9 @@ use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 use std::error::Error;
-use trial::{DF_CEILING, FUSION_CONSTANT, HIT_RANK, RARITY_RULE, TRIAL_RULE, Trial, evaluate};
 
 /// One evaluated repository.
-struct Repository {
+pub struct Repository {
     /// `<owner>/<name>`.
     name: &'static str,
     /// Only PRs merged strictly before this time are sampled.
@@ -64,7 +63,7 @@ struct Repository {
 }
 
 /// Repositories evaluated, with their fixed cutoffs and source languages.
-const REPOSITORIES: [Repository; 3] = [
+pub const REPOSITORIES: [Repository; 3] = [
     Repository {
         name: "pydantic/pydantic-ai",
         cutoff: "2026-08-23T19:15:42Z",
@@ -86,8 +85,6 @@ const REPOSITORIES: [Repository; 3] = [
 ];
 /// PRs per discovery page, GitHub's maximum.
 const PRS_PER_PAGE: usize = 100;
-/// File-listing pages read at most: 3,000 files at 100 per page.
-const MAX_FILE_PAGES: u32 = 30;
 
 /// A qualifying PR with the inputs its relevance trials run on.
 struct Sampled {
@@ -128,7 +125,7 @@ struct Requests {
     /// Merged-PR listing pages read, once per repository.
     listing_pages: usize,
     /// History file-listing page requests by production step.
-    history: history::ListingReads,
+    history: ListingReads,
     /// Evaluation-only base-commit reads for committer times.
     timestamp_reads: usize,
 }
@@ -147,7 +144,7 @@ struct Selected {
 
 /// The read-only sampling command: the pipeline GitHub client and direct
 /// REST reads it does not offer.
-struct Api {
+pub struct Api {
     /// Transport for direct REST reads: `reqwest` live, a fake in tests.
     direct: Box<dyn HttpTransport>,
     /// Read-only token for direct REST reads.
@@ -191,34 +188,6 @@ impl Api {
             bytes.extend(chunk);
         }
         Ok(serde_json::from_slice(&bytes)?)
-    }
-
-    /// Read PR `number`'s file listing once, following at most `max_pages`
-    /// pages until [`Listing::push`] ends it; returns it with the page
-    /// requests it took.
-    ///
-    /// # Errors
-    ///
-    /// Returns provider errors.
-    async fn listing(
-        &self,
-        repository: &RepositoryIdentity,
-        number: u64,
-        max_pages: u32,
-    ) -> Result<(Listing, usize), Box<dyn Error>> {
-        let mut listing = Listing::default();
-        let mut pages = 0;
-        for page in 1..=max_pages {
-            let read = self
-                .client
-                .pull_request_files(repository, number, page)
-                .await?;
-            pages += 1;
-            if !listing.push(read, page == max_pages) {
-                break;
-            }
-        }
-        Ok((listing, pages))
     }
 
     /// Build `pr`'s complete base snapshot in memory and read it back.
@@ -300,12 +269,16 @@ impl Api {
         identity: &Identity,
         eligible: impl Fn(&RelativePath) -> bool,
         pr: &MergedPr,
-        listed: &mut BTreeMap<u64, (Changed, usize)>,
+        listed: &mut BTreeMap<u64, (Option<Vec<RelativePath>>, usize)>,
     ) -> Result<Option<Sampled>, Box<dyn Error>> {
-        let (listing, pages) = self
-            .listing(&identity.repository, pr.number, MAX_FILE_PAGES)
-            .await?;
-        listed.insert(pr.number, (history::changed(pr.number, &listing)?, pages));
+        let (listing, pages) = Listing::read(
+            &self.client,
+            &identity.repository,
+            pr.number,
+            MAX_LISTING_PAGES,
+        )
+        .await?;
+        listed.insert(pr.number, (listing.history_paths(pr.number)?, pages));
         let screen = Screen::new(pr.number, listing, eligible)?;
         if !screen.plausible() {
             return Ok(None);
@@ -334,13 +307,14 @@ impl Api {
     }
 
     /// Run `sampled`'s trials against the part of `history` merged before
-    /// its base commit, fetching each base and head blob it needs that
-    /// `cache` lacks through the hash-verifying client.
+    /// its base commit, fetching each head blob it needs that `cache` lacks
+    /// through the hash-verifying client.
     ///
     /// # Errors
     ///
     /// Returns provider errors, including a blob that is missing, oversize,
-    /// or fails verification, and [`trial::TrialError`]s.
+    /// or fails verification, snapshot facts that do not load, and
+    /// [`crate::trial::TrialError`]s.
     async fn trials(
         &self,
         repository: &RepositoryIdentity,
@@ -348,15 +322,6 @@ impl Api {
         history: &History,
         cache: &mut BTreeMap<ObjectSha, Vec<u8>>,
     ) -> Result<Vec<Trial>, Box<dyn Error>> {
-        let base: Vec<(&RelativePath, &ObjectSha)> = sampled
-            .snapshot
-            .files
-            .iter()
-            .filter_map(|outcome| match outcome {
-                FileOutcome::Indexed(file) => Some((&file.facts().path, file.blob())),
-                FileOutcome::Skipped(_) => None,
-            })
-            .collect();
         let head: Vec<(&RelativePath, &ObjectSha)> = sampled
             .screen
             .source
@@ -370,30 +335,27 @@ impl Api {
             .map(|file| (&file.path, &file.sha))
             .collect();
         let max_file_bytes = ColdBuildLimits::default().max_file_bytes;
-        // ponytail: every distinct blob of the run stays cached, trading
-        // memory for requests across overlapping base trees.
-        for (_, sha) in base.iter().chain(&head) {
+        // ponytail: every distinct head blob of the run stays cached,
+        // trading memory for requests across PRs sharing a head blob.
+        for (_, sha) in &head {
             if !cache.contains_key(*sha) {
                 let bytes = self.client.blob(repository, sha, max_file_bytes).await?;
                 cache.insert((*sha).clone(), bytes);
             }
         }
-        let view = |files: &[(&RelativePath, &ObjectSha)]| -> BTreeMap<RelativePath, &[u8]> {
-            files
-                .iter()
-                .filter_map(|(path, sha)| Some(((*path).clone(), cache.get(*sha)?.as_slice())))
-                .collect()
-        };
+        let heads: BTreeMap<RelativePath, &[u8]> = head
+            .iter()
+            .filter_map(|(path, sha)| Some(((*path).clone(), cache.get(*sha)?.as_slice())))
+            .collect();
         let eligible: Vec<&[RelativePath]> = history
             .for_trial(sampled.pr.number, &sampled.base_time)
             .map(|pr| pr.paths.as_slice())
             .collect();
         Ok(evaluate(
             sampled.pr.number,
-            sampled.snapshot.clone().into_context()?,
-            &view(&base),
+            &sampled.snapshot.clone().into_context()?,
             &sampled.screen.source,
-            &view(&head),
+            &heads,
             &eligible,
         )?)
     }
@@ -467,8 +429,9 @@ impl Api {
             if let Some(read) = listed.remove(&number) {
                 return Ok(read);
             }
-            let (listing, pages) = self.listing(repository, number, MAX_FILE_PAGES).await?;
-            Ok::<_, Box<dyn Error>>((history::changed(number, &listing)?, pages))
+            let (listing, pages) =
+                Listing::read(&self.client, repository, number, MAX_LISTING_PAGES).await?;
+            Ok::<_, Box<dyn Error>>((listing.history_paths(number)?, pages))
         })
         .await?;
         requests.history = history.reads.clone();
@@ -486,7 +449,7 @@ impl Api {
 /// # Errors
 ///
 /// Returns a missing or unusable token and TLS initialisation failures.
-fn live() -> Result<Api, Box<dyn Error>> {
+pub fn live() -> Result<Api, Box<dyn Error>> {
     let token = env::var("GITHUB_TOKEN").map_err(|_| "GITHUB_TOKEN is required")?;
     let client = GitHubClient::new(
         GitHubHost::public(),
@@ -507,7 +470,7 @@ fn live() -> Result<Api, Box<dyn Error>> {
 /// # Errors
 ///
 /// Returns sampling, history, provider, and trial failures.
-async fn run(api: &Api, repos: &[Repository]) -> Result<Vec<Value>, Box<dyn Error>> {
+pub async fn run(api: &Api, repos: &[Repository]) -> Result<Vec<Value>, Box<dyn Error>> {
     let mut records = Vec::new();
     for repo in repos {
         let selected = api.select(repo).await?;
@@ -564,9 +527,16 @@ fn record(repo: &Repository, selected: &Selected, trials: &[Trial]) -> (Value, V
         })
         .collect();
     let requests = &selected.requests;
-    let e_minus_c = report::effect(&means, |pr| pr.e, BOOTSTRAP_SEED);
-    let f_minus_c = report::effect(&means, |pr| pr.f, BOOTSTRAP_SEED);
-    let verdict = report::verdict(&f_minus_c);
+    let effects: BTreeMap<String, Value> = ARMS
+        .iter()
+        .map(|(id, _)| *id)
+        .filter(|id| *id != BASELINE)
+        .map(|id| {
+            let effect = report::effect(&means, id, BOOTSTRAP_SEED);
+            (format!("{id}-{BASELINE}"), effect_record(&effect))
+        })
+        .collect();
+    let verdict = report::verdict(&report::effect(&means, DECISION_ARM, BOOTSTRAP_SEED));
     let record = json!({
         "repository": repo.name,
         "cutoff": repo.cutoff,
@@ -599,7 +569,7 @@ fn record(repo: &Repository, selected: &Selected, trials: &[Trial]) -> (Value, V
         "hit_rank": HIT_RANK,
         "sample": prs,
         "trials": trials,
-        "effects": {"E-C": effect_record(&e_minus_c), "F-C": effect_record(&f_minus_c)},
+        "effects": effects,
         "decision": {
             "rule": DECISION_RULE,
             "threshold": ADOPTION_THRESHOLD,
@@ -621,26 +591,17 @@ fn effect_record(effect: &Effect) -> Value {
     })
 }
 
-/// Print every live report, or only the failure on stderr with exit 1.
+/// Print every live report.
 ///
 /// # Errors
 ///
 /// Returns [`live`], [`run`], and serialisation failures.
-async fn print() -> Result<(), Box<dyn Error>> {
+pub async fn print() -> Result<(), Box<dyn Error>> {
     let records = run(&live()?, &REPOSITORIES).await?;
     for record in records {
         println!("{}", serde_json::to_string_pretty(&record)?);
     }
     Ok(())
-}
-
-/// Entry point: prints the reports, or the failure on stderr with exit 1.
-#[tokio::main]
-async fn main() {
-    if let Err(error) = print().await {
-        eprintln!("context_relevance failed: {error}");
-        std::process::exit(1);
-    }
 }
 
 /// Command contract checks: the fixed repositories, and the whole
@@ -650,7 +611,9 @@ async fn main() {
 mod tests {
     use super::*;
     use bohmian_code_review_pipeline::testing::RoutedTransport;
-    use bohmian_code_review_pipeline::{BoxFuture, GitHubError, HttpResponse, TransportError};
+    use bohmian_code_review_pipeline::{
+        BoxFuture, GitHubError, HistoryError, HttpResponse, TransportError,
+    };
     use sha1::{Digest, Sha1};
     use std::sync::Arc;
 
@@ -935,7 +898,7 @@ mod tests {
             assert_eq!(pr["head"], sha(0x4ead, n));
             assert_eq!(pr["hit_at_10_means"]["pr"], n);
             assert_eq!(pr["hit_at_10_means"]["trials"], 2);
-            for arm in ["C", "E", "F"] {
+            for arm in ["S", "C", "E", "F"] {
                 assert!(pr["hit_at_10_means"][arm].is_f64(), "PR {n} {arm}");
             }
         }
@@ -943,11 +906,19 @@ mod tests {
         assert_eq!(sample[0]["history_size"], 10 + 49);
         for trial in record["trials"].as_array().expect("trials") {
             assert!(trial["withheld"].is_string());
-            for arm in ["C", "E", "F"] {
+            for arm in ["S", "C", "E", "F"] {
                 assert!(trial[arm]["hit_at_10"].is_boolean());
             }
         }
-        for effect in ["E-C", "F-C"] {
+        assert_eq!(
+            record["effects"]
+                .as_object()
+                .expect("effects")
+                .keys()
+                .collect::<Vec<_>>(),
+            ["E-C", "F-C", "S-C"]
+        );
+        for effect in ["E-C", "F-C", "S-C"] {
             let reported = &record["effects"][effect];
             assert!(reported["mean"].is_f64(), "{effect}");
             let [low, high] = [0, 1].map(|end| reported["ci_95"][end].as_f64().expect("bound"));
@@ -1018,7 +989,7 @@ mod tests {
 
         for number in [14, 30] {
             let incomplete = Fake::new();
-            for page in 1..=MAX_FILE_PAGES {
+            for page in 1..=MAX_LISTING_PAGES {
                 incomplete.client.respond(
                     &files_page(number, page),
                     vec![(
@@ -1032,15 +1003,15 @@ mod tests {
                 .await
                 .expect_err("incomplete listing fails");
             assert_eq!(
-                error.downcast_ref::<SampleError>(),
-                Some(&SampleError::IncompleteListing { number })
+                error.downcast_ref::<HistoryError>(),
+                Some(&HistoryError::IncompleteListing { number })
             );
             let pages = incomplete
                 .listing_reads()
                 .iter()
                 .filter(|url| url.contains(&format!("/pulls/{number}/files?")))
                 .count();
-            assert_eq!(pages, MAX_FILE_PAGES as usize);
+            assert_eq!(pages, MAX_LISTING_PAGES as usize);
         }
 
         let limited = Fake::new();
