@@ -279,7 +279,8 @@ impl Snapshot {
     /// # Errors
     ///
     /// Returns [`ColdBuildError::Corrupt`] when the bytes do not decode,
-    /// name another identity, commit, tree, or version, or are not complete.
+    /// name another identity, commit, tree, or version, are not complete,
+    /// or hold an indexed file whose facts fail validation.
     fn decode(
         bytes: &[u8],
         identity: &Identity,
@@ -315,6 +316,13 @@ impl Snapshot {
         }
         if !snapshot.coverage().is_complete() {
             return Err(corrupt("incomplete coverage".to_owned()));
+        }
+        for outcome in &snapshot.files {
+            if let FileOutcome::Indexed(file) = outcome {
+                file.facts
+                    .validate()
+                    .map_err(|error| corrupt(format!("{}: {error}", file.facts.path)))?;
+            }
         }
         Ok(snapshot)
     }
@@ -2395,6 +2403,40 @@ pub(crate) mod tests {
                 .await,
             Err(ColdBuildError::Corrupt { .. })
         ));
+    }
+
+    /// A published snapshot whose persisted reference names are empty,
+    /// repeated, or unordered decodes as corrupt rather than as complete
+    /// coverage; the untouched object still decodes.
+    #[tokio::test]
+    async fn malformed_persisted_references_are_corrupt() {
+        let files = [("src/user.ts", USER)];
+        let repo = FakeRepo::new(&files.map(|(path, bytes)| file(path, bytes)), &files);
+        let client = repo.client();
+        let storage = MemoryStorage::default();
+        let store = MemorySnapshotStore::default();
+        let result = ColdBuild::new(&client, &storage, &store, ColdBuildLimits::default())
+            .run(&identity())
+            .await
+            .expect("cold build");
+        let ColdBuildOutcome::Published(pointer) = result.outcome else {
+            panic!("expected publication, got {:?}", result.outcome);
+        };
+        let bytes = storage.read(&pointer.key).await.expect("object");
+        let decode = |bytes: &[u8]| Snapshot::decode(bytes, &identity(), &repo.commit, &repo.tree);
+        let snapshot = decode(&bytes).expect("valid snapshot");
+        for references in [&["", "a"][..], &["a", "a"], &["b", "a"]] {
+            let mut malformed = snapshot.clone();
+            let FileOutcome::Indexed(file) = &mut malformed.files[0] else {
+                panic!("expected an indexed file");
+            };
+            file.facts.references = references.iter().map(|&name| name.to_owned()).collect();
+            let bytes = serde_json::to_vec(&malformed).expect("serialize");
+            assert!(matches!(
+                decode(&bytes),
+                Err(ColdBuildError::Corrupt { detail }) if detail.starts_with("src/user.ts: reference name")
+            ));
+        }
     }
 
     /// Cold build history is complete or fails before publication: a

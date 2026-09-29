@@ -226,7 +226,8 @@ impl SymbolicContext {
     ///
     /// Returns [`Error::ExtractionVersionMismatch`] when the facts were
     /// stamped by another extractor and [`Error::InvalidFacts`] for a
-    /// malformed declaration.
+    /// malformed declaration or reference names that are not nonempty and
+    /// strictly ascending.
     pub fn load(&mut self, facts: IndexedFileFacts) -> Result<(), Error> {
         if facts.extraction_version != EXTRACTION_VERSION {
             return Err(Error::ExtractionVersionMismatch {

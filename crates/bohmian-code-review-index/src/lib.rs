@@ -212,8 +212,9 @@ impl SymbolIndex {
     ///
     /// # Errors
     ///
-    /// Returns [`InvalidFact`] for an empty identity or a span that is not
-    /// one-based and ascending.
+    /// Returns [`InvalidFact`] for an empty identity, a span that is not
+    /// one-based and ascending, or reference names that are not nonempty
+    /// and strictly ascending.
     pub fn load(&mut self, facts: IndexedFileFacts) -> Result<(), InvalidFact> {
         facts.validate()?;
         let nodes = facts
@@ -549,7 +550,8 @@ mod tests {
     #[test]
     /// Referenced names post to their files in path order, survive export
     /// and load sorted, are replaced by a later upsert, and vanish on
-    /// removal; unknown names reference nothing.
+    /// removal; unknown names reference nothing. Empty, repeated, or
+    /// unordered loaded names fail and keep the file's postings.
     fn referenced_names_post_replace_and_round_trip() {
         let names = |raw: &[&str]| raw.iter().map(|&name| name.to_owned()).collect();
         let referencing = |index: &SymbolIndex, name: &str| -> Vec<String> {
@@ -572,6 +574,18 @@ mod tests {
             loaded.load(facts).expect("valid facts");
         }
         assert_eq!(referencing(&loaded, "save"), ["src/z.ts"]);
+        for raw in [&["", "load"][..], &["load", "load"], &["save", "load"]] {
+            let mut malformed = loaded
+                .export_file(&path("src/z.ts"), "v1")
+                .expect("indexed");
+            malformed.references = raw.iter().map(|&name| name.to_owned()).collect();
+            assert!(matches!(
+                loaded.load(malformed),
+                Err(InvalidFact::InvalidReference { .. })
+            ));
+        }
+        assert_eq!(referencing(&loaded, "save"), ["src/z.ts"]);
+        assert!(referencing(&loaded, "").is_empty());
 
         loaded.upsert(path("src/z.ts"), 1, Vec::new(), names(&["other"]));
         assert_eq!(referencing(&loaded, "load"), ["src/a.ts"]);

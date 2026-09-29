@@ -8,8 +8,8 @@
 
 use bohmian_code_review::{
     ChangedBlob, ContextLimits, DiffError, EXTRACTION_VERSION, Error, ExtractionError, FileDiff,
-    IndexedFileFacts, Language, LineRange, OmissionReason, RelativePath, SelectError, SpanKind,
-    SymbolicContext, build_context, parse_unified_diff,
+    IndexedFileFacts, InvalidFact, Language, LineRange, OmissionReason, RelativePath, SelectError,
+    SpanKind, SymbolicContext, build_context, parse_unified_diff,
 };
 use std::collections::BTreeMap;
 
@@ -390,8 +390,8 @@ export const report = (id: string) => formatUser(lookupUser(id)) + unrelated();
 #[test]
 /// Exported facts are source-free and version-stamped; loading them into a
 /// fresh context reproduces lookup, ranking, and packed candidate spans,
-/// while malformed or foreign-version facts fail without touching other
-/// loaded files.
+/// while malformed or foreign-version facts, including empty, repeated, or
+/// unordered reference names, fail without touching any loaded file.
 fn exported_facts_reload_without_source_and_reject_invalid_records() {
     let context = indexed();
     let exported = context.export();
@@ -478,6 +478,25 @@ fn exported_facts_reload_without_source_and_reject_invalid_records() {
         loaded.load(renamed),
         Err(Error::InvalidFacts { ref path, .. }) if path.as_str() == "src/other.ts"
     ));
+    for references in [
+        vec![String::new(), "User".to_owned()],
+        vec!["User".to_owned(), "User".to_owned()],
+        vec!["console.log".to_owned(), "User".to_owned()],
+    ] {
+        let mut malformed = user.clone();
+        malformed.references = references;
+        assert!(matches!(
+            loaded.load(malformed),
+            Err(Error::InvalidFacts {
+                ref path,
+                source: InvalidFact::InvalidReference { .. },
+            }) if path.as_str() == "src/user.ts"
+        ));
+    }
+    assert_eq!(
+        loaded.export_file(&path("src/user.ts")).as_ref(),
+        Some(user)
+    );
     assert_eq!(loaded.file_count(), 4);
     assert_eq!(loaded.lookup("lookupUser")[0].path.as_str(), "src/user.ts");
     assert!(
