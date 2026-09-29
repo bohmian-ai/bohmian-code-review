@@ -1622,6 +1622,50 @@ pub(crate) mod tests {
             }
         }
 
+        /// Route a closed-PR listing that advertises another page at every
+        /// page through the page bound, page `n` holding PR `100 + n`
+        /// merged at `(12 - n):00` on 2026-02-03, so between the second and
+        /// third pushed commits, then a closed unmerged PR updated half an
+        /// hour earlier. Every page proves one new merged PR, yet the
+        /// listing never reaches the first commit's time or its end.
+        pub(crate) fn capped_history(&self) {
+            let entry = |number: u64, at: &str, merged: bool| {
+                let merged_at = match merged {
+                    true => format!("\"{at}\""),
+                    false => "null".to_owned(),
+                };
+                format!(
+                    r#"{{"number":{number},"updated_at":"{at}","merged_at":{merged_at},"base":{{"ref":"main","sha":"{}"}},"head":{{"ref":"f","sha":"{}"}}}}"#,
+                    sha('a'),
+                    sha('b')
+                )
+            };
+            for page in 1..=crate::history::MAX_DISCOVERY_PAGES {
+                let (number, hour) = (u64::from(page) + 100, 12 - page);
+                let merged = entry(number, &format!("2026-02-03T{hour:02}:00:00Z"), true);
+                let closed = entry(
+                    number + 100,
+                    &format!("2026-02-03T{:02}:30:00Z", hour - 1),
+                    false,
+                );
+                self.transport.respond(
+                    &closed_pulls(page),
+                    vec![(
+                        200,
+                        vec![("link".to_owned(), r#"<x>; rel="next""#.to_owned())],
+                        format!("[{merged},{closed}]").into_bytes(),
+                    )],
+                );
+                self.transport.json(
+                    &format!("/pulls/{number}/files?per_page=100&page=1"),
+                    &format!(
+                        r#"[{{"filename":"src/p{number}.ts","status":"modified","sha":"{}","patch":"@@ -1 +1 @@\n-a\n+b"}}]"#,
+                        sha('e')
+                    ),
+                );
+            }
+        }
+
         /// Route a two-page closed-PR listing, PRs merged early on 2026-02-03,
         /// whose page 1 gains PR 3, a page-2 entry, below its unchanged
         /// first entry before it is read again, so page 2 as read skipped

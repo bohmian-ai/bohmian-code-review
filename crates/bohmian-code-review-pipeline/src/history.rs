@@ -35,8 +35,9 @@ pub const COLD_DEPTH: usize = 10;
 /// oldest beyond it.
 pub const MAX_HISTORY_PRS: usize = 1_000;
 /// Closed-PR listing pages read per history read: 1,000 PRs at 100 per
-/// page. A read that reaches it with more pages advertised succeeds only
-/// when it already proved [`COLD_DEPTH`] PRs.
+/// page. A read that reaches it with more pages advertised fails: a cold
+/// read stops before it once [`COLD_DEPTH`] PRs are proved, and an update
+/// must reach its prior history's time or the listing's end.
 pub const MAX_DISCOVERY_PAGES: u32 = 10;
 /// Most changed files a history PR may have before it is a mass edit.
 pub const MASS_EDIT_FILES: usize = 30;
@@ -76,8 +77,9 @@ pub enum HistoryError {
     #[error("closed pull requests changed while they were listed")]
     ListingMoved,
     /// The closed-PR listing reached [`MAX_DISCOVERY_PAGES`] with more
-    /// pages advertised before it proved [`COLD_DEPTH`] non-mass-edit PRs
-    /// or reached the prior history's time.
+    /// pages advertised before a cold read proved [`COLD_DEPTH`]
+    /// non-mass-edit PRs or an update reached its prior history's time,
+    /// however many PRs an update proved.
     #[error(
         "closed-PR listing ended at its page bound after proving only {found} non-mass-edit PRs"
     )]
@@ -338,10 +340,9 @@ impl CoChangeHistory {
     /// with one complete listing. Without `prior` reading stops at
     /// [`COLD_DEPTH`] non-mass-edit PRs; with it, at the first PR merged
     /// before `prior.before`, and `prior`'s entries follow. When the pages
-    /// run out, history is what they proved; when the page bound is
-    /// reached with more pages advertised, the read succeeds only with
-    /// [`COLD_DEPTH`] proved PRs and drops `prior`, so the span stays
-    /// contiguous. At most [`MAX_HISTORY_PRS`] are kept. Every page read
+    /// run out, history is what they proved and `prior` follows; reaching
+    /// the page bound with more pages advertised fails, so an update never
+    /// drops `prior` or skips a merge and the span stays contiguous. At most [`MAX_HISTORY_PRS`] are kept. Every page read
     /// before the last is read again afterwards and must list the same
     /// entries, so a listing that shifted mid-read fails.
     ///
@@ -365,9 +366,9 @@ impl CoChangeHistory {
         };
         let (mut known, mut seen) = (Vec::<MergedPr>::new(), BTreeSet::new());
         let (mut pages, mut horizon, mut more) = (Vec::new(), None::<String>, true);
-        let joined = loop {
+        loop {
             if since.is_none() && history.prs.len() == COLD_DEPTH {
-                break false;
+                break;
             }
             let proven = known.first().filter(|pr| {
                 horizon
@@ -376,7 +377,7 @@ impl CoChangeHistory {
             });
             if let Some(pr) = proven {
                 if since.is_some_and(|since| pr.merged_at.as_str() < since) {
-                    break true;
+                    break;
                 }
                 let pr = known.remove(0);
                 let (listing, _) =
@@ -394,16 +395,13 @@ impl CoChangeHistory {
                 .zip(horizon.as_deref())
                 .is_some_and(|(since, horizon)| horizon < since);
             if !more || below_since {
-                break true;
+                break;
             }
             if pages.len() == MAX_DISCOVERY_PAGES as usize {
-                if history.prs.len() < COLD_DEPTH {
-                    return Err(HistoryError::UnprovedHistory {
-                        found: history.prs.len(),
-                    }
-                    .into());
+                return Err(HistoryError::UnprovedHistory {
+                    found: history.prs.len(),
                 }
-                break false;
+                .into());
             }
             let page = client
                 .closed_pull_requests(repository, branch, pages.len() as u32 + 1)
@@ -420,7 +418,7 @@ impl CoChangeHistory {
                 true => page.oldest_update.or(horizon),
                 false => None,
             };
-        };
+        }
         for (index, listed) in pages.iter().enumerate().take(pages.len().saturating_sub(1)) {
             let again = client
                 .closed_pull_requests(repository, branch, index as u32 + 1)
@@ -429,7 +427,7 @@ impl CoChangeHistory {
                 return Err(HistoryError::ListingMoved.into());
             }
         }
-        if let Some(prior) = prior.filter(|_| joined) {
+        if let Some(prior) = prior {
             history.prs.extend(prior.prs.iter().cloned());
         }
         history.prs.truncate(MAX_HISTORY_PRS);
@@ -733,6 +731,60 @@ mod tests {
                 u64::from(MAX_DISCOVERY_PAGES)
             );
         }
+    }
+
+    /// An update whose ten pages each prove one new merged PR, with an
+    /// eleventh page still advertised and the prior time not reached,
+    /// fails rather than dropping the prior history or the unseen merge;
+    /// a cold read of the same pages still completes at cold depth.
+    #[tokio::test]
+    async fn update_with_ten_new_prs_at_the_page_bound_fails() {
+        let bounded = || {
+            let transport = RoutedTransport::default();
+            for n in 1..=MAX_DISCOVERY_PAGES {
+                let merged = format!("2026-01-{:02}T12:00:00Z", 30 - n);
+                let closed_unmerged = format!("2026-01-{:02}T00:00:00Z", 30 - n);
+                transport.respond(
+                    &closed(n),
+                    vec![page(
+                        &[
+                            listed(u64::from(n), &merged, true),
+                            listed(100 + u64::from(n), &closed_unmerged, false),
+                        ],
+                        true,
+                    )],
+                );
+                route_listing(&transport, u64::from(n), 1);
+            }
+            GitHubClient::with_transport(
+                GitHubHost::public(),
+                InstallationToken::new("ghs_token").expect("token"),
+                RequestLimits::default(),
+                Box::new(transport),
+            )
+        };
+        let prior = CoChangeHistory {
+            before: "2026-01-02T00:00:00Z".to_owned(),
+            prs: vec![HistoryPr {
+                number: 1000,
+                merged_at: "2026-01-01T00:00:00Z".to_owned(),
+                paths: Vec::new(),
+            }],
+        };
+        let client = bounded();
+        assert_eq!(
+            read(&client, "2026-01-31T00:00:00Z", Some(&prior)).await,
+            Err(HistoryError::UnprovedHistory { found: 10 })
+        );
+        assert_eq!(
+            client.calls().get(Operation::PullRequests),
+            u64::from(MAX_DISCOVERY_PAGES)
+        );
+
+        let cold = read(&bounded(), "2026-01-31T00:00:00Z", None)
+            .await
+            .expect("cold history");
+        assert_eq!(numbers(&cold), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     }
 
     /// A page-2 entry that moves into page 1 below its unchanged first

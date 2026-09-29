@@ -509,30 +509,36 @@ mod tests {
 
     /// Update history is complete or fails before publication: a listing
     /// still advertising pages at the page bound without reaching the prior
-    /// history's time, or one whose page 1 gained an entry below its first
-    /// while page 2 was read, fails the update and keeps the prior pointer.
+    /// history's time, even after proving ten new merged PRs, or one whose
+    /// page 1 gained an entry below its first while page 2 was read, fails
+    /// the update and keeps the prior pointer.
     #[tokio::test]
     async fn update_history_is_complete_or_unpublished() {
-        for moving in [false, true] {
+        type Route = fn(&FakeRepo);
+        let cases: [(Route, HistoryError); 3] = [
+            (
+                FakeRepo::unproved_history,
+                HistoryError::UnprovedHistory { found: 0 },
+            ),
+            (
+                FakeRepo::capped_history,
+                HistoryError::UnprovedHistory { found: 10 },
+            ),
+            (FakeRepo::moving_history, HistoryError::ListingMoved),
+        ];
+        for (route, expected) in cases {
             let repo = FakeRepo::new(&standard_files(), &standard_archive());
             let storage = MemoryStorage::default();
             let store = MemorySnapshotStore::default();
             let identity = identity();
             let old = cold(&repo, &storage, &store).await;
             repo.push(&sha('d'), &sha('8'), &pushed_files(), &pushed_archive());
-            match moving {
-                true => repo.moving_history(),
-                false => repo.unproved_history(),
-            }
+            route(&repo);
             let client = repo.client();
             let error = Update::new(&client, &storage, &store, ColdBuildLimits::default())
                 .run(&identity)
                 .await
                 .expect_err("history is unproved");
-            let expected = match moving {
-                true => HistoryError::ListingMoved,
-                false => HistoryError::UnprovedHistory { found: 0 },
-            };
             assert!(
                 matches!(&error, ColdBuildError::History(found) if *found == expected),
                 "{error:?}"
