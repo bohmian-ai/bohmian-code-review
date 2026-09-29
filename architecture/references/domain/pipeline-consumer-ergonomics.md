@@ -2,7 +2,7 @@
 
 Target consumer shape for `bohmian-code-review-pipeline`, written from the point of view of Wyrd importing it with its own Postgres and OpenDAL. Review pipeline API changes against this: if a change makes the consumer code below longer or adds a concept the consumer must learn, it needs a reason.
 
-`ReviewPipeline` and `PipelineError` are proposed, not yet built. Everything else names existing types.
+`ReviewPipeline`, `PipelineLimits`, and `PipelineError` are built. Everything else names existing types.
 
 ## Seams
 
