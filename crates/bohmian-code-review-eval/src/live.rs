@@ -22,8 +22,8 @@
 //! source leaves memory.
 
 use crate::report::{
-    self, ADOPTION_THRESHOLD, Arms, BOOTSTRAP_SEED, DECISION_RULE, Effect, Evaluation, RESAMPLES,
-    Summary, VALIDITY_THREATS, Verdict,
+    self, ADOPTION_THRESHOLD, Arms, BOOTSTRAP_SEED, Effect, Evaluation, RESAMPLES, Summary,
+    VALIDITY_THREATS, Verdict,
 };
 use crate::sample::{Discovery, OmittedReason, SAMPLE_SIZE, SampleError, Screen, eligible};
 use crate::trial::{HIT_RANK, RARITY_RULE, TRIAL_RULE};
@@ -348,7 +348,8 @@ pub fn live() -> Result<Api, Box<dyn Error>> {
 
 /// Select every repository in `repos`, run its trials under `arms`, and
 /// return every report only once all repositories succeed, so a failure
-/// leaves none. Each report records the repository-wide adoption decision.
+/// leaves none. Each report records the repository-wide adoption decision
+/// under `arms`' decision key.
 ///
 /// # Errors
 ///
@@ -373,23 +374,28 @@ pub async fn run(
             )
             .await?;
         }
-        records.push(record(repo, &selected, &evaluation.finish()));
+        records.push(record(repo, &selected, arms, &evaluation.finish()));
     }
     let verdicts: Vec<Verdict> = records.iter().map(|(_, verdict)| *verdict).collect();
-    let adopt = report::adopt(&verdicts);
+    let (adopt, adopt_key) = (report::adopt(&verdicts), arms.adopt_key());
     Ok(records
         .into_iter()
         .map(|(mut record, _)| {
-            record["decision"]["adopt_f"] = json!(adopt);
+            record["decision"][&adopt_key] = json!(adopt);
             record
         })
         .collect())
 }
 
 /// `repo`'s source-free JSON report of `selected` and its evaluated
-/// `summary`, with its decision verdict; the caller adds the
-/// repository-wide adoption.
-fn record(repo: &Repository, selected: &Selected, summary: &Summary) -> (Value, Verdict) {
+/// `summary`, with its decision verdict and rule named by `arms`' decision
+/// and baseline; the caller adds the repository-wide adoption.
+fn record(
+    repo: &Repository,
+    selected: &Selected,
+    arms: Arms<'_>,
+    summary: &Summary,
+) -> (Value, Verdict) {
     let means = &summary.means;
     let prs: Vec<_> = selected
         .sample
@@ -425,6 +431,10 @@ fn record(repo: &Repository, selected: &Selected, summary: &Summary) -> (Value, 
         .map(|(name, effect)| (name, effect_record(effect)))
         .collect();
     let verdict = summary.verdict;
+    let mut decision = serde_json::Map::new();
+    decision.insert("rule".to_owned(), json!(arms.rule()));
+    decision.insert("threshold".to_owned(), json!(ADOPTION_THRESHOLD));
+    decision.insert(arms.verdict_key(), json!(verdict));
     let record = json!({
         "repository": repo.name,
         "cutoff": repo.cutoff,
@@ -458,11 +468,7 @@ fn record(repo: &Repository, selected: &Selected, summary: &Summary) -> (Value, 
         "sample": prs,
         "trials": summary.trials,
         "effects": effects,
-        "decision": {
-            "rule": DECISION_RULE,
-            "threshold": ADOPTION_THRESHOLD,
-            "repository_f_minus_c": verdict,
-        },
+        "decision": decision,
         "validity_threats": BTreeMap::from(VALIDITY_THREATS),
     });
     (record, verdict)
@@ -470,7 +476,7 @@ fn record(repo: &Repository, selected: &Selected, summary: &Summary) -> (Value, 
 
 /// `effect`'s report entry: its mean, interval, and whether the interval
 /// contains 0 and so is inconclusive. Only the interval decides this, so
-/// the adoption threshold stays with F − C's decision.
+/// the adoption threshold stays with the decision − baseline verdict.
 fn effect_record(effect: &Effect) -> Value {
     json!({
         "mean": effect.mean,
@@ -853,10 +859,18 @@ mod tests {
         let (e_record, f_verdict) = (effect_record(&excludes), report::verdict(&straddles));
         assert!(e_record.get("verdict").is_none(), "E carries no F decision");
         assert!(!report::adopt(&[f_verdict]), "E cannot adopt F");
-        assert_eq!(record["decision"]["rule"], DECISION_RULE);
-        assert_eq!(record["decision"]["threshold"], ADOPTION_THRESHOLD);
-        assert!(record["decision"]["repository_f_minus_c"].is_string());
-        assert!(record["decision"]["adopt_f"].is_boolean());
+        let decision = record["decision"].as_object().expect("decision");
+        assert_eq!(
+            decision.keys().collect::<Vec<_>>(),
+            ["adopt_f", "repository_f_minus_c", "rule", "threshold"]
+        );
+        assert_eq!(
+            decision["rule"],
+            "adopt F only if, in every repository, the mean per-PR F - C hit@10 difference is at least 0.05 and its 95% bootstrap interval's lower bound is above 0; an interval containing 0 is inconclusive"
+        );
+        assert_eq!(decision["threshold"], ADOPTION_THRESHOLD);
+        assert!(decision["repository_f_minus_c"].is_string());
+        assert!(decision["adopt_f"].is_boolean());
         let threats: Vec<&str> = record["validity_threats"]
             .as_object()
             .expect("threats")
@@ -881,6 +895,49 @@ mod tests {
         }
         assert!(!text.contains("pack"), "report claims a packing outcome");
         assert!(record.get("summary").is_none());
+    }
+
+    /// A run under caller-named arms other than C/F names every decision
+    /// field after that pair: the effect, the repository verdict, the
+    /// aggregate adoption, and the rule.
+    #[tokio::test]
+    async fn run_report_names_the_callers_decision_pair() {
+        let rankers: [(&str, &dyn Ranker); 2] =
+            [("Overlap", &SymbolOverlap), ("Fused", &DEFAULT_RANKER)];
+        let arms = Arms::new(&rankers, "Overlap", "Fused").expect("valid arms");
+        let fake = Fake::new();
+        let records = run(&fake.api(), &[FAKE], arms)
+            .await
+            .expect("fake run succeeds");
+        let [record] = records.as_slice() else {
+            panic!("one report per repository");
+        };
+
+        assert_eq!(
+            record["effects"]
+                .as_object()
+                .expect("effects")
+                .keys()
+                .collect::<Vec<_>>(),
+            ["Fused-Overlap"]
+        );
+        let decision = record["decision"].as_object().expect("decision");
+        assert_eq!(
+            decision.keys().collect::<Vec<_>>(),
+            [
+                "adopt_fused",
+                "repository_fused_minus_overlap",
+                "rule",
+                "threshold"
+            ]
+        );
+        assert_eq!(
+            decision["rule"],
+            "adopt Fused only if, in every repository, the mean per-PR Fused - Overlap hit@10 difference is at least 0.05 and its 95% bootstrap interval's lower bound is above 0; an interval containing 0 is inconclusive"
+        );
+        let verdict = decision["repository_fused_minus_overlap"].clone();
+        assert!(verdict.is_string());
+        assert_eq!(decision["adopt_fused"], verdict == "met");
     }
 
     /// A missing base-commit response, a history-only (PR 14) or cached

@@ -22,10 +22,9 @@ use thiserror::Error;
 pub const BOOTSTRAP_SEED: u64 = 0x2026_0929_c0c4_a17e;
 /// Bootstrap resamples over PRs.
 pub const RESAMPLES: usize = 10_000;
-/// Smallest F − C mean hit@10 difference that can adopt F: 5 points.
+/// Smallest decision − baseline mean hit@10 difference that can adopt the
+/// decision arm: 5 points.
 pub const ADOPTION_THRESHOLD: f64 = 0.05;
-/// The predeclared decision rule as recorded in the report.
-pub const DECISION_RULE: &str = "adopt F only if, in every repository, the mean per-PR F - C hit@10 difference is at least 0.05 and its 95% bootstrap interval's lower bound is above 0; an interval containing 0 is inconclusive";
 /// Threats to validity every report states.
 pub const VALIDITY_THREATS: [(&str, &str); 4] = [
     (
@@ -74,7 +73,7 @@ pub struct Effect {
     pub ci_95: [f64; 2],
 }
 
-/// One repository's decision − baseline outcome under [`DECISION_RULE`].
+/// One repository's decision − baseline outcome under [`Arms::rule`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Verdict {
@@ -149,7 +148,7 @@ pub fn effect(means: &[PrMeans], treatment: &str, baseline: &str, seed: u64) -> 
     }
 }
 
-/// The decision − baseline `effect`'s outcome under [`DECISION_RULE`].
+/// The decision − baseline `effect`'s outcome under [`Arms::rule`].
 pub fn verdict(effect: &Effect) -> Verdict {
     let [low, high] = effect.ci_95;
     if low <= 0.0 && high >= 0.0 {
@@ -228,6 +227,31 @@ impl<'a> Arms<'a> {
     /// The decision arm's id.
     pub fn decision(&self) -> &'a str {
         self.decision
+    }
+
+    /// The predeclared decision rule as recorded in the report, naming the
+    /// decision and baseline arms by id.
+    pub fn rule(&self) -> String {
+        let (decision, baseline) = (self.decision, self.baseline);
+        format!(
+            "adopt {decision} only if, in every repository, the mean per-PR {decision} - {baseline} hit@10 difference is at least {ADOPTION_THRESHOLD} and its 95% bootstrap interval's lower bound is above 0; an interval containing 0 is inconclusive"
+        )
+    }
+
+    /// The report key of one repository's [`Verdict`]:
+    /// `repository_<decision>_minus_<baseline>`, ids lowercased.
+    pub fn verdict_key(&self) -> String {
+        format!(
+            "repository_{}_minus_{}",
+            self.decision.to_lowercase(),
+            self.baseline.to_lowercase()
+        )
+    }
+
+    /// The report key of the all-repository [`adopt`] decision:
+    /// `adopt_<decision>`, id lowercased.
+    pub fn adopt_key(&self) -> String {
+        format!("adopt_{}", self.decision.to_lowercase())
     }
 }
 
@@ -466,7 +490,8 @@ mod tests {
 
     /// Report regression: each checked-in C/E/F report's trials, summarized
     /// under the caller-named C/E/F arms, reproduce its per-PR means, both
-    /// seeded effects bit for bit, its verdict, and its trial records.
+    /// seeded effects bit for bit, its verdict, and its trial records, and
+    /// the C/F arms' decision keys and rule are its exact decision fields.
     #[test]
     fn checked_in_reports_are_reproduced_from_their_trials() {
         let rankers: [(&str, &dyn Ranker); 3] = [
@@ -533,8 +558,16 @@ mod tests {
             assert_eq!(summary.effects.keys().collect::<Vec<_>>(), ["E-C", "F-C"]);
             assert_eq!(
                 serde_json::to_value(summary.verdict).expect("serializes"),
-                report["decision"]["repository_f_minus_c"]
+                report["decision"][arms.verdict_key()]
             );
+            let decision = report["decision"].as_object().expect("decision");
+            assert_eq!(
+                decision.keys().collect::<Vec<_>>(),
+                ["adopt_f", "repository_f_minus_c", "rule", "threshold"]
+            );
+            assert!(decision[&arms.adopt_key()].is_boolean());
+            assert_eq!(decision["rule"], arms.rule());
+            assert_eq!(decision["threshold"], ADOPTION_THRESHOLD);
         }
     }
 }
