@@ -29,9 +29,9 @@ use bohmian_code_review::{
 use bohmian_code_review_pipeline::testing::{MemorySnapshotStore, MemoryStorage};
 use bohmian_code_review_pipeline::{
     ColdBuild, ColdBuildLimits, ColdBuildOutcome, FileOutcome, FileStatus, GitHubClient,
-    GitHubHost, Identity, InstallationId, InstallationToken, ObjectSha, PrContextLimits,
-    RepositoryIdentity, RequestLimits, SNAPSHOT_FORMAT_VERSION, Snapshot, SnapshotScope, Snapshots,
-    TenantId,
+    GitHubHost, HttpRequest, HttpTransport, Identity, InstallationId, InstallationToken, ObjectSha,
+    PrContextLimits, RepositoryIdentity, RequestLimits, ReqwestTransport, SNAPSHOT_FORMAT_VERSION,
+    Snapshot, SnapshotScope, Snapshots, TenantId,
 };
 use history::{Changed, History};
 use sample::{
@@ -149,8 +149,8 @@ struct Selected {
 /// The read-only sampling command: the pipeline GitHub client and direct
 /// REST reads it does not offer.
 struct Api {
-    /// Transport for direct REST reads.
-    http: reqwest::Client,
+    /// Transport for direct REST reads: `reqwest` live, a fake in tests.
+    direct: Box<dyn HttpTransport>,
     /// Read-only token for direct REST reads.
     token: String,
     /// Pipeline client for PR file listings and base snapshots.
@@ -158,24 +158,32 @@ struct Api {
 }
 
 impl Api {
-    /// GET `resource` from the public API and decode its JSON body.
+    /// GET `resource` from the public API once and decode its JSON body.
     ///
     /// # Errors
     ///
-    /// Returns transport, non-success status, and decoding failures.
+    /// Returns transport, non-200 status, and decoding failures.
     async fn get<T: DeserializeOwned>(&self, resource: &str) -> Result<T, Box<dyn Error>> {
-        let bytes = self
-            .http
-            .get(format!("https://api.github.com{resource}"))
-            .bearer_auth(&self.token)
-            .header("Accept", "application/vnd.github+json")
-            .header("X-GitHub-Api-Version", "2022-11-28")
-            .header("User-Agent", "bohmian-code-review-eval")
-            .send()
-            .await?
-            .error_for_status()?
-            .bytes()
+        let mut response = self
+            .direct
+            .get(HttpRequest {
+                url: format!("{}{resource}", GitHubHost::public().api_base()),
+                headers: vec![
+                    ("authorization", format!("Bearer {}", self.token)),
+                    ("accept", "application/vnd.github+json".to_owned()),
+                    ("x-github-api-version", "2022-11-28".to_owned()),
+                    ("user-agent", "bohmian-code-review-eval".to_owned()),
+                ],
+                timeout: RequestLimits::default().request_timeout,
+            })
             .await?;
+        if response.status != 200 {
+            return Err(format!("GET {resource} returned status {}", response.status).into());
+        }
+        let mut bytes = Vec::new();
+        while let Some(chunk) = response.body.chunk().await? {
+            bytes.extend(chunk);
+        }
         Ok(serde_json::from_slice(&bytes)?)
     }
 
@@ -425,7 +433,8 @@ impl Api {
         let mut listed = BTreeMap::new();
         let mut sample = Vec::new();
         for pr in &merged {
-            let eligible = |path: &RelativePath| eligible(&symbolic, repo.languages, repo.suffixes, path);
+            let eligible =
+                |path: &RelativePath| eligible(&symbolic, repo.languages, repo.suffixes, path);
             if let Some(sampled) = self.qualify(&identity, eligible, pr, &mut listed).await? {
                 sample.push(sampled);
                 if sample.len() == SAMPLE_SIZE {
@@ -464,26 +473,34 @@ impl Api {
     }
 }
 
-/// Select every repository's sample and history, run its trials, and print
-/// every report only once all repositories succeed.
+/// The live command's [`Api`] from `GITHUB_TOKEN`.
 ///
 /// # Errors
 ///
-/// Returns configuration, sampling, history, and trial failures.
-async fn run() -> Result<(), Box<dyn Error>> {
+/// Returns a missing or unusable token and TLS initialisation failures.
+fn live() -> Result<Api, Box<dyn Error>> {
     let token = env::var("GITHUB_TOKEN").map_err(|_| "GITHUB_TOKEN is required")?;
     let client = GitHubClient::new(
         GitHubHost::public(),
         InstallationToken::new(&token)?,
         RequestLimits::default(),
     )?;
-    let api = Api {
-        http: reqwest::Client::new(),
+    Ok(Api {
+        direct: Box::new(ReqwestTransport::new()?),
         token,
         client,
-    };
+    })
+}
+
+/// Select every repository in `repos`, run its trials, and return every
+/// report only once all repositories succeed, so a failure leaves none.
+///
+/// # Errors
+///
+/// Returns sampling, history, provider, and trial failures.
+async fn run(api: &Api, repos: &[Repository]) -> Result<Vec<serde_json::Value>, Box<dyn Error>> {
     let mut records = Vec::new();
-    for repo in &REPOSITORIES {
+    for repo in repos {
         let selected = api.select(repo).await?;
         let mut cache = BTreeMap::new();
         let mut trials = Vec::new();
@@ -495,10 +512,7 @@ async fn run() -> Result<(), Box<dyn Error>> {
         }
         records.push(record(repo, &selected, &trials));
     }
-    for record in records {
-        println!("{}", serde_json::to_string_pretty(&record)?);
-    }
-    Ok(())
+    Ok(records)
 }
 
 /// `repo`'s source-free JSON report of `selected` and its `trials`.
@@ -538,7 +552,10 @@ fn record(repo: &Repository, selected: &Selected, trials: &[Trial]) -> serde_jso
         "requests": {
             "production": {
                 "cold_build": requests.listing_pages + requests.history.cold,
-                "incremental_update": requests.history.incremental,
+                "incremental_update": {
+                    "per_merged_pr": 1,
+                    "aggregate_through_newest_base": requests.history.incremental,
+                },
                 "review": 0,
             },
             "evaluation_only": {
@@ -561,19 +578,321 @@ fn record(repo: &Repository, selected: &Selected, trials: &[Trial]) -> serde_jso
     })
 }
 
-/// Entry point: prints the samples, or the failure on stderr with exit 1.
+/// Print every live report, or only the failure on stderr with exit 1.
+///
+/// # Errors
+///
+/// Returns [`live`], [`run`], and serialisation failures.
+async fn print() -> Result<(), Box<dyn Error>> {
+    let records = run(&live()?, &REPOSITORIES).await?;
+    for record in records {
+        println!("{}", serde_json::to_string_pretty(&record)?);
+    }
+    Ok(())
+}
+
+/// Entry point: prints the reports, or the failure on stderr with exit 1.
 #[tokio::main]
 async fn main() {
-    if let Err(error) = run().await {
+    if let Err(error) = print().await {
         eprintln!("context_relevance failed: {error}");
         std::process::exit(1);
     }
 }
 
-/// Command contract checks that need no provider.
+/// Command contract checks: the fixed repositories, and the whole
+/// selection, history, trial, and report path over a no-network fake
+/// GitHub that counts every provider read.
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bohmian_code_review_pipeline::testing::RoutedTransport;
+    use bohmian_code_review_pipeline::{BoxFuture, GitHubError, HttpResponse, TransportError};
+    use sha1::{Digest, Sha1};
+    use std::sync::Arc;
+
+    /// The fake repository: Python, cutoff after every fixture merge.
+    const FAKE: Repository = Repository {
+        name: "o/n",
+        cutoff: "2026-01-02T00:00:00Z",
+        languages: &[Language::Python],
+        suffixes: None,
+    };
+    /// Base `src/a.py`.
+    const A: &[u8] = b"def alpha():\n    return 1\n";
+    /// Base `src/b.py`, calling `alpha`.
+    const B: &[u8] = b"from a import alpha\n\ndef beta():\n    return alpha()\n";
+    /// Head `src/a.py`: line 2 changed.
+    const A_HEAD: &[u8] = b"def alpha():\n    return 2\n";
+    /// Head `src/b.py`: line 4 changed.
+    const B_HEAD: &[u8] = b"from a import alpha\n\ndef beta():\n    return alpha() + 1\n";
+
+    /// Fake GitHub state shared between a test and the [`Api`] it drives.
+    struct Shared(Arc<RoutedTransport>);
+
+    impl HttpTransport for Shared {
+        /// Delegates to the shared routed transport.
+        ///
+        /// # Errors
+        ///
+        /// Never.
+        fn get(&self, request: HttpRequest) -> BoxFuture<'_, Result<HttpResponse, TransportError>> {
+            self.0.get(request)
+        }
+    }
+
+    /// Git blob id of `bytes`.
+    fn blob_sha(bytes: &[u8]) -> String {
+        let mut hasher = Sha1::new();
+        hasher.update(format!("blob {}\0", bytes.len()).as_bytes());
+        hasher.update(bytes);
+        hasher
+            .finalize()
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect()
+    }
+
+    /// Object id `n` of `kind`.
+    fn sha(kind: u32, n: u64) -> String {
+        format!("{kind:08x}{n:032x}")
+    }
+
+    /// Minute `n` after 2026-01-01T00:00Z at `second`: PR `n` merges at
+    /// second 30 and its base commit is at second 0.
+    fn at(n: u64, second: u32) -> String {
+        format!("2026-01-01T{:02}:{:02}:{second:02}Z", n / 60, n % 60)
+    }
+
+    /// PR file-listing page `page` of PR `number`.
+    fn files_page(number: u64, page: u32) -> String {
+        format!("/repos/o/n/pulls/{number}/files?per_page=100&page={page}")
+    }
+
+    /// Listing entries changing `paths`, each with a one-line patch.
+    fn entries(paths: &[String]) -> String {
+        let entries: Vec<_> = paths
+            .iter()
+            .map(|path| json!({"filename": path, "status": "modified", "sha": sha(0xd0c, 0), "patch": "@@ -1 +1 @@\n-a\n+b"}))
+            .collect();
+        serde_json::Value::from(entries).to_string()
+    }
+
+    /// A fake repository `o/n` with 65 merged PRs, one per minute. PRs
+    /// 16..=65 qualify, modifying `src/a.py` and `src/b.py` on base
+    /// commits all holding one tree; PRs 1..=15 change docs only, and PR
+    /// 15 is a 31-file mass edit listed over two pages. Direct REST reads
+    /// and client reads have separate transports so each can be counted.
+    struct Fake {
+        direct: Arc<RoutedTransport>,
+        client: Arc<RoutedTransport>,
+    }
+
+    impl Fake {
+        /// Route the whole fake repository.
+        fn new() -> Fake {
+            let fake = Fake {
+                direct: Arc::default(),
+                client: Arc::default(),
+            };
+            let tree = sha(0x7e5, 0);
+            fake.direct
+                .json("/repos/o/n", r#"{"id":1,"default_branch":"main"}"#);
+            fake.client.json(
+                "/repos/o/n",
+                r#"{"id":1,"full_name":"o/n","default_branch":"main","private":false}"#,
+            );
+            let listed: Vec<_> = (1..=65)
+                .map(|n| {
+                    json!({"number": n, "updated_at": at(n, 30), "merged_at": at(n, 30),
+                    "base": {"ref": "main", "sha": sha(0xba5e, n)},
+                    "head": {"ref": "topic", "sha": sha(0x4ead, n)}})
+                })
+                .collect();
+            fake.direct.json(
+                "/repos/o/n/pulls?state=all&sort=created&direction=asc&per_page=100&page=1",
+                &serde_json::Value::from(listed).to_string(),
+            );
+            let tree_entries: Vec<_> = [("src/a.py", A), ("src/b.py", B)]
+                .iter()
+                .map(|(path, bytes)| {
+                    json!({"path": path, "mode": "100644", "type": "blob",
+                    "sha": blob_sha(bytes), "size": bytes.len()})
+                })
+                .collect();
+            fake.client.json(
+                &format!("/git/trees/{tree}?recursive=1"),
+                &json!({"sha": tree, "truncated": false, "tree": tree_entries}).to_string(),
+            );
+            for bytes in [A, B, A_HEAD, B_HEAD] {
+                fake.client
+                    .route(&format!("/git/blobs/{}", blob_sha(bytes)), 200, bytes);
+            }
+            let changed = json!([
+                {"filename": "src/a.py", "status": "modified", "sha": blob_sha(A_HEAD),
+                 "patch": "@@ -2 +2 @@\n-    return 1\n+    return 2"},
+                {"filename": "src/b.py", "status": "modified", "sha": blob_sha(B_HEAD),
+                 "patch": "@@ -4 +4 @@\n-    return alpha()\n+    return alpha() + 1"},
+            ])
+            .to_string();
+            for n in 16..=65 {
+                let base = sha(0xba5e, n);
+                fake.direct.json(
+                    &format!("/repos/o/n/git/commits/{base}"),
+                    &json!({"sha": base, "committer": {"date": at(n, 0)}}).to_string(),
+                );
+                fake.client.json(
+                    &format!("/repos/o/n/git/commits/{base}"),
+                    &json!({"sha": base, "tree": {"sha": tree}}).to_string(),
+                );
+                fake.client.json(&files_page(n, 1), &changed);
+            }
+            for n in 1..=14 {
+                fake.client
+                    .json(&files_page(n, 1), &entries(&[format!("docs/{n}.md")]));
+            }
+            let mass: Vec<_> = (0..31).map(|i| format!("docs/mass{i}.md")).collect();
+            fake.client.respond(
+                &files_page(15, 1),
+                vec![(
+                    200,
+                    vec![(
+                        "link".to_owned(),
+                        r#"<https://x/?page=2>; rel="next""#.to_owned(),
+                    )],
+                    entries(&mass[..20]).into_bytes(),
+                )],
+            );
+            fake.client.json(&files_page(15, 2), &entries(&mass[20..]));
+            fake
+        }
+
+        /// An [`Api`] over this fake.
+        fn api(&self) -> Api {
+            Api {
+                direct: Box::new(Shared(Arc::clone(&self.direct))),
+                token: "ghs_token".to_owned(),
+                client: GitHubClient::with_transport(
+                    GitHubHost::public(),
+                    InstallationToken::new("ghs_token").expect("token"),
+                    RequestLimits::default(),
+                    Box::new(Shared(Arc::clone(&self.client))),
+                ),
+            }
+        }
+
+        /// Client URLs requested for PR file listings, in order.
+        fn listing_reads(&self) -> Vec<String> {
+            self.client
+                .seen()
+                .into_iter()
+                .filter(|url| url.contains("/files?"))
+                .collect()
+        }
+    }
+
+    /// One run over the fake reads the merged-PR listing once, each
+    /// needed PR file listing once (both pages of the history-only mass
+    /// edit), and each sampled base commit's time once, with no provider
+    /// read per trial; its report separates cold, per-PR incremental,
+    /// aggregate incremental, review, and evaluation-only costs.
+    #[tokio::test]
+    async fn run_reads_each_input_once_and_reports_costs() {
+        let fake = Fake::new();
+        let records = run(&fake.api(), &[FAKE]).await.expect("fake run succeeds");
+
+        let mut direct = vec![
+            "https://api.github.com/repos/o/n".to_owned(),
+            "https://api.github.com/repos/o/n/pulls?state=all&sort=created&direction=asc&per_page=100&page=1".to_owned(),
+        ];
+        direct.extend((16..=65).rev().map(|n| {
+            format!(
+                "https://api.github.com/repos/o/n/git/commits/{}",
+                sha(0xba5e, n)
+            )
+        }));
+        assert_eq!(fake.direct.seen(), direct);
+        let page = |n, p| format!("https://api.github.com{}", files_page(n, p));
+        let mut listings: Vec<_> = (16..=65).rev().map(|n| page(n, 1)).collect();
+        listings.extend([page(15, 1), page(15, 2)]);
+        listings.extend((5..=14).rev().map(|n| page(n, 1)));
+        assert_eq!(fake.listing_reads(), listings);
+
+        let [record] = records.as_slice() else {
+            panic!("one report per repository");
+        };
+        assert_eq!(record["cold_point"], at(16, 0));
+        assert_eq!(record["sample"].as_array().map(Vec::len), Some(SAMPLE_SIZE));
+        assert_eq!(
+            record["requests"],
+            json!({
+                "production": {
+                    "cold_build": 1 + 11,
+                    "incremental_update": {"per_merged_pr": 1, "aggregate_through_newest_base": 49},
+                    "review": 0,
+                },
+                "evaluation_only": {"base_commit_timestamps": SAMPLE_SIZE},
+            })
+        );
+        let trials = record["trials"].as_array().expect("trials");
+        assert_eq!(trials.len(), 2 * SAMPLE_SIZE);
+    }
+
+    /// A missing base-commit response, an incomplete history-only listing,
+    /// and a rate limit the client cannot wait out each fail the run with
+    /// no report.
+    #[tokio::test]
+    async fn run_fails_without_report_on_missing_incomplete_or_rate_limited_reads() {
+        let missing = Fake::new();
+        missing.direct.route(
+            &format!("/repos/o/n/git/commits/{}", sha(0xba5e, 40)),
+            404,
+            "",
+        );
+        let error = run(&missing.api(), &[FAKE])
+            .await
+            .expect_err("missing read fails");
+        assert!(error.to_string().contains("returned status 404"), "{error}");
+
+        let incomplete = Fake::new();
+        for page in 1..=MAX_FILE_PAGES {
+            incomplete.client.respond(
+                &files_page(14, page),
+                vec![(
+                    200,
+                    vec![("link".to_owned(), r#"<https://x/>; rel="next""#.to_owned())],
+                    entries(&[format!("docs/{page}.md")]).into_bytes(),
+                )],
+            );
+        }
+        let error = run(&incomplete.api(), &[FAKE])
+            .await
+            .expect_err("incomplete listing fails");
+        assert_eq!(
+            error.downcast_ref::<SampleError>(),
+            Some(&SampleError::IncompleteListing { number: 14 })
+        );
+
+        let limited = Fake::new();
+        limited.client.respond(
+            &files_page(30, 1),
+            vec![(
+                429,
+                vec![("retry-after".to_owned(), "3600".to_owned())],
+                Vec::new(),
+            )],
+        );
+        let error = run(&limited.api(), &[FAKE])
+            .await
+            .expect_err("rate limit fails");
+        assert!(
+            matches!(
+                error.downcast_ref::<GitHubError>(),
+                Some(GitHubError::RateLimited { .. })
+            ),
+            "{error}"
+        );
+    }
 
     /// Each fixed repository has a valid cutoff and a nonempty language
     /// set, and the three samples are the approved ones.

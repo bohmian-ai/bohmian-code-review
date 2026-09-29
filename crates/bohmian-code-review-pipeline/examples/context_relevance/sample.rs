@@ -249,10 +249,13 @@ pub fn eligible(
     suffixes: Option<&[&str]>,
     path: &RelativePath,
 ) -> bool {
-    suffixes.is_none_or(|suffixes| suffixes.iter().any(|suffix| path.as_str().ends_with(suffix)))
-        && symbolic
-            .path_language(path.as_str())
-            .is_ok_and(|language| language.is_some_and(|language| languages.contains(&language)))
+    suffixes.is_none_or(|suffixes| {
+        suffixes
+            .iter()
+            .any(|suffix| path.as_str().ends_with(suffix))
+    }) && symbolic
+        .path_language(path.as_str())
+        .is_ok_and(|language| language.is_some_and(|language| languages.contains(&language)))
 }
 
 /// One PR's complete file listing, as read once from the provider.
