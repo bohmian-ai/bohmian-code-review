@@ -13,7 +13,8 @@
 //! builds one [`History`] through the newest base, reusing listings already
 //! read. For each sampled PR it fetches the hash-verified base blob of every
 //! indexed file and the head blob of every changed source file with changed
-//! lines, then runs one trial per withholdable file. Only after every
+//! lines, then runs up to five trials over its withholdable files against the
+//! history merged before its base commit. Only after every
 //! repository succeeds does it print one source-free JSON report per
 //! repository; any run-level failure exits nonzero with no report. Nothing
 //! is written to GitHub and no source leaves memory.
@@ -30,8 +31,8 @@ use bohmian_code_review_pipeline::testing::{MemorySnapshotStore, MemoryStorage};
 use bohmian_code_review_pipeline::{
     ColdBuild, ColdBuildLimits, ColdBuildOutcome, FileOutcome, FileStatus, GitHubClient,
     GitHubHost, HttpRequest, HttpTransport, Identity, InstallationId, InstallationToken, ObjectSha,
-    PrContextLimits, RepositoryIdentity, RequestLimits, ReqwestTransport, SNAPSHOT_FORMAT_VERSION,
-    Snapshot, SnapshotScope, Snapshots, TenantId,
+    RepositoryIdentity, RequestLimits, ReqwestTransport, SNAPSHOT_FORMAT_VERSION, Snapshot,
+    SnapshotScope, Snapshots, TenantId,
 };
 use history::{Changed, History};
 use sample::{
@@ -44,10 +45,7 @@ use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 use std::error::Error;
-use trial::{
-    CANDIDATE_ALLOWANCE, DF_CEILING, PROMPT_RESERVE, RARITY_RULE, TOKEN_ESTIMATE, Trial,
-    estimate_tokens, evaluate,
-};
+use trial::{DF_CEILING, FUSION_CONSTANT, HIT_RANK, RARITY_RULE, TRIAL_RULE, Trial, evaluate};
 
 /// One evaluated repository.
 struct Repository {
@@ -98,8 +96,6 @@ struct Sampled {
     base_time: String,
     /// Complete declaration facts of its base commit.
     snapshot: Snapshot,
-    /// Estimated tokens of every patch in its listing.
-    patch_tokens: usize,
 }
 
 /// Wire shape of `GET /repos/{owner}/{repo}`.
@@ -307,12 +303,6 @@ impl Api {
             .listing(&identity.repository, pr.number, MAX_FILE_PAGES)
             .await?;
         listed.insert(pr.number, (history::changed(pr.number, &listing)?, pages));
-        let patch_tokens = listing
-            .files
-            .iter()
-            .filter_map(|file| file.patch.as_deref())
-            .map(estimate_tokens)
-            .sum();
         let screen = Screen::new(pr.number, listing, eligible)?;
         if !screen.plausible() {
             return Ok(None);
@@ -337,12 +327,12 @@ impl Api {
             screen,
             base_time,
             snapshot,
-            patch_tokens,
         }))
     }
 
-    /// Run `sampled`'s trials, fetching each base and head blob it needs
-    /// that `cache` lacks through the hash-verifying client.
+    /// Run `sampled`'s trials against the part of `history` merged before
+    /// its base commit, fetching each base and head blob it needs that
+    /// `cache` lacks through the hash-verifying client.
     ///
     /// # Errors
     ///
@@ -352,6 +342,7 @@ impl Api {
         &self,
         repository: &RepositoryIdentity,
         sampled: &Sampled,
+        history: &History,
         cache: &mut BTreeMap<ObjectSha, Vec<u8>>,
     ) -> Result<Vec<Trial>, Box<dyn Error>> {
         let base: Vec<(&RelativePath, &ObjectSha)> = sampled
@@ -390,13 +381,17 @@ impl Api {
                 .filter_map(|(path, sha)| Some(((*path).clone(), cache.get(*sha)?.as_slice())))
                 .collect()
         };
+        let eligible: Vec<&[RelativePath]> = history
+            .for_trial(sampled.pr.number, &sampled.base_time)
+            .map(|pr| pr.paths.as_slice())
+            .collect();
         Ok(evaluate(
             sampled.pr.number,
             sampled.snapshot.clone().into_context()?,
             &view(&base),
             &sampled.screen.source,
             &view(&head),
-            sampled.patch_tokens,
+            &eligible,
         )?)
     }
 
@@ -516,7 +511,7 @@ async fn run(api: &Api, repos: &[Repository]) -> Result<Vec<Value>, Box<dyn Erro
         let mut trials = Vec::new();
         for sampled in &selected.sample {
             trials.extend(
-                api.trials(&selected.repository, sampled, &mut cache)
+                api.trials(&selected.repository, sampled, &selected.history, &mut cache)
                     .await?,
             );
         }
@@ -573,19 +568,14 @@ fn record(repo: &Repository, selected: &Selected, trials: &[Trial]) -> Value {
                 "base_commit_timestamps": requests.timestamp_reads,
             },
         },
-        "token_estimate": TOKEN_ESTIMATE,
-        "candidate_allowance": CANDIDATE_ALLOWANCE,
-        "prompt_reserve": PROMPT_RESERVE,
-        "production_max_candidate_files": PrContextLimits::default().max_candidate_files,
         "df_ceiling": DF_CEILING,
         "rarity_rule": RARITY_RULE,
+        "trial_rule": TRIAL_RULE,
+        "fusion_constant": FUSION_CONSTANT,
+        "hit_rank": HIT_RANK,
         "sample": prs,
         "trials": trials,
-        "summary": {
-            "all": report::summarize(trials.iter()),
-            "non_test": report::summarize(trials.iter().filter(|trial| !trial.test_file)),
-        },
-        "misses": report::misses(trials),
+        "summary": report::summarize(trials),
     })
 }
 
