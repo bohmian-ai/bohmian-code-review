@@ -1,0 +1,35 @@
+DOMAIN-HISTORY-1	OK
+DOMAIN-HISTORY-1	OK
+DOMAIN-HISTORY-2	OK
+DOMAIN-HISTORY-2	OK
+DOMAIN-PIPE-1	OK
+DOMAIN-PIPE-1	OK
+DOMAIN-PIPE-1	OK
+DOMAIN-PIPE-1	OK
+DOMAIN-PIPE-1	OK
+DOMAIN-PIPE-1	OK
+DOMAIN-PIPE-1	OK
+DOMAIN-PIPE-2	OK
+DOMAIN-PIPE-2	OK
+DOMAIN-PIPE-2	OK
+DOMAIN-PIPE-2	OK
+DOMAIN-PIPE-2	OK
+DOMAIN-PIPE-2	OK
+TASK-A-1	OK
+TASK-A-1	OK
+TASK-A-1	OK
+TASK-A-2	OK
+TASK-A-2	OK
+TASK-A-2	OK
+TASK-A-2	OK
+TASK-B-1	OK
+TASK-B-1	OK
+TASK-B-1	OK
+TASK-B-1	OK
+TASK-B-1	OK
+TASK-B-2	OK
+TASK-B-2	OK
+TASK-B-2	OK
+TASK-B-2	REJECT	symbol 'Api::base_time' not in crates/bohmian-code-review-eval/src/live.rs
+TASK-B-2	REJECT	symbol 'Api::select' not in crates/bohmian-code-review-eval/src/live.rs
+TASK-B-2	REJECT	symbol 'Api::select' not in crates/bohmian-code-review-eval/src/live.rs
