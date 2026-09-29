@@ -1,0 +1,4063 @@
+{
+  "bootstrap": {
+    "interval": "95% percentile over PRs",
+    "resamples": 10000,
+    "seed": 2316549133261119870
+  },
+  "cold_point": "2026-05-19T18:17:21Z",
+  "command": "GITHUB_TOKEN=<read-only token> mise run live:context-relevance",
+  "cutoff": "2026-09-01T00:00:00Z",
+  "decision": {
+    "adopt_f": true,
+    "repository_f_minus_c": "met",
+    "rule": "adopt F only if, in every repository, the mean per-PR F - C hit@10 difference is at least 0.05 and its 95% bootstrap interval's lower bound is above 0; an interval containing 0 is inconclusive",
+    "threshold": 0.05
+  },
+  "df_ceiling": 100,
+  "effects": {
+    "E-C": {
+      "ci_95": [
+        0.16866666666666663,
+        0.41666666666666674
+      ],
+      "mean": 0.294
+    },
+    "F-C": {
+      "ci_95": [
+        0.22833333333333336,
+        0.42
+      ],
+      "mean": 0.32266666666666666
+    }
+  },
+  "fusion_constant": 60,
+  "hit_rank": 10,
+  "outcome": "hit@10",
+  "rarity_rule": "ignore a name when df(name) > 100; a downstream file referencing it earns 1/df(name); an upstream file declaring it earns 1/(df(name) * declaring_file_count(name)); a file matching both directions keeps the larger credit; score sums credits over distinct names",
+  "repository": "colinhacks/zod",
+  "requests": {
+    "evaluation_only": {
+      "base_commit_timestamps": 50
+    },
+    "production": {
+      "cold_build": 32,
+      "incremental_update": {
+        "aggregate_page_requests_through_newest_base": 184,
+        "page_requests_by_merged_pr": {
+          "4004": 1,
+          "5906": 1,
+          "5910": 1,
+          "5912": 1,
+          "5913": 1,
+          "5928": 1,
+          "5931": 1,
+          "5934": 1,
+          "5947": 1,
+          "5959": 1,
+          "5964": 1,
+          "5967": 1,
+          "5974": 1,
+          "5975": 1,
+          "5999": 1,
+          "6001": 1,
+          "6002": 1,
+          "6012": 1,
+          "6020": 1,
+          "6022": 1,
+          "6024": 1,
+          "6029": 1,
+          "6032": 1,
+          "6035": 1,
+          "6040": 1,
+          "6041": 1,
+          "6052": 1,
+          "6053": 1,
+          "6056": 1,
+          "6059": 1,
+          "6062": 1,
+          "6063": 1,
+          "6065": 1,
+          "6072": 1,
+          "6076": 1,
+          "6078": 1,
+          "6085": 1,
+          "6092": 1,
+          "6095": 1,
+          "6120": 1,
+          "6122": 1,
+          "6124": 1,
+          "6129": 1,
+          "6133": 1,
+          "6144": 1,
+          "6157": 1,
+          "6168": 1,
+          "6177": 1,
+          "6178": 1,
+          "6188": 1,
+          "6192": 1,
+          "6194": 1,
+          "6196": 1,
+          "6199": 1,
+          "6201": 1,
+          "6203": 1,
+          "6213": 1,
+          "6214": 1,
+          "6221": 1,
+          "6223": 1,
+          "6227": 1,
+          "6267": 1,
+          "6298": 1,
+          "6305": 1,
+          "6307": 1,
+          "6314": 1,
+          "6315": 1,
+          "6316": 1,
+          "6318": 1,
+          "6337": 1,
+          "6339": 1,
+          "6345": 1,
+          "6346": 1,
+          "6347": 1,
+          "6352": 1,
+          "6354": 1,
+          "6355": 1,
+          "6357": 1,
+          "6360": 1,
+          "6367": 1,
+          "6371": 1,
+          "6376": 1,
+          "6378": 1,
+          "6380": 1,
+          "6381": 1,
+          "6384": 1,
+          "6386": 1,
+          "6387": 1,
+          "6388": 1,
+          "6391": 1,
+          "6394": 1,
+          "6398": 1,
+          "6401": 1,
+          "6402": 1,
+          "6404": 1,
+          "6407": 1,
+          "6408": 1,
+          "6409": 1,
+          "6410": 1,
+          "6411": 1,
+          "6412": 1,
+          "6415": 1,
+          "6417": 1,
+          "6418": 1,
+          "6419": 1,
+          "6420": 1,
+          "6421": 1,
+          "6422": 1,
+          "6423": 1,
+          "6424": 1,
+          "6426": 1,
+          "6427": 1,
+          "6429": 1,
+          "6430": 1,
+          "6432": 1,
+          "6434": 1,
+          "6435": 1,
+          "6438": 1,
+          "6439": 1,
+          "6440": 1,
+          "6441": 1,
+          "6442": 1,
+          "6443": 1,
+          "6444": 1,
+          "6445": 1,
+          "6446": 1,
+          "6447": 1,
+          "6448": 1,
+          "6449": 1,
+          "6450": 1,
+          "6451": 1,
+          "6452": 1,
+          "6453": 1,
+          "6457": 1,
+          "6459": 1,
+          "6460": 1,
+          "6461": 1,
+          "6462": 1,
+          "6464": 1,
+          "6465": 1,
+          "6466": 1,
+          "6468": 1,
+          "6470": 1,
+          "6471": 1,
+          "6473": 1,
+          "6478": 1,
+          "6479": 1,
+          "6480": 1,
+          "6481": 1,
+          "6482": 1,
+          "6483": 1,
+          "6484": 1,
+          "6487": 1,
+          "6488": 1,
+          "6489": 1,
+          "6491": 1,
+          "6497": 1,
+          "6499": 1,
+          "6500": 1,
+          "6502": 1,
+          "6504": 1,
+          "6505": 1,
+          "6506": 1,
+          "6507": 1,
+          "6509": 1,
+          "6510": 1,
+          "6511": 1,
+          "6518": 1,
+          "6519": 1,
+          "6520": 1,
+          "6527": 1,
+          "6528": 1,
+          "6529": 1,
+          "6531": 1,
+          "6532": 1,
+          "6533": 1,
+          "6534": 1,
+          "6535": 1,
+          "6536": 1,
+          "6537": 1,
+          "6538": 1,
+          "6539": 1,
+          "6540": 1,
+          "6541": 1
+        }
+      },
+      "review": 0
+    }
+  },
+  "sample": [
+    {
+      "base": "90269c601aae25499ee87e78a07508564825867f",
+      "base_time": "2026-08-31T23:26:59Z",
+      "base_tree": "110fb59dfcd5c78206388c2f3c3526b9f88248d1",
+      "head": "334e604269be6555c633e7416b32d35c38912b5f",
+      "history_size": 190,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 1.0,
+        "F": 1.0,
+        "pr": 6543,
+        "trials": 2
+      },
+      "merged_at": "2026-08-31T23:52:57Z",
+      "number": 6543,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/v4/classic/tests/error.test.ts",
+        "packages/zod/src/v4/core/parse.ts"
+      ]
+    },
+    {
+      "base": "18e71c71daff6e79ab8f00a48db252ccb340da1f",
+      "base_time": "2026-08-31T22:44:12Z",
+      "base_tree": "3fe0ed92db51047a5480fc976e967449efacb844",
+      "head": "5fc20ff49066869db72335019ccba9d7437d0632",
+      "history_size": 189,
+      "hit_at_10_means": {
+        "C": 0.5,
+        "E": 0.75,
+        "F": 0.5,
+        "pr": 6542,
+        "trials": 4
+      },
+      "merged_at": "2026-08-31T23:27:00Z",
+      "number": 6542,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/v4/classic/schemas.ts",
+        "packages/zod/src/v4/classic/tests/enum.test.ts",
+        "packages/zod/src/v4/mini/schemas.ts",
+        "packages/zod/src/v4/mini/tests/index.test.ts"
+      ]
+    },
+    {
+      "base": "68aca3dc402c59f5c4e30322e83028389e44b8b5",
+      "base_time": "2026-08-31T22:15:48Z",
+      "base_tree": "3b2d3d4c5cb2cf9e519d4fa6f2c2d387e214961f",
+      "head": "a906e585c1439fc88aa386b737ca90d163732582",
+      "history_size": 189,
+      "hit_at_10_means": {
+        "C": 1.0,
+        "E": 1.0,
+        "F": 1.0,
+        "pr": 6541,
+        "trials": 3
+      },
+      "merged_at": "2026-08-31T22:44:12Z",
+      "number": 6541,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/v4/core/json-schema-generator.ts",
+        "packages/zod/src/v4/core/json-schema-processors.ts",
+        "packages/zod/src/v4/core/tests/polyfill-collision.test.ts",
+        "packages/zod/src/v4/core/to-json-schema.ts"
+      ]
+    },
+    {
+      "base": "2ec972ecc5a8af8135ed072d2d5b5363c27bb46f",
+      "base_time": "2026-08-31T19:07:26Z",
+      "base_tree": "532c8e0af7f3fc1fc88d1784ebbe56bb346664b7",
+      "head": "dd9e16cd0865c69478a7619681aab71ffbe9b459",
+      "history_size": 180,
+      "hit_at_10_means": {
+        "C": 0.5,
+        "E": 1.0,
+        "F": 1.0,
+        "pr": 6535,
+        "trials": 2
+      },
+      "merged_at": "2026-08-31T21:47:28Z",
+      "number": 6535,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/v4/classic/from-json-schema.ts",
+        "packages/zod/src/v4/classic/tests/from-json-schema.test.ts"
+      ]
+    },
+    {
+      "base": "69f2a7ff203e546e3a1350fb9152ace03ba0a6e6",
+      "base_time": "2026-08-31T20:58:53Z",
+      "base_tree": "61238ad3243cac73344f7d7bcc04612656fdf9dc",
+      "head": "acb6411e1f4a40a3069537f7f46ee1e4d9e83589",
+      "history_size": 184,
+      "hit_at_10_means": {
+        "C": 0.6666666666666666,
+        "E": 0.3333333333333333,
+        "F": 0.3333333333333333,
+        "pr": 6538,
+        "trials": 3
+      },
+      "merged_at": "2026-08-31T21:47:08Z",
+      "number": 6538,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/v4/classic/tests/validate.test.ts",
+        "packages/zod/src/v4/core/compile.ts",
+        "packages/zod/src/v4/core/parse.ts",
+        "packages/zod/src/v4/core/tests/compile.test.ts"
+      ]
+    },
+    {
+      "base": "69f2a7ff203e546e3a1350fb9152ace03ba0a6e6",
+      "base_time": "2026-08-31T20:58:53Z",
+      "base_tree": "61238ad3243cac73344f7d7bcc04612656fdf9dc",
+      "head": "94ee9ed226d01bec25f26f1f049aad62541d4272",
+      "history_size": 184,
+      "hit_at_10_means": {
+        "C": 0.5,
+        "E": 1.0,
+        "F": 1.0,
+        "pr": 6540,
+        "trials": 2
+      },
+      "merged_at": "2026-08-31T21:09:19Z",
+      "number": 6540,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/v4/core/schemas.ts",
+        "packages/zod/src/v4/core/tests/cached.test.ts",
+        "packages/zod/src/v4/core/util.ts"
+      ]
+    },
+    {
+      "base": "bec73bea5a8ed19daec15655598fe5501bb797e7",
+      "base_time": "2026-08-31T20:03:23Z",
+      "base_tree": "4e0c14300c512c7c76c81162740a203475c702bb",
+      "head": "4f8eddd2dd3e4fd0698c442751c6cf3c47679497",
+      "history_size": 182,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 1.0,
+        "F": 1.0,
+        "pr": 6539,
+        "trials": 2
+      },
+      "merged_at": "2026-08-31T20:58:53Z",
+      "number": 6539,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/v4/classic/tests/assignability.test.ts",
+        "packages/zod/src/v4/core/util.ts"
+      ]
+    },
+    {
+      "base": "bec73bea5a8ed19daec15655598fe5501bb797e7",
+      "base_time": "2026-08-31T20:03:23Z",
+      "base_tree": "4e0c14300c512c7c76c81162740a203475c702bb",
+      "head": "3e0615519ba10e999d6094f07f9bea8182b93b14",
+      "history_size": 182,
+      "hit_at_10_means": {
+        "C": 0.5,
+        "E": 1.0,
+        "F": 1.0,
+        "pr": 6537,
+        "trials": 2
+      },
+      "merged_at": "2026-08-31T20:45:20Z",
+      "number": 6537,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/v4/core/schemas.ts",
+        "packages/zod/src/v4/core/tests/cached.test.ts",
+        "packages/zod/src/v4/core/util.ts"
+      ]
+    },
+    {
+      "base": "f83ab51129038a2f868ee11dda906ed78ae2e478",
+      "base_time": "2026-08-31T18:44:33Z",
+      "base_tree": "69f87c89f65f8906ebec19a6f2c0008c34fa9959",
+      "head": "1e4436805eca7c2fee4bedc5ccd0fbe74936c09c",
+      "history_size": 177,
+      "hit_at_10_means": {
+        "C": 0.4,
+        "E": 0.8,
+        "F": 0.4,
+        "pr": 6519,
+        "trials": 5
+      },
+      "merged_at": "2026-08-31T20:03:23Z",
+      "number": 6519,
+      "omitted": [],
+      "source_files": [
+        "packages/treeshake/bundle-size.test.ts",
+        "packages/zod/src/v4/classic/tests/error.test.ts",
+        "packages/zod/src/v4/classic/tests/issue-schema.test.ts",
+        "packages/zod/src/v4/classic/tests/standard-schema.test.ts",
+        "packages/zod/src/v4/core/parse.ts",
+        "packages/zod/src/v4/core/schemas.ts"
+      ]
+    },
+    {
+      "base": "68a609ac9b9516e6fe84e3558f17ce16b1032bef",
+      "base_time": "2026-08-31T18:59:09Z",
+      "base_tree": "860cd3a7c2499ebb2ff3663d8235dd293865f1cb",
+      "head": "13bb1a6e74acd346f5fdfe1001534c509ff46999",
+      "history_size": 179,
+      "hit_at_10_means": {
+        "C": 0.25,
+        "E": 1.0,
+        "F": 1.0,
+        "pr": 6534,
+        "trials": 4
+      },
+      "merged_at": "2026-08-31T20:01:18Z",
+      "number": 6534,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/v4/classic/tests/string.test.ts",
+        "packages/zod/src/v4/classic/tests/to-json-schema.test.ts",
+        "packages/zod/src/v4/core/json-schema-processors.ts",
+        "packages/zod/src/v4/core/schemas.ts"
+      ]
+    },
+    {
+      "base": "74f9a6d3f2818f24e6df5394b8b6e60acb176463",
+      "base_time": "2026-08-31T18:15:20Z",
+      "base_tree": "8729c6dfc4f54daaaf8624bb640ca387008d1daa",
+      "head": "c1aa1c65a03621811e14e17a77a99276a93e4406",
+      "history_size": 177,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.5,
+        "F": 0.5,
+        "pr": 6533,
+        "trials": 2
+      },
+      "merged_at": "2026-08-31T19:07:26Z",
+      "number": 6533,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/v4/classic/tests/assignability.test.ts",
+        "packages/zod/src/v4/core/util.ts"
+      ]
+    },
+    {
+      "base": "93f3ab321211f52f1963b63d5d3503c645c38371",
+      "base_time": "2026-08-29T23:34:23Z",
+      "base_tree": "d1d2fb115da1ff7797abb007f4e053d171993c08",
+      "head": "40a71b498037f8d788557ba4d324eefce54c02d8",
+      "history_size": 174,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.3333333333333333,
+        "F": 0.3333333333333333,
+        "pr": 6520,
+        "trials": 3
+      },
+      "merged_at": "2026-08-31T18:59:10Z",
+      "number": 6520,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/v4/classic/tests/instanceof.test.ts",
+        "packages/zod/src/v4/core/api.ts",
+        "packages/zod/src/v4/core/util.ts",
+        "packages/zod/src/v4/mini/tests/checks.test.ts"
+      ]
+    },
+    {
+      "base": "a2a019a57e4444f61bf677ca79c1352823e2b7c8",
+      "base_time": "2026-08-31T17:26:12Z",
+      "base_tree": "6df395cc6cba135c696f93357f595b2fd6b8f3bb",
+      "head": "93f1f0352266b7fdd3fa07db02c9469d4a0a9f51",
+      "history_size": 176,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 1.0,
+        "F": 1.0,
+        "pr": 6532,
+        "trials": 3
+      },
+      "merged_at": "2026-08-31T18:44:33Z",
+      "number": 6532,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/v4/classic/tests/continuability.test.ts",
+        "packages/zod/src/v4/classic/tests/string.test.ts",
+        "packages/zod/src/v4/classic/tests/to-json-schema.test.ts",
+        "packages/zod/src/v4/core/regexes.ts"
+      ]
+    },
+    {
+      "base": "319f47f44f40755773a9aa83b6fdaaad1ff01d77",
+      "base_time": "2026-08-31T17:16:14Z",
+      "base_tree": "4148249e74f2ba36b59c6db34568311f327f8982",
+      "head": "854b64ea0c0055e4e1202d9b2d89861d28d7d596",
+      "history_size": 175,
+      "hit_at_10_means": {
+        "C": 0.5,
+        "E": 0.5,
+        "F": 1.0,
+        "pr": 6528,
+        "trials": 2
+      },
+      "merged_at": "2026-08-31T17:26:13Z",
+      "number": 6528,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/v4/classic/tests/assignability.test.ts",
+        "packages/zod/src/v4/core/util.ts"
+      ]
+    },
+    {
+      "base": "1ec6b7c5ec58d0e58f6b582c96e7cabfc5cb2f95",
+      "base_time": "2026-08-31T16:54:37Z",
+      "base_tree": "81d08debab85ffc0eedb76c01ee65bb4f81f3316",
+      "head": "cbeac9415dc218eae98eaebc35971c0b6743528b",
+      "history_size": 174,
+      "hit_at_10_means": {
+        "C": 0.25,
+        "E": 1.0,
+        "F": 1.0,
+        "pr": 6527,
+        "trials": 4
+      },
+      "merged_at": "2026-08-31T17:16:14Z",
+      "number": 6527,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/v4/classic/tests/string.test.ts",
+        "packages/zod/src/v4/classic/tests/to-json-schema.test.ts",
+        "packages/zod/src/v4/core/regexes.ts",
+        "packages/zod/src/v4/core/schemas.ts"
+      ]
+    },
+    {
+      "base": "40b4d0b34d09b151505cf726581c908172368e35",
+      "base_time": "2026-08-29T21:05:51Z",
+      "base_tree": "0d0c1f3bc01b4a9f8f2975296c88aa488de3a93f",
+      "head": "f03e0e31c2ea7a102375f93ec37c78bfed7e74a4",
+      "history_size": 173,
+      "hit_at_10_means": {
+        "C": 0.4,
+        "E": 0.8,
+        "F": 0.8,
+        "pr": 6518,
+        "trials": 5
+      },
+      "merged_at": "2026-08-29T21:19:55Z",
+      "number": 6518,
+      "omitted": [],
+      "source_files": [
+        "packages/bench/compile-base64-inline-vs-hoist.ts",
+        "packages/bench/compile-codec-direction.ts",
+        "packages/bench/compile-helper-scope.ts",
+        "packages/bench/compile-matrix.ts",
+        "packages/bench/compile-tuple.ts",
+        "packages/bench/compile-vs-arktype.ts",
+        "packages/bench/compile.ts",
+        "packages/bench/moltar-libs.ts",
+        "packages/zod/src/v4/core/compile.ts",
+        "packages/zod/src/v4/core/index.ts",
+        "packages/zod/src/v4/core/tests/compile.test.ts"
+      ]
+    },
+    {
+      "base": "f412178defd4348872fa581db952f6713677502a",
+      "base_time": "2026-08-29T20:42:14Z",
+      "base_tree": "746ea02236c952a03ebfd7bb39072e92ecc72120",
+      "head": "166a9fc913663d44afda544fbfc20384dc9996d3",
+      "history_size": 171,
+      "hit_at_10_means": {
+        "C": 0.6,
+        "E": 1.0,
+        "F": 1.0,
+        "pr": 6511,
+        "trials": 5
+      },
+      "merged_at": "2026-08-29T21:04:05Z",
+      "number": 6511,
+      "omitted": [],
+      "source_files": [
+        "packages/bench/compile-base64-inline-vs-hoist.ts",
+        "packages/bench/compile-codec-direction.ts",
+        "packages/bench/compile-helper-scope.ts",
+        "packages/bench/compile-matrix.ts",
+        "packages/bench/compile-vs-arktype.ts",
+        "packages/bench/compile.ts",
+        "packages/bench/moltar-libs.ts",
+        "packages/zod/src/v4/core/index.ts",
+        "packages/zod/src/v4/core/tests/compile.test.ts"
+      ]
+    },
+    {
+      "base": "43b9bfc5a59167b42c897eb9c74129fc8b4c31e4",
+      "base_time": "2026-08-29T20:08:31Z",
+      "base_tree": "f63609f5340f1d476fb28f2cc96c3ec387f56bfc",
+      "head": "236de3a9e8059356207f10b36df77abf5d1118c6",
+      "history_size": 170,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 6510,
+        "trials": 2
+      },
+      "merged_at": "2026-08-29T20:42:15Z",
+      "number": 6510,
+      "omitted": [],
+      "source_files": [
+        "scripts/check-lockstep.ts",
+        "scripts/check-versions.ts"
+      ]
+    },
+    {
+      "base": "43b9bfc5a59167b42c897eb9c74129fc8b4c31e4",
+      "base_time": "2026-08-29T20:08:31Z",
+      "base_tree": "f63609f5340f1d476fb28f2cc96c3ec387f56bfc",
+      "head": "887102ef8a4c27dfae30932f45cf55233c5b29d1",
+      "history_size": 170,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.5,
+        "F": 0.5,
+        "pr": 6509,
+        "trials": 2
+      },
+      "merged_at": "2026-08-29T20:32:03Z",
+      "number": 6509,
+      "omitted": [],
+      "source_files": [
+        "packages/treeshake/bundle-size.test.ts",
+        "packages/zod/src/v4/classic/tests/standard-schema.test.ts",
+        "packages/zod/src/v4/core/schemas.ts"
+      ]
+    },
+    {
+      "base": "e8e206fa33ac5fe7ce20a2beb12d57b1cb3df653",
+      "base_time": "2026-08-29T17:47:31Z",
+      "base_tree": "af1c68f88a689978cdeba8003ca9ea74324b312e",
+      "head": "90d955795e7366bdfe39db6dd8914499b9564bac",
+      "history_size": 164,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 6504,
+        "trials": 5
+      },
+      "merged_at": "2026-08-29T19:52:46Z",
+      "number": 6504,
+      "omitted": [],
+      "source_files": [
+        "packages/bench/object-setup.ts",
+        "packages/docs/components/scroller.tsx",
+        "packages/zod/src/v3/helpers/errorUtil.ts",
+        "packages/zod/src/v4/classic/tests/recursive-types.test.ts",
+        "packages/zod/src/v4/core/errors.ts",
+        "packages/zod/src/v4/core/to-json-schema.ts",
+        "scripts/compile-fuzz.ts"
+      ]
+    },
+    {
+      "base": "1a16102a494b03ce1df7b80b663ae2df465f419e",
+      "base_time": "2026-08-29T17:16:13Z",
+      "base_tree": "512ea0e4a0a238e9a9e33f0aefe6c2774d5132a9",
+      "head": "6e17b6fbd9a57953f36161daa648615590929566",
+      "history_size": 163,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 6491,
+        "trials": 3
+      },
+      "merged_at": "2026-08-29T19:04:13Z",
+      "number": 6491,
+      "omitted": [],
+      "source_files": [
+        "packages/integration/fixtures/internal-types/mini.ts",
+        "packages/mini/src/index.ts",
+        "packages/mini/src/tests/index.test.ts",
+        "packages/mini/vitest.config.ts",
+        "packages/resolution/attw.test.ts",
+        "packages/resolution/src/index.ts",
+        "scripts/check-versions.ts"
+      ]
+    },
+    {
+      "base": "87d6464418582bb96fc665a01f852ca6da324ad0",
+      "base_time": "2026-08-29T15:43:50Z",
+      "base_tree": "175e222e58c11924fa30acdc3bafa5558dd8057e",
+      "head": "eb40aa2a22b87594f06849015f559e783cdd7d09",
+      "history_size": 161,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 6500,
+        "trials": 1
+      },
+      "merged_at": "2026-08-29T17:33:26Z",
+      "number": 6500,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/v4/classic/tests/cyclic-data.test.ts",
+        "packages/zod/src/v4/classic/tests/default.test.ts",
+        "packages/zod/src/v4/core/memoizer.ts"
+      ]
+    },
+    {
+      "base": "e6b6ab347675cd2bd54b1bdbed16f98c59be82a9",
+      "base_time": "2026-08-29T00:35:38Z",
+      "base_tree": "d6e5814de967f46ae0fc80a41da68ed9377ee760",
+      "head": "b579d142a5f6c357beb5dcf0e9f64f717120296f",
+      "history_size": 161,
+      "hit_at_10_means": {
+        "C": 0.6666666666666666,
+        "E": 1.0,
+        "F": 1.0,
+        "pr": 6497,
+        "trials": 3
+      },
+      "merged_at": "2026-08-29T17:15:17Z",
+      "number": 6497,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/v4/classic/tests/to-json-schema.test.ts",
+        "packages/zod/src/v4/core/json-schema-processors.ts",
+        "packages/zod/src/v4/core/to-json-schema.ts"
+      ]
+    },
+    {
+      "base": "a354314ac04fdd5484aa62dd5c3a4b553211a0e4",
+      "base_time": "2026-08-28T18:54:03Z",
+      "base_tree": "9c4075e9a8e3ca58e6817a2e93943b4f0be83743",
+      "head": "e67e29564e49f1a3ee44b042f7b756aa7d20d6d2",
+      "history_size": 156,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.6666666666666666,
+        "F": 0.3333333333333333,
+        "pr": 6488,
+        "trials": 3
+      },
+      "merged_at": "2026-08-28T19:28:42Z",
+      "number": 6488,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/v4/classic/schemas.ts",
+        "packages/zod/src/v4/classic/tests/detached-methods.test.ts",
+        "packages/zod/src/v4/core/util.ts"
+      ]
+    },
+    {
+      "base": "773a48676ede1a2144d4f2e60892e6c0cd6625a7",
+      "base_time": "2026-08-28T06:18:38Z",
+      "base_tree": "b93ae6f66e9a306d4207b7462213b31885eee0a3",
+      "head": "7c829eaa62b2291f91d57a6649a9932af6b31a31",
+      "history_size": 151,
+      "hit_at_10_means": {
+        "C": 0.6,
+        "E": 0.8,
+        "F": 0.8,
+        "pr": 6482,
+        "trials": 5
+      },
+      "merged_at": "2026-08-28T17:13:11Z",
+      "number": 6482,
+      "omitted": [],
+      "source_files": [
+        "packages/treeshake/bundle-size.test.ts",
+        "packages/zod/src/v4/classic/external.ts",
+        "packages/zod/src/v4/classic/schemas.ts",
+        "packages/zod/src/v4/classic/tests/cyclic-data.test.ts",
+        "packages/zod/src/v4/core/core.ts",
+        "packages/zod/src/v4/core/memoizer.ts",
+        "packages/zod/src/v4/core/schemas.ts",
+        "packages/zod/src/v4/mini/external.ts",
+        "packages/zod/src/v4/mini/tests/cyclic-data.test.ts"
+      ]
+    },
+    {
+      "base": "9782f87c69be3ceb0bbdae94fcc1c337bfc8618d",
+      "base_time": "2026-08-28T16:03:24Z",
+      "base_tree": "0a27701be6696a0dd3eb12bbaffcc7c4e07d9870",
+      "head": "65e2dc2a504d6c5c5141ae3a729a4ce31f06eb9a",
+      "history_size": 152,
+      "hit_at_10_means": {
+        "C": 0.2,
+        "E": 0.0,
+        "F": 0.2,
+        "pr": 6481,
+        "trials": 5
+      },
+      "merged_at": "2026-08-28T17:08:50Z",
+      "number": 6481,
+      "omitted": [],
+      "source_files": [
+        "packages/bench/compile-matrix.ts",
+        "packages/bench/compile-scaling.ts",
+        "packages/bench/failing-safeparse.ts",
+        "packages/bench/moltar-libs.ts",
+        "packages/bench/typia-case/src/index.ts",
+        "packages/docs/app/blog/[slug]/page.tsx",
+        "packages/docs/app/blog/page.tsx",
+        "packages/docs/app/layout.tsx",
+        "packages/docs/components/blog-toc.tsx",
+        "packages/docs/components/inline-code-title.tsx",
+        "packages/docs/components/themed-image.tsx",
+        "packages/docs/loaders/source.ts"
+      ]
+    },
+    {
+      "base": "37b015017b17420e81e76555066bdfa39c24cdc5",
+      "base_time": "2026-08-27T05:36:16Z",
+      "base_tree": "8f52b31026d3d3c025702a91e52128363c6ccd66",
+      "head": "11458fc6c0e5ad47c296ecbb4759b2bd4a7198fe",
+      "history_size": 149,
+      "hit_at_10_means": {
+        "C": 0.2,
+        "E": 0.4,
+        "F": 0.6,
+        "pr": 6478,
+        "trials": 5
+      },
+      "merged_at": "2026-08-28T06:18:39Z",
+      "number": 6478,
+      "omitted": [],
+      "source_files": [
+        "packages/treeshake/bundle-size.test.ts",
+        "packages/zod/src/v4/classic/errors.ts",
+        "packages/zod/src/v4/classic/schemas.ts",
+        "packages/zod/src/v4/classic/tests/instance-footprint.test.ts",
+        "packages/zod/src/v4/core/core.ts",
+        "packages/zod/src/v4/core/errors.ts",
+        "packages/zod/src/v4/core/schemas.ts",
+        "packages/zod/src/v4/core/util.ts",
+        "packages/zod/src/v4/mini/schemas.ts"
+      ]
+    },
+    {
+      "base": "37b015017b17420e81e76555066bdfa39c24cdc5",
+      "base_time": "2026-08-27T05:36:16Z",
+      "base_tree": "8f52b31026d3d3c025702a91e52128363c6ccd66",
+      "head": "9319b04a1f15612551e84fb3ecfd8842938ac165",
+      "history_size": 149,
+      "hit_at_10_means": {
+        "C": 0.8,
+        "E": 0.2,
+        "F": 0.8,
+        "pr": 6479,
+        "trials": 5
+      },
+      "merged_at": "2026-08-28T05:26:05Z",
+      "number": 6479,
+      "omitted": [],
+      "source_files": [
+        "packages/bench/compile-matrix.ts",
+        "packages/zod/src/compile.ts",
+        "packages/zod/src/v4/classic/external.ts",
+        "packages/zod/src/v4/classic/tests/object.test.ts",
+        "packages/zod/src/v4/core/compile.ts",
+        "packages/zod/src/v4/core/tests/compile-differential.test.ts",
+        "packages/zod/src/v4/core/tests/compile.test.ts",
+        "packages/zod/src/v4/mini/external.ts",
+        "scripts/compile-fuzz.ts"
+      ]
+    },
+    {
+      "base": "749f545233d7035250620b92e4fc1afcc1bc2f99",
+      "base_time": "2026-08-27T00:53:33Z",
+      "base_tree": "3ad0e0fc56a349029d80afeaa358888658fa9f99",
+      "head": "edb071ac447c9d8586f0be84c8be4c961267bbd3",
+      "history_size": 148,
+      "hit_at_10_means": {
+        "C": 0.25,
+        "E": 0.75,
+        "F": 0.75,
+        "pr": 6471,
+        "trials": 4
+      },
+      "merged_at": "2026-08-27T05:36:17Z",
+      "number": 6471,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/compile.ts",
+        "packages/zod/src/v4/classic/parse.ts",
+        "packages/zod/src/v4/classic/tests/is-valid.test.ts",
+        "packages/zod/src/v4/core/compile.ts",
+        "packages/zod/src/v4/core/parse.ts",
+        "packages/zod/src/v4/mini/parse.ts"
+      ]
+    },
+    {
+      "base": "8d896186cadb6eac6327f46589eed8f8ca8ef26d",
+      "base_time": "2026-08-27T00:32:19Z",
+      "base_tree": "d1dc3fdc8094b28cb0b060a4f6994fd488cfeb9a",
+      "head": "66b4ea162c319ce883e7a36600ea938aeb0e0c73",
+      "history_size": 146,
+      "hit_at_10_means": {
+        "C": 1.0,
+        "E": 0.0,
+        "F": 1.0,
+        "pr": 6464,
+        "trials": 2
+      },
+      "merged_at": "2026-08-27T00:45:57Z",
+      "number": 6464,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/v4/core/doc.ts",
+        "packages/zod/src/v4/core/schemas.ts"
+      ]
+    },
+    {
+      "base": "97edaf7dc4055935514de69dbd646c2fbe78b0f6",
+      "base_time": "2026-08-26T00:07:59Z",
+      "base_tree": "61d4f4505660ee8ddf1e122739ae169bea7e51b1",
+      "head": "69b68b7deb4a928004b3fcd340bdd0ca474bc7d3",
+      "history_size": 144,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 1.0,
+        "F": 1.0,
+        "pr": 6468,
+        "trials": 2
+      },
+      "merged_at": "2026-08-27T00:32:19Z",
+      "number": 6468,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/v4/classic/tests/to-json-schema.test.ts",
+        "packages/zod/src/v4/core/json-schema-processors.ts"
+      ]
+    },
+    {
+      "base": "9d5b20ef6c9dbff29a0fa272de4203201b23aa50",
+      "base_time": "2026-08-25T23:17:03Z",
+      "base_tree": "8f5b27ca87383234b761d575621b6fc8d44c8284",
+      "head": "57788a6274c993873501b75ef434abda895a8aa3",
+      "history_size": 142,
+      "hit_at_10_means": {
+        "C": 0.6666666666666666,
+        "E": 1.0,
+        "F": 0.6666666666666666,
+        "pr": 6465,
+        "trials": 3
+      },
+      "merged_at": "2026-08-26T00:21:49Z",
+      "number": 6465,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/v4/classic/schemas.ts",
+        "packages/zod/src/v4/classic/tests/tuple.test.ts",
+        "packages/zod/src/v4/mini/schemas.ts",
+        "packages/zod/src/v4/mini/tests/index.test.ts"
+      ]
+    },
+    {
+      "base": "9d5b20ef6c9dbff29a0fa272de4203201b23aa50",
+      "base_time": "2026-08-25T23:17:03Z",
+      "base_tree": "8f5b27ca87383234b761d575621b6fc8d44c8284",
+      "head": "7af5df61b38e415865c5b16ca3444ac4967113d5",
+      "history_size": 142,
+      "hit_at_10_means": {
+        "C": 0.25,
+        "E": 0.25,
+        "F": 0.5,
+        "pr": 6466,
+        "trials": 4
+      },
+      "merged_at": "2026-08-26T00:08:00Z",
+      "number": 6466,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/v4/classic/tests/bigint.test.ts",
+        "packages/zod/src/v4/core/checks.ts",
+        "packages/zod/src/v4/core/compile.ts",
+        "packages/zod/src/v4/core/tests/compile.test.ts"
+      ]
+    },
+    {
+      "base": "9d5b20ef6c9dbff29a0fa272de4203201b23aa50",
+      "base_time": "2026-08-25T23:17:03Z",
+      "base_tree": "8f5b27ca87383234b761d575621b6fc8d44c8284",
+      "head": "ac2f69053f84965c21c21512858d23949fb2da53",
+      "history_size": 142,
+      "hit_at_10_means": {
+        "C": 0.4,
+        "E": 0.6,
+        "F": 0.8,
+        "pr": 4004,
+        "trials": 5
+      },
+      "merged_at": "2026-08-25T23:55:30Z",
+      "number": 4004,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/v4/classic/tests/string.test.ts",
+        "packages/zod/src/v4/classic/tests/to-json-schema.test.ts",
+        "packages/zod/src/v4/core/api.ts",
+        "packages/zod/src/v4/core/regexes.ts",
+        "packages/zod/src/v4/core/schemas.ts",
+        "packages/zod/src/v4/mini/tests/string.test.ts"
+      ]
+    },
+    {
+      "base": "912f0f51b0ced654d0069741e7160834dca742ee",
+      "base_time": "2026-06-10T17:17:29Z",
+      "base_tree": "aa57882b5c03f77cdfc84ee44a7967f2c9c210b6",
+      "head": "7ff05f86ddd4732a7e59b5c1ec5f7f388839da90",
+      "history_size": 10,
+      "hit_at_10_means": {
+        "C": 0.5,
+        "E": 0.5,
+        "F": 0.75,
+        "pr": 6095,
+        "trials": 4
+      },
+      "merged_at": "2026-08-25T23:17:04Z",
+      "number": 6095,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/v4/classic/tests/continuability.test.ts",
+        "packages/zod/src/v4/classic/tests/string.test.ts",
+        "packages/zod/src/v4/classic/tests/template-literal.test.ts",
+        "packages/zod/src/v4/classic/tests/to-json-schema.test.ts",
+        "packages/zod/src/v4/core/regexes.ts"
+      ]
+    },
+    {
+      "base": "1c43b7745a47e2a8c46361cf92280a9c03d52797",
+      "base_time": "2026-08-25T04:07:18Z",
+      "base_tree": "86969dd92a0ced9117a254c1e5ff2ea80ad4083f",
+      "head": "e3527cd72e16802a90770e5ac41ec1f28229b54e",
+      "history_size": 140,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 1.0,
+        "F": 0.5,
+        "pr": 6462,
+        "trials": 2
+      },
+      "merged_at": "2026-08-25T05:51:21Z",
+      "number": 6462,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/v4/classic/tests/catch.test.ts",
+        "packages/zod/src/v4/classic/tests/optional.test.ts",
+        "packages/zod/src/v4/core/schemas.ts"
+      ]
+    },
+    {
+      "base": "1c43b7745a47e2a8c46361cf92280a9c03d52797",
+      "base_time": "2026-08-25T04:07:18Z",
+      "base_tree": "86969dd92a0ced9117a254c1e5ff2ea80ad4083f",
+      "head": "aae428c073fb5c90a6b235fa0700ff55304136cb",
+      "history_size": 140,
+      "hit_at_10_means": {
+        "C": 0.3333333333333333,
+        "E": 1.0,
+        "F": 1.0,
+        "pr": 6461,
+        "trials": 3
+      },
+      "merged_at": "2026-08-25T05:09:02Z",
+      "number": 6461,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/v4/classic/tests/to-json-schema.test.ts",
+        "packages/zod/src/v4/core/json-schema-processors.ts",
+        "packages/zod/src/v4/core/to-json-schema.ts"
+      ]
+    },
+    {
+      "base": "a82593c19b27a637fcde21e50c53cb51cc4e27f8",
+      "base_time": "2026-08-25T03:59:06Z",
+      "base_tree": "c42c7d7db68c870bb98cfe6b6d1ac3edae3d56a2",
+      "head": "73f4f20c8160806ed2331e98d93d9167c0b8084f",
+      "history_size": 139,
+      "hit_at_10_means": {
+        "C": 0.5,
+        "E": 0.5,
+        "F": 0.5,
+        "pr": 6192,
+        "trials": 2
+      },
+      "merged_at": "2026-08-25T04:03:08Z",
+      "number": 6192,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/v4/classic/tests/catch.test.ts",
+        "packages/zod/src/v4/core/schemas.ts"
+      ]
+    },
+    {
+      "base": "2125d30ce58f66170682d5a50ee4a3e2eac568e3",
+      "base_time": "2026-08-25T00:02:37Z",
+      "base_tree": "c6b1dc44fe90f50cd3a4d35ae887a194d2e92079",
+      "head": "df05c9d5e57481232842b2f455eb8c9a72fc3995",
+      "history_size": 134,
+      "hit_at_10_means": {
+        "C": 0.6,
+        "E": 0.6,
+        "F": 0.6,
+        "pr": 6052,
+        "trials": 5
+      },
+      "merged_at": "2026-08-25T03:58:02Z",
+      "number": 6052,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/v4/classic/schemas.ts",
+        "packages/zod/src/v4/classic/tests/bigint.test.ts",
+        "packages/zod/src/v4/classic/tests/number.test.ts",
+        "packages/zod/src/v4/core/checks.ts",
+        "packages/zod/src/v4/core/schemas.ts",
+        "packages/zod/src/v4/mini/schemas.ts",
+        "packages/zod/src/v4/mini/tests/number.test.ts"
+      ]
+    },
+    {
+      "base": "2125d30ce58f66170682d5a50ee4a3e2eac568e3",
+      "base_time": "2026-08-25T00:02:37Z",
+      "base_tree": "c6b1dc44fe90f50cd3a4d35ae887a194d2e92079",
+      "head": "01e96d7070c02b180ef6d0f744393e841f68b224",
+      "history_size": 134,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.6,
+        "F": 0.2,
+        "pr": 6459,
+        "trials": 5
+      },
+      "merged_at": "2026-08-25T02:51:21Z",
+      "number": 6459,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/v4/classic/tests/enum.test.ts",
+        "packages/zod/src/v4/classic/tests/literal.test.ts",
+        "packages/zod/src/v4/core/compile.ts",
+        "packages/zod/src/v4/core/json-schema-processors.ts",
+        "packages/zod/src/v4/core/schemas.ts"
+      ]
+    },
+    {
+      "base": "53cec2a0d0941a69d8add934ac3a8695fb5fb14c",
+      "base_time": "2026-08-25T01:16:40Z",
+      "base_tree": "079a2b0f92bdbda1abd13a151e751adc2be6b774",
+      "head": "dbd579911cffed82313b16f78549d869f76062d7",
+      "history_size": 135,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 6267,
+        "trials": 2
+      },
+      "merged_at": "2026-08-25T02:49:43Z",
+      "number": 6267,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/v4/classic/tests/function.test.ts",
+        "packages/zod/src/v4/core/schemas.ts",
+        "packages/zod/src/v4/mini/tests/functions.test.ts"
+      ]
+    },
+    {
+      "base": "53cec2a0d0941a69d8add934ac3a8695fb5fb14c",
+      "base_time": "2026-08-25T01:16:40Z",
+      "base_tree": "079a2b0f92bdbda1abd13a151e751adc2be6b774",
+      "head": "42a4ea1b2d752ffae277406d4dceb1c180a92bdc",
+      "history_size": 135,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 1.0,
+        "F": 0.75,
+        "pr": 6460,
+        "trials": 4
+      },
+      "merged_at": "2026-08-25T01:37:04Z",
+      "number": 6460,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/v4/classic/tests/record.test.ts",
+        "packages/zod/src/v4/classic/tests/to-json-schema.test.ts",
+        "packages/zod/src/v4/core/json-schema-processors.ts",
+        "packages/zod/src/v4/core/schemas.ts"
+      ]
+    },
+    {
+      "base": "51a1368ad449ba0a4dc6e2822dfcbb5ec891700c",
+      "base_time": "2026-08-24T23:46:51Z",
+      "base_tree": "34390bd3e16a7a819d0277693d0d4b71607dd9af",
+      "head": "3de97d0583d55b7ffd20e883ee07a67c2657b171",
+      "history_size": 133,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 6223,
+        "trials": 1
+      },
+      "merged_at": "2026-08-25T00:02:37Z",
+      "number": 6223,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/v4/classic/tests/number.test.ts",
+        "packages/zod/src/v4/core/util.ts"
+      ]
+    },
+    {
+      "base": "bbc68f990c7e6a5e3f506c56fb04bd0279b9c9b5",
+      "base_time": "2026-05-19T18:17:21Z",
+      "base_tree": "85d3953d2aa4d22ac06609ef3475e93064de6068",
+      "head": "72a178b9e1ad4dc0e509b6e7ca08ab4a009d78e1",
+      "history_size": 10,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 6024,
+        "trials": 2
+      },
+      "merged_at": "2026-08-24T23:46:52Z",
+      "number": 6024,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/v4/classic/tests/to-json-schema.test.ts",
+        "packages/zod/src/v4/core/checks.ts"
+      ]
+    },
+    {
+      "base": "72a05c4fba24eb36bd4981cb946c22d9606c0afa",
+      "base_time": "2026-08-24T23:41:09Z",
+      "base_tree": "232d67de950ea4ba6aac1dd72d0932e1c16a1b8c",
+      "head": "6dea74efd9ed294f659235754ed2ccaa8c88708b",
+      "history_size": 131,
+      "hit_at_10_means": {
+        "C": 0.5,
+        "E": 0.0,
+        "F": 0.5,
+        "pr": 6012,
+        "trials": 2
+      },
+      "merged_at": "2026-08-24T23:46:36Z",
+      "number": 6012,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/v4/classic/compat.ts",
+        "packages/zod/src/v4/core/api.ts",
+        "packages/zod/src/v4/core/config.ts"
+      ]
+    },
+    {
+      "base": "ead9fcb310bf65a70427f92ca76545efe954037e",
+      "base_time": "2026-08-09T18:01:43Z",
+      "base_tree": "75dce0e01903c0495cdaa38bc5d64ab6b2e288f7",
+      "head": "e23285a086e22a0b9ef6f2c0b66cc8b8ea49451c",
+      "history_size": 16,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 1.0,
+        "F": 1.0,
+        "pr": 6357,
+        "trials": 2
+      },
+      "merged_at": "2026-08-24T23:41:10Z",
+      "number": 6357,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/v4/classic/tests/stringbool.test.ts",
+        "packages/zod/src/v4/core/api.ts",
+        "packages/zod/src/v4/mini/tests/index.test.ts"
+      ]
+    },
+    {
+      "base": "d85472c46e88cebfef454f681b8261b6853a9b4f",
+      "base_time": "2026-08-24T21:35:43Z",
+      "base_tree": "fcad7fdaa79e58f05a9acee3c6cbab641e5f0d71",
+      "head": "66cc50cf623aa73eccc3a78a24e6cae6a21876b2",
+      "history_size": 128,
+      "hit_at_10_means": {
+        "C": 0.4,
+        "E": 0.2,
+        "F": 0.4,
+        "pr": 6457,
+        "trials": 5
+      },
+      "merged_at": "2026-08-24T22:31:48Z",
+      "number": 6457,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/v4/classic/tests/codec.test.ts",
+        "packages/zod/src/v4/classic/tests/datetime.test.ts",
+        "packages/zod/src/v4/classic/tests/template-literal.test.ts",
+        "packages/zod/src/v4/classic/tests/to-json-schema.test.ts",
+        "packages/zod/src/v4/core/regexes.ts",
+        "packages/zod/src/v4/mini/tests/codec.test.ts"
+      ]
+    },
+    {
+      "base": "d85472c46e88cebfef454f681b8261b6853a9b4f",
+      "base_time": "2026-08-24T21:35:43Z",
+      "base_tree": "fcad7fdaa79e58f05a9acee3c6cbab641e5f0d71",
+      "head": "1015e4bc47d4a48419d493c527874bad46547780",
+      "history_size": 128,
+      "hit_at_10_means": {
+        "C": 0.25,
+        "E": 0.5,
+        "F": 0.5,
+        "pr": 6450,
+        "trials": 4
+      },
+      "merged_at": "2026-08-24T22:31:09Z",
+      "number": 6450,
+      "omitted": [],
+      "source_files": [
+        "packages/treeshake/bundle-size.test.ts",
+        "packages/zod/src/v4/classic/tests/error.test.ts",
+        "packages/zod/src/v4/core/core.ts",
+        "packages/zod/src/v4/core/tests/compile.test.ts",
+        "packages/zod/src/v4/mini/tests/error.test.ts"
+      ]
+    },
+    {
+      "base": "d4108872383318e67c372eb7316244154ccda19b",
+      "base_time": "2026-08-24T17:21:13Z",
+      "base_tree": "ab37d5d8ea30c235b3dfbf7b9b696419fc747b23",
+      "head": "c3b51a160095446f889b05f54e94e137f9ec0950",
+      "history_size": 127,
+      "hit_at_10_means": {
+        "C": 0.4,
+        "E": 0.4,
+        "F": 0.4,
+        "pr": 6448,
+        "trials": 5
+      },
+      "merged_at": "2026-08-24T21:35:44Z",
+      "number": 6448,
+      "omitted": [],
+      "source_files": [
+        "packages/treeshake/bundle-size.test.ts",
+        "packages/zod/src/v4/classic/tests/object.test.ts",
+        "packages/zod/src/v4/core/compile.ts",
+        "packages/zod/src/v4/core/json-schema-processors.ts",
+        "packages/zod/src/v4/core/memoizer.ts",
+        "packages/zod/src/v4/core/schemas.ts",
+        "packages/zod/src/v4/core/util.ts"
+      ]
+    },
+    {
+      "base": "36c68adf6834ef6ff40bbcb5671371b33711ce84",
+      "base_time": "2026-08-20T14:49:03Z",
+      "base_tree": "b273fd88c55416cd17e1c3f27b7e506517de327f",
+      "head": "cbc5c0465ecb72952ca11e23630936ac7764b09c",
+      "history_size": 124,
+      "hit_at_10_means": {
+        "C": 0.2,
+        "E": 1.0,
+        "F": 1.0,
+        "pr": 6452,
+        "trials": 5
+      },
+      "merged_at": "2026-08-24T17:21:13Z",
+      "number": 6452,
+      "omitted": [],
+      "source_files": [
+        "packages/zod/src/v4/classic/from-json-schema.ts",
+        "packages/zod/src/v4/classic/tests/from-json-schema.test.ts",
+        "packages/zod/src/v4/classic/tests/to-json-schema.test.ts",
+        "packages/zod/src/v4/core/json-schema-processors.ts",
+        "packages/zod/src/v4/core/schemas.ts"
+      ]
+    }
+  ],
+  "trial_rule": "when more than 5 files are withholdable, keep the 5 with the smallest FNV-1a 64-bit hash of \"<pr>/<path>\", ties by path; otherwise keep all; trials run in listing order",
+  "trials": [
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 6
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 6
+      },
+      "pr": 6543,
+      "withheld": "packages/zod/src/v4/classic/tests/error.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 5
+      },
+      "pr": 6543,
+      "withheld": "packages/zod/src/v4/core/parse.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6542,
+      "withheld": "packages/zod/src/v4/classic/schemas.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 6542,
+      "withheld": "packages/zod/src/v4/classic/tests/enum.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 9
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "pr": 6542,
+      "withheld": "packages/zod/src/v4/mini/schemas.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 7
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 11
+      },
+      "pr": 6542,
+      "withheld": "packages/zod/src/v4/mini/tests/index.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 9
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "pr": 6541,
+      "withheld": "packages/zod/src/v4/core/json-schema-generator.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "pr": 6541,
+      "withheld": "packages/zod/src/v4/core/json-schema-processors.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 6541,
+      "withheld": "packages/zod/src/v4/core/to-json-schema.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6535,
+      "withheld": "packages/zod/src/v4/classic/from-json-schema.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 6535,
+      "withheld": "packages/zod/src/v4/classic/tests/from-json-schema.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 8
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 6538,
+      "withheld": "packages/zod/src/v4/core/compile.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 24
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 37
+      },
+      "pr": 6538,
+      "withheld": "packages/zod/src/v4/core/parse.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 10
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 20
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 12
+      },
+      "pr": 6538,
+      "withheld": "packages/zod/src/v4/core/tests/compile.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6540,
+      "withheld": "packages/zod/src/v4/core/schemas.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6540,
+      "withheld": "packages/zod/src/v4/core/util.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 8
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 8
+      },
+      "pr": 6539,
+      "withheld": "packages/zod/src/v4/classic/tests/assignability.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6539,
+      "withheld": "packages/zod/src/v4/core/util.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "pr": 6537,
+      "withheld": "packages/zod/src/v4/core/schemas.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 5
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6537,
+      "withheld": "packages/zod/src/v4/core/util.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 12
+      },
+      "pr": 6519,
+      "withheld": "packages/treeshake/bundle-size.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 8
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 13
+      },
+      "pr": 6519,
+      "withheld": "packages/zod/src/v4/classic/tests/error.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 62
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 72
+      },
+      "pr": 6519,
+      "withheld": "packages/zod/src/v4/classic/tests/issue-schema.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 8
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 6519,
+      "withheld": "packages/zod/src/v4/core/parse.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6519,
+      "withheld": "packages/zod/src/v4/core/schemas.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 7
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 8
+      },
+      "pr": 6534,
+      "withheld": "packages/zod/src/v4/classic/tests/string.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "pr": 6534,
+      "withheld": "packages/zod/src/v4/classic/tests/to-json-schema.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 5
+      },
+      "pr": 6534,
+      "withheld": "packages/zod/src/v4/core/json-schema-processors.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6534,
+      "withheld": "packages/zod/src/v4/core/schemas.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 13
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 13
+      },
+      "pr": 6533,
+      "withheld": "packages/zod/src/v4/classic/tests/assignability.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6533,
+      "withheld": "packages/zod/src/v4/core/util.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 24
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 31
+      },
+      "pr": 6520,
+      "withheld": "packages/zod/src/v4/classic/tests/instanceof.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "pr": 6520,
+      "withheld": "packages/zod/src/v4/core/api.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 21
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 29
+      },
+      "pr": 6520,
+      "withheld": "packages/zod/src/v4/core/util.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6532,
+      "withheld": "packages/zod/src/v4/classic/tests/string.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6532,
+      "withheld": "packages/zod/src/v4/classic/tests/to-json-schema.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6532,
+      "withheld": "packages/zod/src/v4/core/regexes.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 40
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6528,
+      "withheld": "packages/zod/src/v4/classic/tests/assignability.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 6
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 9
+      },
+      "pr": 6528,
+      "withheld": "packages/zod/src/v4/core/util.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6527,
+      "withheld": "packages/zod/src/v4/classic/tests/string.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "pr": 6527,
+      "withheld": "packages/zod/src/v4/classic/tests/to-json-schema.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "pr": 6527,
+      "withheld": "packages/zod/src/v4/core/regexes.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "pr": 6527,
+      "withheld": "packages/zod/src/v4/core/schemas.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6518,
+      "withheld": "packages/bench/compile-codec-direction.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6518,
+      "withheld": "packages/bench/compile-helper-scope.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 6518,
+      "withheld": "packages/bench/compile-tuple.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6518,
+      "withheld": "packages/bench/compile-vs-arktype.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 6518,
+      "withheld": "packages/zod/src/v4/core/tests/compile.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 6
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 6511,
+      "withheld": "packages/bench/compile-base64-inline-vs-hoist.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 6
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 6511,
+      "withheld": "packages/bench/compile-codec-direction.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 6
+      },
+      "pr": 6511,
+      "withheld": "packages/bench/compile-helper-scope.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 7
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 6511,
+      "withheld": "packages/bench/compile-vs-arktype.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 6
+      },
+      "pr": 6511,
+      "withheld": "packages/bench/compile.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 6510,
+      "withheld": "scripts/check-lockstep.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 6510,
+      "withheld": "scripts/check-versions.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 11
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 17
+      },
+      "pr": 6509,
+      "withheld": "packages/treeshake/bundle-size.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 7
+      },
+      "pr": 6509,
+      "withheld": "packages/zod/src/v4/core/schemas.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 6504,
+      "withheld": "packages/bench/object-setup.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 6504,
+      "withheld": "packages/zod/src/v3/helpers/errorUtil.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 6504,
+      "withheld": "packages/zod/src/v4/classic/tests/recursive-types.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 24
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 30
+      },
+      "pr": 6504,
+      "withheld": "packages/zod/src/v4/core/errors.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 6504,
+      "withheld": "scripts/compile-fuzz.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 6491,
+      "withheld": "packages/resolution/attw.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 6491,
+      "withheld": "packages/resolution/src/index.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 6491,
+      "withheld": "scripts/check-versions.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 6500,
+      "withheld": "packages/zod/src/v4/core/memoizer.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 6
+      },
+      "pr": 6497,
+      "withheld": "packages/zod/src/v4/classic/tests/to-json-schema.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6497,
+      "withheld": "packages/zod/src/v4/core/json-schema-processors.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6497,
+      "withheld": "packages/zod/src/v4/core/to-json-schema.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6488,
+      "withheld": "packages/zod/src/v4/classic/schemas.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 46
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 58
+      },
+      "pr": 6488,
+      "withheld": "packages/zod/src/v4/classic/tests/detached-methods.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 11
+      },
+      "pr": 6488,
+      "withheld": "packages/zod/src/v4/core/util.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 5
+      },
+      "pr": 6482,
+      "withheld": "packages/treeshake/bundle-size.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 6482,
+      "withheld": "packages/zod/src/v4/classic/schemas.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 9
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 14
+      },
+      "pr": 6482,
+      "withheld": "packages/zod/src/v4/core/core.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 7
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 13
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "pr": 6482,
+      "withheld": "packages/zod/src/v4/core/memoizer.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 5
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 6482,
+      "withheld": "packages/zod/src/v4/core/schemas.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6481,
+      "withheld": "packages/bench/compile-matrix.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 6481,
+      "withheld": "packages/docs/app/blog/page.tsx"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 6481,
+      "withheld": "packages/docs/app/layout.tsx"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 6481,
+      "withheld": "packages/docs/components/themed-image.tsx"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 17
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 22
+      },
+      "pr": 6481,
+      "withheld": "packages/docs/loaders/source.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 21
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 49
+      },
+      "pr": 6478,
+      "withheld": "packages/treeshake/bundle-size.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 16
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 49
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 18
+      },
+      "pr": 6478,
+      "withheld": "packages/zod/src/v4/classic/errors.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 8
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6478,
+      "withheld": "packages/zod/src/v4/core/core.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 17
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 19
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 6
+      },
+      "pr": 6478,
+      "withheld": "packages/zod/src/v4/core/errors.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 11
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6478,
+      "withheld": "packages/zod/src/v4/core/schemas.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 7
+      },
+      "pr": 6479,
+      "withheld": "packages/bench/compile-matrix.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 26
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "pr": 6479,
+      "withheld": "packages/zod/src/compile.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 14
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 27
+      },
+      "pr": 6479,
+      "withheld": "packages/zod/src/v4/classic/tests/object.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6479,
+      "withheld": "packages/zod/src/v4/core/compile.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 15
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 6479,
+      "withheld": "packages/zod/src/v4/core/tests/compile-differential.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 7
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 11
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "pr": 6471,
+      "withheld": "packages/zod/src/compile.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 10
+      },
+      "pr": 6471,
+      "withheld": "packages/zod/src/v4/classic/parse.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 5
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 9
+      },
+      "pr": 6471,
+      "withheld": "packages/zod/src/v4/core/compile.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 6
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 12
+      },
+      "pr": 6471,
+      "withheld": "packages/zod/src/v4/core/parse.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 6464,
+      "withheld": "packages/zod/src/v4/core/doc.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 6464,
+      "withheld": "packages/zod/src/v4/core/schemas.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 6468,
+      "withheld": "packages/zod/src/v4/classic/tests/to-json-schema.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "pr": 6468,
+      "withheld": "packages/zod/src/v4/core/json-schema-processors.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 7
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6465,
+      "withheld": "packages/zod/src/v4/classic/schemas.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 6
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6465,
+      "withheld": "packages/zod/src/v4/mini/schemas.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 5
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 12
+      },
+      "pr": 6465,
+      "withheld": "packages/zod/src/v4/mini/tests/index.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 11
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 15
+      },
+      "pr": 6466,
+      "withheld": "packages/zod/src/v4/classic/tests/bigint.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 5
+      },
+      "pr": 6466,
+      "withheld": "packages/zod/src/v4/core/checks.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 11
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6466,
+      "withheld": "packages/zod/src/v4/core/compile.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 6466,
+      "withheld": "packages/zod/src/v4/core/tests/compile.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 7
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 7
+      },
+      "pr": 4004,
+      "withheld": "packages/zod/src/v4/classic/tests/string.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "pr": 4004,
+      "withheld": "packages/zod/src/v4/classic/tests/to-json-schema.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 27
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "pr": 4004,
+      "withheld": "packages/zod/src/v4/core/api.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 4004,
+      "withheld": "packages/zod/src/v4/core/schemas.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 4004,
+      "withheld": "packages/zod/src/v4/mini/tests/string.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6095,
+      "withheld": "packages/zod/src/v4/classic/tests/string.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "pr": 6095,
+      "withheld": "packages/zod/src/v4/classic/tests/template-literal.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 6095,
+      "withheld": "packages/zod/src/v4/classic/tests/to-json-schema.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6095,
+      "withheld": "packages/zod/src/v4/core/regexes.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 9
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 16
+      },
+      "pr": 6462,
+      "withheld": "packages/zod/src/v4/classic/tests/catch.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "pr": 6462,
+      "withheld": "packages/zod/src/v4/core/schemas.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 7
+      },
+      "pr": 6461,
+      "withheld": "packages/zod/src/v4/classic/tests/to-json-schema.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6461,
+      "withheld": "packages/zod/src/v4/core/json-schema-processors.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 6
+      },
+      "pr": 6461,
+      "withheld": "packages/zod/src/v4/core/to-json-schema.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 11
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 12
+      },
+      "pr": 6192,
+      "withheld": "packages/zod/src/v4/classic/tests/catch.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6192,
+      "withheld": "packages/zod/src/v4/core/schemas.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6052,
+      "withheld": "packages/zod/src/v4/classic/schemas.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 6052,
+      "withheld": "packages/zod/src/v4/classic/tests/bigint.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 10
+      },
+      "pr": 6052,
+      "withheld": "packages/zod/src/v4/core/checks.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 6052,
+      "withheld": "packages/zod/src/v4/core/schemas.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 11
+      },
+      "pr": 6052,
+      "withheld": "packages/zod/src/v4/mini/schemas.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 6459,
+      "withheld": "packages/zod/src/v4/classic/tests/enum.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 6459,
+      "withheld": "packages/zod/src/v4/classic/tests/literal.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 9
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 16
+      },
+      "pr": 6459,
+      "withheld": "packages/zod/src/v4/core/compile.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 7
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 14
+      },
+      "pr": 6459,
+      "withheld": "packages/zod/src/v4/core/json-schema-processors.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "pr": 6459,
+      "withheld": "packages/zod/src/v4/core/schemas.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 6267,
+      "withheld": "packages/zod/src/v4/classic/tests/function.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 6267,
+      "withheld": "packages/zod/src/v4/core/schemas.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 6
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 11
+      },
+      "pr": 6460,
+      "withheld": "packages/zod/src/v4/classic/tests/record.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 5
+      },
+      "pr": 6460,
+      "withheld": "packages/zod/src/v4/classic/tests/to-json-schema.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 6
+      },
+      "pr": 6460,
+      "withheld": "packages/zod/src/v4/core/json-schema-processors.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 5
+      },
+      "pr": 6460,
+      "withheld": "packages/zod/src/v4/core/schemas.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 6223,
+      "withheld": "packages/zod/src/v4/core/util.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 6024,
+      "withheld": "packages/zod/src/v4/classic/tests/to-json-schema.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 6024,
+      "withheld": "packages/zod/src/v4/core/checks.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 5
+      },
+      "pr": 6012,
+      "withheld": "packages/zod/src/v4/classic/compat.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 6012,
+      "withheld": "packages/zod/src/v4/core/api.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "pr": 6357,
+      "withheld": "packages/zod/src/v4/core/api.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "pr": 6357,
+      "withheld": "packages/zod/src/v4/mini/tests/index.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 7
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 15
+      },
+      "pr": 6457,
+      "withheld": "packages/zod/src/v4/classic/tests/codec.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 12
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 22
+      },
+      "pr": 6457,
+      "withheld": "packages/zod/src/v4/classic/tests/template-literal.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 13
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 6
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "pr": 6457,
+      "withheld": "packages/zod/src/v4/classic/tests/to-json-schema.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 24
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 6457,
+      "withheld": "packages/zod/src/v4/core/regexes.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 13
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 24
+      },
+      "pr": 6457,
+      "withheld": "packages/zod/src/v4/mini/tests/codec.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 10
+      },
+      "pr": 6450,
+      "withheld": "packages/treeshake/bundle-size.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 9
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 6450,
+      "withheld": "packages/zod/src/v4/classic/tests/error.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 15
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 19
+      },
+      "pr": 6450,
+      "withheld": "packages/zod/src/v4/core/core.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 6450,
+      "withheld": "packages/zod/src/v4/core/tests/compile.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 16
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 5
+      },
+      "pr": 6448,
+      "withheld": "packages/zod/src/v4/classic/tests/object.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 13
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 28
+      },
+      "pr": 6448,
+      "withheld": "packages/zod/src/v4/core/json-schema-processors.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 54
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 63
+      },
+      "pr": 6448,
+      "withheld": "packages/zod/src/v4/core/memoizer.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 13
+      },
+      "pr": 6448,
+      "withheld": "packages/zod/src/v4/core/schemas.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6448,
+      "withheld": "packages/zod/src/v4/core/util.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6452,
+      "withheld": "packages/zod/src/v4/classic/from-json-schema.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 8
+      },
+      "pr": 6452,
+      "withheld": "packages/zod/src/v4/classic/tests/from-json-schema.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 6452,
+      "withheld": "packages/zod/src/v4/classic/tests/to-json-schema.test.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 8
+      },
+      "pr": 6452,
+      "withheld": "packages/zod/src/v4/core/json-schema-processors.ts"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 6
+      },
+      "pr": 6452,
+      "withheld": "packages/zod/src/v4/core/schemas.ts"
+    }
+  ],
+  "validity_threats": {
+    "circular_label": "the label is co-change, and E predicts from earlier co-change, which favors E",
+    "one_repository_per_language": "results cannot separate language from codebase",
+    "proxy_for_relevance": "co-changed files stand in for the files a reviewer needed",
+    "small_sample": "50 PRs per repository detect only large effects"
+  }
+}

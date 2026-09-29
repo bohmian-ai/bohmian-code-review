@@ -75,3 +75,18 @@ Stop for spec authority if valid reports require another outcome, altered thresh
 - [Contributor rules](../../../../AGENTS.md)
 - [Design](../../../../architecture/bohmian-code-review-design.md)
 - [Testing workflow](../../../../architecture/references/languages/testing-workflows.md)
+
+## Implementation Evidence
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| Reports for all three repositories contain every REQ-003 field, separate REQ-002 costs, all validity threats, no source or packing claim | `examples/context_relevance/main.rs` `record`/`run`; `reports/{pydantic-ai,tokio,zod}.json` from live run 1 | `run_report_is_complete_and_source_free`, `run_reads_each_input_once_and_reports_costs`; live run 1 exit 0 | PASS |
+| Equal-PR paired effects, seeded intervals, repository-wide decision pass no-network tests | `examples/context_relevance/report.rs` `pr_means`, `effect`, `verdict`, `adopt` | `prs_weigh_equally_whatever_their_trial_counts`, `bootstrap_is_fixed_by_its_seed`, `a_zero_containing_interval_is_inconclusive`, `adoption_needs_every_repository_to_meet_the_rule` | PASS |
+| Two live runs with the same cutoffs produce equal reports apart from timings | reports carry no run-timing fields, so comparison is byte-for-byte | run 1: exit 0, 267,627 bytes, sha256 `f3a33e69…da7a3`; run 2: failed `rate limited; retry after 1256s` with no report (INV-005 behaving as specified) | PENDING — rerun in a fresh rate-limit window and `cmp` against the checked-in reports |
+| Command opt-in and read-only; production crates, formats, APIs, historical reports, gate unchanged | diff limited to the example target, three new reports, and this task | `mise.toml` unchanged, `live:context-relevance` not in `gate`; `git diff main --stat -- crates/*/src changes/completed mise.toml` empty for this task's commits | PASS |
+
+Commands this session: `mise run test:pipeline` (exit 0), `mise run fmt:check` (exit 0), `mise run lints` (exit 0), `mise run gate` (exit 0), `git diff --check` (exit 0), `GITHUB_TOKEN=… mise run live:context-relevance` run 1 (exit 0, 35 min), run 2 (exit 1, rate limited).
+
+Run 1 results (F − C mean, 95% CI, verdict): pydantic-ai 0.141 [0.045, 0.242] met; tokio 0.175 [0.095, 0.267] met; zod 0.323 [0.228, 0.420] met; `adopt_f: true`.
+
+Non-goals held: no other outcome, subset, sensitivity analysis, tuning, or production change. The legacy all-trial `summarize` aggregate was removed.

@@ -1,0 +1,4013 @@
+{
+  "bootstrap": {
+    "interval": "95% percentile over PRs",
+    "resamples": 10000,
+    "seed": 2316549133261119870
+  },
+  "cold_point": "2026-07-23T23:48:05Z",
+  "command": "GITHUB_TOKEN=<read-only token> mise run live:context-relevance",
+  "cutoff": "2026-08-23T19:15:42Z",
+  "decision": {
+    "adopt_f": true,
+    "repository_f_minus_c": "met",
+    "rule": "adopt F only if, in every repository, the mean per-PR F - C hit@10 difference is at least 0.05 and its 95% bootstrap interval's lower bound is above 0; an interval containing 0 is inconclusive",
+    "threshold": 0.05
+  },
+  "df_ceiling": 100,
+  "effects": {
+    "E-C": {
+      "ci_95": [
+        -0.10266666666666666,
+        0.165
+      ],
+      "mean": 0.029333333333333326
+    },
+    "F-C": {
+      "ci_95": [
+        0.04466666666666666,
+        0.24233333333333332
+      ],
+      "mean": 0.1406666666666667
+    }
+  },
+  "fusion_constant": 60,
+  "hit_rank": 10,
+  "outcome": "hit@10",
+  "rarity_rule": "ignore a name when df(name) > 100; a downstream file referencing it earns 1/df(name); an upstream file declaring it earns 1/(df(name) * declaring_file_count(name)); a file matching both directions keeps the larger credit; score sums credits over distinct names",
+  "repository": "pydantic/pydantic-ai",
+  "requests": {
+    "evaluation_only": {
+      "base_commit_timestamps": 50
+    },
+    "production": {
+      "cold_build": 65,
+      "incremental_update": {
+        "aggregate_page_requests_through_newest_base": 297,
+        "page_requests_by_merged_pr": {
+          "2684": 1,
+          "4636": 1,
+          "4825": 1,
+          "5496": 1,
+          "5905": 1,
+          "5907": 1,
+          "6083": 1,
+          "6150": 1,
+          "6324": 3,
+          "6353": 1,
+          "6359": 1,
+          "6449": 1,
+          "6457": 1,
+          "6458": 1,
+          "6485": 1,
+          "6487": 1,
+          "6496": 1,
+          "6497": 1,
+          "6498": 1,
+          "6500": 1,
+          "6509": 1,
+          "6533": 1,
+          "6535": 1,
+          "6538": 1,
+          "6601": 1,
+          "6605": 1,
+          "6635": 1,
+          "6642": 1,
+          "6673": 1,
+          "6676": 1,
+          "6677": 1,
+          "6685": 1,
+          "6689": 1,
+          "6693": 1,
+          "6701": 1,
+          "6710": 1,
+          "6711": 1,
+          "6715": 1,
+          "6719": 1,
+          "6720": 1,
+          "6721": 1,
+          "6722": 1,
+          "6723": 1,
+          "6726": 1,
+          "6733": 1,
+          "6737": 1,
+          "6738": 1,
+          "6740": 1,
+          "6743": 1,
+          "6753": 1,
+          "6756": 1,
+          "6758": 1,
+          "6761": 1,
+          "6762": 1,
+          "6765": 1,
+          "6767": 1,
+          "6768": 1,
+          "6769": 1,
+          "6770": 1,
+          "6772": 1,
+          "6773": 1,
+          "6774": 1,
+          "6779": 1,
+          "6780": 1,
+          "6785": 1,
+          "6787": 1,
+          "6789": 1,
+          "6793": 1,
+          "6795": 1,
+          "6796": 1,
+          "6797": 1,
+          "6799": 1,
+          "6800": 1,
+          "6801": 1,
+          "6802": 1,
+          "6806": 1,
+          "6811": 1,
+          "6814": 1,
+          "6818": 1,
+          "6823": 1,
+          "6825": 1,
+          "6828": 1,
+          "6838": 1,
+          "6846": 1,
+          "6850": 1,
+          "6851": 1,
+          "6853": 1,
+          "6858": 1,
+          "6860": 1,
+          "6864": 1,
+          "6868": 1,
+          "6870": 1,
+          "6871": 1,
+          "6873": 1,
+          "6875": 1,
+          "6878": 1,
+          "6888": 1,
+          "6890": 1,
+          "6891": 1,
+          "6892": 1,
+          "6893": 1,
+          "6895": 1,
+          "6897": 1,
+          "6898": 1,
+          "6901": 1,
+          "6905": 1,
+          "6929": 1,
+          "6931": 1,
+          "6933": 1,
+          "6935": 1,
+          "6942": 1,
+          "6943": 1,
+          "6944": 1,
+          "6947": 1,
+          "6951": 1,
+          "6952": 1,
+          "6957": 1,
+          "6958": 1,
+          "6960": 1,
+          "6961": 1,
+          "6962": 1,
+          "6964": 1,
+          "6965": 1,
+          "6969": 1,
+          "6972": 1,
+          "6978": 1,
+          "6982": 1,
+          "6984": 1,
+          "6989": 1,
+          "6990": 1,
+          "6991": 1,
+          "6994": 1,
+          "6995": 1,
+          "6996": 1,
+          "6999": 1,
+          "7001": 1,
+          "7008": 1,
+          "7011": 1,
+          "7018": 1,
+          "7019": 1,
+          "7020": 1,
+          "7021": 1,
+          "7023": 1,
+          "7047": 1,
+          "7052": 1,
+          "7066": 1,
+          "7069": 1,
+          "7071": 1,
+          "7082": 1,
+          "7083": 1,
+          "7084": 1,
+          "7085": 1,
+          "7086": 1,
+          "7091": 1,
+          "7092": 1,
+          "7093": 1,
+          "7095": 1,
+          "7104": 1,
+          "7106": 1,
+          "7107": 1,
+          "7114": 1,
+          "7117": 1,
+          "7119": 1,
+          "7124": 1,
+          "7127": 1,
+          "7131": 1,
+          "7132": 1,
+          "7134": 1,
+          "7135": 1,
+          "7136": 1,
+          "7138": 1,
+          "7141": 1,
+          "7145": 1,
+          "7148": 1,
+          "7154": 1,
+          "7155": 1,
+          "7156": 1,
+          "7157": 1,
+          "7160": 1,
+          "7174": 1,
+          "7181": 1,
+          "7182": 1,
+          "7200": 1,
+          "7202": 1,
+          "7213": 1,
+          "7214": 1,
+          "7220": 1,
+          "7221": 1,
+          "7225": 1,
+          "7228": 1,
+          "7253": 1,
+          "7254": 1,
+          "7256": 1,
+          "7260": 1,
+          "7264": 1,
+          "7265": 1,
+          "7266": 1,
+          "7268": 1,
+          "7271": 1,
+          "7273": 1,
+          "7277": 1,
+          "7285": 1,
+          "7286": 1,
+          "7287": 1,
+          "7290": 1,
+          "7292": 1,
+          "7309": 1,
+          "7325": 1,
+          "7348": 1,
+          "7349": 1,
+          "7351": 1,
+          "7357": 1,
+          "7361": 1,
+          "7369": 1,
+          "7374": 1,
+          "7375": 1,
+          "7378": 1,
+          "7379": 1,
+          "7382": 1,
+          "7387": 1,
+          "7388": 1,
+          "7395": 1,
+          "7401": 1,
+          "7407": 1,
+          "7408": 1,
+          "7410": 1,
+          "7412": 1,
+          "7414": 1,
+          "7415": 1,
+          "7416": 1,
+          "7418": 1,
+          "7421": 1,
+          "7423": 1,
+          "7437": 1,
+          "7440": 1,
+          "7442": 1,
+          "7443": 1,
+          "7445": 1,
+          "7448": 1,
+          "7451": 1,
+          "7457": 1,
+          "7458": 1,
+          "7460": 1,
+          "7464": 1,
+          "7465": 1,
+          "7469": 1,
+          "7474": 1,
+          "7482": 1,
+          "7483": 1,
+          "7490": 1,
+          "7503": 1,
+          "7504": 1,
+          "7522": 1,
+          "7523": 1,
+          "7526": 1,
+          "7528": 1,
+          "7529": 1,
+          "7535": 1,
+          "7544": 1,
+          "7547": 1,
+          "7549": 1,
+          "7557": 1,
+          "7558": 1,
+          "7567": 1,
+          "7568": 1,
+          "7571": 1,
+          "7572": 1,
+          "7574": 1,
+          "7575": 1,
+          "7579": 1,
+          "7581": 1,
+          "7582": 1,
+          "7586": 1,
+          "7589": 1,
+          "7590": 1,
+          "7592": 1,
+          "7600": 1,
+          "7601": 1,
+          "7603": 1,
+          "7604": 1,
+          "7606": 1,
+          "7617": 1,
+          "7619": 1,
+          "7623": 1,
+          "7625": 1,
+          "7630": 1,
+          "7642": 1,
+          "7644": 1,
+          "7652": 1,
+          "7656": 1,
+          "7657": 1,
+          "7669": 1,
+          "7673": 1,
+          "7675": 1,
+          "7679": 1
+        }
+      },
+      "review": 0
+    }
+  },
+  "sample": [
+    {
+      "base": "66f10d85fa9d10958b71dc05b908526cae162d70",
+      "base_time": "2026-08-22T20:10:55Z",
+      "base_tree": "b25e28b3e813293ed3849ec5749bdc2dca50d1a3",
+      "head": "69bdc021ebd3a9824d643f0481e445c97cafeaaf",
+      "history_size": 292,
+      "hit_at_10_means": {
+        "C": 0.8,
+        "E": 0.0,
+        "F": 0.2,
+        "pr": 7653,
+        "trials": 5
+      },
+      "merged_at": "2026-08-22T20:53:16Z",
+      "number": 7653,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/providers/cerebras.py",
+        "pydantic_ai_slim/pydantic_ai/settings.py",
+        "tests/models/test_cerebras.py",
+        "tests/profiles/test_resolution_matrix.py",
+        "tests/providers/test_cerebras.py"
+      ]
+    },
+    {
+      "base": "4167d2c8daf338e85d782c8048ffdec859f869cc",
+      "base_time": "2026-08-19T05:39:20Z",
+      "base_tree": "1d29758996e067f89f03109656fd006b8cc01b1a",
+      "head": "61d51f729d9a2cf8a99fbe9fee0d7b92b3175ad3",
+      "history_size": 260,
+      "hit_at_10_means": {
+        "C": 0.8,
+        "E": 0.0,
+        "F": 0.2,
+        "pr": 7600,
+        "trials": 5
+      },
+      "merged_at": "2026-08-22T18:29:52Z",
+      "number": 7600,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/models/_known_model_names.py",
+        "pydantic_ai_slim/pydantic_ai/models/zai.py",
+        "pydantic_ai_slim/pydantic_ai/profiles/zai.py",
+        "tests/models/test_zai.py",
+        "tests/providers/test_zai.py",
+        "tests/test_capabilities.py"
+      ]
+    },
+    {
+      "base": "9d50aff4de71e19435e0910e8a4fd0c96fd7022f",
+      "base_time": "2026-08-21T09:40:20Z",
+      "base_tree": "48a55931b776f02b3538f11ccc1295b7a4d75677",
+      "head": "c128338748ec92003a30a22b5d155f181c687706",
+      "history_size": 283,
+      "hit_at_10_means": {
+        "C": 1.0,
+        "E": 1.0,
+        "F": 1.0,
+        "pr": 7675,
+        "trials": 2
+      },
+      "merged_at": "2026-08-21T14:09:35Z",
+      "number": 7675,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/ui/_event_stream.py",
+        "tests/test_ui.py"
+      ]
+    },
+    {
+      "base": "373900d26c433400d3c28218a3847c8faf54da2c",
+      "base_time": "2026-08-21T10:48:06Z",
+      "base_tree": "e88aadbd69c3eb649b86a4d7cc06e6639970e524",
+      "head": "91f0930163f02cb391a78bd826cfacce49d8190c",
+      "history_size": 284,
+      "hit_at_10_means": {
+        "C": 1.0,
+        "E": 1.0,
+        "F": 1.0,
+        "pr": 7630,
+        "trials": 2
+      },
+      "merged_at": "2026-08-21T11:42:22Z",
+      "number": 7630,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/models/test.py",
+        "tests/models/test_model_test.py"
+      ]
+    },
+    {
+      "base": "373900d26c433400d3c28218a3847c8faf54da2c",
+      "base_time": "2026-08-21T10:48:06Z",
+      "base_tree": "e88aadbd69c3eb649b86a4d7cc06e6639970e524",
+      "head": "8e122958c9ab8eea519a814978f4ed10f488b9e5",
+      "history_size": 284,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 1.0,
+        "F": 1.0,
+        "pr": 7579,
+        "trials": 2
+      },
+      "merged_at": "2026-08-21T11:13:21Z",
+      "number": 7579,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/function_signature.py",
+        "tests/test_function_signature.py"
+      ]
+    },
+    {
+      "base": "1d7eb695cc17c5bed46d32749ed02092819fc3a1",
+      "base_time": "2026-08-21T04:51:05Z",
+      "base_tree": "a3e1e1014282f8ef604be3c3b3c311c07e7c9ab8",
+      "head": "c0345e143873266caa9748e0d67f8a97eaf61c09",
+      "history_size": 280,
+      "hit_at_10_means": {
+        "C": 1.0,
+        "E": 1.0,
+        "F": 1.0,
+        "pr": 7642,
+        "trials": 2
+      },
+      "merged_at": "2026-08-21T08:35:35Z",
+      "number": 7642,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/models/test.py",
+        "tests/models/test_model_test.py"
+      ]
+    },
+    {
+      "base": "372240802a1ae8f47da628bef88362e24d9074a7",
+      "base_time": "2026-08-14T12:54:19Z",
+      "base_tree": "1bfc69a1e622cf8798ddec6994176b61b75d75be",
+      "head": "67c6e2e24ea7b5629b1adea8eed87d2004660bff",
+      "history_size": 230,
+      "hit_at_10_means": {
+        "C": 0.5,
+        "E": 1.0,
+        "F": 1.0,
+        "pr": 7465,
+        "trials": 2
+      },
+      "merged_at": "2026-08-20T23:26:23Z",
+      "number": 7465,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/durable_exec/temporal/_agent.py",
+        "tests/test_temporal.py"
+      ]
+    },
+    {
+      "base": "8fe0f66748c6a57d0b758dc9ab8e72b91ed814aa",
+      "base_time": "2026-08-19T04:09:56Z",
+      "base_tree": "1949ec079ed099afb5945ef6b3fd3cdb30e419e9",
+      "head": "b102062ab2916db7ce025f9f6ffa8e5a08bf9b17",
+      "history_size": 257,
+      "hit_at_10_means": {
+        "C": 0.6,
+        "E": 0.8,
+        "F": 0.6,
+        "pr": 7448,
+        "trials": 5
+      },
+      "merged_at": "2026-08-20T15:53:30Z",
+      "number": 7448,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/models/openai.py",
+        "pydantic_ai_slim/pydantic_ai/profiles/openai.py",
+        "pydantic_ai_slim/pydantic_ai/providers/deepseek.py",
+        "tests/models/test_deepseek_responses.py",
+        "tests/models/test_openai_responses.py",
+        "tests/profiles/test_resolution_matrix.py",
+        "tests/providers/test_deepseek.py"
+      ]
+    },
+    {
+      "base": "4167d2c8daf338e85d782c8048ffdec859f869cc",
+      "base_time": "2026-08-19T05:39:20Z",
+      "base_tree": "1d29758996e067f89f03109656fd006b8cc01b1a",
+      "head": "f498a7ce5b39c46fa76febf5d5402c3b89518634",
+      "history_size": 260,
+      "hit_at_10_means": {
+        "C": 0.3333333333333333,
+        "E": 0.3333333333333333,
+        "F": 0.3333333333333333,
+        "pr": 7592,
+        "trials": 3
+      },
+      "merged_at": "2026-08-20T15:15:22Z",
+      "number": 7592,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/messages.py",
+        "tests/models/test_google.py",
+        "tests/test_messages.py"
+      ]
+    },
+    {
+      "base": "ce3225132f8c3af35c5af36cc637d4e524d482e4",
+      "base_time": "2026-08-17T05:51:09Z",
+      "base_tree": "8f743af812b35426c7ef11d5eefd13b416659617",
+      "head": "fc7e45683132d68180d7270b8cc69890911b2635",
+      "history_size": 237,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 7528,
+        "trials": 4
+      },
+      "merged_at": "2026-08-20T07:18:48Z",
+      "number": 7528,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/_run_context.py",
+        "pydantic_ai_slim/pydantic_ai/agent/__init__.py",
+        "tests/realtime/test_capabilities.py",
+        "tests/realtime/test_session.py"
+      ]
+    },
+    {
+      "base": "53e1181bb481176be772afd6663ca89306be354f",
+      "base_time": "2026-08-17T09:57:32Z",
+      "base_tree": "45682a22559c868af6326c910a784eb8d412e57b",
+      "head": "7cbe518505bcef2010ef6c9b9d8a1c5aaede47d3",
+      "history_size": 239,
+      "hit_at_10_means": {
+        "C": 0.5,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 7535,
+        "trials": 4
+      },
+      "merged_at": "2026-08-20T04:34:48Z",
+      "number": 7535,
+      "omitted": [],
+      "source_files": [
+        "pydantic_evals/pydantic_evals/dataset.py",
+        "pydantic_evals/pydantic_evals/online.py",
+        "tests/evals/test_dataset.py",
+        "tests/evals/test_online.py"
+      ]
+    },
+    {
+      "base": "8fe0f66748c6a57d0b758dc9ab8e72b91ed814aa",
+      "base_time": "2026-08-19T04:09:56Z",
+      "base_tree": "1949ec079ed099afb5945ef6b3fd3cdb30e419e9",
+      "head": "dc98d23d7edadec44d1bd3a50568cbfae917c2ce",
+      "history_size": 257,
+      "hit_at_10_means": {
+        "C": 0.5,
+        "E": 0.5,
+        "F": 1.0,
+        "pr": 7589,
+        "trials": 2
+      },
+      "merged_at": "2026-08-19T18:08:31Z",
+      "number": 7589,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/models/function.py",
+        "tests/models/test_model_function.py"
+      ]
+    },
+    {
+      "base": "43f982f75f838f4c126cb77f2900842e18877dc8",
+      "base_time": "2026-08-19T15:40:13Z",
+      "base_tree": "683b745fc6f51a8741b0a8edc23a33c924e7ca29",
+      "head": "503bb6aacabab22211fda3046b4c7c43504fa878",
+      "history_size": 261,
+      "hit_at_10_means": {
+        "C": 0.5,
+        "E": 1.0,
+        "F": 1.0,
+        "pr": 7604,
+        "trials": 2
+      },
+      "merged_at": "2026-08-19T17:51:17Z",
+      "number": 7604,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/ui/ag_ui/_event_stream.py",
+        "tests/test_ag_ui.py"
+      ]
+    },
+    {
+      "base": "72b0ed9588afa7cf618801b0e48f26da54196ad9",
+      "base_time": "2026-08-19T15:58:22Z",
+      "base_tree": "b6478e0fc96cc0f6a7060ebe471dda8f6333b3dc",
+      "head": "23047fe6975b0a05fba9866176f6f392dd08259c",
+      "history_size": 262,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 7606,
+        "trials": 2
+      },
+      "merged_at": "2026-08-19T16:14:29Z",
+      "number": 7606,
+      "omitted": [],
+      "source_files": [
+        "tests/conftest.py",
+        "tests/test_otel_context_isolation.py"
+      ]
+    },
+    {
+      "base": "4167d2c8daf338e85d782c8048ffdec859f869cc",
+      "base_time": "2026-08-19T05:39:20Z",
+      "base_tree": "1d29758996e067f89f03109656fd006b8cc01b1a",
+      "head": "a4e91add836c3bb3012fab7883129ef15a9f50e6",
+      "history_size": 260,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 7603,
+        "trials": 1
+      },
+      "merged_at": "2026-08-19T15:58:23Z",
+      "number": 7603,
+      "omitted": [],
+      "source_files": [
+        "tests/conftest.py",
+        "tests/test_otel_context_isolation.py"
+      ]
+    },
+    {
+      "base": "4167d2c8daf338e85d782c8048ffdec859f869cc",
+      "base_time": "2026-08-19T05:39:20Z",
+      "base_tree": "1d29758996e067f89f03109656fd006b8cc01b1a",
+      "head": "3ff95efa74005e5cabe8ba18d3653d6008ac3268",
+      "history_size": 260,
+      "hit_at_10_means": {
+        "C": 0.5,
+        "E": 1.0,
+        "F": 1.0,
+        "pr": 7601,
+        "trials": 2
+      },
+      "merged_at": "2026-08-19T15:40:13Z",
+      "number": 7601,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/models/anthropic.py",
+        "tests/models/test_anthropic.py"
+      ]
+    },
+    {
+      "base": "322627558f3252784af9f333b8f7592525e14ce4",
+      "base_time": "2026-08-19T05:06:04Z",
+      "base_tree": "c9dbfd0af55451f1aa91ebba086f1f57e9e34121",
+      "head": "e9503af74b8775dfeaa44cf24c4d7178b5ea4a6a",
+      "history_size": 259,
+      "hit_at_10_means": {
+        "C": 0.4,
+        "E": 0.8,
+        "F": 1.0,
+        "pr": 7277,
+        "trials": 5
+      },
+      "merged_at": "2026-08-19T05:39:20Z",
+      "number": 7277,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/_utils.py",
+        "pydantic_ai_slim/pydantic_ai/agent/abstract.py",
+        "pydantic_ai_slim/pydantic_ai/durable_exec/dbos/_agent.py",
+        "pydantic_ai_slim/pydantic_ai/durable_exec/prefect/_agent.py",
+        "tests/test_dbos.py",
+        "tests/test_nested_sync_agent.py",
+        "tests/test_prefect.py"
+      ]
+    },
+    {
+      "base": "645370a8952bf96eaa0e56552e4c78aea2de96b8",
+      "base_time": "2026-08-18T17:50:15Z",
+      "base_tree": "aa82d7fa8092158f7d406067fc90475c3da66a51",
+      "head": "55129d4ec0f385ccc4b15843d0663db078c0864a",
+      "history_size": 248,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 1.0,
+        "F": 1.0,
+        "pr": 7574,
+        "trials": 2
+      },
+      "merged_at": "2026-08-19T05:02:22Z",
+      "number": 7574,
+      "omitted": [],
+      "source_files": [
+        ".github/scripts/issue_pr_attention_monitor.py",
+        ".github/scripts/test_issue_pr_attention_monitor.py"
+      ]
+    },
+    {
+      "base": "507c8bf87679a1cee11c6d85fa583a781decc6a4",
+      "base_time": "2026-08-19T02:19:13Z",
+      "base_tree": "571b84315d79d7319f864b55930a9fee76cd7d9a",
+      "head": "4d9a93cd13b09d63bb57861f8d5d996b75daafb7",
+      "history_size": 254,
+      "hit_at_10_means": {
+        "C": 0.3333333333333333,
+        "E": 0.6666666666666666,
+        "F": 0.6666666666666666,
+        "pr": 7582,
+        "trials": 3
+      },
+      "merged_at": "2026-08-19T03:44:40Z",
+      "number": 7582,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/_otel_messages.py",
+        "pydantic_ai_slim/pydantic_ai/models/instrumented.py",
+        "tests/models/test_instrumented.py"
+      ]
+    },
+    {
+      "base": "d6ff5c55ada7067c77a211e39b2188cd2925e3d9",
+      "base_time": "2026-08-15T22:58:17Z",
+      "base_tree": "88d41f2c6233c5c72bd31f1381749a9f27638326",
+      "head": "d168c54b8faeceb6a88f12b03e170e2ba5c7661d",
+      "history_size": 236,
+      "hit_at_10_means": {
+        "C": 1.0,
+        "E": 0.0,
+        "F": 1.0,
+        "pr": 7504,
+        "trials": 2
+      },
+      "merged_at": "2026-08-19T03:32:48Z",
+      "number": 7504,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/models/anthropic.py",
+        "tests/models/anthropic/test_unpaired_native_tool_calls.py",
+        "tests/test_tool_search.py"
+      ]
+    },
+    {
+      "base": "c24a9008a8fbd752ddf02870c7c4b3a518dbd8c9",
+      "base_time": "2026-08-14T01:35:12Z",
+      "base_tree": "7728d9bb276b136d540d5fadd4f3b9b543d46002",
+      "head": "ad19113674cef67f4e483a21bb5fa3469b0b6b98",
+      "history_size": 226,
+      "hit_at_10_means": {
+        "C": 1.0,
+        "E": 1.0,
+        "F": 1.0,
+        "pr": 7458,
+        "trials": 2
+      },
+      "merged_at": "2026-08-18T22:43:25Z",
+      "number": 7458,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/models/openrouter.py",
+        "tests/models/test_openrouter.py"
+      ]
+    },
+    {
+      "base": "ffd580e6ce90d51974c3f1645e83bf555d634d87",
+      "base_time": "2026-08-15T16:56:52Z",
+      "base_tree": "bd15a6f5fce02c8e0b1e57832b072ca3e7ff0d3f",
+      "head": "ecae02a2aac68448b51f19ede29fe2e5699fdfb5",
+      "history_size": 235,
+      "hit_at_10_means": {
+        "C": 1.0,
+        "E": 1.0,
+        "F": 1.0,
+        "pr": 7156,
+        "trials": 2
+      },
+      "merged_at": "2026-08-18T21:59:40Z",
+      "number": 7156,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/models/xai.py",
+        "tests/models/test_xai.py",
+        "tests/models/xai/test_attachment_search.py"
+      ]
+    },
+    {
+      "base": "0c62c7e27be90e3b14f686c9373f924cb2497e8c",
+      "base_time": "2026-08-18T12:33:02Z",
+      "base_tree": "43bcbcf63c3b2e20f5ac102078e0b963443745b5",
+      "head": "2bc612b57cb44230b92b99479bc7a0cf1b6b4f1c",
+      "history_size": 246,
+      "hit_at_10_means": {
+        "C": 0.4,
+        "E": 0.6,
+        "F": 0.4,
+        "pr": 7571,
+        "trials": 5
+      },
+      "merged_at": "2026-08-18T18:28:32Z",
+      "number": 7571,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/_agent_graph.py",
+        "pydantic_ai_slim/pydantic_ai/messages.py",
+        "pydantic_ai_slim/pydantic_ai/models/__init__.py",
+        "tests/models/test_bedrock.py",
+        "tests/test_tool_availability_portability.py"
+      ]
+    },
+    {
+      "base": "ce3225132f8c3af35c5af36cc637d4e524d482e4",
+      "base_time": "2026-08-17T05:51:09Z",
+      "base_tree": "8f743af812b35426c7ef11d5eefd13b416659617",
+      "head": "e5ce44411a7fb84b643f9bfd61527b23394547a8",
+      "history_size": 237,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.6666666666666666,
+        "F": 0.6666666666666666,
+        "pr": 7529,
+        "trials": 3
+      },
+      "merged_at": "2026-08-18T17:50:15Z",
+      "number": 7529,
+      "omitted": [],
+      "source_files": [
+        ".github/scripts/issue_pr_attention_monitor.py",
+        ".github/scripts/test_issue_pr_attention_monitor.py",
+        ".github/scripts/test_pydantic_ai_runner.py"
+      ]
+    },
+    {
+      "base": "0c62c7e27be90e3b14f686c9373f924cb2497e8c",
+      "base_time": "2026-08-18T12:33:02Z",
+      "base_tree": "43bcbcf63c3b2e20f5ac102078e0b963443745b5",
+      "head": "b5d40023d3db1481e6483765b829aad9ade41d2e",
+      "history_size": 246,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.5,
+        "F": 0.0,
+        "pr": 7572,
+        "trials": 2
+      },
+      "merged_at": "2026-08-18T14:12:44Z",
+      "number": 7572,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/tool_manager.py",
+        "tests/test_tool_availability.py"
+      ]
+    },
+    {
+      "base": "fd30b460a5e9c10e5f255456a84036c1af811136",
+      "base_time": "2026-08-18T11:29:00Z",
+      "base_tree": "303e8e0d106c054e303735f60b615e731fc93d89",
+      "head": "84ab64f052ba9c0d84c5f7a83f8eee09738590e9",
+      "history_size": 244,
+      "hit_at_10_means": {
+        "C": 0.5,
+        "E": 0.0,
+        "F": 0.5,
+        "pr": 7568,
+        "trials": 2
+      },
+      "merged_at": "2026-08-18T12:33:03Z",
+      "number": 7568,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/_agent_graph.py",
+        "tests/test_agent.py"
+      ]
+    },
+    {
+      "base": "fd30b460a5e9c10e5f255456a84036c1af811136",
+      "base_time": "2026-08-18T11:29:00Z",
+      "base_tree": "303e8e0d106c054e303735f60b615e731fc93d89",
+      "head": "c84811a3fe2b1944c624bff49f35aa7e69975ed4",
+      "history_size": 244,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 1.0,
+        "F": 1.0,
+        "pr": 7567,
+        "trials": 2
+      },
+      "merged_at": "2026-08-18T12:08:52Z",
+      "number": 7567,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/agent/__init__.py",
+        "tests/test_run_cancellation.py"
+      ]
+    },
+    {
+      "base": "fa9561e0e0ce7173ad27dd3471e19eb8d81d454c",
+      "base_time": "2026-08-18T08:28:05Z",
+      "base_tree": "ca9ffe3312b5579ee7c67cc1b2ff05853b90f296",
+      "head": "cfaee4404d3473338ed9b4be0b08239ece79533a",
+      "history_size": 243,
+      "hit_at_10_means": {
+        "C": 0.2,
+        "E": 0.2,
+        "F": 0.4,
+        "pr": 7557,
+        "trials": 5
+      },
+      "merged_at": "2026-08-18T11:29:00Z",
+      "number": 7557,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/_utils.py",
+        "pydantic_ai_slim/pydantic_ai/capabilities/hooks.py",
+        "pydantic_ai_slim/pydantic_ai/toolsets/function.py",
+        "tests/test_capabilities.py",
+        "tests/test_tools.py"
+      ]
+    },
+    {
+      "base": "70ccf2e057d5f2a72c697efda66c28f557d6bd56",
+      "base_time": "2026-08-17T12:29:56Z",
+      "base_tree": "436466a8cd2946d34b052a128666d25e9a136cc3",
+      "head": "684585fcbbee307e65d22f69c9aa20a6b054fa15",
+      "history_size": 240,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 7547,
+        "trials": 2
+      },
+      "merged_at": "2026-08-17T19:12:36Z",
+      "number": 7547,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/models/wrapper.py",
+        "pydantic_ai_slim/pydantic_ai/models/xai.py"
+      ]
+    },
+    {
+      "base": "372240802a1ae8f47da628bef88362e24d9074a7",
+      "base_time": "2026-08-14T12:54:19Z",
+      "base_tree": "1bfc69a1e622cf8798ddec6994176b61b75d75be",
+      "head": "68e7947676eded634e78d726c94ff79794cbe5c6",
+      "history_size": 230,
+      "hit_at_10_means": {
+        "C": 0.6,
+        "E": 0.4,
+        "F": 0.6,
+        "pr": 7469,
+        "trials": 5
+      },
+      "merged_at": "2026-08-17T09:57:33Z",
+      "number": 7469,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/models/google.py",
+        "pydantic_ai_slim/pydantic_ai/profiles/google.py",
+        "tests/profiles/test_google.py",
+        "tests/profiles/test_resolution_matrix.py",
+        "tests/test_thinking.py"
+      ]
+    },
+    {
+      "base": "655c829f6386e3184dbd7a87e5e93bc1e1984900",
+      "base_time": "2026-08-11T15:02:28Z",
+      "base_tree": "f496c162bde7765df9aa8b796bdcb26b8e8abc85",
+      "head": "67412d13758ba2a8a041c83deda95a1099cad190",
+      "history_size": 191,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 7374,
+        "trials": 2
+      },
+      "merged_at": "2026-08-17T09:21:53Z",
+      "number": 7374,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/providers/bedrock.py",
+        "tests/providers/test_bedrock.py"
+      ]
+    },
+    {
+      "base": "f748e81ec64aff78c4d41593ed51803d8b15b9ee",
+      "base_time": "2026-08-12T20:08:37Z",
+      "base_tree": "6cf6e00e0a0fd7fd4dbec26f4391272e417087e5",
+      "head": "b30aa89981aebc6af7f9758321fe881433aeb051",
+      "history_size": 209,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.25,
+        "F": 0.25,
+        "pr": 7421,
+        "trials": 4
+      },
+      "merged_at": "2026-08-15T02:37:12Z",
+      "number": 7421,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/__init__.py",
+        "tests/example_modules/bank_database.py",
+        "tests/test_capabilities.py",
+        "tests/test_docs_parity.py",
+        "tests/test_examples.py"
+      ]
+    },
+    {
+      "base": "a43960e1072ba8f3f2a6c89cceff62ec7ced7170",
+      "base_time": "2026-08-12T17:40:00Z",
+      "base_tree": "19699d511d2dbbf18ae853926550617373ecb0bc",
+      "head": "efb88b081b4dc307ebf493420f652323e7a9cd82",
+      "history_size": 207,
+      "hit_at_10_means": {
+        "C": 1.0,
+        "E": 0.8,
+        "F": 1.0,
+        "pr": 7292,
+        "trials": 5
+      },
+      "merged_at": "2026-08-14T22:10:37Z",
+      "number": 7292,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/ui/_event_stream.py",
+        "pydantic_ai_slim/pydantic_ai/ui/ag_ui/_event_stream.py",
+        "tests/test_ag_ui.py",
+        "tests/test_ui.py",
+        "tests/test_vercel_ai.py"
+      ]
+    },
+    {
+      "base": "181d7b1bf1b37378a24b86d3650a541f87572d55",
+      "base_time": "2026-08-14T08:28:57Z",
+      "base_tree": "bd6274f70bab5a72deaee71a3f658a2572bf3a8d",
+      "head": "d47b1ceea0300ab74be44943553f77db90d4487c",
+      "history_size": 227,
+      "hit_at_10_means": {
+        "C": 1.0,
+        "E": 0.5,
+        "F": 1.0,
+        "pr": 7018,
+        "trials": 2
+      },
+      "merged_at": "2026-08-14T11:46:10Z",
+      "number": 7018,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/models/fallback.py",
+        "tests/models/test_fallback.py"
+      ]
+    },
+    {
+      "base": "0daea14cd3384f3b5a38090494376432a0f7bc8f",
+      "base_time": "2026-08-13T17:45:11Z",
+      "base_tree": "e5cf0e921d02a23c05c3f8ce350c05eef8566f89",
+      "head": "4534a8778433df5f04ca7f99d29232a4f68ff492",
+      "history_size": 216,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 7443,
+        "trials": 1
+      },
+      "merged_at": "2026-08-14T01:33:56Z",
+      "number": 7443,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/settings.py",
+        "tests/models/test_model_settings_support.py"
+      ]
+    },
+    {
+      "base": "00db3a4b391eb9a46f3d6e704070bcf725121f75",
+      "base_time": "2026-08-13T23:09:31Z",
+      "base_tree": "a402323ccb5dc3f6d4fae4f51777526fe5860cae",
+      "head": "d4b5ba90c75e133c1104e0a3a986e9b3b6f8b113",
+      "history_size": 223,
+      "hit_at_10_means": {
+        "C": 1.0,
+        "E": 1.0,
+        "F": 1.0,
+        "pr": 7440,
+        "trials": 3
+      },
+      "merged_at": "2026-08-14T00:06:31Z",
+      "number": 7440,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/models/__init__.py",
+        "pydantic_ai_slim/pydantic_ai/models/anthropic.py",
+        "pydantic_ai_slim/pydantic_ai/models/openai.py"
+      ]
+    },
+    {
+      "base": "da29bfa38d5fd4f89f98d2e668027505449ddaae",
+      "base_time": "2026-08-13T21:12:52Z",
+      "base_tree": "ce8fb28d7a7f152a908353789aa497b59ecd0b3c",
+      "head": "c0094b362f1753bf342237282390f45cf5b07235",
+      "history_size": 221,
+      "hit_at_10_means": {
+        "C": 0.4,
+        "E": 0.8,
+        "F": 0.4,
+        "pr": 7442,
+        "trials": 5
+      },
+      "merged_at": "2026-08-13T23:09:32Z",
+      "number": 7442,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/_agent_graph.py",
+        "pydantic_ai_slim/pydantic_ai/_deferred_capabilities.py",
+        "pydantic_ai_slim/pydantic_ai/_run_context.py",
+        "pydantic_ai_slim/pydantic_ai/durable_exec/prefect/_cache_policies.py",
+        "pydantic_ai_slim/pydantic_ai/durable_exec/temporal/_run_context.py",
+        "pydantic_ai_slim/pydantic_ai/messages.py",
+        "pydantic_ai_slim/pydantic_ai/models/__init__.py",
+        "pydantic_ai_slim/pydantic_ai/tool_manager.py",
+        "pydantic_ai_slim/pydantic_ai/toolsets/_tool_search.py",
+        "tests/models/test_anthropic.py",
+        "tests/models/test_openai_responses.py",
+        "tests/test_capabilities.py",
+        "tests/test_temporal.py",
+        "tests/test_tool_availability.py"
+      ]
+    },
+    {
+      "base": "ee9b2eecfed033718e52d5d648ba00af5bbf0331",
+      "base_time": "2026-08-13T15:17:20Z",
+      "base_tree": "ba0cc68e3a09c7bab0bef1ae76ab70c6cc839ca4",
+      "head": "482ec973dc9ec05200fc22fe5c96746a4663812a",
+      "history_size": 214,
+      "hit_at_10_means": {
+        "C": 0.8,
+        "E": 0.4,
+        "F": 1.0,
+        "pr": 7437,
+        "trials": 5
+      },
+      "merged_at": "2026-08-13T22:03:10Z",
+      "number": 7437,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/_cli/__init__.py",
+        "pydantic_ai_slim/pydantic_ai/_cli/web.py",
+        "pydantic_ai_slim/pydantic_ai/agent/__init__.py",
+        "pydantic_ai_slim/pydantic_ai/ui/_web/_hosts.py",
+        "pydantic_ai_slim/pydantic_ai/ui/_web/api.py",
+        "pydantic_ai_slim/pydantic_ai/ui/_web/app.py",
+        "tests/test_cli.py",
+        "tests/test_ui_web.py"
+      ]
+    },
+    {
+      "base": "efa8500d928d3890964729bb2b3e5db8a1c736d1",
+      "base_time": "2026-08-13T17:14:11Z",
+      "base_tree": "7b20421dcfc146e5c2a007f31c2cf763e0087f9c",
+      "head": "e584163120f15e296fc81ab0e1b87650c92e4cb6",
+      "history_size": 215,
+      "hit_at_10_means": {
+        "C": 1.0,
+        "E": 0.0,
+        "F": 0.5,
+        "pr": 7423,
+        "trials": 2
+      },
+      "merged_at": "2026-08-13T20:47:25Z",
+      "number": 7423,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/providers/xai.py",
+        "tests/providers/test_xai.py"
+      ]
+    },
+    {
+      "base": "39acfbdd5b26c4894762fb2468c0001264987530",
+      "base_time": "2026-08-13T19:37:52Z",
+      "base_tree": "eafe965cb54ac74ac849b9af68f715ff7ef03539",
+      "head": "2885a94342860eeb022f46174e8a195760be6f76",
+      "history_size": 218,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 1.0,
+        "F": 0.6666666666666666,
+        "pr": 7445,
+        "trials": 3
+      },
+      "merged_at": "2026-08-13T20:46:19Z",
+      "number": 7445,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/models/_known_model_names.py",
+        "pydantic_ai_slim/pydantic_ai/models/google.py",
+        "tests/test_capabilities.py"
+      ]
+    },
+    {
+      "base": "3d6641895ee3ee4df45ffe116bba2d6f2b5f534f",
+      "base_time": "2026-07-29T12:04:51Z",
+      "base_tree": "913d3ceb57a67b9950e22deea427f62004be7349",
+      "head": "52910fce455d548ea10683c76481dcec6bf806d2",
+      "history_size": 57,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.6666666666666666,
+        "F": 0.6666666666666666,
+        "pr": 6838,
+        "trials": 3
+      },
+      "merged_at": "2026-08-13T19:37:52Z",
+      "number": 6838,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/models/_known_model_names.py",
+        "pydantic_ai_slim/pydantic_ai/models/cerebras.py",
+        "tests/test_capabilities.py"
+      ]
+    },
+    {
+      "base": "0daea14cd3384f3b5a38090494376432a0f7bc8f",
+      "base_time": "2026-08-13T17:45:11Z",
+      "base_tree": "e5cf0e921d02a23c05c3f8ce350c05eef8566f89",
+      "head": "7174877dc76754fb57d8aec66df50e031cb202ae",
+      "history_size": 216,
+      "hit_at_10_means": {
+        "C": 1.0,
+        "E": 0.4,
+        "F": 1.0,
+        "pr": 6818,
+        "trials": 5
+      },
+      "merged_at": "2026-08-13T18:53:47Z",
+      "number": 6818,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/providers/fireworks.py",
+        "pydantic_ai_slim/pydantic_ai/providers/heroku.py",
+        "pydantic_ai_slim/pydantic_ai/providers/sambanova.py",
+        "tests/providers/test_fireworks.py",
+        "tests/providers/test_heroku.py",
+        "tests/providers/test_sambanova_provider.py"
+      ]
+    },
+    {
+      "base": "f748e81ec64aff78c4d41593ed51803d8b15b9ee",
+      "base_time": "2026-08-12T20:08:37Z",
+      "base_tree": "6cf6e00e0a0fd7fd4dbec26f4391272e417087e5",
+      "head": "0b435f9aa921ff2f4456c2de33de0433ab93161c",
+      "history_size": 209,
+      "hit_at_10_means": {
+        "C": 0.2,
+        "E": 0.2,
+        "F": 0.4,
+        "pr": 7407,
+        "trials": 5
+      },
+      "merged_at": "2026-08-13T17:45:11Z",
+      "number": 7407,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/ui/_web/app.py",
+        "tests/conftest.py",
+        "tests/test_cli.py",
+        "tests/test_conftest.py",
+        "tests/test_examples.py",
+        "tests/test_prefect.py",
+        "tests/test_temporal.py",
+        "tests/test_ui_web.py"
+      ]
+    },
+    {
+      "base": "655c829f6386e3184dbd7a87e5e93bc1e1984900",
+      "base_time": "2026-08-11T15:02:28Z",
+      "base_tree": "f496c162bde7765df9aa8b796bdcb26b8e8abc85",
+      "head": "6f340e30c994b9be6c2c5d0ecd2489fc16649b74",
+      "history_size": 191,
+      "hit_at_10_means": {
+        "C": 1.0,
+        "E": 1.0,
+        "F": 1.0,
+        "pr": 7378,
+        "trials": 3
+      },
+      "merged_at": "2026-08-13T17:14:12Z",
+      "number": 7378,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/models/openrouter.py",
+        "pydantic_ai_slim/pydantic_ai/native_tools/__init__.py",
+        "tests/models/test_openrouter.py"
+      ]
+    },
+    {
+      "base": "f5577efa6dea7bf226d65ea6171a6c250153a002",
+      "base_time": "2026-07-29T16:53:00Z",
+      "base_tree": "42c82aa3ce2113c4045f62048ec2d3e6abb86bde",
+      "head": "1cef816cf8646f209132e238065e5f3d586cf8aa",
+      "history_size": 58,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 6846,
+        "trials": 2
+      },
+      "merged_at": "2026-08-13T15:17:21Z",
+      "number": 6846,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/providers/xai.py",
+        "pydantic_ai_slim/pydantic_ai/settings.py"
+      ]
+    },
+    {
+      "base": "801814a10cb54ce218d9efb16f116c54c6a3606d",
+      "base_time": "2026-07-23T23:48:05Z",
+      "base_tree": "28a84c0ec58e10644462deecbd0ecbe88dd0874b",
+      "head": "0d9f5fcd139ff6323edaf98eb35e76ddec4fb110",
+      "history_size": 10,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 6701,
+        "trials": 2
+      },
+      "merged_at": "2026-08-13T14:56:33Z",
+      "number": 6701,
+      "omitted": [],
+      "source_files": [
+        "tests/evals/test_dataset.py",
+        "tests/test_mcp.py"
+      ]
+    },
+    {
+      "base": "4ab1dd137378a404ec34d7e85f36480dbd507f08",
+      "base_time": "2026-08-07T20:34:19Z",
+      "base_tree": "0446baf3d2693f1ff10777bf9e55d39561f84882",
+      "head": "6e4538c34d01c09b56804418722c47486b2c5271",
+      "history_size": 181,
+      "hit_at_10_means": {
+        "C": 0.75,
+        "E": 0.0,
+        "F": 0.75,
+        "pr": 7290,
+        "trials": 4
+      },
+      "merged_at": "2026-08-13T14:35:58Z",
+      "number": 7290,
+      "omitted": [],
+      "source_files": [
+        "pydantic_evals/pydantic_evals/reporting/__init__.py",
+        "tests/evals/test_render_numbers.py",
+        "tests/evals/test_reporting.py",
+        "tests/evals/utils.py"
+      ]
+    },
+    {
+      "base": "0a42080ddb72d7e1610b7ba4ec449a9707c0734d",
+      "base_time": "2026-08-12T07:07:32Z",
+      "base_tree": "d66c1c1e7bf486a893f6aa9e84a75e12db56a066",
+      "head": "81194217c14884b79b75f9cd0a0fd74a7f4942f4",
+      "history_size": 201,
+      "hit_at_10_means": {
+        "C": 0.5,
+        "E": 0.5,
+        "F": 0.75,
+        "pr": 7408,
+        "trials": 4
+      },
+      "merged_at": "2026-08-13T14:18:56Z",
+      "number": 7408,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/_cost.py",
+        "pydantic_ai_slim/pydantic_ai/models/__init__.py",
+        "pydantic_ai_slim/pydantic_ai/models/openai.py",
+        "tests/models/test_openai.py"
+      ]
+    },
+    {
+      "base": "de3eaf32cc6e740fe694fea6828674843144e0b4",
+      "base_time": "2026-08-11T22:52:44Z",
+      "base_tree": "4ef26d1b5cc5a8113a72512f2fb685f9921434cf",
+      "head": "2bd8d5cf7977df8238493f0736ac12ef53ea5910",
+      "history_size": 195,
+      "hit_at_10_means": {
+        "C": 0.2,
+        "E": 0.4,
+        "F": 0.6,
+        "pr": 6642,
+        "trials": 5
+      },
+      "merged_at": "2026-08-12T19:09:46Z",
+      "number": 6642,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/providers/azure.py",
+        "pydantic_ai_slim/pydantic_ai/realtime/azure.py",
+        "pydantic_ai_slim/pydantic_ai/realtime/openai.py",
+        "tests/providers/test_azure.py",
+        "tests/realtime/conftest.py",
+        "tests/realtime/test_azure.py",
+        "tests/realtime/test_azure_voice_live_ws.py"
+      ]
+    },
+    {
+      "base": "655c829f6386e3184dbd7a87e5e93bc1e1984900",
+      "base_time": "2026-08-11T15:02:28Z",
+      "base_tree": "f496c162bde7765df9aa8b796bdcb26b8e8abc85",
+      "head": "0a8fb8a73c128cdf52da1a0dae0199cd56a76da3",
+      "history_size": 191,
+      "hit_at_10_means": {
+        "C": 0.8,
+        "E": 0.2,
+        "F": 0.6,
+        "pr": 7375,
+        "trials": 5
+      },
+      "merged_at": "2026-08-12T16:44:42Z",
+      "number": 7375,
+      "omitted": [],
+      "source_files": [
+        "pydantic_ai_slim/pydantic_ai/models/__init__.py",
+        "pydantic_ai_slim/pydantic_ai/models/_continuation.py",
+        "pydantic_ai_slim/pydantic_ai/models/google.py",
+        "pydantic_ai_slim/pydantic_ai/models/huggingface.py",
+        "pydantic_ai_slim/pydantic_ai/models/xai.py",
+        "pydantic_ai_slim/pydantic_ai/result.py",
+        "tests/conftest.py",
+        "tests/models/test_google.py",
+        "tests/models/test_huggingface.py",
+        "tests/models/test_stream_close.py",
+        "tests/models/test_xai.py",
+        "tests/models/xai_proto_cassettes.py",
+        "tests/test_streaming.py"
+      ]
+    }
+  ],
+  "trial_rule": "when more than 5 files are withholdable, keep the 5 with the smallest FNV-1a 64-bit hash of \"<pr>/<path>\", ties by path; otherwise keep all; trials run in listing order",
+  "trials": [
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 19
+      },
+      "pr": 7653,
+      "withheld": "pydantic_ai_slim/pydantic_ai/providers/cerebras.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 6
+      },
+      "pr": 7653,
+      "withheld": "pydantic_ai_slim/pydantic_ai/settings.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 5
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 19
+      },
+      "pr": 7653,
+      "withheld": "tests/models/test_cerebras.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7653,
+      "withheld": "tests/profiles/test_resolution_matrix.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 7
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 24
+      },
+      "pr": 7653,
+      "withheld": "tests/providers/test_cerebras.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 15
+      },
+      "pr": 7600,
+      "withheld": "pydantic_ai_slim/pydantic_ai/models/zai.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 24
+      },
+      "pr": 7600,
+      "withheld": "pydantic_ai_slim/pydantic_ai/profiles/zai.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 22
+      },
+      "pr": 7600,
+      "withheld": "tests/models/test_zai.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 28
+      },
+      "pr": 7600,
+      "withheld": "tests/providers/test_zai.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 12
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 17
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "pr": 7600,
+      "withheld": "tests/test_capabilities.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7675,
+      "withheld": "pydantic_ai_slim/pydantic_ai/ui/_event_stream.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7675,
+      "withheld": "tests/test_ui.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7630,
+      "withheld": "pydantic_ai_slim/pydantic_ai/models/test.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7630,
+      "withheld": "tests/models/test_model_test.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7579,
+      "withheld": "pydantic_ai_slim/pydantic_ai/function_signature.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7579,
+      "withheld": "tests/test_function_signature.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7642,
+      "withheld": "pydantic_ai_slim/pydantic_ai/models/test.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 5
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7642,
+      "withheld": "tests/models/test_model_test.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "pr": 7465,
+      "withheld": "pydantic_ai_slim/pydantic_ai/durable_exec/temporal/_agent.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7465,
+      "withheld": "tests/test_temporal.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 5
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7448,
+      "withheld": "pydantic_ai_slim/pydantic_ai/models/openai.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 5
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7448,
+      "withheld": "pydantic_ai_slim/pydantic_ai/providers/deepseek.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 16
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 7448,
+      "withheld": "tests/models/test_openai_responses.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 37
+      },
+      "pr": 7448,
+      "withheld": "tests/profiles/test_resolution_matrix.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 6
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 45
+      },
+      "pr": 7448,
+      "withheld": "tests/providers/test_deepseek.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 7592,
+      "withheld": "pydantic_ai_slim/pydantic_ai/messages.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 21
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 40
+      },
+      "pr": 7592,
+      "withheld": "tests/models/test_google.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 33
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 15
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 14
+      },
+      "pr": 7592,
+      "withheld": "tests/test_messages.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7528,
+      "withheld": "pydantic_ai_slim/pydantic_ai/_run_context.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7528,
+      "withheld": "pydantic_ai_slim/pydantic_ai/agent/__init__.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7528,
+      "withheld": "tests/realtime/test_capabilities.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7528,
+      "withheld": "tests/realtime/test_session.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 11
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 18
+      },
+      "pr": 7535,
+      "withheld": "pydantic_evals/pydantic_evals/dataset.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 8
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 16
+      },
+      "pr": 7535,
+      "withheld": "pydantic_evals/pydantic_evals/online.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 18
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 25
+      },
+      "pr": 7535,
+      "withheld": "tests/evals/test_dataset.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 5
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 11
+      },
+      "pr": 7535,
+      "withheld": "tests/evals/test_online.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 8
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 7589,
+      "withheld": "pydantic_ai_slim/pydantic_ai/models/function.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 26
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 14
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 5
+      },
+      "pr": 7589,
+      "withheld": "tests/models/test_model_function.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 7
+      },
+      "pr": 7604,
+      "withheld": "pydantic_ai_slim/pydantic_ai/ui/ag_ui/_event_stream.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 6
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7604,
+      "withheld": "tests/test_ag_ui.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7606,
+      "withheld": "tests/conftest.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7606,
+      "withheld": "tests/test_otel_context_isolation.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7603,
+      "withheld": "tests/conftest.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7601,
+      "withheld": "pydantic_ai_slim/pydantic_ai/models/anthropic.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 12
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 7601,
+      "withheld": "tests/models/test_anthropic.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 11
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 34
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 8
+      },
+      "pr": 7277,
+      "withheld": "pydantic_ai_slim/pydantic_ai/_utils.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 43
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 8
+      },
+      "pr": 7277,
+      "withheld": "pydantic_ai_slim/pydantic_ai/agent/abstract.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 43
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 8
+      },
+      "pr": 7277,
+      "withheld": "pydantic_ai_slim/pydantic_ai/durable_exec/prefect/_agent.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 6
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 10
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "pr": 7277,
+      "withheld": "tests/test_dbos.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 6
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 10
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "pr": 7277,
+      "withheld": "tests/test_prefect.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7574,
+      "withheld": ".github/scripts/issue_pr_attention_monitor.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 7574,
+      "withheld": ".github/scripts/test_issue_pr_attention_monitor.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7582,
+      "withheld": "pydantic_ai_slim/pydantic_ai/_otel_messages.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 7
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 7582,
+      "withheld": "pydantic_ai_slim/pydantic_ai/models/instrumented.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 16
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 5
+      },
+      "pr": 7582,
+      "withheld": "tests/models/test_instrumented.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 6
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 18
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "pr": 7504,
+      "withheld": "pydantic_ai_slim/pydantic_ai/models/anthropic.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 56
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 6
+      },
+      "pr": 7504,
+      "withheld": "tests/test_tool_search.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7458,
+      "withheld": "pydantic_ai_slim/pydantic_ai/models/openrouter.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 8
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 7458,
+      "withheld": "tests/models/test_openrouter.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7156,
+      "withheld": "pydantic_ai_slim/pydantic_ai/models/xai.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7156,
+      "withheld": "tests/models/test_xai.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 5
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 20
+      },
+      "pr": 7571,
+      "withheld": "pydantic_ai_slim/pydantic_ai/_agent_graph.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 10
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "pr": 7571,
+      "withheld": "pydantic_ai_slim/pydantic_ai/messages.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 10
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 7571,
+      "withheld": "pydantic_ai_slim/pydantic_ai/models/__init__.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 100
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 119
+      },
+      "pr": 7571,
+      "withheld": "tests/models/test_bedrock.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7571,
+      "withheld": "tests/test_tool_availability_portability.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7529,
+      "withheld": ".github/scripts/issue_pr_attention_monitor.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7529,
+      "withheld": ".github/scripts/test_issue_pr_attention_monitor.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7529,
+      "withheld": ".github/scripts/test_pydantic_ai_runner.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 7
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 13
+      },
+      "pr": 7572,
+      "withheld": "pydantic_ai_slim/pydantic_ai/tool_manager.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 12
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 21
+      },
+      "pr": 7572,
+      "withheld": "tests/test_tool_availability.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 5
+      },
+      "pr": 7568,
+      "withheld": "pydantic_ai_slim/pydantic_ai/_agent_graph.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7568,
+      "withheld": "tests/test_agent.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "pr": 7567,
+      "withheld": "pydantic_ai_slim/pydantic_ai/agent/__init__.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 8
+      },
+      "pr": 7567,
+      "withheld": "tests/test_run_cancellation.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 14
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 41
+      },
+      "pr": 7557,
+      "withheld": "pydantic_ai_slim/pydantic_ai/_utils.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 30
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 6
+      },
+      "pr": 7557,
+      "withheld": "pydantic_ai_slim/pydantic_ai/capabilities/hooks.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7557,
+      "withheld": "pydantic_ai_slim/pydantic_ai/toolsets/function.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 41
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "pr": 7557,
+      "withheld": "tests/test_capabilities.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 47
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 107
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 33
+      },
+      "pr": 7557,
+      "withheld": "tests/test_tools.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7547,
+      "withheld": "pydantic_ai_slim/pydantic_ai/models/wrapper.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7547,
+      "withheld": "pydantic_ai_slim/pydantic_ai/models/xai.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7469,
+      "withheld": "pydantic_ai_slim/pydantic_ai/models/google.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 17
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "pr": 7469,
+      "withheld": "pydantic_ai_slim/pydantic_ai/profiles/google.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 22
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 43
+      },
+      "pr": 7469,
+      "withheld": "tests/profiles/test_google.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 16
+      },
+      "pr": 7469,
+      "withheld": "tests/profiles/test_resolution_matrix.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 23
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "pr": 7469,
+      "withheld": "tests/test_thinking.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7374,
+      "withheld": "pydantic_ai_slim/pydantic_ai/providers/bedrock.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7374,
+      "withheld": "tests/providers/test_bedrock.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 13
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 18
+      },
+      "pr": 7421,
+      "withheld": "pydantic_ai_slim/pydantic_ai/__init__.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7421,
+      "withheld": "tests/example_modules/bank_database.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 8
+      },
+      "pr": 7421,
+      "withheld": "tests/test_capabilities.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7421,
+      "withheld": "tests/test_examples.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7292,
+      "withheld": "pydantic_ai_slim/pydantic_ai/ui/_event_stream.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7292,
+      "withheld": "pydantic_ai_slim/pydantic_ai/ui/ag_ui/_event_stream.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7292,
+      "withheld": "tests/test_ag_ui.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 13
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "pr": 7292,
+      "withheld": "tests/test_ui.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7292,
+      "withheld": "tests/test_vercel_ai.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 27
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7018,
+      "withheld": "pydantic_ai_slim/pydantic_ai/models/fallback.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 8
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7018,
+      "withheld": "tests/models/test_fallback.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 61
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 61
+      },
+      "pr": 7443,
+      "withheld": "pydantic_ai_slim/pydantic_ai/settings.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 10
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "pr": 7440,
+      "withheld": "pydantic_ai_slim/pydantic_ai/models/__init__.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7440,
+      "withheld": "pydantic_ai_slim/pydantic_ai/models/anthropic.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7440,
+      "withheld": "pydantic_ai_slim/pydantic_ai/models/openai.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 7
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "pr": 7442,
+      "withheld": "pydantic_ai_slim/pydantic_ai/_deferred_capabilities.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7442,
+      "withheld": "pydantic_ai_slim/pydantic_ai/durable_exec/prefect/_cache_policies.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 40
+      },
+      "pr": 7442,
+      "withheld": "pydantic_ai_slim/pydantic_ai/models/__init__.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 42
+      },
+      "pr": 7442,
+      "withheld": "tests/models/test_openai_responses.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7442,
+      "withheld": "tests/test_capabilities.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "pr": 7437,
+      "withheld": "pydantic_ai_slim/pydantic_ai/_cli/web.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 7437,
+      "withheld": "pydantic_ai_slim/pydantic_ai/agent/__init__.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 7
+      },
+      "pr": 7437,
+      "withheld": "pydantic_ai_slim/pydantic_ai/ui/_web/api.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "pr": 7437,
+      "withheld": "pydantic_ai_slim/pydantic_ai/ui/_web/app.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 7437,
+      "withheld": "tests/test_ui_web.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7423,
+      "withheld": "pydantic_ai_slim/pydantic_ai/providers/xai.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 10
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 11
+      },
+      "pr": 7423,
+      "withheld": "tests/providers/test_xai.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 7445,
+      "withheld": "pydantic_ai_slim/pydantic_ai/models/_known_model_names.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 12
+      },
+      "pr": 7445,
+      "withheld": "pydantic_ai_slim/pydantic_ai/models/google.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 20
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "pr": 7445,
+      "withheld": "tests/test_capabilities.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6838,
+      "withheld": "pydantic_ai_slim/pydantic_ai/models/_known_model_names.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 6838,
+      "withheld": "pydantic_ai_slim/pydantic_ai/models/cerebras.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 20
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 6838,
+      "withheld": "tests/test_capabilities.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 5
+      },
+      "pr": 6818,
+      "withheld": "pydantic_ai_slim/pydantic_ai/providers/fireworks.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6818,
+      "withheld": "pydantic_ai_slim/pydantic_ai/providers/heroku.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 6
+      },
+      "pr": 6818,
+      "withheld": "pydantic_ai_slim/pydantic_ai/providers/sambanova.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 6
+      },
+      "pr": 6818,
+      "withheld": "tests/providers/test_fireworks.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 6818,
+      "withheld": "tests/providers/test_heroku.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7407,
+      "withheld": "pydantic_ai_slim/pydantic_ai/ui/_web/app.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7407,
+      "withheld": "tests/test_conftest.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 18
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 29
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 6
+      },
+      "pr": 7407,
+      "withheld": "tests/test_prefect.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 5
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 15
+      },
+      "pr": 7407,
+      "withheld": "tests/test_temporal.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 5
+      },
+      "pr": 7407,
+      "withheld": "tests/test_ui_web.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7378,
+      "withheld": "pydantic_ai_slim/pydantic_ai/models/openrouter.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 10
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 7
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "pr": 7378,
+      "withheld": "pydantic_ai_slim/pydantic_ai/native_tools/__init__.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7378,
+      "withheld": "tests/models/test_openrouter.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 6846,
+      "withheld": "pydantic_ai_slim/pydantic_ai/providers/xai.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 6846,
+      "withheld": "pydantic_ai_slim/pydantic_ai/settings.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 6701,
+      "withheld": "tests/evals/test_dataset.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 6701,
+      "withheld": "tests/test_mcp.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 5
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 5
+      },
+      "pr": 7290,
+      "withheld": "pydantic_evals/pydantic_evals/reporting/__init__.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7290,
+      "withheld": "tests/evals/test_render_numbers.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 7290,
+      "withheld": "tests/evals/test_reporting.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 7290,
+      "withheld": "tests/evals/utils.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7408,
+      "withheld": "pydantic_ai_slim/pydantic_ai/_cost.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7408,
+      "withheld": "pydantic_ai_slim/pydantic_ai/models/__init__.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 34
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 7408,
+      "withheld": "pydantic_ai_slim/pydantic_ai/models/openai.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 8
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 13
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 7408,
+      "withheld": "tests/models/test_openai.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 22
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 6
+      },
+      "pr": 6642,
+      "withheld": "pydantic_ai_slim/pydantic_ai/providers/azure.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 8
+      },
+      "pr": 6642,
+      "withheld": "pydantic_ai_slim/pydantic_ai/realtime/azure.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 27
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 6
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 7
+      },
+      "pr": 6642,
+      "withheld": "tests/providers/test_azure.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 28
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 31
+      },
+      "pr": 6642,
+      "withheld": "tests/realtime/conftest.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 15
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 20
+      },
+      "pr": 6642,
+      "withheld": "tests/realtime/test_azure.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7375,
+      "withheld": "pydantic_ai_slim/pydantic_ai/models/google.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 17
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "pr": 7375,
+      "withheld": "pydantic_ai_slim/pydantic_ai/models/huggingface.py"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 46
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 88
+      },
+      "pr": 7375,
+      "withheld": "pydantic_ai_slim/pydantic_ai/result.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 18
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 5
+      },
+      "pr": 7375,
+      "withheld": "tests/models/test_huggingface.py"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 82
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 11
+      },
+      "pr": 7375,
+      "withheld": "tests/test_streaming.py"
+    }
+  ],
+  "validity_threats": {
+    "circular_label": "the label is co-change, and E predicts from earlier co-change, which favors E",
+    "one_repository_per_language": "results cannot separate language from codebase",
+    "proxy_for_relevance": "co-changed files stand in for the files a reviewer needed",
+    "small_sample": "50 PRs per repository detect only large effects"
+  }
+}

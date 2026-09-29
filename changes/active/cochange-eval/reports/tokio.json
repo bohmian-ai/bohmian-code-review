@@ -1,0 +1,3647 @@
+{
+  "bootstrap": {
+    "interval": "95% percentile over PRs",
+    "resamples": 10000,
+    "seed": 2316549133261119870
+  },
+  "cold_point": "2025-12-28T11:01:05Z",
+  "command": "GITHUB_TOKEN=<read-only token> mise run live:context-relevance",
+  "cutoff": "2026-05-21T13:41:55Z",
+  "decision": {
+    "adopt_f": true,
+    "repository_f_minus_c": "met",
+    "rule": "adopt F only if, in every repository, the mean per-PR F - C hit@10 difference is at least 0.05 and its 95% bootstrap interval's lower bound is above 0; an interval containing 0 is inconclusive",
+    "threshold": 0.05
+  },
+  "df_ceiling": 100,
+  "effects": {
+    "E-C": {
+      "ci_95": [
+        -0.08999999999999998,
+        0.18166666666666664
+      ],
+      "mean": 0.044
+    },
+    "F-C": {
+      "ci_95": [
+        0.09533333333333335,
+        0.26733333333333337
+      ],
+      "mean": 0.17533333333333334
+    }
+  },
+  "fusion_constant": 60,
+  "hit_rank": 10,
+  "outcome": "hit@10",
+  "rarity_rule": "ignore a name when df(name) > 100; a downstream file referencing it earns 1/df(name); an upstream file declaring it earns 1/(df(name) * declaring_file_count(name)); a file matching both directions keeps the larger credit; score sums credits over distinct names",
+  "repository": "tokio-rs/tokio",
+  "requests": {
+    "evaluation_only": {
+      "base_commit_timestamps": 50
+    },
+    "production": {
+      "cold_build": 60,
+      "incremental_update": {
+        "aggregate_page_requests_through_newest_base": 155,
+        "page_requests_by_merged_pr": {
+          "7431": 1,
+          "7557": 1,
+          "7614": 1,
+          "7757": 1,
+          "7768": 1,
+          "7771": 1,
+          "7773": 1,
+          "7781": 1,
+          "7792": 1,
+          "7798": 1,
+          "7801": 1,
+          "7803": 1,
+          "7804": 1,
+          "7806": 1,
+          "7812": 1,
+          "7815": 1,
+          "7817": 1,
+          "7818": 1,
+          "7819": 1,
+          "7820": 1,
+          "7824": 1,
+          "7825": 1,
+          "7826": 1,
+          "7828": 1,
+          "7829": 1,
+          "7830": 1,
+          "7831": 1,
+          "7833": 1,
+          "7834": 1,
+          "7835": 1,
+          "7837": 1,
+          "7838": 1,
+          "7839": 1,
+          "7842": 1,
+          "7843": 1,
+          "7848": 1,
+          "7849": 1,
+          "7850": 1,
+          "7851": 1,
+          "7854": 1,
+          "7855": 1,
+          "7856": 1,
+          "7857": 1,
+          "7858": 1,
+          "7860": 1,
+          "7862": 1,
+          "7863": 1,
+          "7866": 1,
+          "7867": 1,
+          "7869": 1,
+          "7870": 1,
+          "7871": 1,
+          "7872": 1,
+          "7875": 1,
+          "7879": 1,
+          "7880": 1,
+          "7882": 1,
+          "7885": 1,
+          "7886": 1,
+          "7887": 1,
+          "7889": 1,
+          "7891": 1,
+          "7895": 1,
+          "7896": 1,
+          "7902": 1,
+          "7903": 1,
+          "7904": 1,
+          "7907": 1,
+          "7908": 1,
+          "7910": 1,
+          "7912": 1,
+          "7913": 1,
+          "7918": 1,
+          "7919": 1,
+          "7920": 1,
+          "7921": 1,
+          "7922": 1,
+          "7923": 1,
+          "7924": 1,
+          "7925": 1,
+          "7926": 1,
+          "7929": 1,
+          "7932": 1,
+          "7933": 1,
+          "7934": 1,
+          "7935": 1,
+          "7943": 1,
+          "7944": 1,
+          "7953": 1,
+          "7954": 1,
+          "7961": 1,
+          "7962": 1,
+          "7966": 1,
+          "7967": 1,
+          "7968": 1,
+          "7977": 1,
+          "7978": 1,
+          "7983": 1,
+          "7984": 1,
+          "7987": 1,
+          "7989": 1,
+          "7992": 1,
+          "7996": 1,
+          "7997": 1,
+          "8001": 1,
+          "8003": 1,
+          "8004": 1,
+          "8005": 1,
+          "8007": 1,
+          "8008": 1,
+          "8009": 1,
+          "8010": 1,
+          "8021": 1,
+          "8023": 1,
+          "8025": 1,
+          "8026": 1,
+          "8028": 1,
+          "8029": 1,
+          "8030": 1,
+          "8032": 1,
+          "8035": 1,
+          "8036": 1,
+          "8038": 1,
+          "8040": 1,
+          "8041": 1,
+          "8043": 1,
+          "8045": 1,
+          "8047": 1,
+          "8052": 1,
+          "8053": 1,
+          "8057": 1,
+          "8058": 1,
+          "8059": 1,
+          "8064": 1,
+          "8068": 1,
+          "8070": 1,
+          "8077": 1,
+          "8078": 1,
+          "8088": 1,
+          "8090": 1,
+          "8093": 1,
+          "8096": 1,
+          "8097": 1,
+          "8098": 1,
+          "8102": 1,
+          "8106": 1,
+          "8107": 1,
+          "8110": 1,
+          "8117": 1,
+          "8124": 1,
+          "8125": 1,
+          "8131": 1,
+          "8134": 1,
+          "8142": 1,
+          "8145": 1
+        }
+      },
+      "review": 0
+    }
+  },
+  "sample": [
+    {
+      "base": "2a05f364b79a7377bb21d6d5d14fd191b26e3ade",
+      "base_time": "2026-05-20T12:32:23Z",
+      "base_tree": "94c402dc1e41f4ececd3cfd5e15f95b9c646f10f",
+      "head": "d2da302deac80688930edeefc5a9f1c07385b59a",
+      "history_size": 165,
+      "hit_at_10_means": {
+        "C": 0.5,
+        "E": 1.0,
+        "F": 1.0,
+        "pr": 8159,
+        "trials": 2
+      },
+      "merged_at": "2026-05-21T08:21:36Z",
+      "number": 8159,
+      "omitted": [],
+      "source_files": [
+        "tokio-util/src/io/write_all_vectored.rs",
+        "tokio-util/tests/io_write_all_vectored.rs"
+      ]
+    },
+    {
+      "base": "ee0dc9092665a1f13df573dc5e5124999d8e9035",
+      "base_time": "2026-05-08T18:02:54Z",
+      "base_tree": "58868c224185576003295c06ec1bcd11dbdec60e",
+      "head": "6fd038b9c2cf83fbbe0d696bb2c5c99bd84a20fc",
+      "history_size": 160,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 1.0,
+        "F": 1.0,
+        "pr": 8134,
+        "trials": 3
+      },
+      "merged_at": "2026-05-11T11:58:51Z",
+      "number": 8134,
+      "omitted": [],
+      "source_files": [
+        "tokio/tests/fs_uring_cancel_open.rs",
+        "tokio/tests/fs_uring_completed_then_dropped_before_repoll.rs",
+        "tokio/tests/fs_uring_runtime_shutdown.rs",
+        "tokio/tests/support/io_uring.rs"
+      ]
+    },
+    {
+      "base": "02ff0833e00adeb8cd451420f586f968deb70f78",
+      "base_time": "2026-05-05T11:46:35Z",
+      "base_tree": "728ec69784d10f8e67d4d318c97b64fe6b30deda",
+      "head": "b5a9d4d226938c8790203ee68da8b799dfd5b449",
+      "history_size": 157,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 1.0,
+        "F": 1.0,
+        "pr": 8124,
+        "trials": 2
+      },
+      "merged_at": "2026-05-08T18:02:55Z",
+      "number": 8124,
+      "omitted": [],
+      "source_files": [
+        "tokio/src/runtime/time_alt/entry.rs",
+        "tokio/src/runtime/time_alt/timer.rs"
+      ]
+    },
+    {
+      "base": "067f229371b982412a3dc523cf58f95c3c8794ec",
+      "base_time": "2026-05-08T06:38:49Z",
+      "base_tree": "3e8c83b8c42749132c8bd11689342f00852b7f97",
+      "head": "78594a7497dcabd6850dbaf15dd3c5b4fe045d2c",
+      "history_size": 158,
+      "hit_at_10_means": {
+        "C": 0.6,
+        "E": 0.6,
+        "F": 0.8,
+        "pr": 8131,
+        "trials": 5
+      },
+      "merged_at": "2026-05-08T14:16:09Z",
+      "number": 8131,
+      "omitted": [],
+      "source_files": [
+        "tokio/src/sync/mpsc/block.rs",
+        "tokio/src/sync/mpsc/bounded.rs",
+        "tokio/src/sync/mpsc/chan.rs",
+        "tokio/src/sync/mpsc/list.rs",
+        "tokio/src/sync/mpsc/mod.rs",
+        "tokio/src/sync/rwlock.rs",
+        "tokio/src/sync/tests/loom_mpsc.rs",
+        "tokio/tests/sync_mpsc.rs",
+        "tokio/tests/sync_rwlock.rs"
+      ]
+    },
+    {
+      "base": "e77885a494d91baaaeeb9590436e555dea8dd1cb",
+      "base_time": "2026-05-03T08:28:31Z",
+      "base_tree": "f412d8349a9bf18c79532b70b45a1982b684297f",
+      "head": "876754b536e95a8df3fd071339d5a8d3ae9a0317",
+      "history_size": 156,
+      "hit_at_10_means": {
+        "C": 0.5,
+        "E": 0.0,
+        "F": 0.5,
+        "pr": 8110,
+        "trials": 2
+      },
+      "merged_at": "2026-05-05T11:46:36Z",
+      "number": 8110,
+      "omitted": [],
+      "source_files": [
+        "tokio-util/src/sync/cancellation_token.rs",
+        "tokio-util/tests/sync_cancellation_token.rs"
+      ]
+    },
+    {
+      "base": "e77885a494d91baaaeeb9590436e555dea8dd1cb",
+      "base_time": "2026-05-03T08:28:31Z",
+      "base_tree": "f412d8349a9bf18c79532b70b45a1982b684297f",
+      "head": "e56ff72fe7574867c6c9bbd171afd8717897ea43",
+      "history_size": 156,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 1.0,
+        "F": 0.2,
+        "pr": 8117,
+        "trials": 5
+      },
+      "merged_at": "2026-05-04T18:49:55Z",
+      "number": 8117,
+      "omitted": [],
+      "source_files": [
+        "tokio/src/runtime/builder.rs",
+        "tokio/src/runtime/config.rs",
+        "tokio/src/runtime/mod.rs",
+        "tokio/src/runtime/scheduler/multi_thread/queue.rs",
+        "tokio/src/runtime/scheduler/multi_thread/worker.rs",
+        "tokio/src/runtime/task/atomic_notified.rs",
+        "tokio/src/runtime/task/mod.rs",
+        "tokio/src/runtime/tests/loom_multi_thread/queue.rs",
+        "tokio/tests/rt_threaded.rs",
+        "tokio/tests/rt_unstable_metrics.rs"
+      ]
+    },
+    {
+      "base": "1cd6e65d76ba934d7545afe4b8ad93787b80c1e3",
+      "base_time": "2026-05-02T15:44:40Z",
+      "base_tree": "a5a26bdb67848769d30fd0ee2e66b5adc74135a8",
+      "head": "3c7f47a0d3032352775fce620566417dc45efce4",
+      "history_size": 153,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 8107,
+        "trials": 2
+      },
+      "merged_at": "2026-05-03T03:39:09Z",
+      "number": 8107,
+      "omitted": [],
+      "source_files": [
+        "tokio/src/runtime/time_alt/entry.rs",
+        "tokio/src/runtime/time_alt/timer.rs"
+      ]
+    },
+    {
+      "base": "8f81e0814bd121683ebdfa21b494d1b77fb36403",
+      "base_time": "2026-04-29T05:26:57Z",
+      "base_tree": "75ecc9ef0d872d04ef1a1b903302b76cdb4fd716",
+      "head": "232b9714c56bafaac87d0b9d0fbf406a8332cb20",
+      "history_size": 148,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 8096,
+        "trials": 5
+      },
+      "merged_at": "2026-05-01T12:09:29Z",
+      "number": 8096,
+      "omitted": [],
+      "source_files": [
+        "tokio-stream/src/stream_ext/chain.rs",
+        "tokio-stream/src/stream_ext/filter.rs",
+        "tokio-stream/src/stream_ext/filter_map.rs",
+        "tokio-stream/src/stream_ext/map.rs",
+        "tokio-stream/src/stream_ext/merge.rs",
+        "tokio-stream/src/stream_ext/skip.rs",
+        "tokio-stream/src/stream_ext/skip_while.rs",
+        "tokio-stream/src/stream_ext/take.rs",
+        "tokio-stream/src/stream_ext/take_while.rs",
+        "tokio-stream/src/stream_ext/then.rs",
+        "tokio-stream/tests/stream_fused.rs"
+      ]
+    },
+    {
+      "base": "8f81e0814bd121683ebdfa21b494d1b77fb36403",
+      "base_time": "2026-04-29T05:26:57Z",
+      "base_tree": "75ecc9ef0d872d04ef1a1b903302b76cdb4fd716",
+      "head": "9d8fbe5d857ed27adee7f139579b7c5eeccce32d",
+      "history_size": 148,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 8097,
+        "trials": 5
+      },
+      "merged_at": "2026-04-30T09:36:56Z",
+      "number": 8097,
+      "omitted": [],
+      "source_files": [
+        "tokio/src/runtime/scheduler/multi_thread/queue.rs",
+        "tokio/src/runtime/time/wheel/mod.rs",
+        "tokio/src/runtime/time_alt/wheel/mod.rs",
+        "tokio/src/sync/broadcast.rs",
+        "tokio/src/util/sharded_list.rs"
+      ]
+    },
+    {
+      "base": "47cc31590fbc5662241355c86e331c42e6152775",
+      "base_time": "2026-04-28T15:33:54Z",
+      "base_tree": "3633f00e560997a2abca63910300e411db474ad3",
+      "head": "2c52d72893f4b696c510eed788a25857032f69a1",
+      "history_size": 147,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 8093,
+        "trials": 2
+      },
+      "merged_at": "2026-04-29T05:26:58Z",
+      "number": 8093,
+      "omitted": [],
+      "source_files": [
+        "tokio/src/runtime/time/wheel/mod.rs",
+        "tokio/src/runtime/time_alt/wheel/mod.rs"
+      ]
+    },
+    {
+      "base": "89713ad1eccdab8c21137a37f996f130d5a8bd31",
+      "base_time": "2026-04-27T12:23:40Z",
+      "base_tree": "45ad78e8830ba9edff98bad67810d7505ab8a84c",
+      "head": "5cf85e0b61e00c5454f4a6328ef77e23b37dc8e8",
+      "history_size": 145,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 8090,
+        "trials": 2
+      },
+      "merged_at": "2026-04-28T15:33:55Z",
+      "number": 8090,
+      "omitted": [],
+      "source_files": [
+        "tokio-stream/src/stream_ext/fuse.rs",
+        "tokio-stream/tests/stream_fuse.rs"
+      ]
+    },
+    {
+      "base": "1afb39135073a56d8983fed0bde85b9f70a1ec3b",
+      "base_time": "2026-04-19T17:52:41Z",
+      "base_tree": "5ab3eeb401fc9dac67c64109457385ffd1da0e05",
+      "head": "ff9d4483bdf09741f7735f66b7881a38ee6f0575",
+      "history_size": 142,
+      "hit_at_10_means": {
+        "C": 0.5,
+        "E": 0.0,
+        "F": 0.5,
+        "pr": 8077,
+        "trials": 2
+      },
+      "merged_at": "2026-04-20T18:22:37Z",
+      "number": 8077,
+      "omitted": [],
+      "source_files": [
+        "tokio/src/time/timeout.rs",
+        "tokio/tests/time_panic.rs"
+      ]
+    },
+    {
+      "base": "57ff47ab589bfb4dab6766de78655ffef4fb250b",
+      "base_time": "2026-04-16T20:32:53Z",
+      "base_tree": "9223c78ce841fbc3a3eef4ab59ef1250c6e05e2e",
+      "head": "2d97cdf553d3e5480ab98e95b856c92c20475761",
+      "history_size": 138,
+      "hit_at_10_means": {
+        "C": 0.5,
+        "E": 1.0,
+        "F": 1.0,
+        "pr": 8057,
+        "trials": 4
+      },
+      "merged_at": "2026-04-16T20:57:23Z",
+      "number": 8057,
+      "omitted": [],
+      "source_files": [
+        "tokio/src/runtime/blocking/mod.rs",
+        "tokio/src/runtime/blocking/pool.rs",
+        "tokio/src/runtime/blocking/sharded_queue.rs",
+        "tokio/src/runtime/context.rs",
+        "tokio/src/util/rand.rs"
+      ]
+    },
+    {
+      "base": "bbdba7101de6ce5329d84021ce669f185cc430b3",
+      "base_time": "2026-04-12T09:13:24Z",
+      "base_tree": "db38f35a4775c7a0c6f487ffc714f06be4c330b8",
+      "head": "9b5aeda518d575a22b350630ebf4c9911cc572f7",
+      "history_size": 129,
+      "hit_at_10_means": {
+        "C": 1.0,
+        "E": 0.0,
+        "F": 1.0,
+        "pr": 8040,
+        "trials": 3
+      },
+      "merged_at": "2026-04-14T17:18:56Z",
+      "number": 8040,
+      "omitted": [],
+      "source_files": [
+        "tokio/src/runtime/task/trace/mod.rs",
+        "tokio/src/runtime/task/trace/trace_impl.rs",
+        "tokio/tests/task_trace_self.rs"
+      ]
+    },
+    {
+      "base": "5db10f538b683fe88d699dfd11be31d193db011c",
+      "base_time": "2026-04-12T13:06:06Z",
+      "base_tree": "0fb0f48377baba7b6918e7901bd721284515b617",
+      "head": "0673887d235d9ca6e96f89c2dc6cb8d3b1a9624e",
+      "history_size": 130,
+      "hit_at_10_means": {
+        "C": 0.8,
+        "E": 0.0,
+        "F": 0.8,
+        "pr": 7907,
+        "trials": 5
+      },
+      "merged_at": "2026-04-13T18:36:23Z",
+      "number": 7907,
+      "omitted": [],
+      "source_files": [
+        "tokio/src/fs/file.rs",
+        "tokio/src/fs/read_uring.rs",
+        "tokio/src/io/blocking.rs",
+        "tokio/src/io/uring/read.rs",
+        "tokio/src/io/uring/utils.rs",
+        "tokio/src/runtime/driver/op.rs",
+        "tokio/src/runtime/io/driver/uring.rs",
+        "tokio/tests/fs_uring_file_read.rs"
+      ]
+    },
+    {
+      "base": "1604bc335157be9a131e24cfde55cab3c90ebc92",
+      "base_time": "2026-04-10T14:06:19Z",
+      "base_tree": "5ef20d922c1acef57a47662082b1027fe8e8bfe6",
+      "head": "016988ebc19e3148f747c5bb48015f816e56ee56",
+      "history_size": 123,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 8030,
+        "trials": 2
+      },
+      "merged_at": "2026-04-12T13:06:06Z",
+      "number": 8030,
+      "omitted": [],
+      "source_files": [
+        "tokio/src/net/unix/pipe.rs",
+        "tokio/tests/net_unix_pipe.rs"
+      ]
+    },
+    {
+      "base": "98df02d7a4a638b3bc76a01f41966dc83c275103",
+      "base_time": "2026-04-08T10:37:44Z",
+      "base_tree": "4be2ec76188dd79b310fc2000de9d5d350618dcc",
+      "head": "a6b793e35f7a4d96d8188196631dada0efb7f3e7",
+      "history_size": 118,
+      "hit_at_10_means": {
+        "C": 0.6666666666666666,
+        "E": 0.0,
+        "F": 0.6666666666666666,
+        "pr": 8025,
+        "trials": 3
+      },
+      "merged_at": "2026-04-12T09:13:25Z",
+      "number": 8025,
+      "omitted": [],
+      "source_files": [
+        "tokio/src/runtime/dump.rs",
+        "tokio/src/runtime/task/trace/mod.rs",
+        "tokio/src/runtime/task/trace/trace_impl.rs",
+        "tokio/tests/task_trace_self.rs"
+      ]
+    },
+    {
+      "base": "1604bc335157be9a131e24cfde55cab3c90ebc92",
+      "base_time": "2026-04-10T14:06:19Z",
+      "base_tree": "5ef20d922c1acef57a47662082b1027fe8e8bfe6",
+      "head": "db11d3b34c469e68db79476806d9235750d6be91",
+      "history_size": 123,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.5,
+        "F": 0.5,
+        "pr": 8029,
+        "trials": 2
+      },
+      "merged_at": "2026-04-11T10:14:27Z",
+      "number": 8029,
+      "omitted": [],
+      "source_files": [
+        "tokio/src/runtime/scheduler/multi_thread/queue.rs",
+        "tokio/src/runtime/scheduler/multi_thread/worker.rs"
+      ]
+    },
+    {
+      "base": "1fc450aefba4b05cdff9b7825ca5e39cccb3780e",
+      "base_time": "2026-04-02T13:13:24Z",
+      "base_tree": "06e841d8bfc331c868f39b74eca554f4cdb4bc33",
+      "head": "9de7950e59f8acea412600c2102ab592c419483a",
+      "history_size": 108,
+      "hit_at_10_means": {
+        "C": 0.25,
+        "E": 0.0,
+        "F": 0.25,
+        "pr": 7757,
+        "trials": 4
+      },
+      "merged_at": "2026-04-10T14:06:19Z",
+      "number": 7757,
+      "omitted": [],
+      "source_files": [
+        "tokio/src/runtime/blocking/mod.rs",
+        "tokio/src/runtime/blocking/pool.rs",
+        "tokio/src/runtime/blocking/sharded_queue.rs",
+        "tokio/src/runtime/context.rs",
+        "tokio/src/util/rand.rs"
+      ]
+    },
+    {
+      "base": "ee4de818065a97c0be0d6bfc18fb36725349aef8",
+      "base_time": "2026-03-27T08:38:54Z",
+      "base_tree": "6bb420d241aa95a6da2fbf450722c97095b11e4f",
+      "head": "25379c7d9d2b5586e421693fb2e269f3bd29271b",
+      "history_size": 100,
+      "hit_at_10_means": {
+        "C": 0.8,
+        "E": 0.0,
+        "F": 0.8,
+        "pr": 7992,
+        "trials": 5
+      },
+      "merged_at": "2026-04-08T20:59:32Z",
+      "number": 7992,
+      "omitted": [],
+      "source_files": [
+        "tokio/src/io/bsd/poll_aio.rs",
+        "tokio/tests/io_async_fd.rs",
+        "tokio/tests/io_async_fd_memory_leak.rs",
+        "tokio/tests/io_poll_aio.rs",
+        "tokio/tests/net_unix_pipe.rs"
+      ]
+    },
+    {
+      "base": "95b9342da7009d068fea6c5d532e04934d46980c",
+      "base_time": "2026-04-03T09:10:55Z",
+      "base_tree": "e0e03b6fa29d386b9af4217849844a8630496b29",
+      "head": "e2772119b40f54f0733597272ddceaeced28f8b6",
+      "history_size": 112,
+      "hit_at_10_means": {
+        "C": 0.5,
+        "E": 0.75,
+        "F": 0.5,
+        "pr": 8010,
+        "trials": 4
+      },
+      "merged_at": "2026-04-08T20:46:28Z",
+      "number": 8010,
+      "omitted": [],
+      "source_files": [
+        "tokio/src/runtime/builder.rs",
+        "tokio/src/runtime/config.rs",
+        "tokio/src/runtime/scheduler/multi_thread/park.rs",
+        "tokio/src/runtime/scheduler/multi_thread/worker.rs",
+        "tokio/tests/rt_unstable_eager_driver_handoff.rs"
+      ]
+    },
+    {
+      "base": "ad8c59add6a1988d8c327fb3358beeeae3bbb5cd",
+      "base_time": "2026-04-04T19:46:10Z",
+      "base_tree": "569eddcf2af4e66f194922ad52c49b74d16f15ca",
+      "head": "7a1db82d559a7088077fe0ddda3fec409ed6f39a",
+      "history_size": 115,
+      "hit_at_10_means": {
+        "C": 0.5,
+        "E": 0.0,
+        "F": 0.5,
+        "pr": 8021,
+        "trials": 2
+      },
+      "merged_at": "2026-04-08T07:59:54Z",
+      "number": 8021,
+      "omitted": [],
+      "source_files": [
+        "tokio/src/sync/batch_semaphore.rs",
+        "tokio/tests/sync_semaphore.rs"
+      ]
+    },
+    {
+      "base": "95b9342da7009d068fea6c5d532e04934d46980c",
+      "base_time": "2026-04-03T09:10:55Z",
+      "base_tree": "e0e03b6fa29d386b9af4217849844a8630496b29",
+      "head": "5810afd7d5728fbedb869c8bdf80ef89a251a85a",
+      "history_size": 112,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 7983,
+        "trials": 1
+      },
+      "merged_at": "2026-04-08T05:37:19Z",
+      "number": 7983,
+      "omitted": [],
+      "source_files": [
+        "tokio/src/runtime/io/driver/uring.rs",
+        "tokio/tests/fs_uring_cancel_open.rs",
+        "tokio/tests/fs_uring_completed_then_dropped_before_repoll.rs",
+        "tokio/tests/fs_uring_runtime_shutdown.rs"
+      ]
+    },
+    {
+      "base": "654d38b13228a13498e793d8bb4f6ba50fd1016a",
+      "base_time": "2026-04-04T07:20:01Z",
+      "base_tree": "c9235ee6c515e1fa6ef8b0209b65bfcd9119b62f",
+      "head": "dd0325e3f567581aecb7ac97ad73d35a35987c59",
+      "history_size": 114,
+      "hit_at_10_means": {
+        "C": 0.5,
+        "E": 1.0,
+        "F": 1.0,
+        "pr": 8001,
+        "trials": 2
+      },
+      "merged_at": "2026-04-04T19:46:10Z",
+      "number": 8001,
+      "omitted": [],
+      "source_files": [
+        "tokio/src/net/udp.rs",
+        "tokio/tests/udp.rs"
+      ]
+    },
+    {
+      "base": "1fc450aefba4b05cdff9b7825ca5e39cccb3780e",
+      "base_time": "2026-04-02T13:13:24Z",
+      "base_tree": "06e841d8bfc331c868f39b74eca554f4cdb4bc33",
+      "head": "5db9e75144032911b8051432e6ac3a833a099c52",
+      "history_size": 108,
+      "hit_at_10_means": {
+        "C": 0.4,
+        "E": 0.4,
+        "F": 0.6,
+        "pr": 7431,
+        "trials": 5
+      },
+      "merged_at": "2026-04-03T07:11:58Z",
+      "number": 7431,
+      "omitted": [],
+      "source_files": [
+        "tokio/src/runtime/builder.rs",
+        "tokio/src/runtime/config.rs",
+        "tokio/src/runtime/mod.rs",
+        "tokio/src/runtime/scheduler/multi_thread/queue.rs",
+        "tokio/src/runtime/scheduler/multi_thread/worker.rs",
+        "tokio/src/runtime/task/atomic_notified.rs",
+        "tokio/src/runtime/task/mod.rs",
+        "tokio/src/runtime/tests/loom_multi_thread/queue.rs",
+        "tokio/tests/rt_threaded.rs",
+        "tokio/tests/rt_unstable_metrics.rs"
+      ]
+    },
+    {
+      "base": "43134f1e5784993eb4fb3863933d74ac9e28f598",
+      "base_time": "2026-04-02T09:53:17Z",
+      "base_tree": "5e2e8e2f3c0dc2a9e70b347213b3d7d48b6fc385",
+      "head": "79abe94ed7eb8c41858b9f77ac4a11adde09cab0",
+      "history_size": 106,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.6,
+        "F": 0.6,
+        "pr": 7557,
+        "trials": 5
+      },
+      "merged_at": "2026-04-02T13:13:25Z",
+      "number": 7557,
+      "omitted": [],
+      "source_files": [
+        "tokio-macros/src/entry.rs",
+        "tokio-macros/src/lib.rs",
+        "tokio/src/runtime/builder.rs",
+        "tokio/src/runtime/local_runtime/runtime.rs",
+        "tokio/src/runtime/mod.rs",
+        "tokio/src/task/local.rs"
+      ]
+    },
+    {
+      "base": "43134f1e5784993eb4fb3863933d74ac9e28f598",
+      "base_time": "2026-04-02T09:53:17Z",
+      "base_tree": "5e2e8e2f3c0dc2a9e70b347213b3d7d48b6fc385",
+      "head": "324218f9bbdc26e4bb527d036613826824f3078b",
+      "history_size": 106,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 8003,
+        "trials": 2
+      },
+      "merged_at": "2026-04-02T12:38:00Z",
+      "number": 8003,
+      "omitted": [],
+      "source_files": [
+        "tokio/src/sync/mpsc/chan.rs",
+        "tokio/tests/sync_mpsc.rs"
+      ]
+    },
+    {
+      "base": "9f132172dbb00b1f6b6bda64bb9b194382079499",
+      "base_time": "2026-03-31T11:52:02Z",
+      "base_tree": "5fe77419387c69b96074338907cf43467a33dc89",
+      "head": "bac156d5d1afd35e7891ebf9131e218bbc6be232",
+      "history_size": 103,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.2,
+        "F": 0.4,
+        "pr": 7924,
+        "trials": 5
+      },
+      "merged_at": "2026-04-01T09:46:28Z",
+      "number": 7924,
+      "omitted": [],
+      "source_files": [
+        "tests-build/tests/fail/macros_invalid_input.rs",
+        "tokio-macros/src/entry.rs",
+        "tokio-macros/src/lib.rs",
+        "tokio/src/runtime/builder.rs",
+        "tokio/src/runtime/handle.rs",
+        "tokio/src/runtime/scheduler/current_thread/mod.rs",
+        "tokio/src/runtime/scheduler/multi_thread/handle.rs",
+        "tokio/src/runtime/scheduler/multi_thread/mod.rs",
+        "tokio/src/runtime/scheduler/multi_thread/worker.rs",
+        "tokio/tests/macros_test.rs",
+        "tokio/tests/rt_basic.rs",
+        "tokio/tests/rt_panic.rs",
+        "tokio/tests/rt_threaded.rs"
+      ]
+    },
+    {
+      "base": "6752f50154025a1aa2c231b643cdb78bb4c3892f",
+      "base_time": "2026-03-30T09:05:53Z",
+      "base_tree": "d747fa30033b98e82b635ff73f8909f78ebbbd6b",
+      "head": "acafe64673c6fc02b3e84a6f7f9ee0f5b4b605a1",
+      "history_size": 102,
+      "hit_at_10_means": {
+        "C": 0.5,
+        "E": 0.0,
+        "F": 0.5,
+        "pr": 7996,
+        "trials": 2
+      },
+      "merged_at": "2026-03-31T11:52:02Z",
+      "number": 7996,
+      "omitted": [],
+      "source_files": [
+        "tokio/src/sync/notify.rs",
+        "tokio/tests/sync_notify.rs"
+      ]
+    },
+    {
+      "base": "ee4de818065a97c0be0d6bfc18fb36725349aef8",
+      "base_time": "2026-03-27T08:38:54Z",
+      "base_tree": "6bb420d241aa95a6da2fbf450722c97095b11e4f",
+      "head": "eea45de4d004a5d8e27252db013076745cf40e5a",
+      "history_size": 100,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 1.0,
+        "F": 1.0,
+        "pr": 7987,
+        "trials": 2
+      },
+      "merged_at": "2026-03-30T08:44:48Z",
+      "number": 7987,
+      "omitted": [],
+      "source_files": [
+        "tokio/src/fs/open_options.rs",
+        "tokio/src/fs/open_options/mock_open_options.rs",
+        "tokio/src/fs/open_options/uring_open_options.rs"
+      ]
+    },
+    {
+      "base": "467d614267ce422206d8acbccf957eb49a597467",
+      "base_time": "2026-03-22T13:00:12Z",
+      "base_tree": "2ca7ce73a436b658689014392cd8ead711424a93",
+      "head": "9ab9e0eb0a7bfd72d9d9bb1a9e8fbea0e3f66c8b",
+      "history_size": 98,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 7978,
+        "trials": 1
+      },
+      "merged_at": "2026-03-26T15:17:27Z",
+      "number": 7978,
+      "omitted": [],
+      "source_files": [
+        "examples/prewarm-fd-table.rs",
+        "tokio/src/runtime/mod.rs"
+      ]
+    },
+    {
+      "base": "ee04abe7970b769439e2fecd4b1dd8790e4234e1",
+      "base_time": "2026-03-11T09:13:39Z",
+      "base_tree": "358190e97e5cb96b5fa55585f777e42c30b8fc6d",
+      "head": "38d700c1b2b95609c0eddb90922f3f943d20d7b2",
+      "history_size": 92,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 1.0,
+        "F": 1.0,
+        "pr": 7966,
+        "trials": 2
+      },
+      "merged_at": "2026-03-16T15:00:49Z",
+      "number": 7966,
+      "omitted": [],
+      "source_files": [
+        "tokio-stream/src/stream_ext/collect.rs",
+        "tokio-stream/tests/stream_collect.rs"
+      ]
+    },
+    {
+      "base": "d3c7f56c10a43c220e6feb12c9796f36eaffda16",
+      "base_time": "2026-03-13T10:53:13Z",
+      "base_tree": "41be4e6ab1a87124f3d1b3b709b775d0dcf95dfc",
+      "head": "4ed551873f8447ef582943c5e8b568aa391ea9c2",
+      "history_size": 93,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 7921,
+        "trials": 4
+      },
+      "merged_at": "2026-03-15T05:44:41Z",
+      "number": 7921,
+      "omitted": [],
+      "source_files": [
+        "tokio/src/runtime/context.rs",
+        "tokio/src/runtime/mod.rs",
+        "tokio/src/runtime/scheduler/mod.rs",
+        "tokio/src/runtime/scheduler/multi_thread/worker.rs",
+        "tokio/tests/rt_worker_index.rs"
+      ]
+    },
+    {
+      "base": "ee04abe7970b769439e2fecd4b1dd8790e4234e1",
+      "base_time": "2026-03-11T09:13:39Z",
+      "base_tree": "358190e97e5cb96b5fa55585f777e42c30b8fc6d",
+      "head": "d067d226e875e4ec159b4cf5c48d0eb167c1200f",
+      "history_size": 92,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 7968,
+        "trials": 2
+      },
+      "merged_at": "2026-03-13T10:53:13Z",
+      "number": 7968,
+      "omitted": [],
+      "source_files": [
+        "tokio/src/fs/open_options.rs",
+        "tokio/src/fs/open_options/mock_open_options.rs",
+        "tokio/src/fs/open_options/uring_open_options.rs"
+      ]
+    },
+    {
+      "base": "961757f5483e394ec3c99a4c2ab5a6e705a0b740",
+      "base_time": "2026-03-09T06:43:48Z",
+      "base_tree": "caff3a7cfa69bc8e1a4911d7389854e0360c931b",
+      "head": "090a5301385df68e30c34a6c690376b40be1187b",
+      "history_size": 90,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 7954,
+        "trials": 2
+      },
+      "merged_at": "2026-03-09T10:20:21Z",
+      "number": 7954,
+      "omitted": [],
+      "source_files": [
+        "tokio-stream/src/stream_ext/collect.rs",
+        "tokio-stream/tests/stream_collect.rs"
+      ]
+    },
+    {
+      "base": "0273e45ead199dac7725faee1e3dc35a9c8753ab",
+      "base_time": "2026-03-03T09:39:42Z",
+      "base_tree": "76aacc4820e4c7f333d2b8ad06f5c9a09fa0d9d5",
+      "head": "926eb30affbf21d9fca7ebe64a4193210d9ec7d7",
+      "history_size": 87,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 7902,
+        "trials": 4
+      },
+      "merged_at": "2026-03-04T15:16:50Z",
+      "number": 7902,
+      "omitted": [],
+      "source_files": [
+        "tokio/src/loom/mocked.rs",
+        "tokio/src/loom/std/atomic_u64.rs",
+        "tokio/src/loom/std/mod.rs",
+        "tokio/src/runtime/task/id.rs",
+        "tokio/src/runtime/thread_id.rs"
+      ]
+    },
+    {
+      "base": "25e7f2641ef2555d688c267059431a2802805f1d",
+      "base_time": "2026-02-20T21:41:12Z",
+      "base_tree": "1315c18577ef29ca8d8c7f2575386d582bb6465c",
+      "head": "6724524a9e95e912e7223e51041374f4dd8bda68",
+      "history_size": 79,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 7922,
+        "trials": 2
+      },
+      "merged_at": "2026-02-23T21:50:28Z",
+      "number": 7922,
+      "omitted": [],
+      "source_files": [
+        "tokio/src/runtime/blocking/pool.rs",
+        "tokio/src/runtime/tests/loom_blocking.rs"
+      ]
+    },
+    {
+      "base": "a25d95a8c4f443886e55b24c97d4bbee1d87283d",
+      "base_time": "2026-02-14T19:42:24Z",
+      "base_tree": "5c1757bcecb1adb122b94ef9a9b8c3ae6f48570e",
+      "head": "bb4517853f225ee84dd40db1357d9d7568aa7ae1",
+      "history_size": 70,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 7910,
+        "trials": 2
+      },
+      "merged_at": "2026-02-17T07:19:51Z",
+      "number": 7910,
+      "omitted": [],
+      "source_files": [
+        "tokio/src/runtime/blocking/pool.rs",
+        "tokio/tests/rt_unstable_metrics.rs"
+      ]
+    },
+    {
+      "base": "a25d95a8c4f443886e55b24c97d4bbee1d87283d",
+      "base_time": "2026-02-14T19:42:24Z",
+      "base_tree": "5c1757bcecb1adb122b94ef9a9b8c3ae6f48570e",
+      "head": "6ed78e66fe45373be6c743aeceb590f07aef4512",
+      "history_size": 70,
+      "hit_at_10_means": {
+        "C": 0.5,
+        "E": 0.0,
+        "F": 0.5,
+        "pr": 7912,
+        "trials": 2
+      },
+      "merged_at": "2026-02-16T16:33:36Z",
+      "number": 7912,
+      "omitted": [],
+      "source_files": [
+        "tokio-util/src/codec/framed_impl.rs",
+        "tokio-util/tests/framed.rs"
+      ]
+    },
+    {
+      "base": "5bcd7c1d09e8d8a89ebcb96069cac1c1fdd76877",
+      "base_time": "2026-02-12T11:27:25Z",
+      "base_tree": "a1cc9360f994cda67f87f2084b62cb90c41fdecd",
+      "head": "ff3f3965473ad0ddc875e343c6bb5ee0a2ca02bc",
+      "history_size": 68,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 7904,
+        "trials": 2
+      },
+      "merged_at": "2026-02-12T14:06:49Z",
+      "number": 7904,
+      "omitted": [],
+      "source_files": [
+        "tokio/src/io/stderr.rs",
+        "tokio/src/io/stdout.rs"
+      ]
+    },
+    {
+      "base": "d89e998922724de80996802721e167d9ca24f4d7",
+      "base_time": "2026-02-06T14:08:04Z",
+      "base_tree": "b245735740aaf1e831e6a8f888cf8b02d5a6d726",
+      "head": "f8adb45b3edc4d2f35f795df86aa65d5c97fdb4b",
+      "history_size": 61,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 7895,
+        "trials": 3
+      },
+      "merged_at": "2026-02-09T12:30:32Z",
+      "number": 7895,
+      "omitted": [],
+      "source_files": [
+        "tokio-util/src/io/read_buf.rs",
+        "tokio/src/lib.rs",
+        "tokio/src/task/yield_now.rs"
+      ]
+    },
+    {
+      "base": "7ed6da6733199fe4d08b9694fce646dac5944e70",
+      "base_time": "2026-01-13T18:56:50Z",
+      "base_tree": "3ff659a6b637bff5f4a45a16bf540795a5a4cbbf",
+      "head": "90ff657d7c9349831bd0baffe02717182a78dc4a",
+      "history_size": 39,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 7855,
+        "trials": 2
+      },
+      "merged_at": "2026-02-09T12:23:47Z",
+      "number": 7855,
+      "omitted": [],
+      "source_files": [
+        "tokio-util/src/task/abort_on_drop.rs",
+        "tokio-util/src/task/mod.rs",
+        "tokio-util/tests/abort_on_drop.rs"
+      ]
+    },
+    {
+      "base": "d89e998922724de80996802721e167d9ca24f4d7",
+      "base_time": "2026-02-06T14:08:04Z",
+      "base_tree": "b245735740aaf1e831e6a8f888cf8b02d5a6d726",
+      "head": "1debef2691c662403932fc1412f3fa60632c43bf",
+      "history_size": 61,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 7886,
+        "trials": 2
+      },
+      "merged_at": "2026-02-09T09:17:45Z",
+      "number": 7886,
+      "omitted": [],
+      "source_files": [
+        "tokio/src/sync/oneshot.rs",
+        "tokio/src/sync/tests/loom_oneshot.rs"
+      ]
+    },
+    {
+      "base": "c0943f99f091bbcc57a93c4533de2e75a9227f90",
+      "base_time": "2026-02-04T10:27:46Z",
+      "base_tree": "3e8076c35c56961d82f909037948b6e4e4a615be",
+      "head": "dd54946ac49109ce86a1ab1d00159ba906be2b72",
+      "history_size": 58,
+      "hit_at_10_means": {
+        "C": 0.5,
+        "E": 1.0,
+        "F": 1.0,
+        "pr": 7885,
+        "trials": 4
+      },
+      "merged_at": "2026-02-06T10:29:34Z",
+      "number": 7885,
+      "omitted": [],
+      "source_files": [
+        "tokio/src/signal/mod.rs",
+        "tokio/src/signal/registry.rs",
+        "tokio/src/signal/windows.rs",
+        "tokio/src/signal/windows/sys.rs"
+      ]
+    },
+    {
+      "base": "0a3e3862697d902cffd729506cb28f6007c204d1",
+      "base_time": "2025-12-28T11:01:05Z",
+      "base_tree": "2654add96e03f7975ed361aa0c5b736dfb8e84aa",
+      "head": "37f51a18dc949fdfc4c942b2b8f08a3407019c6e",
+      "history_size": 10,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.6666666666666666,
+        "F": 0.6666666666666666,
+        "pr": 7803,
+        "trials": 3
+      },
+      "merged_at": "2026-02-04T10:27:46Z",
+      "number": 7803,
+      "omitted": [],
+      "source_files": [
+        "tokio/src/runtime/handle.rs",
+        "tokio/src/runtime/mod.rs",
+        "tokio/src/runtime/runtime.rs",
+        "tokio/src/task/spawn.rs"
+      ]
+    },
+    {
+      "base": "9dc9b53ae164cdba6f14146cfe32d16fcdc562a0",
+      "base_time": "2026-01-30T18:52:57Z",
+      "base_tree": "20e594749bbbac3ed24324e284524e1dbfa3c0f6",
+      "head": "ee1c3ccdada0c89a95e1a1cad9d602d24b36d163",
+      "history_size": 54,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 7879,
+        "trials": 2
+      },
+      "merged_at": "2026-02-03T13:07:09Z",
+      "number": 7879,
+      "omitted": [],
+      "source_files": [
+        "tokio/src/runtime/scheduler/multi_thread/worker.rs",
+        "tokio/tests/rt_threaded.rs"
+      ]
+    },
+    {
+      "base": "8f6d0864c3158546c343e3fa34872ed584d46fd4",
+      "base_time": "2026-01-24T16:09:05Z",
+      "base_tree": "3c296d3dcea69291d3cd9744bcb774d02ffe6552",
+      "head": "edbf977bebf3d85cc5a2fe4f7f7196d0d821eace",
+      "history_size": 51,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 7871,
+        "trials": 2
+      },
+      "merged_at": "2026-01-30T18:52:57Z",
+      "number": 7871,
+      "omitted": [],
+      "source_files": [
+        "tokio/src/io/util/write_buf.rs",
+        "tokio/tests/io_write_buf.rs"
+      ]
+    },
+    {
+      "base": "8f6d0864c3158546c343e3fa34872ed584d46fd4",
+      "base_time": "2026-01-24T16:09:05Z",
+      "base_tree": "3c296d3dcea69291d3cd9744bcb774d02ffe6552",
+      "head": "200f6235a7b806a223ecabd6a746db89b3d7560f",
+      "history_size": 51,
+      "hit_at_10_means": {
+        "C": 1.0,
+        "E": 0.0,
+        "F": 1.0,
+        "pr": 7869,
+        "trials": 3
+      },
+      "merged_at": "2026-01-30T03:24:48Z",
+      "number": 7869,
+      "omitted": [],
+      "source_files": [
+        "tokio/src/signal/mod.rs",
+        "tokio/src/signal/unix.rs",
+        "tokio/src/signal/windows.rs"
+      ]
+    },
+    {
+      "base": "450fa2d09d63b18bf121b5edf453dee265ba5a00",
+      "base_time": "2026-01-19T12:51:47Z",
+      "base_tree": "8672ff71405b550ebad3b27d3bc77969524b0e8f",
+      "head": "ef3543cabe2fe169142a25f27a2424730cf109e5",
+      "history_size": 48,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 7856,
+        "trials": 2
+      },
+      "merged_at": "2026-01-24T16:09:05Z",
+      "number": 7856,
+      "omitted": [],
+      "source_files": [
+        "tests-build/tests/pass/impl_trait.rs",
+        "tokio-macros/src/entry.rs"
+      ]
+    },
+    {
+      "base": "8fd44d9bdc5af48c6d76aa4f3fddd45c18d0da43",
+      "base_time": "2026-01-20T21:05:01Z",
+      "base_tree": "14fdfbb645d9a58c1d59e35b8e89ecd916e873bb",
+      "head": "a2c7801e43dce11672b591bd2b6e1a96d3db5385",
+      "history_size": 49,
+      "hit_at_10_means": {
+        "C": 0.0,
+        "E": 0.0,
+        "F": 0.0,
+        "pr": 7866,
+        "trials": 2
+      },
+      "merged_at": "2026-01-22T13:54:44Z",
+      "number": 7866,
+      "omitted": [],
+      "source_files": [
+        "tests-build/tests/macros.rs",
+        "tests-build/tests/pass/use_builder_outer.rs",
+        "tokio-macros/src/entry.rs"
+      ]
+    }
+  ],
+  "trial_rule": "when more than 5 files are withholdable, keep the 5 with the smallest FNV-1a 64-bit hash of \"<pr>/<path>\", ties by path; otherwise keep all; trials run in listing order",
+  "trials": [
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 8159,
+      "withheld": "tokio-util/src/io/write_all_vectored.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 8159,
+      "withheld": "tokio-util/tests/io_write_all_vectored.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "pr": 8134,
+      "withheld": "tokio/tests/fs_uring_cancel_open.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 8134,
+      "withheld": "tokio/tests/fs_uring_completed_then_dropped_before_repoll.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "pr": 8134,
+      "withheld": "tokio/tests/fs_uring_runtime_shutdown.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 8124,
+      "withheld": "tokio/src/runtime/time_alt/entry.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 8124,
+      "withheld": "tokio/src/runtime/time_alt/timer.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 41
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 8131,
+      "withheld": "tokio/src/sync/mpsc/block.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 7
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 8131,
+      "withheld": "tokio/src/sync/mpsc/chan.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 8131,
+      "withheld": "tokio/src/sync/rwlock.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 7
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 14
+      },
+      "pr": 8131,
+      "withheld": "tokio/tests/sync_mpsc.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "pr": 8131,
+      "withheld": "tokio/tests/sync_rwlock.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 8110,
+      "withheld": "tokio-util/src/sync/cancellation_token.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 8110,
+      "withheld": "tokio-util/tests/sync_cancellation_token.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 12
+      },
+      "pr": 8117,
+      "withheld": "tokio/src/runtime/config.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 12
+      },
+      "pr": 8117,
+      "withheld": "tokio/src/runtime/mod.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 11
+      },
+      "pr": 8117,
+      "withheld": "tokio/src/runtime/task/mod.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 55
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 6
+      },
+      "pr": 8117,
+      "withheld": "tokio/src/runtime/tests/loom_multi_thread/queue.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 12
+      },
+      "pr": 8117,
+      "withheld": "tokio/tests/rt_unstable_metrics.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 8107,
+      "withheld": "tokio/src/runtime/time_alt/entry.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 8107,
+      "withheld": "tokio/src/runtime/time_alt/timer.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 20
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 20
+      },
+      "pr": 8096,
+      "withheld": "tokio-stream/src/stream_ext/filter.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 20
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 20
+      },
+      "pr": 8096,
+      "withheld": "tokio-stream/src/stream_ext/map.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 22
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 22
+      },
+      "pr": 8096,
+      "withheld": "tokio-stream/src/stream_ext/skip.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 22
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 22
+      },
+      "pr": 8096,
+      "withheld": "tokio-stream/src/stream_ext/skip_while.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 22
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 22
+      },
+      "pr": 8096,
+      "withheld": "tokio-stream/src/stream_ext/take_while.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 8097,
+      "withheld": "tokio/src/runtime/scheduler/multi_thread/queue.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 8097,
+      "withheld": "tokio/src/runtime/time/wheel/mod.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 8097,
+      "withheld": "tokio/src/runtime/time_alt/wheel/mod.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 8097,
+      "withheld": "tokio/src/sync/broadcast.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 8097,
+      "withheld": "tokio/src/util/sharded_list.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 8093,
+      "withheld": "tokio/src/runtime/time/wheel/mod.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 8093,
+      "withheld": "tokio/src/runtime/time_alt/wheel/mod.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 8090,
+      "withheld": "tokio-stream/src/stream_ext/fuse.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 8090,
+      "withheld": "tokio-stream/tests/stream_fuse.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 8077,
+      "withheld": "tokio/src/time/timeout.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 8077,
+      "withheld": "tokio/tests/time_panic.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 8057,
+      "withheld": "tokio/src/runtime/blocking/mod.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 8057,
+      "withheld": "tokio/src/runtime/blocking/pool.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 8057,
+      "withheld": "tokio/src/runtime/context.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "pr": 8057,
+      "withheld": "tokio/src/util/rand.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 8040,
+      "withheld": "tokio/src/runtime/task/trace/mod.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 8040,
+      "withheld": "tokio/src/runtime/task/trace/trace_impl.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 8040,
+      "withheld": "tokio/tests/task_trace_self.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 6
+      },
+      "pr": 7907,
+      "withheld": "tokio/src/fs/file.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 8
+      },
+      "pr": 7907,
+      "withheld": "tokio/src/fs/read_uring.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 6
+      },
+      "pr": 7907,
+      "withheld": "tokio/src/io/blocking.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 5
+      },
+      "pr": 7907,
+      "withheld": "tokio/src/io/uring/read.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7907,
+      "withheld": "tokio/src/io/uring/utils.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 8030,
+      "withheld": "tokio/src/net/unix/pipe.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 8030,
+      "withheld": "tokio/tests/net_unix_pipe.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 8025,
+      "withheld": "tokio/src/runtime/dump.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 8025,
+      "withheld": "tokio/src/runtime/task/trace/mod.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 8025,
+      "withheld": "tokio/tests/task_trace_self.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 15
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 17
+      },
+      "pr": 8029,
+      "withheld": "tokio/src/runtime/scheduler/multi_thread/queue.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 7
+      },
+      "pr": 8029,
+      "withheld": "tokio/src/runtime/scheduler/multi_thread/worker.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "pr": 7757,
+      "withheld": "tokio/src/runtime/blocking/mod.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 11
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 15
+      },
+      "pr": 7757,
+      "withheld": "tokio/src/runtime/blocking/pool.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7757,
+      "withheld": "tokio/src/runtime/context.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7757,
+      "withheld": "tokio/src/util/rand.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 5
+      },
+      "pr": 7992,
+      "withheld": "tokio/src/io/bsd/poll_aio.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 6
+      },
+      "pr": 7992,
+      "withheld": "tokio/tests/io_async_fd.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 6
+      },
+      "pr": 7992,
+      "withheld": "tokio/tests/io_async_fd_memory_leak.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "pr": 7992,
+      "withheld": "tokio/tests/io_poll_aio.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7992,
+      "withheld": "tokio/tests/net_unix_pipe.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 8010,
+      "withheld": "tokio/src/runtime/builder.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 7
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 18
+      },
+      "pr": 8010,
+      "withheld": "tokio/src/runtime/config.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 8010,
+      "withheld": "tokio/src/runtime/scheduler/multi_thread/park.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 8010,
+      "withheld": "tokio/src/runtime/scheduler/multi_thread/worker.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 8021,
+      "withheld": "tokio/src/sync/batch_semaphore.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 8021,
+      "withheld": "tokio/tests/sync_semaphore.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7983,
+      "withheld": "tokio/src/runtime/io/driver/uring.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 8001,
+      "withheld": "tokio/src/net/udp.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 8
+      },
+      "pr": 8001,
+      "withheld": "tokio/tests/udp.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 13
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 8
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 7431,
+      "withheld": "tokio/src/runtime/builder.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 10
+      },
+      "pr": 7431,
+      "withheld": "tokio/src/runtime/scheduler/multi_thread/queue.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7431,
+      "withheld": "tokio/src/runtime/scheduler/multi_thread/worker.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 54
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 73
+      },
+      "pr": 7431,
+      "withheld": "tokio/src/runtime/tests/loom_multi_thread/queue.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7431,
+      "withheld": "tokio/tests/rt_unstable_metrics.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 9
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 9
+      },
+      "pr": 7557,
+      "withheld": "tokio-macros/src/entry.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 9
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 9
+      },
+      "pr": 7557,
+      "withheld": "tokio-macros/src/lib.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 6
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 6
+      },
+      "pr": 7557,
+      "withheld": "tokio/src/runtime/builder.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7557,
+      "withheld": "tokio/src/runtime/local_runtime/runtime.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 20
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 20
+      },
+      "pr": 7557,
+      "withheld": "tokio/src/task/local.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 8003,
+      "withheld": "tokio/src/sync/mpsc/chan.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 8003,
+      "withheld": "tokio/tests/sync_mpsc.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 62
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": 76
+      },
+      "pr": 7924,
+      "withheld": "tokio-macros/src/entry.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7924,
+      "withheld": "tokio-macros/src/lib.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 45
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7924,
+      "withheld": "tokio/src/runtime/scheduler/current_thread/mod.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7924,
+      "withheld": "tokio/tests/macros_test.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": 108
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": 13
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 5
+      },
+      "pr": 7924,
+      "withheld": "tokio/tests/rt_basic.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7996,
+      "withheld": "tokio/src/sync/notify.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7996,
+      "withheld": "tokio/tests/sync_notify.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7987,
+      "withheld": "tokio/src/fs/open_options.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 4
+      },
+      "pr": 7987,
+      "withheld": "tokio/src/fs/open_options/uring_open_options.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7978,
+      "withheld": "tokio/src/runtime/mod.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7966,
+      "withheld": "tokio-stream/src/stream_ext/collect.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 7966,
+      "withheld": "tokio-stream/tests/stream_collect.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7921,
+      "withheld": "tokio/src/runtime/context.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7921,
+      "withheld": "tokio/src/runtime/mod.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7921,
+      "withheld": "tokio/src/runtime/scheduler/mod.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7921,
+      "withheld": "tokio/src/runtime/scheduler/multi_thread/worker.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7968,
+      "withheld": "tokio/src/fs/open_options.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7968,
+      "withheld": "tokio/src/fs/open_options/uring_open_options.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7954,
+      "withheld": "tokio-stream/src/stream_ext/collect.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7954,
+      "withheld": "tokio-stream/tests/stream_collect.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7902,
+      "withheld": "tokio/src/loom/mocked.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7902,
+      "withheld": "tokio/src/loom/std/mod.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7902,
+      "withheld": "tokio/src/runtime/task/id.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7902,
+      "withheld": "tokio/src/runtime/thread_id.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7922,
+      "withheld": "tokio/src/runtime/blocking/pool.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7922,
+      "withheld": "tokio/src/runtime/tests/loom_blocking.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7910,
+      "withheld": "tokio/src/runtime/blocking/pool.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7910,
+      "withheld": "tokio/tests/rt_unstable_metrics.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 7912,
+      "withheld": "tokio-util/src/codec/framed_impl.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7912,
+      "withheld": "tokio-util/tests/framed.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7904,
+      "withheld": "tokio/src/io/stderr.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7904,
+      "withheld": "tokio/src/io/stdout.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7895,
+      "withheld": "tokio-util/src/io/read_buf.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7895,
+      "withheld": "tokio/src/lib.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7895,
+      "withheld": "tokio/src/task/yield_now.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7855,
+      "withheld": "tokio-util/src/task/abort_on_drop.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7855,
+      "withheld": "tokio-util/tests/abort_on_drop.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7886,
+      "withheld": "tokio/src/sync/oneshot.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7886,
+      "withheld": "tokio/src/sync/tests/loom_oneshot.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 7885,
+      "withheld": "tokio/src/signal/mod.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7885,
+      "withheld": "tokio/src/signal/registry.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 3
+      },
+      "pr": 7885,
+      "withheld": "tokio/src/signal/windows.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 7885,
+      "withheld": "tokio/src/signal/windows/sys.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7803,
+      "withheld": "tokio/src/runtime/handle.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 2
+      },
+      "pr": 7803,
+      "withheld": "tokio/src/runtime/mod.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7803,
+      "withheld": "tokio/src/runtime/runtime.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7879,
+      "withheld": "tokio/src/runtime/scheduler/multi_thread/worker.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7879,
+      "withheld": "tokio/tests/rt_threaded.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7871,
+      "withheld": "tokio/src/io/util/write_buf.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7871,
+      "withheld": "tokio/tests/io_write_buf.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 5
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 7
+      },
+      "pr": 7869,
+      "withheld": "tokio/src/signal/mod.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7869,
+      "withheld": "tokio/src/signal/unix.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": true,
+        "rank": 1
+      },
+      "pr": 7869,
+      "withheld": "tokio/src/signal/windows.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7856,
+      "withheld": "tests-build/tests/pass/impl_trait.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7856,
+      "withheld": "tokio-macros/src/entry.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7866,
+      "withheld": "tests-build/tests/macros.rs"
+    },
+    {
+      "C": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "E": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "F": {
+        "hit_at_10": false,
+        "rank": "unranked"
+      },
+      "pr": 7866,
+      "withheld": "tokio-macros/src/entry.rs"
+    }
+  ],
+  "validity_threats": {
+    "circular_label": "the label is co-change, and E predicts from earlier co-change, which favors E",
+    "one_repository_per_language": "results cannot separate language from codebase",
+    "proxy_for_relevance": "co-changed files stand in for the files a reviewer needed",
+    "small_sample": "50 PRs per repository detect only large effects"
+  }
+}
