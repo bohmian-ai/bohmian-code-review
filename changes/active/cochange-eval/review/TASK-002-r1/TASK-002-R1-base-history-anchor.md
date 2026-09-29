@@ -29,3 +29,15 @@ At the existing `rank_e` owner, a remaining changed path contributes to E only w
 - Add one focused in-memory regression in the existing example target that distinguishes those two anchors and checks the resulting E and F ranks or unranked outcomes. Run its exact focused command and `mise run test:pipeline`, then the task's symbolic journey, formatting, lint, diff check, and gate lanes.
 
 The write set is `crates/bohmian-code-review-pipeline/examples/context_relevance/trial.rs`, including its inline test. The correction stays within the approved experiment. Do not add packing or model-exposure outcomes, other arms, a production co-change store, public API changes, or unrelated refactoring. Route this task directly to `$cr-implement`.
+
+## Implementation evidence
+
+Commit `b5d091c`. Write set: `crates/bohmian-code-review-pipeline/examples/context_relevance/trial.rs` only.
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| Absent-base remaining path yields no E contribution; F gets no E credit from it | `rank_e` filters remaining changes by `corpus.declarations` before counting history | `absent_base_changed_path_anchors_no_cochange`: E `[w 2/3, a 1/3]`; `evaluate` withheld `a` ranks C unranked, E 2, F 2 (RED before fix: `a` ranked E 1) | PASS |
+| Indexed remaining path still contributes `n(d,f)/n(d)`; exclusion, time filtering, C, selection, serialization intact | Filter only on the anchor; C, `excluded`, selection, `Trial` untouched | Same test (c anchors 2/3, 1/3); existing `cochange_and_fused_ranks_use_only_eligible_history`, C, selection and record tests pass | PASS |
+| Focused regression plus lanes | Inline test in the existing example target | `cargo test --locked -p bohmian-code-review-pipeline --example context_relevance --all-features` (24 passed); `mise run test:pipeline`, `test:symbolic-context:journey`, `fmt:check`, `lints`, `gate`, `git diff --check` all exit 0 | PASS |
+
+Non-goals held: no packing/model-exposure outcomes, extra arms, co-change store, public API, or production selector change.
