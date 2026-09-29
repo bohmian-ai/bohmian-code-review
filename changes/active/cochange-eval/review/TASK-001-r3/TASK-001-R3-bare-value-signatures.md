@@ -23,3 +23,15 @@ At the existing module import, import `Value` with `json`, and use bare `Value` 
 Expected write set: `crates/bohmian-code-review-pipeline/examples/context_relevance/main.rs` only. Preserve the sample, history, provider reads, request accounting, JSON bound, all failure paths, production crates, persisted formats, checked-in historical reports, and gate. Do not add ranking arms, final experiment reports, or a production co-change store.
 
 Acceptance: both new signatures use the imported bare `Value` type, and no qualified `serde_json::Value` remains in a signature in this example. A focused source inspection proves this syntax-only correction; no behavior test needs to be added. Run `mise run fmt:check`, `mise run lints`, `mise run test:pipeline`, `git diff --check`, and `mise run gate` on the cumulative candidate. Route directly to `$cr-implement`.
+
+## Implementation evidence
+
+Commit `90debdd`.
+
+| Acceptance criterion | Implementation evidence | Verification evidence | Result |
+|---|---|---|---|
+| Both new signatures use imported bare `Value`; no qualified `serde_json::Value` signature remains in the example | `main.rs:43` imports `serde_json::{Value, json}`; `run` (`:511`) and `record` (`:529`) return `Value` | `grep -rn "serde_json::Value" examples/context_relevance/` finds only the `Value::from` expressions at `main.rs:689,726` | PASS |
+| `print` → `run` → `record` flow and report behavior unchanged | Type spelling only | `mise run test:pipeline` (example target 24 passed) | PASS |
+| Formatting, lint, whitespace, gate | — | `mise run fmt:check`, `mise run lints`, `git diff --check`, `mise run gate`: all exit 0 | PASS |
+
+Write set: `main.rs` only, plus this evidence. Non-goals untouched: sample, history, provider reads, request accounting, JSON bound, production crates, reports, gate.
