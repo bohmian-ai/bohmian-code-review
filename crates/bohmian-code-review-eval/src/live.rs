@@ -1,9 +1,10 @@
-//! Co-change experiment: select each fixed repository's PR sample, read its
-//! time-eligible co-change history, and run its leave-one-out relevance
-//! trials through the real GitHub API, read-only.
+//! Co-change experiment: select each caller-supplied repository's PR
+//! sample, read its time-eligible co-change history, and run its
+//! leave-one-out relevance trials under caller-named rankers through the
+//! pipeline's GitHub client, read-only.
 //!
-//! `GITHUB_TOKEN` (required) is a read-only token. Each repository in
-//! [`REPOSITORIES`] has a fixed cutoff and source-language set.
+//! `GITHUB_TOKEN` (required) is a read-only token. Each [`Repository`] has
+//! a fixed cutoff and source-language set.
 //!
 //! For each repository the command reads every PR oldest-created first
 //! once, keeps merged default-branch PRs merged before the cutoff, reads
@@ -21,15 +22,11 @@
 //! source leaves memory.
 
 use crate::report::{
-    self, ADOPTION_THRESHOLD, BOOTSTRAP_SEED, DECISION_RULE, Effect, RESAMPLES, VALIDITY_THREATS,
-    Verdict,
+    self, ADOPTION_THRESHOLD, Arms, BOOTSTRAP_SEED, DECISION_RULE, Effect, Evaluation, RESAMPLES,
+    Summary, VALIDITY_THREATS, Verdict,
 };
-use crate::sample::{
-    Discovery, ListedPr, OmittedReason, SAMPLE_SIZE, SampleError, Screen, eligible,
-};
-use crate::trial::{
-    ARMS, BASELINE, DECISION_ARM, HIT_RANK, RARITY_RULE, TRIAL_RULE, Trial, evaluate,
-};
+use crate::sample::{Discovery, OmittedReason, SAMPLE_SIZE, SampleError, Screen, eligible};
+use crate::trial::{HIT_RANK, RARITY_RULE, TRIAL_RULE};
 use bohmian_code_review::{
     DF_CEILING, EXTRACTION_VERSION, FUSION_CONSTANT, Language, RelativePath, SymbolicContext,
     parse_hunks,
@@ -37,13 +34,10 @@ use bohmian_code_review::{
 use bohmian_code_review_pipeline::testing::{MemorySnapshotStore, MemoryStorage};
 use bohmian_code_review_pipeline::{
     ColdBuild, ColdBuildLimits, ColdBuildOutcome, FileOutcome, FileStatus, GitHubClient,
-    GitHubHost, History, HttpRequest, HttpTransport, Identity, InstallationId, InstallationToken,
-    Listing, ListingReads, MAX_LISTING_PAGES, MergedPr, ObjectSha, RepositoryIdentity,
-    RequestLimits, ReqwestTransport, SNAPSHOT_FORMAT_VERSION, Snapshot, SnapshotScope, Snapshots,
-    TenantId, is_timestamp,
+    GitHubHost, History, Identity, InstallationId, InstallationToken, Listing, ListingReads,
+    MAX_LISTING_PAGES, MergedPr, ObjectSha, RepositoryIdentity, RequestLimits,
+    SNAPSHOT_FORMAT_VERSION, Snapshot, SnapshotScope, Snapshots, TenantId,
 };
-use serde::Deserialize;
-use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 use std::env;
@@ -52,39 +46,15 @@ use std::error::Error;
 /// One evaluated repository.
 pub struct Repository {
     /// `<owner>/<name>`.
-    name: &'static str,
+    pub name: &'static str,
     /// Only PRs merged strictly before this time are sampled.
-    cutoff: &'static str,
+    pub cutoff: &'static str,
     /// Languages whose files are its source.
-    languages: &'static [Language],
+    pub languages: &'static [Language],
     /// Path suffixes its source is limited to, when the languages' routing
     /// admits more.
-    suffixes: Option<&'static [&'static str]>,
+    pub suffixes: Option<&'static [&'static str]>,
 }
-
-/// Repositories evaluated, with their fixed cutoffs and source languages.
-pub const REPOSITORIES: [Repository; 3] = [
-    Repository {
-        name: "pydantic/pydantic-ai",
-        cutoff: "2026-08-23T19:15:42Z",
-        languages: &[Language::Python],
-        suffixes: None,
-    },
-    Repository {
-        name: "tokio-rs/tokio",
-        cutoff: "2026-05-21T13:41:55Z",
-        languages: &[Language::Rust],
-        suffixes: None,
-    },
-    Repository {
-        name: "colinhacks/zod",
-        cutoff: "2026-09-01T00:00:00Z",
-        languages: &[Language::Typescript, Language::Tsx],
-        suffixes: Some(&[".ts", ".tsx"]),
-    },
-];
-/// PRs per discovery page, GitHub's maximum.
-const PRS_PER_PAGE: usize = 100;
 
 /// A qualifying PR with the inputs its relevance trials run on.
 struct Sampled {
@@ -96,27 +66,6 @@ struct Sampled {
     base_time: String,
     /// Complete declaration facts of its base commit.
     snapshot: Snapshot,
-}
-
-/// Wire shape of `GET /repos/{owner}/{repo}`.
-#[derive(Deserialize)]
-struct RepositoryWire {
-    id: u64,
-    default_branch: String,
-}
-
-/// Wire shape of `GET /repos/{owner}/{repo}/git/commits/{sha}`, reduced to
-/// the committer time.
-#[derive(Deserialize)]
-struct CommitTimeWire {
-    sha: String,
-    committer: CommitterWire,
-}
-
-/// Wire shape of a commit's committer.
-#[derive(Deserialize)]
-struct CommitterWire {
-    date: String,
 }
 
 /// Provider requests of one repository's run, by who would need them.
@@ -142,52 +91,18 @@ struct Selected {
     requests: Requests,
 }
 
-/// The read-only sampling command: the pipeline GitHub client and direct
-/// REST reads it does not offer.
+/// The read-only sampling command over the pipeline GitHub client, which
+/// owns every provider read.
 pub struct Api {
-    /// Transport for direct REST reads: `reqwest` live, a fake in tests.
-    direct: Box<dyn HttpTransport>,
-    /// Read-only token for direct REST reads.
-    token: String,
-    /// Pipeline client for PR file listings and base snapshots.
+    /// Pipeline client for discovery, listings, commits, blobs, and base
+    /// snapshots.
     client: GitHubClient,
 }
 
 impl Api {
-    /// GET `resource` from the public API once and decode its JSON body,
-    /// read no further than the client's `max_json_bytes` limit.
-    ///
-    /// # Errors
-    ///
-    /// Returns transport, non-200 status, oversize body, and decoding
-    /// failures. An oversize body fails at the chunk that would pass the
-    /// limit, before that chunk is buffered.
-    async fn get<T: DeserializeOwned>(&self, resource: &str) -> Result<T, Box<dyn Error>> {
-        let mut response = self
-            .direct
-            .get(HttpRequest {
-                url: format!("{}{resource}", GitHubHost::public().api_base()),
-                headers: vec![
-                    ("authorization", format!("Bearer {}", self.token)),
-                    ("accept", "application/vnd.github+json".to_owned()),
-                    ("x-github-api-version", "2022-11-28".to_owned()),
-                    ("user-agent", "bohmian-code-review-eval".to_owned()),
-                ],
-                timeout: RequestLimits::default().request_timeout,
-            })
-            .await?;
-        if response.status != 200 {
-            return Err(format!("GET {resource} returned status {}", response.status).into());
-        }
-        let limit = RequestLimits::default().max_json_bytes;
-        let mut bytes = Vec::new();
-        while let Some(chunk) = response.body.chunk().await? {
-            if chunk.len() > limit - bytes.len() {
-                return Err(format!("GET {resource} body exceeds {limit} bytes").into());
-            }
-            bytes.extend(chunk);
-        }
-        Ok(serde_json::from_slice(&bytes)?)
+    /// An [`Api`] over `client`.
+    pub fn new(client: GitHubClient) -> Api {
+        Api { client }
     }
 
     /// Build `pr`'s complete base snapshot in memory and read it back.
@@ -229,34 +144,6 @@ impl Api {
             .await?)
     }
 
-    /// Read `sha`'s committer time once.
-    ///
-    /// # Errors
-    ///
-    /// [`SampleError::UnusablePr`] for PR `number` when the provider returns
-    /// another commit or an unusable time, plus provider errors.
-    async fn base_time(
-        &self,
-        repository: &RepositoryIdentity,
-        number: u64,
-        sha: &ObjectSha,
-    ) -> Result<String, Box<dyn Error>> {
-        let wire: CommitTimeWire = self
-            .get(&format!(
-                "/repos/{}/git/commits/{sha}",
-                repository.full_name()
-            ))
-            .await?;
-        if wire.sha != sha.as_str() || !is_timestamp(&wire.committer.date) {
-            return Err(SampleError::UnusablePr {
-                number,
-                detail: format!("base commit {} at `{}`", wire.sha, wire.committer.date),
-            }
-            .into());
-        }
-        Ok(wire.committer.date)
-    }
-
     /// Qualify `pr` from one file listing, recorded in `listed` as history
     /// with its page requests, then from its base snapshot only when the listing alone could
     /// qualify.
@@ -296,8 +183,10 @@ impl Api {
             return Ok(None);
         }
         let base_time = self
-            .base_time(&identity.repository, pr.number, &pr.base)
-            .await?;
+            .client
+            .commit(&identity.repository, &pr.base)
+            .await?
+            .committed_at;
         Ok(Some(Sampled {
             pr: pr.clone(),
             screen,
@@ -306,9 +195,9 @@ impl Api {
         }))
     }
 
-    /// Run `sampled`'s trials against the part of `history` merged before
-    /// its base commit, fetching each head blob it needs that `cache` lacks
-    /// through the hash-verifying client.
+    /// Add `sampled`'s trials to `evaluation` against the part of `history`
+    /// merged before its base commit, fetching each head blob it needs that
+    /// `cache` lacks through the hash-verifying client.
     ///
     /// # Errors
     ///
@@ -321,7 +210,8 @@ impl Api {
         sampled: &Sampled,
         history: &History,
         cache: &mut BTreeMap<ObjectSha, Vec<u8>>,
-    ) -> Result<Vec<Trial>, Box<dyn Error>> {
+        evaluation: &mut Evaluation<'_>,
+    ) -> Result<(), Box<dyn Error>> {
         let head: Vec<(&RelativePath, &ObjectSha)> = sampled
             .screen
             .source
@@ -351,13 +241,14 @@ impl Api {
             .for_trial(sampled.pr.number, &sampled.base_time)
             .map(|pr| pr.paths.as_slice())
             .collect();
-        Ok(evaluate(
+        evaluation.add(
             sampled.pr.number,
             &sampled.snapshot.clone().into_context()?,
             &sampled.screen.source,
             &heads,
             &eligible,
-        )?)
+        )?;
+        Ok(())
     }
 
     /// Select `repo`'s identity, sample, and history: read every PR
@@ -374,28 +265,25 @@ impl Api {
             .name
             .split_once('/')
             .ok_or("repository must be <owner>/<name>")?;
-        let wire: RepositoryWire = self.get(&format!("/repos/{}", repo.name)).await?;
+        let (repository, described) = self.client.find_repository(owner, name).await?;
         let identity = Identity {
             tenant: TenantId::new("eval")?,
             installation: InstallationId::new(1)?,
-            repository: RepositoryIdentity::new(wire.id, owner, name)?,
+            repository,
         };
         let symbolic = SymbolicContext::new();
         let mut requests = Requests::default();
-        let mut discovery = Discovery::new(&wire.default_branch, repo.cutoff)?;
+        let mut discovery = Discovery::new(&described.default_branch, repo.cutoff)?;
         for page in 1.. {
-            let listed: Vec<ListedPr> = self
-                .get(&format!(
-                    "/repos/{}/pulls?state=all&sort=created&direction=asc&per_page={PRS_PER_PAGE}&page={page}",
-                    repo.name
-                ))
+            let listed = self
+                .client
+                .pull_requests(&identity.repository, page)
                 .await?;
             requests.listing_pages += 1;
-            let exhausted = listed.len() < PRS_PER_PAGE;
-            for pr in listed {
+            for pr in listed.prs {
                 discovery.offer(pr)?;
             }
-            if exhausted {
+            if !listed.has_next {
                 break;
             }
         }
@@ -451,38 +339,41 @@ impl Api {
 /// Returns a missing or unusable token and TLS initialisation failures.
 pub fn live() -> Result<Api, Box<dyn Error>> {
     let token = env::var("GITHUB_TOKEN").map_err(|_| "GITHUB_TOKEN is required")?;
-    let client = GitHubClient::new(
+    Ok(Api::new(GitHubClient::new(
         GitHubHost::public(),
         InstallationToken::new(&token)?,
         RequestLimits::default(),
-    )?;
-    Ok(Api {
-        direct: Box::new(ReqwestTransport::new()?),
-        token,
-        client,
-    })
+    )?))
 }
 
-/// Select every repository in `repos`, run its trials, and return every
-/// report only once all repositories succeed, so a failure leaves none.
-/// Each report records the repository-wide adoption decision.
+/// Select every repository in `repos`, run its trials under `arms`, and
+/// return every report only once all repositories succeed, so a failure
+/// leaves none. Each report records the repository-wide adoption decision.
 ///
 /// # Errors
 ///
 /// Returns sampling, history, provider, and trial failures.
-pub async fn run(api: &Api, repos: &[Repository]) -> Result<Vec<Value>, Box<dyn Error>> {
+pub async fn run(
+    api: &Api,
+    repos: &[Repository],
+    arms: Arms<'_>,
+) -> Result<Vec<Value>, Box<dyn Error>> {
     let mut records = Vec::new();
     for repo in repos {
         let selected = api.select(repo).await?;
         let mut cache = BTreeMap::new();
-        let mut trials = Vec::new();
+        let mut evaluation = Evaluation::new(arms);
         for sampled in &selected.sample {
-            trials.extend(
-                api.trials(&selected.repository, sampled, &selected.history, &mut cache)
-                    .await?,
-            );
+            api.trials(
+                &selected.repository,
+                sampled,
+                &selected.history,
+                &mut cache,
+                &mut evaluation,
+            )
+            .await?;
         }
-        records.push(record(repo, &selected, &trials));
+        records.push(record(repo, &selected, &evaluation.finish()));
     }
     let verdicts: Vec<Verdict> = records.iter().map(|(_, verdict)| *verdict).collect();
     let adopt = report::adopt(&verdicts);
@@ -495,10 +386,11 @@ pub async fn run(api: &Api, repos: &[Repository]) -> Result<Vec<Value>, Box<dyn 
         .collect())
 }
 
-/// `repo`'s source-free JSON report of `selected` and its `trials`, with
-/// its F − C verdict; the caller adds the repository-wide adoption.
-fn record(repo: &Repository, selected: &Selected, trials: &[Trial]) -> (Value, Verdict) {
-    let means = report::pr_means(trials);
+/// `repo`'s source-free JSON report of `selected` and its evaluated
+/// `summary`, with its decision verdict; the caller adds the
+/// repository-wide adoption.
+fn record(repo: &Repository, selected: &Selected, summary: &Summary) -> (Value, Verdict) {
+    let means = &summary.means;
     let prs: Vec<_> = selected
         .sample
         .iter()
@@ -527,16 +419,12 @@ fn record(repo: &Repository, selected: &Selected, trials: &[Trial]) -> (Value, V
         })
         .collect();
     let requests = &selected.requests;
-    let effects: BTreeMap<String, Value> = ARMS
+    let effects: BTreeMap<&String, Value> = summary
+        .effects
         .iter()
-        .map(|(id, _)| *id)
-        .filter(|id| *id != BASELINE)
-        .map(|id| {
-            let effect = report::effect(&means, id, BOOTSTRAP_SEED);
-            (format!("{id}-{BASELINE}"), effect_record(&effect))
-        })
+        .map(|(name, effect)| (name, effect_record(effect)))
         .collect();
-    let verdict = report::verdict(&report::effect(&means, DECISION_ARM, BOOTSTRAP_SEED));
+    let verdict = summary.verdict;
     let record = json!({
         "repository": repo.name,
         "cutoff": repo.cutoff,
@@ -568,7 +456,7 @@ fn record(repo: &Repository, selected: &Selected, trials: &[Trial]) -> (Value, V
         "fusion_constant": FUSION_CONSTANT,
         "hit_rank": HIT_RANK,
         "sample": prs,
-        "trials": trials,
+        "trials": summary.trials,
         "effects": effects,
         "decision": {
             "rule": DECISION_RULE,
@@ -591,28 +479,30 @@ fn effect_record(effect: &Effect) -> Value {
     })
 }
 
-/// Print every live report.
+/// Print every live report of `repos` under `arms`.
 ///
 /// # Errors
 ///
 /// Returns [`live`], [`run`], and serialisation failures.
-pub async fn print() -> Result<(), Box<dyn Error>> {
-    let records = run(&live()?, &REPOSITORIES).await?;
+pub async fn print(repos: &[Repository], arms: Arms<'_>) -> Result<(), Box<dyn Error>> {
+    let records = run(&live()?, repos, arms).await?;
     for record in records {
         println!("{}", serde_json::to_string_pretty(&record)?);
     }
     Ok(())
 }
 
-/// Command contract checks: the fixed repositories, and the whole
-/// selection, history, trial, and report path over a no-network fake
-/// GitHub that counts every provider read.
+/// Command contract checks: the whole selection, history, trial, and
+/// report path over a no-network fake GitHub that counts every provider
+/// read, and the crate's provider-IO boundary.
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bohmian_code_review::{CoChange, DEFAULT_RANKER, Ranker, RaritySymbol, SymbolOverlap};
     use bohmian_code_review_pipeline::testing::RoutedTransport;
     use bohmian_code_review_pipeline::{
-        BoxFuture, GitHubError, HistoryError, HttpResponse, TransportError,
+        BoxFuture, GitHubError, HistoryError, HttpRequest, HttpResponse, HttpTransport,
+        TransportError,
     };
     use sha1::{Digest, Sha1};
     use std::sync::Arc;
@@ -624,6 +514,19 @@ mod tests {
         languages: &[Language::Python],
         suffixes: None,
     };
+    /// The live experiment's arms.
+    const ARMS: [(&str, &dyn Ranker); 4] = [
+        ("S", &SymbolOverlap),
+        ("C", &RaritySymbol),
+        ("E", &CoChange),
+        ("F", &DEFAULT_RANKER),
+    ];
+
+    /// The live arms paired against C, deciding F.
+    fn arms() -> Arms<'static> {
+        Arms::new(&ARMS, "C", "F").expect("fixed arms are valid")
+    }
+
     /// Base `src/a.py`.
     const A: &[u8] = b"def alpha():\n    return 1\n";
     /// Base `src/b.py`, calling `alpha`.
@@ -688,10 +591,9 @@ mod tests {
     /// 16..=65 qualify, modifying `src/a.py` and `src/b.py` on base
     /// commits all holding one tree, and PR 40 lists them over two pages;
     /// PRs 1..=15 change docs only, and PR 15 is a 31-file mass edit
-    /// listed over two pages. Direct REST reads
-    /// and client reads have separate transports so each can be counted.
+    /// listed over two pages. Every read goes through the pipeline client's
+    /// one counted transport.
     struct Fake {
-        direct: Arc<RoutedTransport>,
         client: Arc<RoutedTransport>,
     }
 
@@ -699,12 +601,9 @@ mod tests {
         /// Route the whole fake repository.
         fn new() -> Fake {
             let fake = Fake {
-                direct: Arc::default(),
                 client: Arc::default(),
             };
             let tree = sha(0x7e5, 0);
-            fake.direct
-                .json("/repos/o/n", r#"{"id":1,"default_branch":"main"}"#);
             fake.client.json(
                 "/repos/o/n",
                 r#"{"id":1,"full_name":"o/n","default_branch":"main","private":false}"#,
@@ -716,7 +615,7 @@ mod tests {
                     "head": {"ref": "topic", "sha": sha(0x4ead, n)}})
                 })
                 .collect();
-            fake.direct.json(
+            fake.client.json(
                 "/repos/o/n/pulls?state=all&sort=created&direction=asc&per_page=100&page=1",
                 &serde_json::Value::from(listed).to_string(),
             );
@@ -748,10 +647,6 @@ mod tests {
             let changed = json!([a, b]).to_string();
             for n in 16..=65 {
                 let base = sha(0xba5e, n);
-                fake.direct.json(
-                    &format!("/repos/o/n/git/commits/{base}"),
-                    &json!({"sha": base, "committer": {"date": at(n, 0)}}).to_string(),
-                );
                 fake.client.json(
                     &format!("/repos/o/n/git/commits/{base}"),
                     &json!({"sha": base, "tree": {"sha": tree}, "committer": {"date": at(n, 0)}})
@@ -795,16 +690,21 @@ mod tests {
 
         /// An [`Api`] over this fake.
         fn api(&self) -> Api {
-            Api {
-                direct: Box::new(Shared(Arc::clone(&self.direct))),
-                token: "ghs_token".to_owned(),
-                client: GitHubClient::with_transport(
-                    GitHubHost::public(),
-                    InstallationToken::new("ghs_token").expect("token"),
-                    RequestLimits::default(),
-                    Box::new(Shared(Arc::clone(&self.client))),
-                ),
-            }
+            Api::new(GitHubClient::with_transport(
+                GitHubHost::public(),
+                InstallationToken::new("ghs_token").expect("token"),
+                RequestLimits::default(),
+                Box::new(Shared(Arc::clone(&self.client))),
+            ))
+        }
+
+        /// Client URLs requested ending with `suffix`.
+        fn reads(&self, suffix: &str) -> usize {
+            self.client
+                .seen()
+                .iter()
+                .filter(|url| url.ends_with(suffix))
+                .count()
         }
 
         /// Client URLs requested for PR file listings, in order.
@@ -817,28 +717,34 @@ mod tests {
         }
     }
 
-    /// One run over the fake reads the merged-PR listing once, each
-    /// needed PR file listing once (both pages of the history-only cold
-    /// mass edit and of the cached incremental PR 40), and each sampled
-    /// base commit's time once, with no provider read per trial; its report
+    /// One run over the fake discovers the repository and reads the all-PR
+    /// listing once, each needed PR file listing once (both pages of the
+    /// history-only cold mass edit and of the cached incremental PR 40),
+    /// and each sampled base commit once beyond its cold build, all through
+    /// the pipeline client, with no provider read per trial; its report
     /// counts every page request in cold, per-PR incremental, and aggregate
     /// incremental costs, apart from review and evaluation-only costs.
     #[tokio::test]
     async fn run_reads_each_input_once_and_reports_costs() {
         let fake = Fake::new();
-        let records = run(&fake.api(), &[FAKE]).await.expect("fake run succeeds");
+        let records = run(&fake.api(), &[FAKE], arms())
+            .await
+            .expect("fake run succeeds");
 
-        let mut direct = vec![
-            "https://api.github.com/repos/o/n".to_owned(),
-            "https://api.github.com/repos/o/n/pulls?state=all&sort=created&direction=asc&per_page=100&page=1".to_owned(),
-        ];
-        direct.extend((16..=65).rev().map(|n| {
-            format!(
-                "https://api.github.com/repos/o/n/git/commits/{}",
-                sha(0xba5e, n)
-            )
-        }));
-        assert_eq!(fake.direct.seen(), direct);
+        assert_eq!(
+            fake.client.seen().first().map(String::as_str),
+            Some("https://api.github.com/repos/o/n")
+        );
+        assert_eq!(
+            fake.reads("/pulls?state=all&sort=created&direction=asc&per_page=100&page=1"),
+            1
+        );
+        // Each sampled base is pinned once by its cold build and read once
+        // more for its evaluation-only committer time.
+        for n in 16..=65 {
+            let commit = format!("/git/commits/{}", sha(0xba5e, n));
+            assert_eq!(fake.reads(&commit), 2, "PR {n}");
+        }
         let page = |n, p| format!("https://api.github.com{}", files_page(n, p));
         let mut listings: Vec<_> = (16..=65)
             .rev()
@@ -886,7 +792,9 @@ mod tests {
     #[tokio::test]
     async fn run_report_is_complete_and_source_free() {
         let fake = Fake::new();
-        let records = run(&fake.api(), &[FAKE]).await.expect("fake run succeeds");
+        let records = run(&fake.api(), &[FAKE], arms())
+            .await
+            .expect("fake run succeeds");
         let [record] = records.as_slice() else {
             panic!("one report per repository");
         };
@@ -981,16 +889,30 @@ mod tests {
     /// no report.
     #[tokio::test]
     async fn run_fails_without_report_on_missing_incomplete_or_rate_limited_reads() {
-        let missing = Fake::new();
-        missing.direct.route(
-            &format!("/repos/o/n/git/commits/{}", sha(0xba5e, 40)),
-            404,
-            "",
-        );
-        let error = run(&missing.api(), &[FAKE])
-            .await
-            .expect_err("missing read fails");
-        assert!(error.to_string().contains("returned status 404"), "{error}");
+        let base = sha(0xba5e, 40);
+        let pinned =
+            json!({"sha": base, "tree": {"sha": sha(0x7e5, 0)}, "committer": {"date": at(40, 0)}});
+        let other = json!({"sha": sha(0xba5e, 41), "tree": {"sha": sha(0x7e5, 0)}, "committer": {"date": at(40, 0)}});
+        for (status, body) in [(404, String::new()), (200, other.to_string())] {
+            let missing = Fake::new();
+            missing.client.respond(
+                &format!("/repos/o/n/git/commits/{base}"),
+                vec![
+                    (200, Vec::new(), pinned.to_string().into_bytes()),
+                    (status, Vec::new(), body.into_bytes()),
+                ],
+            );
+            let error = run(&missing.api(), &[FAKE], arms())
+                .await
+                .expect_err("unusable base time fails");
+            assert!(
+                matches!(
+                    error.downcast_ref::<GitHubError>(),
+                    Some(GitHubError::NotFound { .. } | GitHubError::IdentityMismatch { .. })
+                ),
+                "{error}"
+            );
+        }
 
         for number in [14, 30] {
             let incomplete = Fake::new();
@@ -1004,7 +926,7 @@ mod tests {
                     )],
                 );
             }
-            let error = run(&incomplete.api(), &[FAKE])
+            let error = run(&incomplete.api(), &[FAKE], arms())
                 .await
                 .expect_err("incomplete listing fails");
             assert_eq!(
@@ -1028,7 +950,7 @@ mod tests {
                 Vec::new(),
             )],
         );
-        let error = run(&limited.api(), &[FAKE])
+        let error = run(&limited.api(), &[FAKE], arms())
             .await
             .expect_err("rate limit fails");
         assert!(
@@ -1040,59 +962,77 @@ mod tests {
         );
     }
 
-    /// A direct JSON body of exactly the client's `max_json_bytes` still
-    /// decodes; one byte more fails the run with no report. Repository
-    /// metadata, merged-PR pages, and commit times all read through
-    /// [`Api::get`], so this bounds each of them.
+    /// Repository discovery and the all-PR listing are verified pipeline
+    /// reads: a repository answering as another, or a listing entry merged
+    /// after its last update, fails the run with no report and no file
+    /// listing read.
     #[tokio::test]
-    async fn direct_json_is_bounded_by_the_client_limit() {
-        let limit = RequestLimits::default().max_json_bytes;
-        let padded = |len: usize| {
-            let mut body = r#"{"id":1,"default_branch":"main"}"#.to_owned();
-            body.push_str(&" ".repeat(len - body.len()));
-            body
-        };
-
-        let at_limit = Fake::new();
-        at_limit.direct.json("/repos/o/n", &padded(limit));
-        let wire: RepositoryWire = at_limit
-            .api()
-            .get("/repos/o/n")
-            .await
-            .expect("body at the limit decodes");
-        assert_eq!((wire.id, wire.default_branch.as_str()), (1, "main"));
-
-        let over = Fake::new();
-        over.direct.json("/repos/o/n", &padded(limit + 1));
-        let error = run(&over.api(), &[FAKE])
-            .await
-            .expect_err("oversize body fails");
-        assert_eq!(
-            error.to_string(),
-            format!("GET /repos/o/n body exceeds {limit} bytes")
+    async fn discovery_reads_are_verified_by_the_pipeline_client() {
+        let renamed = Fake::new();
+        renamed.client.json(
+            "/repos/o/n",
+            r#"{"id":1,"full_name":"x/y","default_branch":"main","private":false}"#,
         );
-        assert!(over.listing_reads().is_empty());
+        let error = run(&renamed.api(), &[FAKE], arms())
+            .await
+            .expect_err("another repository fails");
+        assert!(matches!(
+            error.downcast_ref::<GitHubError>(),
+            Some(GitHubError::IdentityMismatch { .. })
+        ));
+
+        let impossible = Fake::new();
+        impossible.client.json(
+            "/repos/o/n/pulls?state=all&sort=created&direction=asc&per_page=100&page=1",
+            &json!([{"number": 1, "updated_at": at(1, 0), "merged_at": at(1, 30),
+                "base": {"ref": "main", "sha": sha(0xba5e, 1)},
+                "head": {"ref": "topic", "sha": sha(0x4ead, 1)}}])
+            .to_string(),
+        );
+        let error = run(&impossible.api(), &[FAKE], arms())
+            .await
+            .expect_err("merge after update fails");
+        assert!(matches!(
+            error.downcast_ref::<GitHubError>(),
+            Some(GitHubError::MalformedResponse { .. })
+        ));
+        for fake in [renamed, impossible] {
+            assert!(fake.listing_reads().is_empty());
+        }
     }
 
-    /// Each fixed repository has a valid cutoff and a nonempty language
-    /// set, and the three samples are the approved ones.
+    /// Provider IO belongs to the pipeline: no production source of this
+    /// crate builds, authenticates, sends, or decodes a raw provider
+    /// request.
     #[test]
-    fn repositories_are_the_fixed_samples() {
-        let fixed: Vec<_> = REPOSITORIES
-            .iter()
-            .map(|repo| {
-                assert!(Discovery::new("main", repo.cutoff).is_ok(), "{}", repo.name);
-                assert!(!repo.languages.is_empty(), "{}", repo.name);
-                (repo.name, repo.cutoff)
-            })
-            .collect();
-        assert_eq!(
-            fixed,
-            [
-                ("pydantic/pydantic-ai", "2026-08-23T19:15:42Z"),
-                ("tokio-rs/tokio", "2026-05-21T13:41:55Z"),
-                ("colinhacks/zod", "2026-09-01T00:00:00Z"),
-            ]
-        );
+    fn eval_has_no_raw_provider_request_path() {
+        let sources = [
+            ("lib.rs", include_str!("lib.rs")),
+            ("live.rs", include_str!("live.rs")),
+            ("report.rs", include_str!("report.rs")),
+            ("sample.rs", include_str!("sample.rs")),
+            ("trial.rs", include_str!("trial.rs")),
+            (
+                "bin/context_relevance.rs",
+                include_str!("bin/context_relevance.rs"),
+            ),
+        ];
+        for (file, source) in sources {
+            let production = source.split("#[cfg(test)]").next().unwrap_or(source);
+            for raw in [
+                "HttpRequest",
+                "HttpTransport",
+                "ReqwestTransport",
+                "reqwest",
+                "api_base",
+                "authorization",
+                "Bearer",
+                "Deserialize",
+                "from_slice",
+                "/repos/",
+            ] {
+                assert!(!production.contains(raw), "{file} uses `{raw}`");
+            }
+        }
     }
 }

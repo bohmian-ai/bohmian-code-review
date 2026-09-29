@@ -1,20 +1,21 @@
 //! PR sample selection for the context-relevance evaluation.
 //!
-//! Discovery reads every PR oldest-created first before qualifying any, so
+//! Discovery reads every PR oldest-created first through the pipeline's
+//! verified [`ListedPullRequest`] pages before qualifying any, so
 //! activity during the read can only append to the listing, never shift a
 //! page already read. Merged PRs are then ordered by merge time descending,
 //! then PR number descending. Each is qualified in that order from its one
 //! file listing, its repository's source-language eligibility, and its base
 //! snapshot's declarations. Missing or malformed patches are file-local
-//! omissions; unusable identities, rejected entries, and incomplete
-//! listings fail the run. Listings and merged-PR identities are the
+//! omissions; duplicate PRs, rejected entries, and incomplete listings
+//! fail the run. Listings and merged-PR identities are the
 //! pipeline's history types.
 
 use bohmian_code_review::{Language, RelativePath, SymbolicContext, parse_hunks};
 use bohmian_code_review_pipeline::{
-    FileStatus, HistoryError, Listing, MergedPr, ObjectSha, PullRequestFile, is_timestamp,
+    FileStatus, HistoryError, ListedPullRequest, Listing, MergedPr, ObjectSha, PullRequestFile,
+    is_timestamp,
 };
-use serde::Deserialize;
 use std::collections::BTreeSet;
 use thiserror::Error;
 
@@ -28,14 +29,6 @@ const MAX_SOURCE_FILES: usize = 15;
 /// Why sampling cannot produce a trustworthy sample; the run stops.
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum SampleError {
-    /// A listed PR has an unusable number, commit, or timestamp.
-    #[error("PR #{number} is unusable: {detail}")]
-    UnusablePr {
-        /// PR number as listed.
-        number: u64,
-        /// What was wrong.
-        detail: String,
-    },
     /// The PR listing named one PR twice, so pages shifted mid-read.
     #[error("PR #{number} listed twice; the PR listing changed while it was read")]
     DuplicatePr {
@@ -64,31 +57,6 @@ pub enum SampleError {
         /// Qualifying PRs found.
         found: usize,
     },
-}
-
-/// Wire shape of one `GET /repos/{owner}/{repo}/pulls` entry.
-#[derive(Debug, Clone, Deserialize)]
-pub struct ListedPr {
-    /// PR number.
-    pub number: u64,
-    /// Last update time.
-    pub updated_at: String,
-    /// Merge time, absent when closed unmerged.
-    pub merged_at: Option<String>,
-    /// Base side.
-    pub base: ListedRef,
-    /// Head side.
-    pub head: ListedRef,
-}
-
-/// Wire shape of a listed PR's base or head.
-#[derive(Debug, Clone, Deserialize)]
-pub struct ListedRef {
-    /// Branch name.
-    #[serde(rename = "ref")]
-    pub name: String,
-    /// Commit id.
-    pub sha: String,
 }
 
 /// Merged PRs discovered so far, released in final sample order once the
@@ -122,46 +90,28 @@ impl Discovery {
         })
     }
 
-    /// Record one listed PR, keeping it only when it merged into the branch
-    /// before the cutoff.
+    /// Record one verified listed PR, keeping it only when it merged into
+    /// the branch before the cutoff.
     ///
     /// # Errors
     ///
-    /// [`SampleError::DuplicatePr`] for a number already offered and
-    /// [`SampleError::UnusablePr`] for an unusable number, update or merge
-    /// time, a merge time after the update time, or base/head commit.
-    pub fn offer(&mut self, listed: ListedPr) -> Result<(), SampleError> {
-        let number = listed.number;
-        let unusable = |detail: String| SampleError::UnusablePr { number, detail };
-        if number == 0 {
-            return Err(unusable("number 0".to_owned()));
-        }
-        if !self.seen.insert(number) {
-            return Err(SampleError::DuplicatePr { number });
-        }
-        if !is_timestamp(&listed.updated_at) {
-            return Err(unusable(format!("update time `{}`", listed.updated_at)));
+    /// [`SampleError::DuplicatePr`] for a number already offered.
+    pub fn offer(&mut self, listed: ListedPullRequest) -> Result<(), SampleError> {
+        if !self.seen.insert(listed.number) {
+            return Err(SampleError::DuplicatePr {
+                number: listed.number,
+            });
         }
         let Some(merged_at) = listed.merged_at else {
             return Ok(());
         };
-        if !is_timestamp(&merged_at) {
-            return Err(unusable(format!("merge time `{merged_at}`")));
-        }
-        if merged_at > listed.updated_at {
-            return Err(unusable(format!(
-                "merge time `{merged_at}` after update time `{}`",
-                listed.updated_at
-            )));
-        }
-        if listed.base.name != self.branch || merged_at >= self.cutoff {
+        if listed.base_branch != self.branch || merged_at >= self.cutoff {
             return Ok(());
         }
-        let commit = |sha: &str| ObjectSha::new(sha).map_err(|error| unusable(error.to_string()));
         self.pending.push(MergedPr {
-            number,
-            base: commit(&listed.base.sha)?,
-            head: commit(&listed.head.sha)?,
+            number: listed.number,
+            base: listed.base,
+            head: listed.head,
             merged_at,
         });
         Ok(())
@@ -306,17 +256,15 @@ mod tests {
     }
 
     /// A listed PR merged into `main` at `merged_at` (or unmerged).
-    fn listed(number: u64, updated_at: &str, merged_at: Option<&str>) -> ListedPr {
-        let side = |sha: &str| ListedRef {
-            name: "main".to_owned(),
-            sha: sha.repeat(40),
-        };
-        ListedPr {
+    fn listed(number: u64, updated_at: &str, merged_at: Option<&str>) -> ListedPullRequest {
+        let sha = |c: &str| ObjectSha::new(&c.repeat(40)).expect("fixture sha is valid");
+        ListedPullRequest {
             number,
             updated_at: updated_at.to_owned(),
             merged_at: merged_at.map(str::to_owned),
-            base: side("a"),
-            head: side("b"),
+            base_branch: "main".to_owned(),
+            base: sha("a"),
+            head: sha("b"),
         }
     }
 
@@ -359,28 +307,20 @@ mod tests {
             discovery.offer(pr).expect("usable PR");
         }
         let mut other = listed(6, "2026-01-07T00:00:00Z", Some("2026-01-07T00:00:00Z"));
-        other.base.name = "release".to_owned();
+        other.base_branch = "release".to_owned();
         discovery.offer(other).expect("usable PR");
         let numbers: Vec<_> = discovery.into_sample().iter().map(|pr| pr.number).collect();
         assert_eq!(numbers, [5, 4, 3]);
     }
 
-    /// Unusable identities, duplicates, and a bad cutoff stop the run.
+    /// Duplicates and a bad cutoff stop the run; unusable numbers, times,
+    /// and commits are rejected earlier by the pipeline's PR listing.
     #[test]
     fn discovery_fails_on_unusable_input() {
         assert_eq!(
             Discovery::new("main", "2026-01-10").err(),
             Some(SampleError::InvalidCutoff("2026-01-10".to_owned()))
         );
-        let mut discovery = Discovery::new("main", "2026-01-10T00:00:00Z").expect("valid cutoff");
-        let unusable = |result: Result<(), SampleError>| {
-            matches!(result, Err(SampleError::UnusablePr { number: 7, .. }))
-        };
-        assert!(unusable(discovery.offer(listed(7, "2026-01-09", None))));
-        let mut discovery = Discovery::new("main", "2026-01-10T00:00:00Z").expect("valid cutoff");
-        let mut bad = listed(7, "2026-01-09T00:00:00Z", Some("2026-01-09T00:00:00Z"));
-        bad.head.sha = "nope".to_owned();
-        assert!(unusable(discovery.offer(bad)));
         let mut discovery = Discovery::new("main", "2026-01-10T00:00:00Z").expect("valid cutoff");
         discovery
             .offer(listed(8, "2026-01-09T00:00:00Z", None))
@@ -513,8 +453,8 @@ mod tests {
         );
     }
 
-    /// Cutoff, update, and merge times must name real Gregorian UTC
-    /// instants; a real leap day is accepted and ordering is unchanged.
+    /// The cutoff must name a real Gregorian UTC instant; a real leap day is
+    /// accepted and ordering is unchanged.
     #[test]
     fn discovery_rejects_impossible_timestamps() {
         let impossible = [
@@ -536,22 +476,6 @@ mod tests {
                 Some(SampleError::InvalidCutoff(text.to_owned())),
                 "cutoff {text}"
             );
-            let mut discovery =
-                Discovery::new("main", "2030-01-01T00:00:00Z").expect("valid cutoff");
-            assert!(
-                matches!(
-                    discovery.offer(listed(9, text, None)),
-                    Err(SampleError::UnusablePr { number: 9, .. })
-                ),
-                "update {text}"
-            );
-            assert!(
-                matches!(
-                    discovery.offer(listed(10, "2026-01-10T00:00:00Z", Some(text))),
-                    Err(SampleError::UnusablePr { number: 10, .. })
-                ),
-                "merge {text}"
-            );
         }
         let mut discovery = Discovery::new("main", "2024-02-29T23:59:59Z").expect("leap day");
         for pr in [
@@ -563,29 +487,5 @@ mod tests {
         }
         let numbers: Vec<_> = discovery.into_sample().iter().map(|pr| pr.number).collect();
         assert_eq!(numbers, [12, 11, 13]);
-    }
-
-    /// A merge after the PR's last update is impossible provider data and
-    /// stops the run before the PR can be kept; equal times and an update
-    /// after merge are kept in the usual order.
-    #[test]
-    fn discovery_rejects_merge_after_update() {
-        let mut discovery = Discovery::new("main", "2026-01-10T00:00:00Z").expect("valid cutoff");
-        assert!(matches!(
-            discovery.offer(listed(
-                14,
-                "2026-01-05T00:00:00Z",
-                Some("2026-01-06T00:00:00Z")
-            )),
-            Err(SampleError::UnusablePr { number: 14, .. })
-        ));
-        for pr in [
-            listed(15, "2026-01-06T00:00:00Z", Some("2026-01-06T00:00:00Z")),
-            listed(16, "2026-01-06T00:00:00Z", Some("2026-01-04T00:00:00Z")),
-        ] {
-            discovery.offer(pr).expect("consistent chronology");
-        }
-        let numbers: Vec<_> = discovery.into_sample().iter().map(|pr| pr.number).collect();
-        assert_eq!(numbers, [15, 16]);
     }
 }

@@ -5,14 +5,14 @@
 //! changed file from its patch and head blob, and runs up to [`MAX_TRIALS`]
 //! trials chosen by [`TRIAL_RULE`]: the withheld file leaves the change set
 //! and stays a candidate at its base version, and every other changed path
-//! is excluded from the candidates. Every arm in [`ARMS`] is a public
-//! [`Ranker`] over the same [`bohmian_code_review::RankInput`]. Source is read only while a PR is
-//! evaluated; trials carry the withheld path and each arm's rank and hit@10
-//! only.
+//! is excluded from the candidates. Every arm is a caller-named public
+//! [`Ranker`] over the same [`bohmian_code_review::RankInput`]. Source is
+//! read only while a PR is evaluated; trials carry the withheld path and
+//! each arm's rank and hit@10 only.
 
 use bohmian_code_review::{
-    ChangedBlob, ChangedFile, CoChange, DEFAULT_RANKER, Error as SymbolicError, HeadFacts,
-    RankedFile, Ranker, RaritySymbol, RelativePath, SymbolOverlap, SymbolicContext, parse_hunks,
+    ChangedBlob, ChangedFile, Error as SymbolicError, HeadFacts, RankedFile, Ranker, RelativePath,
+    SymbolicContext, parse_hunks,
 };
 use bohmian_code_review_pipeline::{FileStatus, PullRequestFile};
 use serde::{Serialize, Serializer};
@@ -27,19 +27,8 @@ pub const MAX_TRIALS: usize = 5;
 pub const TRIAL_RULE: &str = "when more than 5 files are withholdable, keep the 5 with the smallest FNV-1a 64-bit hash of \"<pr>/<path>\", ties by path; otherwise keep all; trials run in listing order";
 /// Worst rank that is a hit.
 pub const HIT_RANK: usize = 10;
-/// The arm every effect is paired against.
-pub const BASELINE: &str = "C";
-/// The arm the adoption decision is about.
-pub const DECISION_ARM: &str = "F";
-/// Every arm by report id: S symbol overlap, C rarity-weighted symbols (the
-/// control), E co-change alone, and F the production default fusing C and
-/// E by reciprocal rank.
-pub const ARMS: [(&str, &dyn Ranker); 4] = [
-    ("S", &SymbolOverlap),
-    ("C", &RaritySymbol),
-    ("E", &CoChange),
-    ("F", &DEFAULT_RANKER),
-];
+/// Caller-named rankers, each arm's report id paired with its ranker.
+pub type Rankers<'a> = [(&'a str, &'a dyn Ranker)];
 
 /// Why a PR's trials cannot be run; the run stops.
 #[derive(Debug, Error)]
@@ -93,9 +82,9 @@ pub struct Trial {
     pub pr: u64,
     /// The withheld file, ranked at its base version.
     pub withheld: RelativePath,
-    /// Each arm's outcome by its id in [`ARMS`].
+    /// Each arm's outcome by its caller-given id.
     #[serde(flatten)]
-    pub arms: BTreeMap<&'static str, Outcome>,
+    pub arms: BTreeMap<String, Outcome>,
 }
 
 /// Serializes an absent rank as `"unranked"`.
@@ -257,24 +246,25 @@ fn chosen<'p>(pr: u64, paths: &[&'p RelativePath]) -> Vec<&'p RelativePath> {
 }
 
 /// Run the trial withholding `changes[withheld]` against `history` under
-/// every arm.
+/// every arm of `rankers`.
 fn trial(
     pr: u64,
     index: &SymbolicContext,
     changes: &[Change<'_>],
     withheld: usize,
     history: &[&[RelativePath]],
+    rankers: &Rankers<'_>,
 ) -> Trial {
     let target = &changes[withheld].file.path;
     let changed = remaining(changes, withheld);
     Trial {
         pr,
         withheld: target.clone(),
-        arms: ARMS
+        arms: rankers
             .iter()
             .map(|(id, ranker)| {
                 let ranked = index.rank_with(*ranker, &changed, history);
-                (*id, Outcome::of(&ranked, target))
+                ((*id).to_owned(), Outcome::of(&ranked, target))
             })
             .collect(),
     }
@@ -282,7 +272,7 @@ fn trial(
 
 /// Run PR `pr`'s trials over its changed files the listing marks modified
 /// and the base `index` declares, chosen by [`TRIAL_RULE`], in listing
-/// order.
+/// order, under every arm of `rankers`.
 ///
 /// `index` must be the PR's complete base snapshot read back, so persisted
 /// reference names cover every indexed file; `heads` holds the head blob of
@@ -300,6 +290,7 @@ pub fn evaluate(
     listed: &[PullRequestFile],
     heads: &BTreeMap<RelativePath, &[u8]>,
     history: &[&[RelativePath]],
+    rankers: &Rankers<'_>,
 ) -> Result<Vec<Trial>, TrialError> {
     let changes = listed
         .iter()
@@ -315,7 +306,7 @@ pub fn evaluate(
         .iter()
         .enumerate()
         .filter(|(_, change)| chosen.contains(&&change.file.path))
-        .map(|(withheld, _)| trial(pr, index, &changes, withheld, history))
+        .map(|(withheld, _)| trial(pr, index, &changes, withheld, history, rankers))
         .collect())
 }
 
@@ -325,9 +316,18 @@ pub fn evaluate(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bohmian_code_review::{CoChange, DEFAULT_RANKER, RaritySymbol, SymbolOverlap};
     use bohmian_code_review_pipeline::{History, HistoryError, MergedPr, ObjectSha};
     use serde_json::json;
     use std::collections::BTreeSet;
+
+    /// The live experiment's arms.
+    const ARMS: [(&str, &dyn Ranker); 4] = [
+        ("S", &SymbolOverlap),
+        ("C", &RaritySymbol),
+        ("E", &CoChange),
+        ("F", &DEFAULT_RANKER),
+    ];
 
     /// Canonical fixture path.
     fn path(raw: &str) -> RelativePath {
@@ -454,7 +454,7 @@ mod tests {
                 b"def render():\n    return Model\n".as_slice(),
             ),
         ]);
-        let trials = evaluate(9, &index, &files, &heads, &[]).expect("trials");
+        let trials = evaluate(9, &index, &files, &heads, &[], &ARMS).expect("trials");
         assert_eq!(
             trials
                 .iter()
@@ -529,14 +529,14 @@ mod tests {
                 )
             })
             .collect();
-        let run = || evaluate(3, &index, &files, &heads, &[]).expect("trials");
+        let run = || evaluate(3, &index, &files, &heads, &[], &ARMS).expect("trials");
         let trials = run();
         assert_eq!(
             trials.iter().map(|t| &t.withheld).collect::<Vec<_>>(),
             picked
         );
         assert_eq!(trials, run());
-        let five = evaluate(3, &index, &files[..5], &heads, &[]).expect("trials");
+        let five = evaluate(3, &index, &files[..5], &heads, &[], &ARMS).expect("trials");
         assert_eq!(five.len(), 5);
     }
 
@@ -595,7 +595,7 @@ mod tests {
             assert_eq!(path, want);
             assert!((score - want_score).abs() < 1e-12);
         }
-        let trials = evaluate(1, &index, &files, &heads, &[]).expect("trials");
+        let trials = evaluate(1, &index, &files, &heads, &[], &ARMS).expect("trials");
         assert_eq!(rank(withheld(&trials, "pkg/models.py"), "C"), Some(3));
 
         let rust = base_index(&[
@@ -644,7 +644,7 @@ mod tests {
                     .as_slice(),
             ),
         ]);
-        let trials = evaluate(2, &rust, &files, &heads, &[]).expect("trials");
+        let trials = evaluate(2, &rust, &files, &heads, &[], &ARMS).expect("trials");
         // user's read_all resolves upstream to io and alt equally; alt
         // wins the tie by path.
         assert_eq!(rank(withheld(&trials, "tokio/src/io.rs"), "C"), Some(2));
@@ -652,7 +652,7 @@ mod tests {
         let mut missing = heads.clone();
         missing.remove(&path("tokio/src/user.rs"));
         assert!(matches!(
-            evaluate(2, &rust, &files, &missing, &[]),
+            evaluate(2, &rust, &files, &missing, &[], &ARMS),
             Err(TrialError::MissingSource { pr: 2, .. })
         ));
     }
@@ -689,7 +689,7 @@ mod tests {
             ),
         ]);
         assert!(matches!(
-            evaluate(5, &index, &files, &heads, &[]),
+            evaluate(5, &index, &files, &heads, &[], &ARMS),
             Err(TrialError::Symbolic { pr: 5, .. })
         ));
     }
@@ -786,7 +786,7 @@ mod tests {
         assert_eq!(f[0].1, 1.0 / 61.0);
         assert_eq!(f[3].1, 1.0 / 63.0);
 
-        let trials = evaluate(99, &index, &files, &heads, &eligible).expect("trials");
+        let trials = evaluate(99, &index, &files, &heads, &eligible, &ARMS).expect("trials");
         let a = withheld(&trials, "pkg/a.py");
         assert_eq!(
             (rank(a, "C"), rank(a, "E"), rank(a, "F")),
@@ -796,7 +796,7 @@ mod tests {
             .for_trial(99, "2026-01-13T13:00:00Z")
             .map(|pr| pr.paths.as_slice())
             .collect();
-        let with_future = evaluate(99, &index, &files, &heads, &leaked).expect("trials");
+        let with_future = evaluate(99, &index, &files, &heads, &leaked, &ARMS).expect("trials");
         assert_ne!(with_future, trials);
     }
 
@@ -836,7 +836,7 @@ mod tests {
         assert!((e[0].1 - 2.0 / 3.0).abs() < 1e-12);
         assert!((e[1].1 - 1.0 / 3.0).abs() < 1e-12);
 
-        let trials = evaluate(7, &index, &files, &heads, &history).expect("trials");
+        let trials = evaluate(7, &index, &files, &heads, &history, &ARMS).expect("trials");
         let a = withheld(&trials, "pkg/a.py");
         assert_eq!(
             (rank(a, "C"), rank(a, "E"), rank(a, "F")),
@@ -866,10 +866,10 @@ mod tests {
             pr: 7,
             withheld: path("pkg/f10.py"),
             arms: BTreeMap::from([
-                ("S", unranked),
-                ("C", unranked),
-                ("E", tenth),
-                ("F", eleventh),
+                ("S".to_owned(), unranked),
+                ("C".to_owned(), unranked),
+                ("E".to_owned(), tenth),
+                ("F".to_owned(), eleventh),
             ]),
         };
         assert_eq!(
@@ -883,6 +883,5 @@ mod tests {
                 "F": {"rank": 11, "hit_at_10": false},
             })
         );
-        assert_eq!(ARMS.map(|(id, _)| id), ["S", "C", "E", "F"]);
     }
 }
