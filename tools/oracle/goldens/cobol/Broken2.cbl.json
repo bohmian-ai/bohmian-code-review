@@ -1,0 +1,81 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:cobol/Broken2.cbl",
+      "target": "module:968b3edd89d865fd9c9312e7de95a298"
+    },
+    {
+      "kind": "contains",
+      "source": "module:968b3edd89d865fd9c9312e7de95a298",
+      "target": "variable:5494df9d076cad08b7d09a481f1b1377"
+    },
+    {
+      "kind": "contains",
+      "source": "module:968b3edd89d865fd9c9312e7de95a298",
+      "target": "function:710a294c5a9f982d1b8fab72d4841567"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 12,
+      "filePath": "cobol/Broken2.cbl",
+      "id": "file:cobol/Broken2.cbl",
+      "isExported": false,
+      "kind": "file",
+      "language": "cobol",
+      "name": "Broken2.cbl",
+      "qualifiedName": "cobol/Broken2.cbl",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 27,
+      "endLine": 9,
+      "filePath": "cobol/Broken2.cbl",
+      "id": "module:968b3edd89d865fd9c9312e7de95a298",
+      "kind": "module",
+      "language": "cobol",
+      "name": "GOODPROG",
+      "qualifiedName": "GOODPROG",
+      "startColumn": 7,
+      "startLine": 1
+    },
+    {
+      "endColumn": 27,
+      "endLine": 5,
+      "filePath": "cobol/Broken2.cbl",
+      "id": "variable:5494df9d076cad08b7d09a481f1b1377",
+      "kind": "variable",
+      "language": "cobol",
+      "name": "WS-GOOD",
+      "qualifiedName": "GOODPROG::WS-GOOD",
+      "signature": "01 WS-GOOD PIC X(10)",
+      "startColumn": 7,
+      "startLine": 5
+    },
+    {
+      "endColumn": 12,
+      "endLine": 9,
+      "filePath": "cobol/Broken2.cbl",
+      "id": "function:710a294c5a9f982d1b8fab72d4841567",
+      "kind": "function",
+      "language": "cobol",
+      "name": "MAIN",
+      "qualifiedName": "GOODPROG::MAIN",
+      "startColumn": 7,
+      "startLine": 7
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 23,
+      "fromNodeId": "function:710a294c5a9f982d1b8fab72d4841567",
+      "line": 8,
+      "referenceKind": "references",
+      "referenceName": "WS-GOOD"
+    }
+  ]
+}

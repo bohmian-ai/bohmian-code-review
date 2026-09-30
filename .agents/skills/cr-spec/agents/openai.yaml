@@ -1,0 +1,4 @@
+interface:
+  display_name: "Code Review Spec"
+  short_description: "Define review-helper behavior and constraints"
+  default_prompt: "Use $cr-spec to draft a decision-complete bohmian-code-review change specification for my approval."

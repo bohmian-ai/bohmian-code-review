@@ -1,0 +1,95 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:solidity/Unicode.sol",
+      "target": "class:e7bd6c6b498488337d0414c486862c43"
+    },
+    {
+      "kind": "contains",
+      "source": "class:e7bd6c6b498488337d0414c486862c43",
+      "target": "field:9c48b21ff287a3fd5f6720a4e74c9c8b"
+    },
+    {
+      "kind": "contains",
+      "source": "class:e7bd6c6b498488337d0414c486862c43",
+      "target": "method:3d266c542579cd3c65c8b9f870d78382"
+    },
+    {
+      "kind": "contains",
+      "source": "class:e7bd6c6b498488337d0414c486862c43",
+      "target": "method:ea18bacebf92d26153dec724a00d3231"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 16,
+      "filePath": "solidity/Unicode.sol",
+      "id": "file:solidity/Unicode.sol",
+      "isExported": false,
+      "kind": "file",
+      "language": "solidity",
+      "name": "Unicode.sol",
+      "qualifiedName": "solidity/Unicode.sol",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 1,
+      "endLine": 15,
+      "filePath": "solidity/Unicode.sol",
+      "id": "class:e7bd6c6b498488337d0414c486862c43",
+      "kind": "class",
+      "language": "solidity",
+      "name": "Unicode",
+      "qualifiedName": "Unicode",
+      "startColumn": 0,
+      "startLine": 5
+    },
+    {
+      "endColumn": 45,
+      "endLine": 6,
+      "filePath": "solidity/Unicode.sol",
+      "id": "field:9c48b21ff287a3fd5f6720a4e74c9c8b",
+      "isStatic": false,
+      "kind": "field",
+      "language": "solidity",
+      "name": "message",
+      "qualifiedName": "Unicode::message",
+      "startColumn": 4,
+      "startLine": 6,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 5,
+      "endLine": 10,
+      "filePath": "solidity/Unicode.sol",
+      "id": "method:3d266c542579cd3c65c8b9f870d78382",
+      "kind": "method",
+      "language": "solidity",
+      "name": "setMessage",
+      "qualifiedName": "Unicode::setMessage",
+      "signature": "(string memory newMessage) public",
+      "startColumn": 4,
+      "startLine": 8,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 5,
+      "endLine": 14,
+      "filePath": "solidity/Unicode.sol",
+      "id": "method:ea18bacebf92d26153dec724a00d3231",
+      "kind": "method",
+      "language": "solidity",
+      "name": "getMessage",
+      "qualifiedName": "Unicode::getMessage",
+      "signature": "() public view returns (string memory)",
+      "startColumn": 4,
+      "startLine": 12,
+      "visibility": "public"
+    }
+  ],
+  "unresolvedReferences": []
+}

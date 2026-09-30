@@ -1,0 +1,20 @@
+{
+  "edges": [],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 1,
+      "filePath": "cfquery/Empty.sql",
+      "id": "file:cfquery/Empty.sql",
+      "isExported": false,
+      "kind": "file",
+      "language": "cfquery",
+      "name": "Empty.sql",
+      "qualifiedName": "cfquery/Empty.sql",
+      "startColumn": 0,
+      "startLine": 1
+    }
+  ],
+  "unresolvedReferences": []
+}

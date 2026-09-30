@@ -1,0 +1,57 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:cfscript/Broken.cfs",
+      "target": "class:ff74c69b09bbf4c1d1a84c301f8c4baa"
+    },
+    {
+      "kind": "contains",
+      "source": "class:ff74c69b09bbf4c1d1a84c301f8c4baa",
+      "target": "function:1e102429838d20a013d96c59341d9dcd"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 8,
+      "filePath": "cfscript/Broken.cfs",
+      "id": "file:cfscript/Broken.cfs",
+      "isExported": false,
+      "kind": "file",
+      "language": "cfscript",
+      "name": "Broken.cfs",
+      "qualifiedName": "cfscript/Broken.cfs",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 1,
+      "endLine": 7,
+      "filePath": "cfscript/Broken.cfs",
+      "id": "class:ff74c69b09bbf4c1d1a84c301f8c4baa",
+      "kind": "class",
+      "language": "cfscript",
+      "name": "Broken",
+      "qualifiedName": "cfscript/Broken.cfs::Broken",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "docstring": "unterminated parameters",
+      "endColumn": 5,
+      "endLine": 6,
+      "filePath": "cfscript/Broken.cfs",
+      "id": "function:1e102429838d20a013d96c59341d9dcd",
+      "kind": "function",
+      "language": "cfscript",
+      "name": "ok",
+      "qualifiedName": "Broken::ok",
+      "signature": "()",
+      "startColumn": 4,
+      "startLine": 4
+    }
+  ],
+  "unresolvedReferences": []
+}

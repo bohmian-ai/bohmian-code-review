@@ -1,0 +1,39 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:nix/Broken.nix",
+      "target": "variable:4b3678ff9dbca4a28e2c497482b62e22"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 9,
+      "filePath": "nix/Broken.nix",
+      "id": "file:nix/Broken.nix",
+      "isExported": false,
+      "kind": "file",
+      "language": "nix",
+      "name": "Broken.nix",
+      "qualifiedName": "nix/Broken.nix",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 11,
+      "endLine": 6,
+      "filePath": "nix/Broken.nix",
+      "id": "variable:4b3678ff9dbca4a28e2c497482b62e22",
+      "isExported": false,
+      "kind": "variable",
+      "language": "nix",
+      "name": "x",
+      "qualifiedName": "x",
+      "startColumn": 10,
+      "startLine": 6
+    }
+  ],
+  "unresolvedReferences": []
+}

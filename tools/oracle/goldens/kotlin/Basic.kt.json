@@ -1,0 +1,120 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:kotlin/Basic.kt",
+      "target": "namespace:2b11a7f3929725648e20217a18579aa4"
+    },
+    {
+      "kind": "contains",
+      "source": "namespace:2b11a7f3929725648e20217a18579aa4",
+      "target": "class:43e10f7f503e4965d4168c994da7b932"
+    },
+    {
+      "kind": "contains",
+      "source": "class:43e10f7f503e4965d4168c994da7b932",
+      "target": "method:bb942a0771cb4770e5a610ce74c0413d"
+    },
+    {
+      "kind": "contains",
+      "source": "namespace:2b11a7f3929725648e20217a18579aa4",
+      "target": "function:1e12da9fd62e3024462f7f5c9c5c5fb1"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 12,
+      "filePath": "kotlin/Basic.kt",
+      "id": "file:kotlin/Basic.kt",
+      "isExported": false,
+      "kind": "file",
+      "language": "kotlin",
+      "name": "Basic.kt",
+      "qualifiedName": "kotlin/Basic.kt",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 12,
+      "endLine": 1,
+      "filePath": "kotlin/Basic.kt",
+      "id": "namespace:2b11a7f3929725648e20217a18579aa4",
+      "kind": "namespace",
+      "language": "kotlin",
+      "name": "demo",
+      "qualifiedName": "demo",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 1,
+      "endLine": 7,
+      "filePath": "kotlin/Basic.kt",
+      "id": "class:43e10f7f503e4965d4168c994da7b932",
+      "kind": "class",
+      "language": "kotlin",
+      "name": "Circle",
+      "qualifiedName": "demo::Circle",
+      "startColumn": 0,
+      "startLine": 3,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 5,
+      "endLine": 6,
+      "filePath": "kotlin/Basic.kt",
+      "id": "method:bb942a0771cb4770e5a610ce74c0413d",
+      "isAsync": false,
+      "isStatic": false,
+      "kind": "method",
+      "language": "kotlin",
+      "name": "area",
+      "qualifiedName": "demo::Circle::area",
+      "returnType": "Double",
+      "startColumn": 4,
+      "startLine": 4,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 1,
+      "endLine": 11,
+      "filePath": "kotlin/Basic.kt",
+      "id": "function:1e12da9fd62e3024462f7f5c9c5c5fb1",
+      "isAsync": false,
+      "isStatic": false,
+      "kind": "function",
+      "language": "kotlin",
+      "name": "make",
+      "qualifiedName": "demo::make",
+      "returnType": "Circle",
+      "startColumn": 0,
+      "startLine": 9,
+      "visibility": "public"
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 43,
+      "fromNodeId": "class:43e10f7f503e4965d4168c994da7b932",
+      "line": 3,
+      "referenceKind": "extends",
+      "referenceName": "Shape"
+    },
+    {
+      "column": 15,
+      "fromNodeId": "method:bb942a0771cb4770e5a610ce74c0413d",
+      "line": 5,
+      "referenceKind": "references",
+      "referenceName": "Math"
+    },
+    {
+      "column": 11,
+      "fromNodeId": "function:1e12da9fd62e3024462f7f5c9c5c5fb1",
+      "line": 10,
+      "referenceKind": "calls",
+      "referenceName": "Circle"
+    }
+  ]
+}

@@ -1,0 +1,91 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:cobol/Free.cbl",
+      "target": "module:11d7aaaa74a3b9e11c47b85f176828a6"
+    },
+    {
+      "kind": "contains",
+      "source": "module:11d7aaaa74a3b9e11c47b85f176828a6",
+      "target": "variable:7732f0c87c8f3e702514ddd8ebbdaadd"
+    },
+    {
+      "kind": "contains",
+      "source": "variable:7732f0c87c8f3e702514ddd8ebbdaadd",
+      "target": "field:19d736c5743aa5ead1bd4444380d2121"
+    },
+    {
+      "kind": "contains",
+      "source": "module:11d7aaaa74a3b9e11c47b85f176828a6",
+      "target": "function:8ddccd22a9bd2e325652327e4d1176ac"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 11,
+      "filePath": "cobol/Free.cbl",
+      "id": "file:cobol/Free.cbl",
+      "isExported": false,
+      "kind": "file",
+      "language": "cobol",
+      "name": "Free.cbl",
+      "qualifiedName": "cobol/Free.cbl",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 20,
+      "endLine": 10,
+      "filePath": "cobol/Free.cbl",
+      "id": "module:11d7aaaa74a3b9e11c47b85f176828a6",
+      "kind": "module",
+      "language": "cobol",
+      "name": "FREE",
+      "qualifiedName": "FREE",
+      "startColumn": 7,
+      "startLine": 1
+    },
+    {
+      "endColumn": 17,
+      "endLine": 6,
+      "filePath": "cobol/Free.cbl",
+      "id": "variable:7732f0c87c8f3e702514ddd8ebbdaadd",
+      "kind": "variable",
+      "language": "cobol",
+      "name": "WS-ITEM",
+      "qualifiedName": "FREE::WS-ITEM",
+      "signature": "01 WS-ITEM",
+      "startColumn": 7,
+      "startLine": 5
+    },
+    {
+      "endColumn": 30,
+      "endLine": 6,
+      "filePath": "cobol/Free.cbl",
+      "id": "field:19d736c5743aa5ead1bd4444380d2121",
+      "kind": "field",
+      "language": "cobol",
+      "name": "WS-CODE",
+      "qualifiedName": "FREE::WS-ITEM::WS-CODE",
+      "signature": "05 WS-CODE PIC X(10)",
+      "startColumn": 10,
+      "startLine": 6
+    },
+    {
+      "endColumn": 12,
+      "endLine": 10,
+      "filePath": "cobol/Free.cbl",
+      "id": "function:8ddccd22a9bd2e325652327e4d1176ac",
+      "kind": "function",
+      "language": "cobol",
+      "name": "MAIN",
+      "qualifiedName": "FREE::MAIN",
+      "startColumn": 7,
+      "startLine": 8
+    }
+  ],
+  "unresolvedReferences": []
+}

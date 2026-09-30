@@ -1,0 +1,400 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:vbnet/Basic.vb",
+      "target": "namespace:c8b05570fdca6ae3ddbf95ad3ace84cf"
+    },
+    {
+      "kind": "contains",
+      "source": "namespace:c8b05570fdca6ae3ddbf95ad3ace84cf",
+      "target": "import:d7ce7be4ffc7ec68cfe51b76c2b799cf"
+    },
+    {
+      "kind": "contains",
+      "source": "namespace:c8b05570fdca6ae3ddbf95ad3ace84cf",
+      "target": "import:ceb6bbc0462cb5f4a2c53167e18b90ed"
+    },
+    {
+      "kind": "contains",
+      "source": "namespace:c8b05570fdca6ae3ddbf95ad3ace84cf",
+      "target": "class:7ee7196ee3b818d6b93a3d07d8695fab"
+    },
+    {
+      "kind": "contains",
+      "source": "class:7ee7196ee3b818d6b93a3d07d8695fab",
+      "target": "field:b590d4e50d7dc32fc27494be87417fd7"
+    },
+    {
+      "kind": "contains",
+      "source": "class:7ee7196ee3b818d6b93a3d07d8695fab",
+      "target": "field:4eeddf42764c47f934a845ea1e2985dd"
+    },
+    {
+      "kind": "contains",
+      "source": "class:7ee7196ee3b818d6b93a3d07d8695fab",
+      "target": "field:45d1b97e388930a938251efa51dfa576"
+    },
+    {
+      "kind": "contains",
+      "source": "class:7ee7196ee3b818d6b93a3d07d8695fab",
+      "target": "property:ea28d670fb8ebbfb6328529e2440ad8c"
+    },
+    {
+      "kind": "contains",
+      "source": "class:7ee7196ee3b818d6b93a3d07d8695fab",
+      "target": "field:fba2d95c228466a4c7232f855eaf2dbb"
+    },
+    {
+      "kind": "contains",
+      "source": "class:7ee7196ee3b818d6b93a3d07d8695fab",
+      "target": "method:cbd669ed5be1724ddc3baf1952d66916"
+    },
+    {
+      "kind": "contains",
+      "source": "class:7ee7196ee3b818d6b93a3d07d8695fab",
+      "target": "method:ef29dbecc9e61b54793aaa3ed9b5cb60"
+    },
+    {
+      "kind": "contains",
+      "source": "class:7ee7196ee3b818d6b93a3d07d8695fab",
+      "target": "method:8891ef73c36e30aa27f2fa6c384d1955"
+    },
+    {
+      "kind": "contains",
+      "source": "namespace:c8b05570fdca6ae3ddbf95ad3ace84cf",
+      "target": "struct:85bfebde22c1a5e0d14b0d297081e88d"
+    },
+    {
+      "kind": "contains",
+      "source": "namespace:c8b05570fdca6ae3ddbf95ad3ace84cf",
+      "target": "enum:151d7df65434183841f9f02af8ea3a82"
+    },
+    {
+      "kind": "contains",
+      "source": "enum:151d7df65434183841f9f02af8ea3a82",
+      "target": "enum_member:f8172288ace690e716a1eac31c79cbfe"
+    },
+    {
+      "kind": "contains",
+      "source": "enum:151d7df65434183841f9f02af8ea3a82",
+      "target": "enum_member:922d51ac7581bb848c44384186e36d58"
+    },
+    {
+      "kind": "contains",
+      "source": "enum:151d7df65434183841f9f02af8ea3a82",
+      "target": "enum_member:995afd3389e26ff442a6bafa65e7e08c"
+    },
+    {
+      "kind": "contains",
+      "source": "namespace:c8b05570fdca6ae3ddbf95ad3ace84cf",
+      "target": "type_alias:b6122fdcde537daf052da068f3b6b5a0"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 52,
+      "filePath": "vbnet/Basic.vb",
+      "id": "file:vbnet/Basic.vb",
+      "isExported": false,
+      "kind": "file",
+      "language": "vbnet",
+      "name": "Basic.vb",
+      "qualifiedName": "vbnet/Basic.vb",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 0,
+      "endLine": 52,
+      "filePath": "vbnet/Basic.vb",
+      "id": "namespace:c8b05570fdca6ae3ddbf95ad3ace84cf",
+      "kind": "namespace",
+      "language": "vbnet",
+      "name": "MyApp",
+      "qualifiedName": "MyApp",
+      "startColumn": 0,
+      "startLine": 4
+    },
+    {
+      "endColumn": 0,
+      "endLine": 2,
+      "filePath": "vbnet/Basic.vb",
+      "id": "import:d7ce7be4ffc7ec68cfe51b76c2b799cf",
+      "kind": "import",
+      "language": "vbnet",
+      "name": "System",
+      "qualifiedName": "MyApp::System",
+      "signature": "Imports System",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 0,
+      "endLine": 4,
+      "filePath": "vbnet/Basic.vb",
+      "id": "import:ceb6bbc0462cb5f4a2c53167e18b90ed",
+      "kind": "import",
+      "language": "vbnet",
+      "name": "System.Collections.Generic",
+      "qualifiedName": "MyApp::System.Collections.Generic",
+      "signature": "Imports System.Collections.Generic",
+      "startColumn": 0,
+      "startLine": 2
+    },
+    {
+      "endColumn": 0,
+      "endLine": 39,
+      "filePath": "vbnet/Basic.vb",
+      "id": "class:7ee7196ee3b818d6b93a3d07d8695fab",
+      "kind": "class",
+      "language": "vbnet",
+      "name": "Customer",
+      "qualifiedName": "MyApp::Customer",
+      "startColumn": 4,
+      "startLine": 5,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 52,
+      "endLine": 9,
+      "filePath": "vbnet/Basic.vb",
+      "id": "field:b590d4e50d7dc32fc27494be87417fd7",
+      "isStatic": false,
+      "kind": "field",
+      "language": "vbnet",
+      "name": "DEFAULT_REGION",
+      "qualifiedName": "MyApp::Customer::DEFAULT_REGION",
+      "signature": "Public DEFAULT_REGION",
+      "startColumn": 21,
+      "startLine": 9,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 57,
+      "endLine": 10,
+      "filePath": "vbnet/Basic.vb",
+      "id": "field:4eeddf42764c47f934a845ea1e2985dd",
+      "isStatic": true,
+      "kind": "field",
+      "language": "vbnet",
+      "name": "MAX_ITEMS",
+      "qualifiedName": "MyApp::Customer::MAX_ITEMS",
+      "signature": "Public MAX_ITEMS",
+      "startColumn": 31,
+      "startLine": 10,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 31,
+      "endLine": 12,
+      "filePath": "vbnet/Basic.vb",
+      "id": "field:45d1b97e388930a938251efa51dfa576",
+      "isStatic": false,
+      "kind": "field",
+      "language": "vbnet",
+      "name": "_name",
+      "qualifiedName": "MyApp::Customer::_name",
+      "signature": "Private _name",
+      "startColumn": 16,
+      "startLine": 12,
+      "visibility": "private"
+    },
+    {
+      "endColumn": 0,
+      "endLine": 23,
+      "filePath": "vbnet/Basic.vb",
+      "id": "property:ea28d670fb8ebbfb6328529e2440ad8c",
+      "isStatic": false,
+      "kind": "property",
+      "language": "vbnet",
+      "name": "Name",
+      "qualifiedName": "MyApp::Customer::Name",
+      "signature": "Public Name",
+      "startColumn": 8,
+      "startLine": 13,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 0,
+      "endLine": 25,
+      "filePath": "vbnet/Basic.vb",
+      "id": "field:fba2d95c228466a4c7232f855eaf2dbb",
+      "kind": "field",
+      "language": "vbnet",
+      "name": "NameChanged",
+      "qualifiedName": "MyApp::Customer::NameChanged",
+      "startColumn": 8,
+      "startLine": 23
+    },
+    {
+      "endColumn": 0,
+      "endLine": 29,
+      "filePath": "vbnet/Basic.vb",
+      "id": "method:cbd669ed5be1724ddc3baf1952d66916",
+      "kind": "method",
+      "language": "vbnet",
+      "name": "New",
+      "qualifiedName": "MyApp::Customer::New",
+      "startColumn": 8,
+      "startLine": 25
+    },
+    {
+      "endColumn": 0,
+      "endLine": 34,
+      "filePath": "vbnet/Basic.vb",
+      "id": "method:ef29dbecc9e61b54793aaa3ed9b5cb60",
+      "isAsync": false,
+      "isStatic": false,
+      "kind": "method",
+      "language": "vbnet",
+      "name": "Save",
+      "qualifiedName": "MyApp::Customer::Save",
+      "startColumn": 8,
+      "startLine": 29,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 0,
+      "endLine": 37,
+      "filePath": "vbnet/Basic.vb",
+      "id": "method:8891ef73c36e30aa27f2fa6c384d1955",
+      "isAsync": false,
+      "isStatic": false,
+      "kind": "method",
+      "language": "vbnet",
+      "name": "CompareTo",
+      "qualifiedName": "MyApp::Customer::CompareTo",
+      "startColumn": 8,
+      "startLine": 34,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 0,
+      "endLine": 44,
+      "filePath": "vbnet/Basic.vb",
+      "id": "struct:85bfebde22c1a5e0d14b0d297081e88d",
+      "kind": "struct",
+      "language": "vbnet",
+      "name": "Point",
+      "qualifiedName": "MyApp::Point",
+      "startColumn": 4,
+      "startLine": 39,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 0,
+      "endLine": 50,
+      "filePath": "vbnet/Basic.vb",
+      "id": "enum:151d7df65434183841f9f02af8ea3a82",
+      "kind": "enum",
+      "language": "vbnet",
+      "name": "Status",
+      "qualifiedName": "MyApp::Status",
+      "startColumn": 4,
+      "startLine": 44,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 0,
+      "endLine": 46,
+      "filePath": "vbnet/Basic.vb",
+      "id": "enum_member:f8172288ace690e716a1eac31c79cbfe",
+      "kind": "enum_member",
+      "language": "vbnet",
+      "name": "Pending",
+      "qualifiedName": "MyApp::Status::Pending",
+      "startColumn": 8,
+      "startLine": 45
+    },
+    {
+      "endColumn": 0,
+      "endLine": 47,
+      "filePath": "vbnet/Basic.vb",
+      "id": "enum_member:922d51ac7581bb848c44384186e36d58",
+      "kind": "enum_member",
+      "language": "vbnet",
+      "name": "Active",
+      "qualifiedName": "MyApp::Status::Active",
+      "startColumn": 8,
+      "startLine": 46
+    },
+    {
+      "endColumn": 0,
+      "endLine": 48,
+      "filePath": "vbnet/Basic.vb",
+      "id": "enum_member:995afd3389e26ff442a6bafa65e7e08c",
+      "kind": "enum_member",
+      "language": "vbnet",
+      "name": "Closed",
+      "qualifiedName": "MyApp::Status::Closed",
+      "startColumn": 8,
+      "startLine": 47
+    },
+    {
+      "endColumn": 0,
+      "endLine": 51,
+      "filePath": "vbnet/Basic.vb",
+      "id": "type_alias:b6122fdcde537daf052da068f3b6b5a0",
+      "kind": "type_alias",
+      "language": "vbnet",
+      "name": "Mapper",
+      "qualifiedName": "MyApp::Mapper",
+      "startColumn": 4,
+      "startLine": 50
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 0,
+      "fromNodeId": "namespace:c8b05570fdca6ae3ddbf95ad3ace84cf",
+      "line": 1,
+      "referenceKind": "imports",
+      "referenceName": "System"
+    },
+    {
+      "column": 0,
+      "fromNodeId": "namespace:c8b05570fdca6ae3ddbf95ad3ace84cf",
+      "line": 2,
+      "referenceKind": "imports",
+      "referenceName": "System.Collections.Generic"
+    },
+    {
+      "column": 17,
+      "fromNodeId": "class:7ee7196ee3b818d6b93a3d07d8695fab",
+      "line": 6,
+      "referenceKind": "extends",
+      "referenceName": "BaseEntity"
+    },
+    {
+      "column": 19,
+      "fromNodeId": "class:7ee7196ee3b818d6b93a3d07d8695fab",
+      "line": 7,
+      "referenceKind": "implements",
+      "referenceName": "IComparable"
+    },
+    {
+      "column": 24,
+      "fromNodeId": "method:ef29dbecc9e61b54793aaa3ed9b5cb60",
+      "line": 30,
+      "referenceKind": "instantiates",
+      "referenceName": "Repository"
+    },
+    {
+      "column": 19,
+      "fromNodeId": "method:ef29dbecc9e61b54793aaa3ed9b5cb60",
+      "line": 31,
+      "referenceKind": "calls",
+      "referenceName": "repo.Persist"
+    },
+    {
+      "column": 19,
+      "fromNodeId": "method:8891ef73c36e30aa27f2fa6c384d1955",
+      "line": 35,
+      "referenceKind": "calls",
+      "referenceName": "String.Compare"
+    }
+  ]
+}

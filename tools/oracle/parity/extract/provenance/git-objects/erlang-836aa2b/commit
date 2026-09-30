@@ -1,0 +1,14 @@
+tree 10bf1ed1b4c8797da4bf4e72498cde121646a43f
+parent a4edabcdb3e0103feed66823c5bc25af23d289ac
+author Alan Zimmerman <alanzimm@meta.com> 1780587270 -0700
+committer meta-codesync[bot] <215208954+meta-codesync[bot]@users.noreply.github.com> 1780587270 -0700
+
+bump version to 0.19.0
+
+Summary: As title
+
+Reviewed By: robertoaloi
+
+Differential Revision: D107526174
+
+fbshipit-source-id: 520327cb47f99edc514072151e1137727f7cd2e7

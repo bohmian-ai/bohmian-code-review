@@ -1,0 +1,2 @@
+{ "grammars": [ { "name": "COBOL", "camelcase": "COBOL", "scope": "source.cobol", "path": ".", "file-types": ["cbl"] } ],
+  "metadata": { "version": "0.1.0", "license": "MIT", "description": "frozen vendored grammar for codegraph-rs", "links": { "repository": "https://github.com/yutaro-sakamoto/tree-sitter-cobol" } } }

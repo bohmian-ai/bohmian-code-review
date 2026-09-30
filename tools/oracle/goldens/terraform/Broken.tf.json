@@ -1,0 +1,40 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:terraform/Broken.tf",
+      "target": "variable:dce1fc110f5a66129b28de243bd55e28"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 11,
+      "filePath": "terraform/Broken.tf",
+      "id": "file:terraform/Broken.tf",
+      "isExported": false,
+      "kind": "file",
+      "language": "terraform",
+      "name": "Broken.tf",
+      "qualifiedName": "terraform/Broken.tf",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 0,
+      "endLine": 11,
+      "filePath": "terraform/Broken.tf",
+      "id": "variable:dce1fc110f5a66129b28de243bd55e28",
+      "isExported": true,
+      "kind": "variable",
+      "language": "terraform",
+      "name": "broken",
+      "qualifiedName": "var.broken",
+      "signature": "variable \"broken\"",
+      "startColumn": 0,
+      "startLine": 5
+    }
+  ],
+  "unresolvedReferences": []
+}

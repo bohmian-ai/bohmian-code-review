@@ -1,0 +1,141 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:nix/Unicode.nix",
+      "target": "variable:0fd066bdfd616a6789a2f94e70ee3b97"
+    },
+    {
+      "kind": "contains",
+      "source": "file:nix/Unicode.nix",
+      "target": "variable:1f5790c184c41d923f5f7ed89a4c7d2c"
+    },
+    {
+      "kind": "contains",
+      "source": "file:nix/Unicode.nix",
+      "target": "variable:43fe86ab4e3ed957cc6e382fc5a43135"
+    },
+    {
+      "kind": "contains",
+      "source": "file:nix/Unicode.nix",
+      "target": "variable:e34cb30441d4e59e268a0fc04d2eada5"
+    },
+    {
+      "kind": "contains",
+      "source": "file:nix/Unicode.nix",
+      "target": "variable:221e4287bba48db09bcb2bf4a5d6031d"
+    },
+    {
+      "kind": "contains",
+      "source": "file:nix/Unicode.nix",
+      "target": "variable:3fdf964c3f5855355939bf396595e3be"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 13,
+      "filePath": "nix/Unicode.nix",
+      "id": "file:nix/Unicode.nix",
+      "isExported": false,
+      "kind": "file",
+      "language": "nix",
+      "name": "Unicode.nix",
+      "qualifiedName": "nix/Unicode.nix",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 30,
+      "endLine": 4,
+      "filePath": "nix/Unicode.nix",
+      "id": "variable:0fd066bdfd616a6789a2f94e70ee3b97",
+      "isExported": false,
+      "kind": "variable",
+      "language": "nix",
+      "name": "greeting",
+      "qualifiedName": "greeting",
+      "signature": "= \"héllo wörld 😀\"",
+      "startColumn": 2,
+      "startLine": 4
+    },
+    {
+      "endColumn": 4,
+      "endLine": 8,
+      "filePath": "nix/Unicode.nix",
+      "id": "variable:1f5790c184c41d923f5f7ed89a4c7d2c",
+      "isExported": false,
+      "kind": "variable",
+      "language": "nix",
+      "name": "build",
+      "qualifiedName": "build",
+      "signature": "= pkgs.stdenv.mkDerivation {\n    name = \"café-1.0\";\n    buildInputs = [ pkgs.openssl ];\n  }",
+      "startColumn": 2,
+      "startLine": 5
+    },
+    {
+      "endColumn": 22,
+      "endLine": 6,
+      "filePath": "nix/Unicode.nix",
+      "id": "variable:43fe86ab4e3ed957cc6e382fc5a43135",
+      "isExported": false,
+      "kind": "variable",
+      "language": "nix",
+      "name": "name",
+      "qualifiedName": "name",
+      "signature": "= \"café-1.0\"",
+      "startColumn": 4,
+      "startLine": 6
+    },
+    {
+      "endColumn": 35,
+      "endLine": 7,
+      "filePath": "nix/Unicode.nix",
+      "id": "variable:e34cb30441d4e59e268a0fc04d2eada5",
+      "isExported": false,
+      "kind": "variable",
+      "language": "nix",
+      "name": "buildInputs",
+      "qualifiedName": "buildInputs",
+      "signature": "= [ pkgs.openssl ]",
+      "startColumn": 4,
+      "startLine": 7
+    },
+    {
+      "endColumn": 18,
+      "endLine": 11,
+      "filePath": "nix/Unicode.nix",
+      "id": "variable:221e4287bba48db09bcb2bf4a5d6031d",
+      "isExported": true,
+      "kind": "variable",
+      "language": "nix",
+      "name": "greeting",
+      "qualifiedName": "greeting",
+      "startColumn": 10,
+      "startLine": 11
+    },
+    {
+      "endColumn": 24,
+      "endLine": 11,
+      "filePath": "nix/Unicode.nix",
+      "id": "variable:3fdf964c3f5855355939bf396595e3be",
+      "isExported": true,
+      "kind": "variable",
+      "language": "nix",
+      "name": "build",
+      "qualifiedName": "build",
+      "startColumn": 19,
+      "startLine": 11
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 10,
+      "fromNodeId": "file:nix/Unicode.nix",
+      "line": 5,
+      "referenceKind": "calls",
+      "referenceName": "pkgs.stdenv.mkDerivation"
+    }
+  ]
+}

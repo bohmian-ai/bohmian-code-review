@@ -1,0 +1,105 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:vbnet/Unicode.vb",
+      "target": "import:0d677fd45c47d3b24e26768d436936e0"
+    },
+    {
+      "kind": "contains",
+      "source": "file:vbnet/Unicode.vb",
+      "target": "class:0e2f86fe640975fe483c6fe601b02820"
+    },
+    {
+      "kind": "contains",
+      "source": "class:0e2f86fe640975fe483c6fe601b02820",
+      "target": "property:6ba0484c21bfb808e817b11570bf2e29"
+    },
+    {
+      "kind": "contains",
+      "source": "class:0e2f86fe640975fe483c6fe601b02820",
+      "target": "method:a79bacb57e3b6fbce5675c359ecd6085"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 9,
+      "filePath": "vbnet/Unicode.vb",
+      "id": "file:vbnet/Unicode.vb",
+      "isExported": false,
+      "kind": "file",
+      "language": "vbnet",
+      "name": "Unicode.vb",
+      "qualifiedName": "vbnet/Unicode.vb",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 0,
+      "endLine": 3,
+      "filePath": "vbnet/Unicode.vb",
+      "id": "import:0d677fd45c47d3b24e26768d436936e0",
+      "kind": "import",
+      "language": "vbnet",
+      "name": "System",
+      "qualifiedName": "System",
+      "signature": "Imports System",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 0,
+      "endLine": 9,
+      "filePath": "vbnet/Unicode.vb",
+      "id": "class:0e2f86fe640975fe483c6fe601b02820",
+      "kind": "class",
+      "language": "vbnet",
+      "name": "Ünïcode",
+      "qualifiedName": "Ünïcode",
+      "startColumn": 0,
+      "startLine": 3,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 0,
+      "endLine": 5,
+      "filePath": "vbnet/Unicode.vb",
+      "id": "property:6ba0484c21bfb808e817b11570bf2e29",
+      "isStatic": false,
+      "kind": "property",
+      "language": "vbnet",
+      "name": "Café",
+      "qualifiedName": "Ünïcode::Café",
+      "signature": "Public Café",
+      "startColumn": 4,
+      "startLine": 4,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 0,
+      "endLine": 8,
+      "filePath": "vbnet/Unicode.vb",
+      "id": "method:a79bacb57e3b6fbce5675c359ecd6085",
+      "isAsync": false,
+      "isStatic": false,
+      "kind": "method",
+      "language": "vbnet",
+      "name": "Héllo",
+      "qualifiedName": "Ünïcode::Héllo",
+      "startColumn": 4,
+      "startLine": 5,
+      "visibility": "public"
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 0,
+      "fromNodeId": "file:vbnet/Unicode.vb",
+      "line": 1,
+      "referenceKind": "imports",
+      "referenceName": "System"
+    }
+  ]
+}

@@ -1,0 +1,82 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:tsx/Basic.tsx",
+      "target": "import:3a184b038e86ab54323c021e6e412a39"
+    },
+    {
+      "kind": "contains",
+      "source": "file:tsx/Basic.tsx",
+      "target": "function:8e26aee0effa3e2e11e069dc5aeb57af"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 6,
+      "filePath": "tsx/Basic.tsx",
+      "id": "file:tsx/Basic.tsx",
+      "isExported": false,
+      "kind": "file",
+      "language": "tsx",
+      "name": "Basic.tsx",
+      "qualifiedName": "tsx/Basic.tsx",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 32,
+      "endLine": 1,
+      "filePath": "tsx/Basic.tsx",
+      "id": "import:3a184b038e86ab54323c021e6e412a39",
+      "kind": "import",
+      "language": "tsx",
+      "name": "./util",
+      "qualifiedName": "./util",
+      "signature": "import { helper } from './util';",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 1,
+      "endLine": 5,
+      "filePath": "tsx/Basic.tsx",
+      "id": "function:8e26aee0effa3e2e11e069dc5aeb57af",
+      "isAsync": false,
+      "isExported": true,
+      "isStatic": false,
+      "kind": "function",
+      "language": "tsx",
+      "name": "App",
+      "qualifiedName": "App",
+      "signature": "(props)",
+      "startColumn": 7,
+      "startLine": 3
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 0,
+      "fromNodeId": "file:tsx/Basic.tsx",
+      "line": 1,
+      "referenceKind": "imports",
+      "referenceName": "./util"
+    },
+    {
+      "column": 9,
+      "fromNodeId": "file:tsx/Basic.tsx",
+      "line": 1,
+      "referenceKind": "imports",
+      "referenceName": "helper"
+    },
+    {
+      "column": 29,
+      "fromNodeId": "function:8e26aee0effa3e2e11e069dc5aeb57af",
+      "line": 4,
+      "referenceKind": "calls",
+      "referenceName": "helper"
+    }
+  ]
+}

@@ -1,0 +1,67 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:terraform/Tofu.tofu",
+      "target": "variable:f674323f18b738660d93291890671319"
+    },
+    {
+      "kind": "contains",
+      "source": "file:terraform/Tofu.tofu",
+      "target": "class:d1c0eda6e46b074003d77491cc214261"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 10,
+      "filePath": "terraform/Tofu.tofu",
+      "id": "file:terraform/Tofu.tofu",
+      "isExported": false,
+      "kind": "file",
+      "language": "terraform",
+      "name": "Tofu.tofu",
+      "qualifiedName": "terraform/Tofu.tofu",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 1,
+      "endLine": 3,
+      "filePath": "terraform/Tofu.tofu",
+      "id": "variable:f674323f18b738660d93291890671319",
+      "isExported": true,
+      "kind": "variable",
+      "language": "terraform",
+      "name": "app_name",
+      "qualifiedName": "var.app_name",
+      "signature": "variable \"app_name\"",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 1,
+      "endLine": 9,
+      "filePath": "terraform/Tofu.tofu",
+      "id": "class:d1c0eda6e46b074003d77491cc214261",
+      "isExported": false,
+      "kind": "class",
+      "language": "terraform",
+      "name": "null_resource.app",
+      "qualifiedName": "null_resource.app",
+      "signature": "resource \"null_resource\" \"app\"",
+      "startColumn": 0,
+      "startLine": 5
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 11,
+      "fromNodeId": "class:d1c0eda6e46b074003d77491cc214261",
+      "line": 7,
+      "referenceKind": "references",
+      "referenceName": "var.app_name"
+    }
+  ]
+}

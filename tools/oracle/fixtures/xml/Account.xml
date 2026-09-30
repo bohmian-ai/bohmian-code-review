@@ -1,0 +1,8 @@
+<sqlMap namespace="Account">
+  <select id="getById" parameterClass="long" resultClass="Account">
+    SELECT * FROM accounts WHERE id = #value#
+  </select>
+  <insert id="Account.create" parameterClass="Account">
+    INSERT INTO accounts (name) VALUES (#name#)
+  </insert>
+</sqlMap>

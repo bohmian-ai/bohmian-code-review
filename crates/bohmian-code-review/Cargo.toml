@@ -1,0 +1,23 @@
+[package]
+name = "bohmian-code-review"
+description = "Public two-pass symbolic-context facade for code review"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+bohmian-code-review-core.workspace = true
+bohmian-code-review-extract.workspace = true
+bohmian-code-review-index.workspace = true
+bohmian-code-review-resolve.workspace = true
+bohmian-code-review-select.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+
+[lints]
+workspace = true

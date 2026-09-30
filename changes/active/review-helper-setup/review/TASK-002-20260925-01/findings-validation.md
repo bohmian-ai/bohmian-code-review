@@ -1,0 +1,32 @@
+# TASK-002 structured finding validation
+
+**Subject:** `6c7f9d3aef831f66510bc8c9c6ad553b277f7b2d..03664569e52baa96e86c71026fdfb68a5f9502b1`. HEAD remained the candidate. The separate working-tree `IMPLEMENTATION_PLAN.md` edit is outside this immutable diff. No `.codegraph/` index exists.
+
+**Authority and source:** Approved `changes/active/review-helper-setup/spec.md` revision 2; original TASK-002 from the base commit; `AGENTS.md`, `architecture/agent-rules.md`, the design, and routed Rust, testing, symbolic-context, implementation, and spec-driven references. I inspected the complete six-file base-to-candidate diff, both production owners, both full test files, task evidence, manifests, mise lanes, and all three Wave 1 reports. The facade and selector are still placeholders; TASK-003 owns their journey and extraction-failure transaction.
+
+## Wave 1 finding decisions
+
+### STANDARDS-001 — CONFIRMED
+
+`architecture/agent-rules.md:5` says owner tests are inline by default and permits an external test when it crosses crate boundaries **through the public facade**. `crates/bohmian-code-review-index/tests/index.rs:1-230` exercises index/core directly; `crates/bohmian-code-review-resolve/tests/resolve.rs:1-123` exercises resolver/index/core directly. Neither reaches the facade. The testing reference's component-integration tier permits testing a real crate boundary, but does not override that placement rule. These are required, runnable TASK-002 checks, not dormant code: `mise.toml:35-41` runs both packages with `--all-targets`, and the independently rerun lanes selected three index tests and one resolver test.
+
+Caller trace and full-body inspection: the index file's `path`, `node`, and `keys` helpers are called only by its three test bodies; the resolver file's `node`, `reference`, `add`, and `render` helpers are called only by its one test body. The test bodies call the public `SymbolIndex::{new,upsert,lookup,remove,byte_len,nodes,file_count}` and `reference_names`, `declaration_names`, and `resolve`; production bodies have no caller that depends on the external test target. Moving the complete test bodies and their helpers into `#[cfg(test)]` modules in their respective owning `src/lib.rs` files leaves production contracts and adjacent lifecycle behavior untouched. Keep every assertion, including the resolver's real index call. `mise run test:index` and `mise run test:resolve` remain the broader proof. Do not add a facade test here; TASK-003 owns it. This is the smallest safe correction: existing inline test machinery and Cargo's `--lib` target suffice; no new abstraction, dependency, or harness is needed.
+
+### STANDARDS-002 — REVISED
+
+The rule and gap are confirmed, but the proposed correction needs to distinguish current proof from historical RED evidence. `architecture/references/languages/testing-workflows.md:17-20` and `spec-driven-development.md:177-200` require an exact `mise exec -- cargo test --locked` command with package, target, and exact selector for every test named in the task. `TASK-002-index-resolver.md:90-106` names four tests while recording only broad mise lanes and abbreviated results. The original task's `mise run` recipe at lines 38, 48, and 58 does not supersede the higher-level exact-command rule. Package-lane success establishes that all four tests ran collectively, but the task record does not establish the required focused command for each name or that each exact selector selected one test.
+
+Caller trace and full-body inspection are the four test bodies and helpers above; the test harness invokes those bodies through their target and selector, and the broad mise lanes invoke their packages. After the placement correction, the minimal documentation fix is to execute and record four exact `--lib <module>::<test> -- --exact` commands with observed `1 passed; 0 filtered out` results, then retain the broad owner-lane, format, lint, and diff evidence. The implementer must verify the actual module path from the moved source. Do not claim the old RED attempts used those commands or recreate historical failures; accurately label the new focused runs as current GREEN closure. This uses the existing Cargo and mise mechanism, without a new test or dependency.
+
+## Final deduplicated ledger
+
+| ID | Source; status; class | Violated obligation and location | Evidence and consequence | Decision-complete correction and focused closure proof |
+|---|---|---|---|---|
+| **FIND-TASK-002-1** | STANDARDS-001; CONFIRMED; VIOLATION | Inline owner-test rule, `architecture/agent-rules.md:5`; `index/tests/index.rs:1`, `resolve/tests/resolve.rs:1` | Neither external test calls the public facade; owner checks occupy targets the rule reserves for facade-level tests. | Move both complete owner checks, helpers, and assertions into `#[cfg(test)]` modules in their owning library files. Preserve real index/resolver interaction and run both existing owner lanes. |
+| **FIND-TASK-002-2** | STANDARDS-002; REVISED; VIOLATION | Exact focused-command evidence, `testing-workflows.md:17-20` and `spec-driven-development.md:177-200`; `TASK-002-index-resolver.md:90-106` | Four named tests lack recorded package/target/exact-selector commands and observed selection; broad lane results cannot supply that audit trail. | Run and record one exact `mise exec -- cargo test --locked -p <owner> --lib <actual module>::<test> -- --exact` command per moved test, each selecting and passing one test. Preserve broad checks and report prior RED only as previously observed, without inventing a focused RED. |
+
+## Empty-union validation and recommendation
+
+`task-review.md` and `domain-review-index-state.md` proposed no findings. I independently checked their claimed runtime boundary against the full index and resolver bodies, their test call sites, the complete diff, and the approved TASK-002 scope: no additional reachable task or index-state defect emerged. The declaration-kind filter is an in-scope choice consistent with posting declarations; malformed extraction isolation and the public journey are assigned to TASK-003. The two retained findings are distinct but can be closed in one bounded remediation task: relocate owner tests, then record exact focused proof on their final paths. Neither changes an approved public or material architecture decision.
+
+**Validation result: COMPLETE; two retained findings.** No source, authority, caller-trace, or immutable-candidate blocker remains.

@@ -1,0 +1,158 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "component:350eb8b636da9099b1c338c60c23b2fc",
+      "target": "file:vue/Basic.vue"
+    },
+    {
+      "kind": "contains",
+      "source": "component:350eb8b636da9099b1c338c60c23b2fc",
+      "target": "import:99aa23a6b3377dbc575c9a8fd42ab412"
+    },
+    {
+      "kind": "contains",
+      "source": "component:350eb8b636da9099b1c338c60c23b2fc",
+      "target": "constant:a89d955b7b3abc8d831d7c98a7429338"
+    },
+    {
+      "kind": "contains",
+      "source": "component:350eb8b636da9099b1c338c60c23b2fc",
+      "target": "function:30c29ff166eca1db3bc5d561b6e2e9b7"
+    },
+    {
+      "kind": "contains",
+      "source": "file:vue/Basic.vue",
+      "target": "import:99aa23a6b3377dbc575c9a8fd42ab412"
+    },
+    {
+      "kind": "contains",
+      "source": "file:vue/Basic.vue",
+      "target": "constant:a89d955b7b3abc8d831d7c98a7429338"
+    },
+    {
+      "kind": "contains",
+      "source": "file:vue/Basic.vue",
+      "target": "function:30c29ff166eca1db3bc5d561b6e2e9b7"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 14,
+      "filePath": "vue/Basic.vue",
+      "id": "component:350eb8b636da9099b1c338c60c23b2fc",
+      "isExported": true,
+      "kind": "component",
+      "language": "vue",
+      "name": "Basic",
+      "qualifiedName": "vue/Basic.vue::Basic",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 0,
+      "endLine": 5,
+      "filePath": "vue/Basic.vue",
+      "id": "file:vue/Basic.vue",
+      "isExported": false,
+      "kind": "file",
+      "language": "vue",
+      "name": "Basic.vue",
+      "qualifiedName": "vue/Basic.vue",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 26,
+      "endLine": 2,
+      "filePath": "vue/Basic.vue",
+      "id": "import:99aa23a6b3377dbc575c9a8fd42ab412",
+      "kind": "import",
+      "language": "vue",
+      "name": "vue",
+      "qualifiedName": "vue",
+      "signature": "import { ref } from 'vue';",
+      "startColumn": 0,
+      "startLine": 2
+    },
+    {
+      "endColumn": 20,
+      "endLine": 3,
+      "filePath": "vue/Basic.vue",
+      "id": "constant:a89d955b7b3abc8d831d7c98a7429338",
+      "isExported": false,
+      "kind": "constant",
+      "language": "vue",
+      "name": "count",
+      "qualifiedName": "count",
+      "signature": "= ref(0)",
+      "startColumn": 6,
+      "startLine": 3
+    },
+    {
+      "endColumn": 34,
+      "endLine": 4,
+      "filePath": "vue/Basic.vue",
+      "id": "function:30c29ff166eca1db3bc5d561b6e2e9b7",
+      "isAsync": false,
+      "isExported": false,
+      "isStatic": false,
+      "kind": "function",
+      "language": "vue",
+      "name": "bump",
+      "qualifiedName": "bump",
+      "signature": "()",
+      "startColumn": 0,
+      "startLine": 4
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 0,
+      "filePath": "vue/Basic.vue",
+      "fromNodeId": "file:vue/Basic.vue",
+      "language": "vue",
+      "line": 2,
+      "referenceKind": "imports",
+      "referenceName": "vue"
+    },
+    {
+      "column": 9,
+      "filePath": "vue/Basic.vue",
+      "fromNodeId": "file:vue/Basic.vue",
+      "language": "vue",
+      "line": 2,
+      "referenceKind": "imports",
+      "referenceName": "ref"
+    },
+    {
+      "column": 14,
+      "filePath": "vue/Basic.vue",
+      "fromNodeId": "file:vue/Basic.vue",
+      "language": "vue",
+      "line": 3,
+      "referenceKind": "calls",
+      "referenceName": "ref"
+    },
+    {
+      "column": 5,
+      "filePath": "vue/Basic.vue",
+      "fromNodeId": "component:350eb8b636da9099b1c338c60c23b2fc",
+      "language": "vue",
+      "line": 8,
+      "referenceKind": "references",
+      "referenceName": "MyButton"
+    },
+    {
+      "column": 5,
+      "filePath": "vue/Basic.vue",
+      "fromNodeId": "component:350eb8b636da9099b1c338c60c23b2fc",
+      "language": "vue",
+      "line": 9,
+      "referenceKind": "references",
+      "referenceName": "Modal"
+    }
+  ]
+}

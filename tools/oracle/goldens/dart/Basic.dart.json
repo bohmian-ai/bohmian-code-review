@@ -1,0 +1,108 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:dart/Basic.dart",
+      "target": "import:7abcd011c77dd101313008c1a3defec5"
+    },
+    {
+      "kind": "contains",
+      "source": "file:dart/Basic.dart",
+      "target": "class:2e73fe1d63221e806939ab5d43b3e90c"
+    },
+    {
+      "kind": "contains",
+      "source": "class:2e73fe1d63221e806939ab5d43b3e90c",
+      "target": "method:3811731b817dec6d855772d440aa4702"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 13,
+      "filePath": "dart/Basic.dart",
+      "id": "file:dart/Basic.dart",
+      "isExported": false,
+      "kind": "file",
+      "language": "dart",
+      "name": "Basic.dart",
+      "qualifiedName": "dart/Basic.dart",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 19,
+      "endLine": 1,
+      "filePath": "dart/Basic.dart",
+      "id": "import:7abcd011c77dd101313008c1a3defec5",
+      "kind": "import",
+      "language": "dart",
+      "name": "util.dart",
+      "qualifiedName": "util.dart",
+      "signature": "import 'util.dart';",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 1,
+      "endLine": 12,
+      "filePath": "dart/Basic.dart",
+      "id": "class:2e73fe1d63221e806939ab5d43b3e90c",
+      "kind": "class",
+      "language": "dart",
+      "name": "Circle",
+      "qualifiedName": "Circle",
+      "startColumn": 0,
+      "startLine": 3,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 15,
+      "endLine": 11,
+      "filePath": "dart/Basic.dart",
+      "id": "method:3811731b817dec6d855772d440aa4702",
+      "isAsync": false,
+      "isStatic": false,
+      "kind": "method",
+      "language": "dart",
+      "name": "area",
+      "qualifiedName": "Circle::area",
+      "returnType": "double",
+      "signature": "double ()",
+      "startColumn": 2,
+      "startLine": 9,
+      "visibility": "public"
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 0,
+      "fromNodeId": "file:dart/Basic.dart",
+      "line": 1,
+      "referenceKind": "imports",
+      "referenceName": "util.dart"
+    },
+    {
+      "column": 24,
+      "fromNodeId": "class:2e73fe1d63221e806939ab5d43b3e90c",
+      "line": 3,
+      "referenceKind": "implements",
+      "referenceName": "Shape"
+    },
+    {
+      "column": 2,
+      "fromNodeId": "method:3811731b817dec6d855772d440aa4702",
+      "line": 8,
+      "referenceKind": "decorates",
+      "referenceName": "override"
+    },
+    {
+      "column": 17,
+      "fromNodeId": "method:3811731b817dec6d855772d440aa4702",
+      "line": 10,
+      "referenceKind": "calls",
+      "referenceName": "helper"
+    }
+  ]
+}

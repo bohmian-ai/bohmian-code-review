@@ -1,0 +1,106 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:objc/Broken2.m",
+      "target": "import:d0f1252164291db4c357520653a2333e"
+    },
+    {
+      "kind": "contains",
+      "source": "file:objc/Broken2.m",
+      "target": "class:1a1dde81912ee35f416c554466b8bfd3"
+    },
+    {
+      "kind": "contains",
+      "source": "class:1a1dde81912ee35f416c554466b8bfd3",
+      "target": "method:1a40688f7b286ddbdeae3d7dacab2167"
+    },
+    {
+      "kind": "contains",
+      "source": "file:objc/Broken2.m",
+      "target": "class:14c1ef5c7d2d3dd9939ab8e397e7965d"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 18,
+      "filePath": "objc/Broken2.m",
+      "id": "file:objc/Broken2.m",
+      "isExported": false,
+      "kind": "file",
+      "language": "objc",
+      "name": "Broken2.m",
+      "qualifiedName": "objc/Broken2.m",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 0,
+      "endLine": 3,
+      "filePath": "objc/Broken2.m",
+      "id": "import:d0f1252164291db4c357520653a2333e",
+      "kind": "import",
+      "language": "objc",
+      "name": "Foundation/Foundation.h",
+      "qualifiedName": "Foundation/Foundation.h",
+      "signature": "#import <Foundation/Foundation.h>",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 4,
+      "endLine": 5,
+      "filePath": "objc/Broken2.m",
+      "id": "class:1a1dde81912ee35f416c554466b8bfd3",
+      "kind": "class",
+      "language": "objc",
+      "name": "ValidThing",
+      "qualifiedName": "ValidThing",
+      "startColumn": 0,
+      "startLine": 3
+    },
+    {
+      "endColumn": 1,
+      "endLine": 10,
+      "filePath": "objc/Broken2.m",
+      "id": "method:1a40688f7b286ddbdeae3d7dacab2167",
+      "isStatic": false,
+      "kind": "method",
+      "language": "objc",
+      "name": "validMethod:",
+      "qualifiedName": "ValidThing::validMethod:",
+      "startColumn": 0,
+      "startLine": 8
+    },
+    {
+      "endColumn": 4,
+      "endLine": 17,
+      "filePath": "objc/Broken2.m",
+      "id": "class:14c1ef5c7d2d3dd9939ab8e397e7965d",
+      "kind": "class",
+      "language": "objc",
+      "name": "BrokenThing",
+      "qualifiedName": "BrokenThing",
+      "startColumn": 0,
+      "startLine": 13
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 0,
+      "fromNodeId": "file:objc/Broken2.m",
+      "line": 1,
+      "referenceKind": "imports",
+      "referenceName": "Foundation/Foundation.h"
+    },
+    {
+      "column": 24,
+      "fromNodeId": "class:1a1dde81912ee35f416c554466b8bfd3",
+      "line": 3,
+      "referenceKind": "extends",
+      "referenceName": "NSObject"
+    }
+  ]
+}

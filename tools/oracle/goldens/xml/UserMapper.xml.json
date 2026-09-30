@@ -1,0 +1,104 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:2de57fc5f9304b99c515d76e0cdaf686",
+      "target": "method:45badcc6835a9dcddbeca7d955f4a883"
+    },
+    {
+      "kind": "contains",
+      "source": "file:2de57fc5f9304b99c515d76e0cdaf686",
+      "target": "method:4da4f70d6a37e999d81bf52ec1f678cd"
+    },
+    {
+      "kind": "contains",
+      "source": "file:2de57fc5f9304b99c515d76e0cdaf686",
+      "target": "method:4c051cc12981e519f6d832837c9da0f1"
+    },
+    {
+      "kind": "contains",
+      "source": "file:2de57fc5f9304b99c515d76e0cdaf686",
+      "target": "method:0a6781f414ff6af63a0ebc49e454b15e"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 19,
+      "filePath": "xml/UserMapper.xml",
+      "id": "file:2de57fc5f9304b99c515d76e0cdaf686",
+      "kind": "file",
+      "language": "xml",
+      "name": "UserMapper.xml",
+      "qualifiedName": "xml/UserMapper.xml",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "docstring": "SELECT * FROM users WHERE id = #{id}",
+      "endColumn": 0,
+      "endLine": 9,
+      "filePath": "xml/UserMapper.xml",
+      "id": "method:45badcc6835a9dcddbeca7d955f4a883",
+      "kind": "method",
+      "language": "xml",
+      "name": "findById",
+      "qualifiedName": "com.example.dao.UserDao::findById",
+      "signature": "SELECT param=long result=com.example.User",
+      "startColumn": 0,
+      "startLine": 7
+    },
+    {
+      "docstring": "INSERT INTO users (name) VALUES (#{name})",
+      "endColumn": 0,
+      "endLine": 12,
+      "filePath": "xml/UserMapper.xml",
+      "id": "method:4da4f70d6a37e999d81bf52ec1f678cd",
+      "kind": "method",
+      "language": "xml",
+      "name": "create",
+      "qualifiedName": "com.example.dao.UserDao::create",
+      "signature": "INSERT param=com.example.User",
+      "startColumn": 0,
+      "startLine": 10
+    },
+    {
+      "docstring": "id, name",
+      "endColumn": 0,
+      "endLine": 13,
+      "filePath": "xml/UserMapper.xml",
+      "id": "method:4c051cc12981e519f6d832837c9da0f1",
+      "kind": "method",
+      "language": "xml",
+      "name": "baseColumns",
+      "qualifiedName": "com.example.dao.UserDao::baseColumns",
+      "signature": "<sql>",
+      "startColumn": 0,
+      "startLine": 13
+    },
+    {
+      "docstring": "SELECT FROM users WHERE active = 1",
+      "endColumn": 0,
+      "endLine": 16,
+      "filePath": "xml/UserMapper.xml",
+      "id": "method:0a6781f414ff6af63a0ebc49e454b15e",
+      "kind": "method",
+      "language": "xml",
+      "name": "findActive",
+      "qualifiedName": "com.example.dao.UserDao::findActive",
+      "signature": "SELECT result=com.example.User",
+      "startColumn": 0,
+      "startLine": 14
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 0,
+      "fromNodeId": "method:0a6781f414ff6af63a0ebc49e454b15e",
+      "line": 15,
+      "referenceKind": "references",
+      "referenceName": "com.example.dao.UserDao::baseColumns"
+    }
+  ]
+}

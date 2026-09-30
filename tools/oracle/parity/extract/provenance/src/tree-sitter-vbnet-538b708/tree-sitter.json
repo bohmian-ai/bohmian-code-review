@@ -1,0 +1,2 @@
+{ "grammars": [ { "name": "vbnet", "camelcase": "Vbnet", "scope": "source.vbnet", "path": ".", "file-types": ["vb"] } ],
+  "metadata": { "version": "0.1.0", "license": "MIT", "description": "frozen vendored grammar for codegraph-rs", "links": { "repository": "https://github.com/govindbanura/tree-sitter-vbnet" } } }

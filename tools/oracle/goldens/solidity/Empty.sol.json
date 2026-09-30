@@ -1,0 +1,20 @@
+{
+  "edges": [],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 1,
+      "filePath": "solidity/Empty.sol",
+      "id": "file:solidity/Empty.sol",
+      "isExported": false,
+      "kind": "file",
+      "language": "solidity",
+      "name": "Empty.sol",
+      "qualifiedName": "solidity/Empty.sol",
+      "startColumn": 0,
+      "startLine": 1
+    }
+  ],
+  "unresolvedReferences": []
+}

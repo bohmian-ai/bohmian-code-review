@@ -1,0 +1,123 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:objc/Unicode.m",
+      "target": "import:5445ca1ec4eb5539277ccb4f6bf56253"
+    },
+    {
+      "kind": "contains",
+      "source": "file:objc/Unicode.m",
+      "target": "class:4f2df721879137748032993e957d4c0d"
+    },
+    {
+      "kind": "contains",
+      "source": "class:4f2df721879137748032993e957d4c0d",
+      "target": "property:f8a0b7fa1a959d357feaa22c2396cbb5"
+    },
+    {
+      "kind": "contains",
+      "source": "class:4f2df721879137748032993e957d4c0d",
+      "target": "method:2f316d50b35b0439744343fcbb253865"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 13,
+      "filePath": "objc/Unicode.m",
+      "id": "file:objc/Unicode.m",
+      "isExported": false,
+      "kind": "file",
+      "language": "objc",
+      "name": "Unicode.m",
+      "qualifiedName": "objc/Unicode.m",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 0,
+      "endLine": 3,
+      "filePath": "objc/Unicode.m",
+      "id": "import:5445ca1ec4eb5539277ccb4f6bf56253",
+      "kind": "import",
+      "language": "objc",
+      "name": "Foundation/Foundation.h",
+      "qualifiedName": "Foundation/Foundation.h",
+      "signature": "#import <Foundation/Foundation.h>",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 4,
+      "endLine": 6,
+      "filePath": "objc/Unicode.m",
+      "id": "class:4f2df721879137748032993e957d4c0d",
+      "kind": "class",
+      "language": "objc",
+      "name": "Grüße",
+      "qualifiedName": "Grüße",
+      "startColumn": 0,
+      "startLine": 3
+    },
+    {
+      "endColumn": 44,
+      "endLine": 4,
+      "filePath": "objc/Unicode.m",
+      "id": "property:f8a0b7fa1a959d357feaa22c2396cbb5",
+      "isStatic": false,
+      "kind": "property",
+      "language": "objc",
+      "name": "décor",
+      "qualifiedName": "Grüße::décor",
+      "signature": "(nonatomic, copy) décor",
+      "startColumn": 0,
+      "startLine": 4
+    },
+    {
+      "endColumn": 1,
+      "endLine": 11,
+      "filePath": "objc/Unicode.m",
+      "id": "method:2f316d50b35b0439744343fcbb253865",
+      "isStatic": false,
+      "kind": "method",
+      "language": "objc",
+      "name": "grüße:",
+      "qualifiedName": "Grüße::grüße:",
+      "returnType": "NSString",
+      "startColumn": 0,
+      "startLine": 9
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 0,
+      "fromNodeId": "file:objc/Unicode.m",
+      "line": 1,
+      "referenceKind": "imports",
+      "referenceName": "Foundation/Foundation.h"
+    },
+    {
+      "column": 19,
+      "fromNodeId": "class:4f2df721879137748032993e957d4c0d",
+      "line": 3,
+      "referenceKind": "extends",
+      "referenceName": "NSObject"
+    },
+    {
+      "column": 12,
+      "fromNodeId": "method:2f316d50b35b0439744343fcbb253865",
+      "line": 10,
+      "referenceKind": "references",
+      "referenceName": "NSString"
+    },
+    {
+      "column": 11,
+      "fromNodeId": "method:2f316d50b35b0439744343fcbb253865",
+      "line": 10,
+      "referenceKind": "calls",
+      "referenceName": "NSString.stringWithFormat:"
+    }
+  ]
+}

@@ -1,0 +1,143 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:luau/Basic.luau",
+      "target": "import:a2896e1f6170374b252b63291b4b6c7a"
+    },
+    {
+      "kind": "contains",
+      "source": "file:luau/Basic.luau",
+      "target": "variable:6d13e21d0688c116e392c8384a0183c5"
+    },
+    {
+      "kind": "contains",
+      "source": "file:luau/Basic.luau",
+      "target": "type_alias:5d5c3b2f62daa8392dcbf9577ce83ca7"
+    },
+    {
+      "kind": "contains",
+      "source": "file:luau/Basic.luau",
+      "target": "function:9fa6abee8fe20f09ae4b2c149364c882"
+    },
+    {
+      "kind": "contains",
+      "source": "file:luau/Basic.luau",
+      "target": "function:32ddc29c3cd1fda4549468c86025f07b"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 19,
+      "filePath": "luau/Basic.luau",
+      "id": "file:luau/Basic.luau",
+      "isExported": false,
+      "kind": "file",
+      "language": "luau",
+      "name": "Basic.luau",
+      "qualifiedName": "luau/Basic.luau",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 30,
+      "endLine": 1,
+      "filePath": "luau/Basic.luau",
+      "id": "import:a2896e1f6170374b252b63291b4b6c7a",
+      "kind": "import",
+      "language": "luau",
+      "name": "util",
+      "qualifiedName": "util",
+      "signature": "require(\"util\")",
+      "startColumn": 15,
+      "startLine": 1
+    },
+    {
+      "endColumn": 12,
+      "endLine": 1,
+      "filePath": "luau/Basic.luau",
+      "id": "variable:6d13e21d0688c116e392c8384a0183c5",
+      "isExported": false,
+      "kind": "variable",
+      "language": "luau",
+      "name": "helper",
+      "qualifiedName": "helper",
+      "signature": "= require(\"util\")",
+      "startColumn": 6,
+      "startLine": 1
+    },
+    {
+      "endColumn": 1,
+      "endLine": 5,
+      "filePath": "luau/Basic.luau",
+      "id": "type_alias:5d5c3b2f62daa8392dcbf9577ce83ca7",
+      "isExported": true,
+      "kind": "type_alias",
+      "language": "luau",
+      "name": "Circle",
+      "qualifiedName": "Circle",
+      "startColumn": 0,
+      "startLine": 3
+    },
+    {
+      "endColumn": 3,
+      "endLine": 9,
+      "filePath": "luau/Basic.luau",
+      "id": "function:9fa6abee8fe20f09ae4b2c149364c882",
+      "isExported": false,
+      "kind": "function",
+      "language": "luau",
+      "name": "make",
+      "qualifiedName": "make",
+      "signature": "(radius: number): Circle",
+      "startColumn": 0,
+      "startLine": 7
+    },
+    {
+      "endColumn": 3,
+      "endLine": 13,
+      "filePath": "luau/Basic.luau",
+      "id": "function:32ddc29c3cd1fda4549468c86025f07b",
+      "isExported": false,
+      "kind": "function",
+      "language": "luau",
+      "name": "area",
+      "qualifiedName": "area",
+      "signature": "(c: Circle): number",
+      "startColumn": 0,
+      "startLine": 11
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 15,
+      "fromNodeId": "file:luau/Basic.luau",
+      "line": 1,
+      "referenceKind": "imports",
+      "referenceName": "util"
+    },
+    {
+      "column": 9,
+      "fromNodeId": "function:32ddc29c3cd1fda4549468c86025f07b",
+      "line": 12,
+      "referenceKind": "calls",
+      "referenceName": "helper.compute"
+    },
+    {
+      "column": 9,
+      "fromNodeId": "file:luau/Basic.luau",
+      "line": 16,
+      "referenceKind": "function_ref",
+      "referenceName": "make"
+    },
+    {
+      "column": 9,
+      "fromNodeId": "file:luau/Basic.luau",
+      "line": 17,
+      "referenceKind": "function_ref",
+      "referenceName": "area"
+    }
+  ]
+}

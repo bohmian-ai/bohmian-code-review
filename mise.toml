@@ -1,0 +1,106 @@
+[tools]
+rust = "1.94.0"
+
+[settings]
+jobs = 1
+env_shell_expand = false
+
+[tasks."skills:sync"]
+description = "Regenerate the Claude mirror from canonical .agents skills"
+run = "bash scripts/sync-agent-skills.sh --write"
+
+[tasks."check:skills-sync"]
+description = "Verify the Claude skill mirror matches canonical .agents skills"
+run = "bash scripts/sync-agent-skills.sh --check"
+
+[tasks.fmt]
+description = "Format all Rust code"
+run = "cargo fmt --all"
+
+[tasks."fmt:check"]
+description = "Verify Rust formatting"
+run = "cargo fmt --all -- --check"
+
+[tasks.lints]
+description = "Workspace Clippy with warnings denied and inline owner-test placement"
+run = [
+  "cargo clippy --locked --workspace --all-targets --all-features -- -D warnings",
+  "bash scripts/check-test-placement.sh",
+]
+
+[tasks."test:extract"]
+description = "Run core facts and extractor tests, including the copied fixture corpus"
+run = [
+  "cargo test --locked -p bohmian-code-review-core --all-targets --all-features",
+  "cargo test --locked -p bohmian-code-review-extract --all-targets --all-features",
+]
+
+[tasks."test:index"]
+description = "Run in-memory symbol index tests"
+run = "cargo test --locked -p bohmian-code-review-index --all-targets --all-features"
+
+[tasks."test:resolve"]
+description = "Run candidate resolver tests over the real index"
+run = "cargo test --locked -p bohmian-code-review-resolve --all-targets --all-features"
+
+[tasks."test:select"]
+description = "Run changed-line ranking and context packing tests over the real index and resolver"
+run = "cargo test --locked -p bohmian-code-review-select --all-targets --all-features"
+
+[tasks."test:symbolic-context:journey"]
+description = "Run the facade's external public-API symbolic-context journey"
+run = "cargo test --locked -p bohmian-code-review --test symbolic_context_journey --all-features"
+
+[tasks."test:pipeline"]
+description = "Run outer pipeline crate tests: verified GitHub identities, bounded provider policy, and injected contracts"
+run = [
+  "cargo test --locked -p bohmian-code-review-pipeline --all-targets --all-features",
+  "cargo test --locked -p bohmian-code-review-pipeline --doc --all-features",
+]
+
+[tasks."test:pipeline:journey"]
+description = "Run the outer pipeline's public four-facade journey over fake GitHub and injected in-memory stores"
+run = "cargo test --locked -p bohmian-code-review-pipeline --test pipeline_journey --all-features"
+
+[tasks."live:pr"]
+description = "S20, explicitly invoked and never in gate: build and read back context for a real PR (GITHUB_TOKEN, BCR_REPO_ID; BCR_REPO, BCR_PR optional); macOS /usr/bin/time -l reports peak memory"
+run = [
+  "cargo build --locked --release -p bohmian-code-review-pipeline --example live_pr --all-features",
+  "/usr/bin/time -l target/release/examples/live_pr",
+]
+
+[tasks."live:provider-contract"]
+description = "AC-006 controlled-provider contract, explicitly invoked and never in gate: read-only production client cases at a fixed commit (GITHUB_TOKEN, BCR_REPO_ID, BCR_COMMIT; BCR_REPO, BCR_PR optional)"
+run = "cargo run --locked --release -p bohmian-code-review-pipeline --example provider_contract --all-features"
+
+[tasks."live:context-relevance"]
+description = "Context-relevance evaluation, explicitly invoked and never in gate: select each evaluated repository's merged-PR sample and run its leave-one-out relevance trials, read-only; prints one JSON report per repository (GITHUB_TOKEN, BCR_EVAL_CUTOFF)"
+run = "cargo run --locked --release -p bohmian-code-review-pipeline --example context_relevance --all-features"
+
+[tasks."test:rust"]
+description = "Run every component lane and the public journey"
+depends = [
+  "test:extract",
+  "test:index",
+  "test:resolve",
+  "test:select",
+  "test:symbolic-context:journey",
+  "test:pipeline",
+]
+
+[tasks."review:verify-citations"]
+description = "Drop review findings whose citations do not match the candidate: <review-dir> <candidate-commit>"
+run = "python3 scripts/verify_review_citations.py"
+
+[tasks."test:review-scripts"]
+description = "Self-check the review citation verifier"
+run = "python3 scripts/test_verify_review_citations.py"
+
+[tasks."check:default"]
+description = "Formatting, Clippy, and workspace type-check"
+depends = ["fmt:check", "lints"]
+run = "cargo check --locked --workspace --all-targets --all-features"
+
+[tasks.gate]
+description = "Full repository gate: default checks, all Rust tests, review scripts, and skill sync"
+depends = ["check:default", "test:rust", "test:review-scripts", "check:skills-sync"]

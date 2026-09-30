@@ -1,0 +1,125 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:3165dddf6cb9f65c3a7e2eb69980cbae",
+      "target": "component:c09e40d1fdf69e5bdf782c2d1de7a8da"
+    },
+    {
+      "kind": "contains",
+      "source": "component:c09e40d1fdf69e5bdf782c2d1de7a8da",
+      "target": "component:51d26aa535e47711d399dda31c316723"
+    },
+    {
+      "kind": "contains",
+      "source": "component:51d26aa535e47711d399dda31c316723",
+      "target": "component:815dc00ac7e85bead78008335e8f5f28"
+    },
+    {
+      "kind": "contains",
+      "source": "component:51d26aa535e47711d399dda31c316723",
+      "target": "component:9d7e05bd544349859a2047f96a9cdadc"
+    },
+    {
+      "kind": "contains",
+      "source": "component:c09e40d1fdf69e5bdf782c2d1de7a8da",
+      "target": "component:060a27a32174f592d9794e2b1e08e8a8"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 19,
+      "filePath": "pascal/Form.fmx",
+      "id": "file:3165dddf6cb9f65c3a7e2eb69980cbae",
+      "kind": "file",
+      "language": "pascal",
+      "name": "Form.fmx",
+      "qualifiedName": "pascal/Form.fmx",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 20,
+      "endLine": 1,
+      "filePath": "pascal/Form.fmx",
+      "id": "component:c09e40d1fdf69e5bdf782c2d1de7a8da",
+      "kind": "component",
+      "language": "pascal",
+      "name": "Form1",
+      "qualifiedName": "pascal/Form.fmx#Form1",
+      "signature": "TForm1",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 27,
+      "endLine": 5,
+      "filePath": "pascal/Form.fmx",
+      "id": "component:51d26aa535e47711d399dda31c316723",
+      "kind": "component",
+      "language": "pascal",
+      "name": "ToolBar1",
+      "qualifiedName": "pascal/Form.fmx#ToolBar1",
+      "signature": "TToolBar",
+      "startColumn": 0,
+      "startLine": 5
+    },
+    {
+      "endColumn": 37,
+      "endLine": 6,
+      "filePath": "pascal/Form.fmx",
+      "id": "component:815dc00ac7e85bead78008335e8f5f28",
+      "kind": "component",
+      "language": "pascal",
+      "name": "SpeedButton1",
+      "qualifiedName": "pascal/Form.fmx#SpeedButton1",
+      "signature": "TSpeedButton",
+      "startColumn": 0,
+      "startLine": 6
+    },
+    {
+      "endColumn": 37,
+      "endLine": 10,
+      "filePath": "pascal/Form.fmx",
+      "id": "component:9d7e05bd544349859a2047f96a9cdadc",
+      "kind": "component",
+      "language": "pascal",
+      "name": "SpeedButton2",
+      "qualifiedName": "pascal/Form.fmx#SpeedButton2",
+      "signature": "TSpeedButton",
+      "startColumn": 0,
+      "startLine": 10
+    },
+    {
+      "endColumn": 31,
+      "endLine": 15,
+      "filePath": "pascal/Form.fmx",
+      "id": "component:060a27a32174f592d9794e2b1e08e8a8",
+      "kind": "component",
+      "language": "pascal",
+      "name": "StatusBar1",
+      "qualifiedName": "pascal/Form.fmx#StatusBar1",
+      "signature": "TStatusBar",
+      "startColumn": 0,
+      "startLine": 15
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 0,
+      "fromNodeId": "component:815dc00ac7e85bead78008335e8f5f28",
+      "line": 8,
+      "referenceKind": "references",
+      "referenceName": "SpeedButton1Click"
+    },
+    {
+      "column": 0,
+      "fromNodeId": "component:9d7e05bd544349859a2047f96a9cdadc",
+      "line": 12,
+      "referenceKind": "references",
+      "referenceName": "SpeedButton2Click"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "edges": [],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 7,
+      "filePath": "pascal/BrokenForm.fmx",
+      "id": "file:9ea1e405a3846af1f75ff2a2c8053910",
+      "kind": "file",
+      "language": "pascal",
+      "name": "BrokenForm.fmx",
+      "qualifiedName": "pascal/BrokenForm.fmx",
+      "startColumn": 0,
+      "startLine": 1
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 0,
+      "fromNodeId": "file:9ea1e405a3846af1f75ff2a2c8053910",
+      "line": 2,
+      "referenceKind": "references",
+      "referenceName": "FormCreate"
+    }
+  ]
+}

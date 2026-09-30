@@ -1,0 +1,228 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:cobol/Basic.cbl",
+      "target": "module:f7e452ad9e4e22f9d23f79e6319cbc93"
+    },
+    {
+      "kind": "contains",
+      "source": "module:f7e452ad9e4e22f9d23f79e6319cbc93",
+      "target": "variable:108e0afea5c6c16320e5ab7f9e68ee28"
+    },
+    {
+      "kind": "contains",
+      "source": "variable:108e0afea5c6c16320e5ab7f9e68ee28",
+      "target": "field:d72b32fb41642c529a460e52ccbaa7e0"
+    },
+    {
+      "kind": "contains",
+      "source": "variable:108e0afea5c6c16320e5ab7f9e68ee28",
+      "target": "field:65fbc04290f65f8ed79cb44658cae699"
+    },
+    {
+      "kind": "contains",
+      "source": "module:f7e452ad9e4e22f9d23f79e6319cbc93",
+      "target": "variable:9ae25bc045441fd7a99241ff06bb6924"
+    },
+    {
+      "kind": "contains",
+      "source": "module:f7e452ad9e4e22f9d23f79e6319cbc93",
+      "target": "function:4e71c28b654df0735bde506af1e2ebd3"
+    },
+    {
+      "kind": "contains",
+      "source": "module:f7e452ad9e4e22f9d23f79e6319cbc93",
+      "target": "function:94b1fb7bc70668144c1b24535573244c"
+    },
+    {
+      "kind": "contains",
+      "source": "module:f7e452ad9e4e22f9d23f79e6319cbc93",
+      "target": "function:9f9b73222c432ee019d32373758e1da8"
+    },
+    {
+      "kind": "contains",
+      "source": "module:f7e452ad9e4e22f9d23f79e6319cbc93",
+      "target": "function:f0c90a415718e41f621451155df5fb23"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 23,
+      "filePath": "cobol/Basic.cbl",
+      "id": "file:cobol/Basic.cbl",
+      "isExported": false,
+      "kind": "file",
+      "language": "cobol",
+      "name": "Basic.cbl",
+      "qualifiedName": "cobol/Basic.cbl",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 16,
+      "endLine": 22,
+      "filePath": "cobol/Basic.cbl",
+      "id": "module:f7e452ad9e4e22f9d23f79e6319cbc93",
+      "kind": "module",
+      "language": "cobol",
+      "name": "HELLO",
+      "qualifiedName": "HELLO",
+      "startColumn": 7,
+      "startLine": 1
+    },
+    {
+      "endColumn": 17,
+      "endLine": 7,
+      "filePath": "cobol/Basic.cbl",
+      "id": "variable:108e0afea5c6c16320e5ab7f9e68ee28",
+      "kind": "variable",
+      "language": "cobol",
+      "name": "WS-USER",
+      "qualifiedName": "HELLO::WS-USER",
+      "signature": "01 WS-USER",
+      "startColumn": 7,
+      "startLine": 5
+    },
+    {
+      "endColumn": 30,
+      "endLine": 6,
+      "filePath": "cobol/Basic.cbl",
+      "id": "field:d72b32fb41642c529a460e52ccbaa7e0",
+      "kind": "field",
+      "language": "cobol",
+      "name": "WS-NAME",
+      "qualifiedName": "HELLO::WS-USER::WS-NAME",
+      "signature": "05 WS-NAME PIC X(20)",
+      "startColumn": 10,
+      "startLine": 6
+    },
+    {
+      "endColumn": 28,
+      "endLine": 7,
+      "filePath": "cobol/Basic.cbl",
+      "id": "field:65fbc04290f65f8ed79cb44658cae699",
+      "kind": "field",
+      "language": "cobol",
+      "name": "WS-AGE",
+      "qualifiedName": "HELLO::WS-USER::WS-AGE",
+      "signature": "05 WS-AGE PIC 9(3)",
+      "startColumn": 10,
+      "startLine": 7
+    },
+    {
+      "endColumn": 27,
+      "endLine": 8,
+      "filePath": "cobol/Basic.cbl",
+      "id": "variable:9ae25bc045441fd7a99241ff06bb6924",
+      "kind": "variable",
+      "language": "cobol",
+      "name": "WS-TOTAL",
+      "qualifiedName": "HELLO::WS-TOTAL",
+      "signature": "77 WS-TOTAL PIC 9(8)",
+      "startColumn": 7,
+      "startLine": 8
+    },
+    {
+      "endColumn": 17,
+      "endLine": 14,
+      "filePath": "cobol/Basic.cbl",
+      "id": "function:4e71c28b654df0735bde506af1e2ebd3",
+      "kind": "function",
+      "language": "cobol",
+      "name": "MAIN-PARA",
+      "qualifiedName": "HELLO::MAIN-PARA",
+      "startColumn": 7,
+      "startLine": 10
+    },
+    {
+      "endColumn": 17,
+      "endLine": 17,
+      "filePath": "cobol/Basic.cbl",
+      "id": "function:94b1fb7bc70668144c1b24535573244c",
+      "kind": "function",
+      "language": "cobol",
+      "name": "INIT-PARA",
+      "qualifiedName": "HELLO::INIT-PARA",
+      "startColumn": 7,
+      "startLine": 15
+    },
+    {
+      "endColumn": 20,
+      "endLine": 20,
+      "filePath": "cobol/Basic.cbl",
+      "id": "function:9f9b73222c432ee019d32373758e1da8",
+      "kind": "function",
+      "language": "cobol",
+      "name": "PROCESS-PARA",
+      "qualifiedName": "HELLO::PROCESS-PARA",
+      "startColumn": 7,
+      "startLine": 18
+    },
+    {
+      "endColumn": 20,
+      "endLine": 22,
+      "filePath": "cobol/Basic.cbl",
+      "id": "function:f0c90a415718e41f621451155df5fb23",
+      "kind": "function",
+      "language": "cobol",
+      "name": "PROCESS-EXIT",
+      "qualifiedName": "HELLO::PROCESS-EXIT",
+      "startColumn": 7,
+      "startLine": 21
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 19,
+      "fromNodeId": "function:4e71c28b654df0735bde506af1e2ebd3",
+      "line": 11,
+      "referenceKind": "calls",
+      "referenceName": "INIT-PARA"
+    },
+    {
+      "column": 19,
+      "fromNodeId": "function:4e71c28b654df0735bde506af1e2ebd3",
+      "line": 12,
+      "referenceKind": "calls",
+      "referenceName": "PROCESS-PARA"
+    },
+    {
+      "column": 37,
+      "fromNodeId": "function:4e71c28b654df0735bde506af1e2ebd3",
+      "line": 12,
+      "referenceKind": "calls",
+      "referenceName": "PROCESS-EXIT"
+    },
+    {
+      "column": 16,
+      "fromNodeId": "function:4e71c28b654df0735bde506af1e2ebd3",
+      "line": 13,
+      "referenceKind": "calls",
+      "referenceName": "LOGGER"
+    },
+    {
+      "column": 27,
+      "fromNodeId": "function:94b1fb7bc70668144c1b24535573244c",
+      "line": 16,
+      "referenceKind": "references",
+      "referenceName": "WS-NAME"
+    },
+    {
+      "column": 20,
+      "fromNodeId": "function:9f9b73222c432ee019d32373758e1da8",
+      "line": 19,
+      "referenceKind": "references",
+      "referenceName": "WS-TOTAL"
+    },
+    {
+      "column": 17,
+      "fromNodeId": "function:9f9b73222c432ee019d32373758e1da8",
+      "line": 20,
+      "referenceKind": "calls",
+      "referenceName": "PROCESS-EXIT"
+    }
+  ]
+}

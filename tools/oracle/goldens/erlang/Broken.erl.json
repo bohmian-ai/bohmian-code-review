@@ -1,0 +1,38 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:erlang/Broken.erl",
+      "target": "namespace:45ae09897dd3ff015b553ecc558061ef"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 5,
+      "filePath": "erlang/Broken.erl",
+      "id": "file:erlang/Broken.erl",
+      "isExported": false,
+      "kind": "file",
+      "language": "erlang",
+      "name": "Broken.erl",
+      "qualifiedName": "erlang/Broken.erl",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 16,
+      "endLine": 1,
+      "filePath": "erlang/Broken.erl",
+      "id": "namespace:45ae09897dd3ff015b553ecc558061ef",
+      "kind": "namespace",
+      "language": "erlang",
+      "name": "broken",
+      "qualifiedName": "broken",
+      "startColumn": 0,
+      "startLine": 1
+    }
+  ],
+  "unresolvedReferences": []
+}

@@ -1,0 +1,130 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:scala/Basic.scala",
+      "target": "class:92bba5f90b5a88c26deec9d9244e903c"
+    },
+    {
+      "kind": "contains",
+      "source": "class:92bba5f90b5a88c26deec9d9244e903c",
+      "target": "method:9c92e17de4b3cd5770a85b34e12ac3e5"
+    },
+    {
+      "kind": "contains",
+      "source": "file:scala/Basic.scala",
+      "target": "class:dda0ecc597bbb86b0eebc1fab6d42df2"
+    },
+    {
+      "kind": "contains",
+      "source": "class:dda0ecc597bbb86b0eebc1fab6d42df2",
+      "target": "method:aa2016fe4d1d772abb69433fe8e705f5"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 12,
+      "filePath": "scala/Basic.scala",
+      "id": "file:scala/Basic.scala",
+      "isExported": false,
+      "kind": "file",
+      "language": "scala",
+      "name": "Basic.scala",
+      "qualifiedName": "scala/Basic.scala",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 1,
+      "endLine": 7,
+      "filePath": "scala/Basic.scala",
+      "id": "class:92bba5f90b5a88c26deec9d9244e903c",
+      "kind": "class",
+      "language": "scala",
+      "name": "Circle",
+      "qualifiedName": "Circle",
+      "startColumn": 0,
+      "startLine": 3,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 3,
+      "endLine": 6,
+      "filePath": "scala/Basic.scala",
+      "id": "method:9c92e17de4b3cd5770a85b34e12ac3e5",
+      "isAsync": false,
+      "isStatic": false,
+      "kind": "method",
+      "language": "scala",
+      "name": "area",
+      "qualifiedName": "Circle::area",
+      "returnType": "Double",
+      "signature": ": Double",
+      "startColumn": 2,
+      "startLine": 4,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 1,
+      "endLine": 11,
+      "filePath": "scala/Basic.scala",
+      "id": "class:dda0ecc597bbb86b0eebc1fab6d42df2",
+      "kind": "class",
+      "language": "scala",
+      "name": "Circle",
+      "qualifiedName": "Circle",
+      "startColumn": 0,
+      "startLine": 9,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 55,
+      "endLine": 10,
+      "filePath": "scala/Basic.scala",
+      "id": "method:aa2016fe4d1d772abb69433fe8e705f5",
+      "isAsync": false,
+      "isStatic": false,
+      "kind": "method",
+      "language": "scala",
+      "name": "make",
+      "qualifiedName": "Circle::make",
+      "returnType": "Circle",
+      "signature": "(radius: Double): Circle",
+      "startColumn": 2,
+      "startLine": 10,
+      "visibility": "public"
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 37,
+      "fromNodeId": "class:92bba5f90b5a88c26deec9d9244e903c",
+      "line": 3,
+      "referenceKind": "extends",
+      "referenceName": "Shape"
+    },
+    {
+      "column": 4,
+      "fromNodeId": "method:9c92e17de4b3cd5770a85b34e12ac3e5",
+      "line": 5,
+      "referenceKind": "references",
+      "referenceName": "Math"
+    },
+    {
+      "column": 28,
+      "fromNodeId": "method:aa2016fe4d1d772abb69433fe8e705f5",
+      "line": 10,
+      "referenceKind": "references",
+      "referenceName": "Circle"
+    },
+    {
+      "column": 37,
+      "fromNodeId": "method:aa2016fe4d1d772abb69433fe8e705f5",
+      "line": 10,
+      "referenceKind": "instantiates",
+      "referenceName": "Circle"
+    }
+  ]
+}

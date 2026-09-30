@@ -1,0 +1,163 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:cobol/Cics.cbl",
+      "target": "module:fc247f4dd94b79221f9be802b4018b66"
+    },
+    {
+      "kind": "contains",
+      "source": "module:fc247f4dd94b79221f9be802b4018b66",
+      "target": "variable:88623e4de591d348dd5cdc73742cc0b6"
+    },
+    {
+      "kind": "contains",
+      "source": "module:fc247f4dd94b79221f9be802b4018b66",
+      "target": "variable:45fbb7066dec0f0b83568383e4736527"
+    },
+    {
+      "kind": "contains",
+      "source": "module:fc247f4dd94b79221f9be802b4018b66",
+      "target": "function:a217a92e5a0e43c636359478f9de75c0"
+    },
+    {
+      "kind": "contains",
+      "source": "module:fc247f4dd94b79221f9be802b4018b66",
+      "target": "import:d25cb0dcc8e2ea6c63e5bb4c2ef782a5"
+    },
+    {
+      "kind": "contains",
+      "source": "module:fc247f4dd94b79221f9be802b4018b66",
+      "target": "import:d9926a84baadef003cd24ad32c960435"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 16,
+      "filePath": "cobol/Cics.cbl",
+      "id": "file:cobol/Cics.cbl",
+      "isExported": false,
+      "kind": "file",
+      "language": "cobol",
+      "name": "Cics.cbl",
+      "qualifiedName": "cobol/Cics.cbl",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 20,
+      "endLine": 15,
+      "filePath": "cobol/Cics.cbl",
+      "id": "module:fc247f4dd94b79221f9be802b4018b66",
+      "kind": "module",
+      "language": "cobol",
+      "name": "CICS",
+      "qualifiedName": "CICS",
+      "startColumn": 7,
+      "startLine": 1
+    },
+    {
+      "endColumn": 41,
+      "endLine": 6,
+      "filePath": "cobol/Cics.cbl",
+      "id": "variable:88623e4de591d348dd5cdc73742cc0b6",
+      "kind": "variable",
+      "language": "cobol",
+      "name": "WS-TRANID",
+      "qualifiedName": "CICS::WS-TRANID",
+      "signature": "01 WS-TRANID PIC X(4) VALUE \"CB00\"",
+      "startColumn": 7,
+      "startLine": 6
+    },
+    {
+      "endColumn": 40,
+      "endLine": 7,
+      "filePath": "cobol/Cics.cbl",
+      "id": "variable:45fbb7066dec0f0b83568383e4736527",
+      "kind": "variable",
+      "language": "cobol",
+      "name": "WS-PGM",
+      "qualifiedName": "CICS::WS-PGM",
+      "signature": "01 WS-PGM PIC X(8) VALUE \"LOGGER\"",
+      "startColumn": 7,
+      "startLine": 7
+    },
+    {
+      "endColumn": 12,
+      "endLine": 15,
+      "filePath": "cobol/Cics.cbl",
+      "id": "function:a217a92e5a0e43c636359478f9de75c0",
+      "kind": "function",
+      "language": "cobol",
+      "name": "MAIN",
+      "qualifiedName": "CICS::MAIN",
+      "startColumn": 7,
+      "startLine": 9
+    },
+    {
+      "endColumn": 43,
+      "endLine": 13,
+      "filePath": "cobol/Cics.cbl",
+      "id": "import:d25cb0dcc8e2ea6c63e5bb4c2ef782a5",
+      "kind": "import",
+      "language": "cobol",
+      "name": "ORDERS",
+      "qualifiedName": "CICS::ORDERS",
+      "signature": "EXEC SQL INCLUDE ORDERS END-EXEC",
+      "startColumn": 11,
+      "startLine": 13
+    },
+    {
+      "endColumn": 25,
+      "endLine": 14,
+      "filePath": "cobol/Cics.cbl",
+      "id": "import:d9926a84baadef003cd24ad32c960435",
+      "kind": "import",
+      "language": "cobol",
+      "name": "CUSTFILE",
+      "qualifiedName": "CICS::CUSTFILE",
+      "signature": "COPY CUSTFILE.",
+      "startColumn": 11,
+      "startLine": 14
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 11,
+      "fromNodeId": "function:a217a92e5a0e43c636359478f9de75c0",
+      "line": 10,
+      "referenceKind": "calls",
+      "referenceName": "UTILITY"
+    },
+    {
+      "column": 11,
+      "fromNodeId": "function:a217a92e5a0e43c636359478f9de75c0",
+      "line": 11,
+      "referenceKind": "calls",
+      "referenceName": "cics-transid:CB00"
+    },
+    {
+      "column": 11,
+      "fromNodeId": "function:a217a92e5a0e43c636359478f9de75c0",
+      "line": 12,
+      "referenceKind": "calls",
+      "referenceName": "LOGGER"
+    },
+    {
+      "column": 11,
+      "fromNodeId": "function:a217a92e5a0e43c636359478f9de75c0",
+      "line": 13,
+      "referenceKind": "imports",
+      "referenceName": "ORDERS"
+    },
+    {
+      "column": 11,
+      "fromNodeId": "module:fc247f4dd94b79221f9be802b4018b66",
+      "line": 14,
+      "referenceKind": "imports",
+      "referenceName": "CUSTFILE"
+    }
+  ]
+}

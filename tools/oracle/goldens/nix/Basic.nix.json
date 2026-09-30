@@ -1,0 +1,370 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:nix/Basic.nix",
+      "target": "variable:1e2a8a5089223b87f9434c970d8cc215"
+    },
+    {
+      "kind": "contains",
+      "source": "file:nix/Basic.nix",
+      "target": "variable:d23e3f33f2bf179da0af9b05c68479fa"
+    },
+    {
+      "kind": "contains",
+      "source": "file:nix/Basic.nix",
+      "target": "variable:778ee96fd1b4b0d1c38a14632df077d9"
+    },
+    {
+      "kind": "contains",
+      "source": "file:nix/Basic.nix",
+      "target": "variable:5c656248341bab36c1f25b4e874e4fa6"
+    },
+    {
+      "kind": "contains",
+      "source": "file:nix/Basic.nix",
+      "target": "variable:7624f7eeab802ff9af5aef1004b831a1"
+    },
+    {
+      "kind": "contains",
+      "source": "file:nix/Basic.nix",
+      "target": "variable:0a2ec565546783d9ac5a9b18b3740f5f"
+    },
+    {
+      "kind": "contains",
+      "source": "file:nix/Basic.nix",
+      "target": "variable:31992845e7b1d401b0a80836e49259d3"
+    },
+    {
+      "kind": "contains",
+      "source": "file:nix/Basic.nix",
+      "target": "variable:35e71587d5e14db05ef598f978005ccd"
+    },
+    {
+      "kind": "contains",
+      "source": "file:nix/Basic.nix",
+      "target": "variable:385f4f38358d04964582fca550ffad60"
+    },
+    {
+      "kind": "contains",
+      "source": "file:nix/Basic.nix",
+      "target": "variable:f06286c25352375a4b9eed0d8edc52f6"
+    },
+    {
+      "kind": "contains",
+      "source": "file:nix/Basic.nix",
+      "target": "import:9f0d565ba53c838a369e161b0a2a94dc"
+    },
+    {
+      "kind": "contains",
+      "source": "file:nix/Basic.nix",
+      "target": "import:6f7f70bfee89bd5e24466aa427901c58"
+    },
+    {
+      "kind": "contains",
+      "source": "file:nix/Basic.nix",
+      "target": "variable:42bbd345df2512d7e9e7435927894f54"
+    },
+    {
+      "kind": "contains",
+      "source": "file:nix/Basic.nix",
+      "target": "import:e4905162d444d22142b3ab9a47ac2f02"
+    },
+    {
+      "kind": "contains",
+      "source": "file:nix/Basic.nix",
+      "target": "variable:d5586d7078d8f139d37da57168b5d1bb"
+    },
+    {
+      "kind": "contains",
+      "source": "file:nix/Basic.nix",
+      "target": "import:bb07d92d53e273bae9abbaf348cecc01"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 22,
+      "filePath": "nix/Basic.nix",
+      "id": "file:nix/Basic.nix",
+      "isExported": false,
+      "kind": "file",
+      "language": "nix",
+      "name": "Basic.nix",
+      "qualifiedName": "nix/Basic.nix",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 20,
+      "endLine": 4,
+      "filePath": "nix/Basic.nix",
+      "id": "variable:1e2a8a5089223b87f9434c970d8cc215",
+      "isExported": false,
+      "kind": "variable",
+      "language": "nix",
+      "name": "version",
+      "qualifiedName": "version",
+      "signature": "= \"1.2.3\"",
+      "startColumn": 2,
+      "startLine": 4
+    },
+    {
+      "endColumn": 4,
+      "endLine": 8,
+      "filePath": "nix/Basic.nix",
+      "id": "variable:d23e3f33f2bf179da0af9b05c68479fa",
+      "isExported": false,
+      "kind": "variable",
+      "language": "nix",
+      "name": "commonArgs",
+      "qualifiedName": "commonArgs",
+      "signature": "= {\n    name = \"app-${version}\";\n    src = ./src;\n  }",
+      "startColumn": 2,
+      "startLine": 5
+    },
+    {
+      "endColumn": 28,
+      "endLine": 6,
+      "filePath": "nix/Basic.nix",
+      "id": "variable:778ee96fd1b4b0d1c38a14632df077d9",
+      "isExported": false,
+      "kind": "variable",
+      "language": "nix",
+      "name": "name",
+      "qualifiedName": "name",
+      "signature": "= \"app-${version}\"",
+      "startColumn": 4,
+      "startLine": 6
+    },
+    {
+      "endColumn": 16,
+      "endLine": 7,
+      "filePath": "nix/Basic.nix",
+      "id": "variable:5c656248341bab36c1f25b4e874e4fa6",
+      "isExported": false,
+      "kind": "variable",
+      "language": "nix",
+      "name": "src",
+      "qualifiedName": "src",
+      "signature": "= ./src",
+      "startColumn": 4,
+      "startLine": 7
+    },
+    {
+      "endColumn": 13,
+      "endLine": 11,
+      "filePath": "nix/Basic.nix",
+      "id": "variable:7624f7eeab802ff9af5aef1004b831a1",
+      "isExported": true,
+      "kind": "variable",
+      "language": "nix",
+      "name": "lib",
+      "qualifiedName": "lib",
+      "startColumn": 10,
+      "startLine": 11
+    },
+    {
+      "endColumn": 5,
+      "endLine": 14,
+      "filePath": "nix/Basic.nix",
+      "id": "variable:0a2ec565546783d9ac5a9b18b3740f5f",
+      "isExported": true,
+      "kind": "variable",
+      "language": "nix",
+      "name": "package",
+      "qualifiedName": "package",
+      "signature": "= pkgs.stdenv.mkDerivation (commonArgs // {\n    buildInputs = [ pkgs.openssl pkgs.zlib ];\n  })",
+      "startColumn": 2,
+      "startLine": 12
+    },
+    {
+      "endColumn": 45,
+      "endLine": 13,
+      "filePath": "nix/Basic.nix",
+      "id": "variable:31992845e7b1d401b0a80836e49259d3",
+      "isExported": false,
+      "kind": "variable",
+      "language": "nix",
+      "name": "buildInputs",
+      "qualifiedName": "buildInputs",
+      "signature": "= [ pkgs.openssl pkgs.zlib ]",
+      "startColumn": 4,
+      "startLine": 13
+    },
+    {
+      "endColumn": 4,
+      "endLine": 17,
+      "filePath": "nix/Basic.nix",
+      "id": "variable:35e71587d5e14db05ef598f978005ccd",
+      "isExported": true,
+      "kind": "variable",
+      "language": "nix",
+      "name": "shell",
+      "qualifiedName": "shell",
+      "signature": "= pkgs.mkShell {\n    packages = [ pkgs.pkg-config ];\n  }",
+      "startColumn": 2,
+      "startLine": 15
+    },
+    {
+      "endColumn": 35,
+      "endLine": 16,
+      "filePath": "nix/Basic.nix",
+      "id": "variable:385f4f38358d04964582fca550ffad60",
+      "isExported": false,
+      "kind": "variable",
+      "language": "nix",
+      "name": "packages",
+      "qualifiedName": "packages",
+      "signature": "= [ pkgs.pkg-config ]",
+      "startColumn": 4,
+      "startLine": 16
+    },
+    {
+      "endColumn": 53,
+      "endLine": 18,
+      "filePath": "nix/Basic.nix",
+      "id": "variable:f06286c25352375a4b9eed0d8edc52f6",
+      "isExported": true,
+      "kind": "variable",
+      "language": "nix",
+      "name": "imports",
+      "qualifiedName": "imports",
+      "signature": "= [ ./hardware.nix ../common/network.nix ]",
+      "startColumn": 2,
+      "startLine": 18
+    },
+    {
+      "endColumn": 28,
+      "endLine": 18,
+      "filePath": "nix/Basic.nix",
+      "id": "import:9f0d565ba53c838a369e161b0a2a94dc",
+      "kind": "import",
+      "language": "nix",
+      "name": "./hardware.nix",
+      "qualifiedName": "./hardware.nix",
+      "signature": "./hardware.nix",
+      "startColumn": 14,
+      "startLine": 18
+    },
+    {
+      "endColumn": 50,
+      "endLine": 18,
+      "filePath": "nix/Basic.nix",
+      "id": "import:6f7f70bfee89bd5e24466aa427901c58",
+      "kind": "import",
+      "language": "nix",
+      "name": "../common/network.nix",
+      "qualifiedName": "../common/network.nix",
+      "signature": "../common/network.nix",
+      "startColumn": 29,
+      "startLine": 18
+    },
+    {
+      "endColumn": 49,
+      "endLine": 19,
+      "filePath": "nix/Basic.nix",
+      "id": "variable:42bbd345df2512d7e9e7435927894f54",
+      "isExported": true,
+      "kind": "variable",
+      "language": "nix",
+      "name": "callPkg",
+      "qualifiedName": "callPkg",
+      "signature": "= pkgs.callPackage ./tools/foo.nix { }",
+      "startColumn": 2,
+      "startLine": 19
+    },
+    {
+      "endColumn": 48,
+      "endLine": 19,
+      "filePath": "nix/Basic.nix",
+      "id": "import:e4905162d444d22142b3ab9a47ac2f02",
+      "kind": "import",
+      "language": "nix",
+      "name": "./tools/foo.nix",
+      "qualifiedName": "./tools/foo.nix",
+      "signature": "pkgs.callPackage ./tools/foo.nix { }",
+      "startColumn": 12,
+      "startLine": 19
+    },
+    {
+      "endColumn": 40,
+      "endLine": 20,
+      "filePath": "nix/Basic.nix",
+      "id": "variable:d5586d7078d8f139d37da57168b5d1bb",
+      "isExported": true,
+      "kind": "variable",
+      "language": "nix",
+      "name": "fromOther",
+      "qualifiedName": "fromOther",
+      "signature": "= import ../other/thing.nix",
+      "startColumn": 2,
+      "startLine": 20
+    },
+    {
+      "endColumn": 39,
+      "endLine": 20,
+      "filePath": "nix/Basic.nix",
+      "id": "import:bb07d92d53e273bae9abbaf348cecc01",
+      "kind": "import",
+      "language": "nix",
+      "name": "../other/thing.nix",
+      "qualifiedName": "../other/thing.nix",
+      "signature": "import ../other/thing.nix",
+      "startColumn": 14,
+      "startLine": 20
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 12,
+      "fromNodeId": "file:nix/Basic.nix",
+      "line": 12,
+      "referenceKind": "calls",
+      "referenceName": "pkgs.stdenv.mkDerivation"
+    },
+    {
+      "column": 10,
+      "fromNodeId": "file:nix/Basic.nix",
+      "line": 15,
+      "referenceKind": "calls",
+      "referenceName": "pkgs.mkShell"
+    },
+    {
+      "column": 14,
+      "fromNodeId": "file:nix/Basic.nix",
+      "line": 18,
+      "referenceKind": "imports",
+      "referenceName": "./hardware.nix"
+    },
+    {
+      "column": 29,
+      "fromNodeId": "file:nix/Basic.nix",
+      "line": 18,
+      "referenceKind": "imports",
+      "referenceName": "../common/network.nix"
+    },
+    {
+      "column": 12,
+      "fromNodeId": "file:nix/Basic.nix",
+      "line": 19,
+      "referenceKind": "calls",
+      "referenceName": "pkgs.callPackage"
+    },
+    {
+      "column": 12,
+      "fromNodeId": "file:nix/Basic.nix",
+      "line": 19,
+      "referenceKind": "imports",
+      "referenceName": "./tools/foo.nix"
+    },
+    {
+      "column": 14,
+      "fromNodeId": "file:nix/Basic.nix",
+      "line": 20,
+      "referenceKind": "imports",
+      "referenceName": "../other/thing.nix"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "edges": [],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 6,
+      "filePath": "xml/pom.xml",
+      "id": "file:e5c80d38b125ce90462cb2126b2628f9",
+      "kind": "file",
+      "language": "xml",
+      "name": "pom.xml",
+      "qualifiedName": "xml/pom.xml",
+      "startColumn": 0,
+      "startLine": 1
+    }
+  ],
+  "unresolvedReferences": []
+}

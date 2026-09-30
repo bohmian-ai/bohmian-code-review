@@ -1,0 +1,228 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:cfscript/Basic.cfs",
+      "target": "class:08cc8aedb34983f339224dc2fa792659"
+    },
+    {
+      "kind": "contains",
+      "source": "class:08cc8aedb34983f339224dc2fa792659",
+      "target": "method:d634c94cc2cd0e07b670e4b467972b8a"
+    },
+    {
+      "kind": "contains",
+      "source": "class:08cc8aedb34983f339224dc2fa792659",
+      "target": "method:21584f02163f45e07052247d7154de1b"
+    },
+    {
+      "kind": "contains",
+      "source": "class:08cc8aedb34983f339224dc2fa792659",
+      "target": "method:b607b46f7349fa2f38651e187fb6a9d0"
+    },
+    {
+      "kind": "contains",
+      "source": "class:08cc8aedb34983f339224dc2fa792659",
+      "target": "method:840aefd7044974f32ba00e6134f5dbb6"
+    },
+    {
+      "kind": "contains",
+      "source": "class:08cc8aedb34983f339224dc2fa792659",
+      "target": "import:bf3f016c0b43a1a1dedf0a4743a51d71"
+    },
+    {
+      "kind": "contains",
+      "source": "class:08cc8aedb34983f339224dc2fa792659",
+      "target": "import:ce041536164033c76fcca0c904522675"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 30,
+      "filePath": "cfscript/Basic.cfs",
+      "id": "file:cfscript/Basic.cfs",
+      "isExported": false,
+      "kind": "file",
+      "language": "cfscript",
+      "name": "Basic.cfs",
+      "qualifiedName": "cfscript/Basic.cfs",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 1,
+      "endLine": 29,
+      "filePath": "cfscript/Basic.cfs",
+      "id": "class:08cc8aedb34983f339224dc2fa792659",
+      "kind": "class",
+      "language": "cfscript",
+      "name": "Basic",
+      "qualifiedName": "cfscript/Basic.cfs::Basic",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 5,
+      "endLine": 10,
+      "filePath": "cfscript/Basic.cfs",
+      "id": "method:d634c94cc2cd0e07b670e4b467972b8a",
+      "kind": "method",
+      "language": "cfscript",
+      "name": "init",
+      "qualifiedName": "Basic::init",
+      "signature": "()",
+      "startColumn": 4,
+      "startLine": 7
+    },
+    {
+      "endColumn": 5,
+      "endLine": 16,
+      "filePath": "cfscript/Basic.cfs",
+      "id": "method:21584f02163f45e07052247d7154de1b",
+      "kind": "method",
+      "language": "cfscript",
+      "name": "save",
+      "qualifiedName": "Basic::save",
+      "signature": "(user)",
+      "startColumn": 4,
+      "startLine": 12
+    },
+    {
+      "endColumn": 5,
+      "endLine": 20,
+      "filePath": "cfscript/Basic.cfs",
+      "id": "method:b607b46f7349fa2f38651e187fb6a9d0",
+      "kind": "method",
+      "language": "cfscript",
+      "name": "notify",
+      "qualifiedName": "Basic::notify",
+      "signature": "(user)",
+      "startColumn": 4,
+      "startLine": 18,
+      "visibility": "private"
+    },
+    {
+      "endColumn": 5,
+      "endLine": 25,
+      "filePath": "cfscript/Basic.cfs",
+      "id": "method:840aefd7044974f32ba00e6134f5dbb6",
+      "kind": "method",
+      "language": "cfscript",
+      "name": "getById",
+      "qualifiedName": "Basic::getById",
+      "signature": "(id)",
+      "startColumn": 4,
+      "startLine": 22
+    },
+    {
+      "endColumn": 26,
+      "endLine": 27,
+      "filePath": "cfscript/Basic.cfs",
+      "id": "import:bf3f016c0b43a1a1dedf0a4743a51d71",
+      "kind": "import",
+      "language": "cfscript",
+      "name": "helpers.cfm",
+      "qualifiedName": "Basic::helpers.cfm",
+      "signature": "include \"helpers.cfm\";",
+      "startColumn": 4,
+      "startLine": 27
+    },
+    {
+      "endColumn": 23,
+      "endLine": 28,
+      "filePath": "cfscript/Basic.cfs",
+      "id": "import:ce041536164033c76fcca0c904522675",
+      "kind": "import",
+      "language": "cfscript",
+      "name": "com.foo.Bar",
+      "qualifiedName": "Basic::com.foo.Bar",
+      "signature": "import com.foo.Bar;",
+      "startColumn": 4,
+      "startLine": 28
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 18,
+      "fromNodeId": "class:08cc8aedb34983f339224dc2fa792659",
+      "language": "cfscript",
+      "line": 1,
+      "referenceKind": "extends",
+      "referenceName": "BaseService"
+    },
+    {
+      "column": 43,
+      "fromNodeId": "class:08cc8aedb34983f339224dc2fa792659",
+      "language": "cfscript",
+      "line": 1,
+      "referenceKind": "implements",
+      "referenceName": "IStore"
+    },
+    {
+      "column": 43,
+      "fromNodeId": "class:08cc8aedb34983f339224dc2fa792659",
+      "language": "cfscript",
+      "line": 1,
+      "referenceKind": "implements",
+      "referenceName": "IAuditable"
+    },
+    {
+      "column": 24,
+      "fromNodeId": "method:d634c94cc2cd0e07b670e4b467972b8a",
+      "language": "cfscript",
+      "line": 8,
+      "referenceKind": "calls",
+      "referenceName": "createObject"
+    },
+    {
+      "column": 8,
+      "fromNodeId": "method:21584f02163f45e07052247d7154de1b",
+      "language": "cfscript",
+      "line": 13,
+      "referenceKind": "calls",
+      "referenceName": "arguments.svc.persist"
+    },
+    {
+      "column": 8,
+      "fromNodeId": "method:21584f02163f45e07052247d7154de1b",
+      "language": "cfscript",
+      "line": 14,
+      "referenceKind": "calls",
+      "referenceName": "notify"
+    },
+    {
+      "column": 8,
+      "fromNodeId": "method:b607b46f7349fa2f38651e187fb6a9d0",
+      "language": "cfscript",
+      "line": 19,
+      "referenceKind": "calls",
+      "referenceName": "log.info"
+    },
+    {
+      "column": 21,
+      "fromNodeId": "method:840aefd7044974f32ba00e6134f5dbb6",
+      "language": "cfscript",
+      "line": 23,
+      "referenceKind": "calls",
+      "referenceName": "queryExecute"
+    },
+    {
+      "column": 4,
+      "fromNodeId": "class:08cc8aedb34983f339224dc2fa792659",
+      "language": "cfscript",
+      "line": 27,
+      "referenceKind": "imports",
+      "referenceName": "helpers.cfm"
+    },
+    {
+      "column": 4,
+      "fromNodeId": "class:08cc8aedb34983f339224dc2fa792659",
+      "language": "cfscript",
+      "line": 28,
+      "referenceKind": "imports",
+      "referenceName": "com.foo.Bar"
+    }
+  ]
+}

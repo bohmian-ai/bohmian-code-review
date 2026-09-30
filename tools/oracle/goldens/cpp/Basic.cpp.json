@@ -1,0 +1,100 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:cpp/Basic.cpp",
+      "target": "import:3e831cd471eb731c83ef6b9aa9f1db28"
+    },
+    {
+      "kind": "contains",
+      "source": "file:cpp/Basic.cpp",
+      "target": "class:1442fa0a101527d3a47dd42d7f6d43d2"
+    },
+    {
+      "kind": "contains",
+      "source": "class:1442fa0a101527d3a47dd42d7f6d43d2",
+      "target": "method:597172d09b7b8e9a03bf87fb1ab17094"
+    },
+    {
+      "kind": "contains",
+      "source": "class:1442fa0a101527d3a47dd42d7f6d43d2",
+      "target": "method:92f25e8854bee0559a7e6ea283800995"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 10,
+      "filePath": "cpp/Basic.cpp",
+      "id": "file:cpp/Basic.cpp",
+      "isExported": false,
+      "kind": "file",
+      "language": "cpp",
+      "name": "Basic.cpp",
+      "qualifiedName": "cpp/Basic.cpp",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 0,
+      "endLine": 2,
+      "filePath": "cpp/Basic.cpp",
+      "id": "import:3e831cd471eb731c83ef6b9aa9f1db28",
+      "kind": "import",
+      "language": "cpp",
+      "name": "cmath",
+      "qualifiedName": "cmath",
+      "signature": "#include <cmath>",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 1,
+      "endLine": 9,
+      "filePath": "cpp/Basic.cpp",
+      "id": "class:1442fa0a101527d3a47dd42d7f6d43d2",
+      "kind": "class",
+      "language": "cpp",
+      "name": "Circle",
+      "qualifiedName": "Circle",
+      "startColumn": 0,
+      "startLine": 3
+    },
+    {
+      "endColumn": 55,
+      "endLine": 5,
+      "filePath": "cpp/Basic.cpp",
+      "id": "method:597172d09b7b8e9a03bf87fb1ab17094",
+      "kind": "method",
+      "language": "cpp",
+      "name": "Circle",
+      "qualifiedName": "Circle::Circle",
+      "startColumn": 4,
+      "startLine": 5,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 60,
+      "endLine": 6,
+      "filePath": "cpp/Basic.cpp",
+      "id": "method:92f25e8854bee0559a7e6ea283800995",
+      "kind": "method",
+      "language": "cpp",
+      "name": "area",
+      "qualifiedName": "Circle::area",
+      "startColumn": 4,
+      "startLine": 6,
+      "visibility": "public"
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 0,
+      "fromNodeId": "file:cpp/Basic.cpp",
+      "line": 1,
+      "referenceKind": "imports",
+      "referenceName": "cmath"
+    }
+  ]
+}

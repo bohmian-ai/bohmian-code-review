@@ -1,0 +1,11 @@
+@code {
+  private int count = 0;
+  private void Increment() {
+    count++;
+    var svc = new OrderService();
+    svc.Submit(count);
+  }
+}
+<PageTitle>Counter</PageTitle>
+<Grid TItem="CatalogItem" Items="@items" />
+<EditForm Model="@model" OnValidSubmit="Submit" />

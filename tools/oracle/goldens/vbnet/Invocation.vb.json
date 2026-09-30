@@ -1,0 +1,145 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:vbnet/Invocation.vb",
+      "target": "import:e90b27bcc38c508f771c9f8c94e9255e"
+    },
+    {
+      "kind": "contains",
+      "source": "file:vbnet/Invocation.vb",
+      "target": "import:f53751597ad3fb2ce55c76454e6f48bd"
+    },
+    {
+      "kind": "contains",
+      "source": "file:vbnet/Invocation.vb",
+      "target": "class:b302ba29736f33e5bfc5a2a61e693525"
+    },
+    {
+      "kind": "contains",
+      "source": "class:b302ba29736f33e5bfc5a2a61e693525",
+      "target": "method:df7182540391ace263b2c60d582cefd7"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 14,
+      "filePath": "vbnet/Invocation.vb",
+      "id": "file:vbnet/Invocation.vb",
+      "isExported": false,
+      "kind": "file",
+      "language": "vbnet",
+      "name": "Invocation.vb",
+      "qualifiedName": "vbnet/Invocation.vb",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 0,
+      "endLine": 2,
+      "filePath": "vbnet/Invocation.vb",
+      "id": "import:e90b27bcc38c508f771c9f8c94e9255e",
+      "kind": "import",
+      "language": "vbnet",
+      "name": "System",
+      "qualifiedName": "System",
+      "signature": "Imports System",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 0,
+      "endLine": 4,
+      "filePath": "vbnet/Invocation.vb",
+      "id": "import:f53751597ad3fb2ce55c76454e6f48bd",
+      "kind": "import",
+      "language": "vbnet",
+      "name": "System.Linq",
+      "qualifiedName": "System.Linq",
+      "signature": "Imports System.Linq",
+      "startColumn": 0,
+      "startLine": 2
+    },
+    {
+      "endColumn": 0,
+      "endLine": 14,
+      "filePath": "vbnet/Invocation.vb",
+      "id": "class:b302ba29736f33e5bfc5a2a61e693525",
+      "kind": "class",
+      "language": "vbnet",
+      "name": "Invoker",
+      "qualifiedName": "Invoker",
+      "startColumn": 0,
+      "startLine": 4,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 0,
+      "endLine": 13,
+      "filePath": "vbnet/Invocation.vb",
+      "id": "method:df7182540391ace263b2c60d582cefd7",
+      "isAsync": false,
+      "isStatic": false,
+      "kind": "method",
+      "language": "vbnet",
+      "name": "Run",
+      "qualifiedName": "Invoker::Run",
+      "startColumn": 4,
+      "startLine": 5,
+      "visibility": "public"
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 0,
+      "fromNodeId": "file:vbnet/Invocation.vb",
+      "line": 1,
+      "referenceKind": "imports",
+      "referenceName": "System"
+    },
+    {
+      "column": 0,
+      "fromNodeId": "file:vbnet/Invocation.vb",
+      "line": 2,
+      "referenceKind": "imports",
+      "referenceName": "System.Linq"
+    },
+    {
+      "column": 20,
+      "fromNodeId": "method:df7182540391ace263b2c60d582cefd7",
+      "line": 6,
+      "referenceKind": "calls",
+      "referenceName": "items.IndexOf"
+    },
+    {
+      "column": 20,
+      "fromNodeId": "method:df7182540391ace263b2c60d582cefd7",
+      "line": 7,
+      "referenceKind": "calls",
+      "referenceName": "target.ToUpper"
+    },
+    {
+      "column": 20,
+      "fromNodeId": "method:df7182540391ace263b2c60d582cefd7",
+      "line": 8,
+      "referenceKind": "calls",
+      "referenceName": "items.Count"
+    },
+    {
+      "column": 23,
+      "fromNodeId": "method:df7182540391ace263b2c60d582cefd7",
+      "line": 9,
+      "referenceKind": "instantiates",
+      "referenceName": "CustomerService"
+    },
+    {
+      "column": 21,
+      "fromNodeId": "method:df7182540391ace263b2c60d582cefd7",
+      "line": 10,
+      "referenceKind": "calls",
+      "referenceName": "service.Fetch"
+    }
+  ]
+}

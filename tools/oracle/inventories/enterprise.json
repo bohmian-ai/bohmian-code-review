@@ -1,0 +1,821 @@
+{
+  "$comment": "T6 enterprise/legacy extraction inventory: the exact upstream-to-Rust symbol ledger, grammar provenance, routing precedence, node/reference/import/call rules, diagnostics, preprocessing, and fixtures for the Pascal (incl. DFM), CFScript, CFQuery, COBOL, VB.NET, and Erlang native ports. Frozen upstream revision 572d22bf. Every Rust symbol maps to the upstream file/symbol it ports; parity fixtures are per-language rows in tools/oracle/fixtures/manifest.json with goldens under tools/oracle/goldens/. The source-ledger branch-coverage test (corpus_tests::enterprise_source_ledger_branches_have_fixtures) asserts every inventoried specialized branch has at least one fixture.",
+  "upstream_revision": "572d22bfbe82602080e457bec655f72e3314f9ef",
+  "provenance": {
+    "manifest": "tools/oracle/parity/extract/enterprise-grammars.json",
+    "committed_artifacts": "tools/oracle/parity/extract/provenance/",
+    "lineage": "All six grammars are git sources with committed raw git OBJECT proofs (commit, root tree, needed subtrees, and every required blob) under provenance/git-objects/: pascal = Isopod/tree-sitter-pascal 042119ec (MIT); cfscript/cfquery = cfmleditor/tree-sitter-cfml a224ff1 (MIT, monorepo subgrammars whose checked-in ABI-15 parser.c/scanner.c are byte-identical to the git blobs); cobol = yutaro-sakamoto/tree-sitter-cobol e99dbdc3 + docs/grammars/tree-sitter-cobol.patch (MIT); vbnet = govindbanura/tree-sitter-vbnet 538b708 + docs/grammars/tree-sitter-vbnet.patch (MIT); erlang = WhatsApp/tree-sitter-erlang 836aa2b (Apache-2.0). pascal/cobol/vbnet/erlang vendor the REGENERATED ABI-15 parser.c produced by the pinned tree-sitter-cli 0.25.10 from the committed grammar.js (+ patch + tree-sitter.json); the network-free verifier recomputes commit -> tree -> path -> blob ids, byte-compares blobs to the committed sources and vendored outputs, executes the pinned regeneration recipe with the platform-selected committed CLI binary (darwin-arm64/linux-x64), and byte-compares parser.c/scanner.c/grammar.json/node-types.json to the committed outputs. Oracle wasms are the vendored src/extraction/wasm/ artifacts committed under provenance/wasm/.",
+    "wasm_abi": "All six oracle wasms report ABI 15."
+  },
+  "languages": [
+    {
+      "language": "pascal",
+      "rust_module": "crates/codegraph-extract/src/pascal.rs (+ pascal::dfm for .dfm/.fmx)",
+      "upstream_module": "src/extraction/languages/pascal.ts",
+      "upstream_routing": "src/extraction/grammars.ts EXTENSION_MAP .pas/.dpr/.dpk/.lpr/.dfm/.fmx -> pascal; extractFromSource routes .dfm/.fmx to the DfmExtractor (dfm-extractor.ts)",
+      "grammar": {
+        "package": "Isopod/tree-sitter-pascal (git; npm tree-sitter-pascal 0.10.2)",
+        "revision": "042119eca2e18a60e56317fb06ee3ba5c32cb447",
+        "license": "MIT",
+        "abi": 15,
+        "oracle_wasm": "src/extraction/wasm/tree-sitter-pascal.wasm (regenerated ABI 15)",
+        "vendor": "crates/codegraph-extract/grammars/pascal (regenerated parser.c; no external scanner)",
+        "integrity_manifest": "tools/oracle/parity/extract/enterprise-grammars.json"
+      },
+      "symbol_ledger": [
+        [
+          "visitPascalNode unit/program/library",
+          "visit_pascal_node (module node + children walk)"
+        ],
+        [
+          "visitPascalNode declType",
+          "extract_pascal_decl_type"
+        ],
+        [
+          "visitPascalNode declUses",
+          "extract_pascal_uses"
+        ],
+        [
+          "visitPascalNode declConsts/declConst",
+          "extract_pascal_const"
+        ],
+        [
+          "visitPascalNode declTypes",
+          "declTypes child walk"
+        ],
+        [
+          "visitPascalNode declVars",
+          "declVars declVar walk"
+        ],
+        [
+          "visitPascalNode defProc",
+          "extract_pascal_def_proc"
+        ],
+        [
+          "visitPascalNode declProp",
+          "declProp property node"
+        ],
+        [
+          "visitPascalNode declField",
+          "declField field node"
+        ],
+        [
+          "visitPascalNode declSection",
+          "declSection child walk"
+        ],
+        [
+          "visitPascalNode exprCall",
+          "extract_pascal_call"
+        ],
+        [
+          "visitPascalNode interface/implementation/block",
+          "child walk / visit_pascal_block"
+        ],
+        [
+          "extractPascalDeclType declClass/declIntf/declEnum/type",
+          "extract_pascal_decl_type"
+        ],
+        [
+          "extractPascalInheritance typerefs",
+          "extract_pascal_inheritance"
+        ],
+        [
+          "extractPascalDefProc methodIndex lookup",
+          "extract_pascal_def_proc (method_index map)"
+        ],
+        [
+          "extractPascalDefProc free-routine mint",
+          "extract_pascal_def_proc"
+        ],
+        [
+          "extractPascalCall",
+          "extract_pascal_call"
+        ],
+        [
+          "extractPascalParenlessCall",
+          "extract_pascal_parenless_call"
+        ],
+        [
+          "visitPascalBlock",
+          "visit_pascal_block"
+        ],
+        [
+          "getReturnType typeref",
+          "pascal_return_type"
+        ],
+        [
+          "getSignature args + typeref",
+          "node_signature"
+        ],
+        [
+          "getVisibility declSection",
+          "node_visibility"
+        ],
+        [
+          "isStatic kClass",
+          "node_is_static"
+        ],
+        [
+          "PASCAL_SPEC fn refs (exprArgs/assignment/exprUnary)",
+          "maybe_capture_fn_refs / normalize_fn_ref_value / flush_fn_ref_candidates"
+        ],
+        [
+          "VALUE_REF_LANGS constant targets",
+          "capture_value_ref_scope / flush_value_refs"
+        ],
+        [
+          "DfmExtractor createFileNode",
+          "dfm::extract_dfm file node (generateNodeId form)"
+        ],
+        [
+          "DfmExtractor parseComponents",
+          "dfm::extract_dfm object/end stack"
+        ],
+        [
+          "DfmExtractor event handlers",
+          "dfm::extract_dfm references refs"
+        ]
+      ],
+      "emitted_kinds": [
+        "module",
+        "class",
+        "interface",
+        "enum",
+        "enum_member",
+        "type_alias",
+        "import",
+        "function",
+        "method",
+        "property",
+        "field",
+        "constant",
+        "variable",
+        "component (DFM)",
+        "file (DFM)"
+      ],
+      "specialized_behaviors": "defProc implementation bodies re-attach calls to the interface-declared routine via an indexed lowercase-name lookup (qualified Module.Class.Method suffix keys too); free routines with no declaration mint a function node; paren-less statement-level exprDot calls; chained static-factory re-encode (`TFoo.GetInstance().DoIt` gated on the [TI][A-Z] convention); declSection visibility; value-reference edges target `constant` only; function-as-value capture for `OnClick := Handler`.",
+      "fixture_groups": [
+        "pascal/Basic.pas (match)",
+        "pascal/Broken.pas (defer)",
+        "pascal/Broken2.pas (defer)",
+        "pascal/Empty.pas (match)",
+        "pascal/Unicode.pas (match)",
+        "pascal/Form.dfm (match)",
+        "pascal/Form.fmx (match)",
+        "pascal/BrokenForm.dfm (match)",
+        "pascal/BrokenForm.fmx (match)"
+      ],
+      "branch_fixtures": {
+        "pascal.unit_program_library_module": "pascal/Basic.pas",
+        "pascal.declType_class": "pascal/Basic.pas",
+        "pascal.declType_interface": "pascal/Basic.pas",
+        "pascal.declType_enum": "pascal/Basic.pas",
+        "pascal.declType_type_alias": "pascal/Basic.pas",
+        "pascal.declUses_imports": "pascal/Basic.pas",
+        "pascal.declConst": "pascal/Basic.pas",
+        "pascal.declVar": "pascal/Basic.pas",
+        "pascal.declProp": "pascal/Basic.pas",
+        "pascal.declField": "pascal/Basic.pas",
+        "pascal.defProc_implementation_reattach": "pascal/Basic.pas",
+        "pascal.defProc_free_routine": "pascal/Basic.pas",
+        "pascal.exprCall_qualified": "pascal/Basic.pas",
+        "pascal.exprCall_chained_factory": "pascal/Basic.pas",
+        "pascal.parenless_call": "pascal/Basic.pas",
+        "pascal.declSection_visibility": "pascal/Basic.pas",
+        "pascal.inheritance_extends_implements": "pascal/Basic.pas",
+        "pascal.value_refs_constant_targets": "pascal/Basic.pas",
+        "pascal.fn_refs_assignment_rhs": "pascal/Basic.pas",
+        "pascal.dfm_components": "pascal/Form.dfm",
+        "pascal.dfm_event_references": "pascal/Form.dfm",
+        "pascal.fmx_components": "pascal/Form.fmx",
+        "pascal.dfm_malformed_recovery": "pascal/BrokenForm.dfm",
+        "pascal.fmx_malformed_recovery": "pascal/BrokenForm.fmx"
+      }
+    },
+    {
+      "language": "cfscript",
+      "rust_module": "crates/codegraph-extract/src/cfscript.rs",
+      "upstream_module": "src/extraction/languages/cfscript.ts + cfml-extractor.ts extractBareScript",
+      "upstream_routing": "src/extraction/grammars.ts EXTENSION_MAP .cfs -> cfscript; extractFromSource routes cfscript files through CfmlExtractor (bare-script delegation)",
+      "grammar": {
+        "package": "cfmleditor/tree-sitter-cfml (monorepo subgrammar)",
+        "revision": "a224ff10755bcd2d322dd6be2c09ec11280135fe",
+        "license": "MIT",
+        "abi": 15,
+        "oracle_wasm": "src/extraction/wasm/tree-sitter-cfscript.wasm",
+        "vendor": "crates/codegraph-extract/grammars/cfscript (checked-in parser.c + scanner.c, byte-identical to the git blobs)",
+        "integrity_manifest": "tools/oracle/parity/extract/enterprise-grammars.json"
+      },
+      "symbol_ledger": [
+        [
+          "cfscriptExtractor classifyClassNode (component/interface)",
+          "extract_class classification by child(0)"
+        ],
+        [
+          "extractClass component body walk",
+          "extract_class"
+        ],
+        [
+          "cfmlVisibility access_type",
+          "node_visibility"
+        ],
+        [
+          "getSignature parameters field",
+          "node_signature"
+        ],
+        [
+          "extractImport include_statement",
+          "extract_import"
+        ],
+        [
+          "extractImport import_statement (import_path / string)",
+          "extract_import"
+        ],
+        [
+          "generic extractFunction/extractMethod",
+          "extract_function / extract_method"
+        ],
+        [
+          "generic extractVariable (variable_declarator children)",
+          "extract_variable"
+        ],
+        [
+          "generic extractProperty",
+          "extract_property"
+        ],
+        [
+          "generic extractCall member_expression",
+          "extract_call"
+        ],
+        [
+          "cfscript scope-prefixed member call (variables/this/local/arguments)",
+          "extract_call"
+        ],
+        [
+          "extractInheritance component_attribute extends/implements",
+          "extract_inheritance"
+        ],
+        [
+          "CfmlExtractor.extractBareScript anonymous-component rename",
+          "rename_anonymous_component"
+        ],
+        [
+          "CfmlExtractor componentNameFromPath",
+          "component_name_from_path"
+        ]
+      ],
+      "emitted_kinds": [
+        "file",
+        "class",
+        "interface",
+        "method",
+        "function",
+        "variable",
+        "property",
+        "import"
+      ],
+      "specialized_behaviors": "components/interfaces share one `component` node classified by the first (unnamed) token; the grammar has no component `name` field so every component indexes as `<anonymous>` and the bare-script path renames it to the file-derived name (`Foo.cfs` -> `Foo`, qualified `filePath::Foo`) rewriting member scope chains; CFML scope-prefixed member calls keep the full `variables.svc.save()` receiver; `extends`/`implements` attributes are label-filtered component_attribute pairs; every reference carries the cfscript language (CfmlExtractor stamps ref.language).",
+      "fixture_groups": [
+        "cfscript/Basic.cfs (match)",
+        "cfscript/Broken.cfs (defer)",
+        "cfscript/Broken2.cfs (defer)",
+        "cfscript/Empty.cfs (match)",
+        "cfscript/Unicode.cfs (match)",
+        "cfscript/Interface.cfs (match)"
+      ],
+      "branch_fixtures": {
+        "cfscript.component_class": "cfscript/Basic.cfs",
+        "cfscript.component_interface": "cfscript/Interface.cfs",
+        "cfscript.function_method": "cfscript/Basic.cfs",
+        "cfscript.variable_declaration": "cfscript/Basic.cfs",
+        "cfscript.property_declaration": "cfscript/Basic.cfs",
+        "cfscript.import_statement": "cfscript/Basic.cfs",
+        "cfscript.include_statement": "cfscript/Basic.cfs",
+        "cfscript.scope_prefixed_member_call": "cfscript/Basic.cfs",
+        "cfscript.extends_implements_attributes": "cfscript/Basic.cfs",
+        "cfscript.anonymous_component_rename": "cfscript/Basic.cfs",
+        "cfscript.visibility_access_types": "cfscript/Basic.cfs"
+      }
+    },
+    {
+      "language": "cfquery",
+      "rust_module": "crates/codegraph-extract/src/cfquery.rs",
+      "upstream_module": "src/extraction/languages/cfquery.ts",
+      "upstream_routing": "No EXTENSION_MAP route upstream: the cfquery grammar is reached only through CfmlExtractor <cfquery> delegation; the corpus fixtures are manifest-assigned (the oracle extractor takes the language parameter).",
+      "grammar": {
+        "package": "cfmleditor/tree-sitter-cfml (monorepo subgrammar)",
+        "revision": "a224ff10755bcd2d322dd6be2c09ec11280135fe",
+        "license": "MIT",
+        "abi": 15,
+        "oracle_wasm": "src/extraction/wasm/tree-sitter-cfquery.wasm",
+        "vendor": "crates/codegraph-extract/grammars/cfquery (checked-in parser.c + scanner.c; scanner/tag includes adapted to the vendored cfml-common/ layout)",
+        "integrity_manifest": "tools/oracle/parity/extract/enterprise-grammars.json"
+      },
+      "symbol_ledger": [
+        [
+          "cfqueryExtractor callTypes call_expression",
+          "extract_call (generic callee resolution)"
+        ],
+        [
+          "generic member_expression call",
+          "extract_call"
+        ],
+        [
+          "parenthesized-type conversion normalization",
+          "extract_call"
+        ]
+      ],
+      "emitted_kinds": [
+        "file"
+      ],
+      "specialized_behaviors": "only call_expression maps to a symbol; `#hash#` expressions inside SQL parse structurally (call_expression/member_expression) so `#getCurrentUser().getId()#` yields genuine call edges; SQL keywords/identifiers emit nothing.",
+      "fixture_groups": [
+        "cfquery/Query.sql (match)",
+        "cfquery/Broken.sql (defer)",
+        "cfquery/Empty.sql (match)",
+        "cfquery/Unicode.sql (match)"
+      ],
+      "branch_fixtures": {
+        "cfquery.call_expression_hash": "cfquery/Query.sql",
+        "cfquery.member_call": "cfquery/Query.sql"
+      }
+    },
+    {
+      "language": "cobol",
+      "rust_module": "crates/codegraph-extract/src/cobol.rs",
+      "upstream_module": "src/extraction/languages/cobol.ts",
+      "upstream_routing": "src/extraction/grammars.ts EXTENSION_MAP .cbl/.cob/.cobol/.cpy -> cobol",
+      "grammar": {
+        "package": "yutaro-sakamoto/tree-sitter-cobol (git) + docs/grammars/tree-sitter-cobol.patch",
+        "revision": "e99dbdc3d800d5fa2796476efd60af91f6b43d93",
+        "license": "MIT",
+        "abi": 15,
+        "oracle_wasm": "src/extraction/wasm/tree-sitter-cobol.wasm (regenerated ABI 15)",
+        "vendor": "crates/codegraph-extract/grammars/cobol (regenerated parser.c + patched scanner.c)",
+        "integrity_manifest": "tools/oracle/parity/extract/enterprise-grammars.json"
+      },
+      "symbol_ledger": [
+        [
+          "preParse free-format detect + CGWIDE/7-space indent",
+          "pre_parse / free_format"
+        ],
+        [
+          "terminateSqlIncludes",
+          "terminate_sql_includes"
+        ],
+        [
+          "visitNode program_definition",
+          "visit_cobol_node (module + children)"
+        ],
+        [
+          "visitNode procedure_division",
+          "walk_procedure_children"
+        ],
+        [
+          "visitNode working_storage_section / record_description_list",
+          "walk_data_entries"
+        ],
+        [
+          "visitNode copybook_fragment",
+          "visit_cobol_node (data vs procedure copybooks)"
+        ],
+        [
+          "visitNode copy_statement",
+          "handle_copy"
+        ],
+        [
+          "visitNode exec_statement",
+          "handle_exec"
+        ],
+        [
+          "handleCopy",
+          "handle_copy"
+        ],
+        [
+          "derefSameFileValue",
+          "deref_same_file_value"
+        ],
+        [
+          "handleExec EXEC CICS LINK/XCTL PROGRAM",
+          "handle_exec (exec_cics_program_re)"
+        ],
+        [
+          "handleExec EXEC CICS RETURN/START TRANSID (cics-transid:XXXX)",
+          "handle_exec (exec_cics_transid_re)"
+        ],
+        [
+          "handleExec EXEC SQL INCLUDE",
+          "handle_exec (exec_sql_include_re)"
+        ],
+        [
+          "walkDataEntries levels/88/groups",
+          "walk_data_entries"
+        ],
+        [
+          "emitWriteRefs move/add/subtract/compute",
+          "emit_write_refs"
+        ],
+        [
+          "collectRefs perform/call/goto",
+          "collect_refs"
+        ],
+        [
+          "headerName / programName",
+          "header_name / program_name"
+        ],
+        [
+          "preParse free-format processed-source coordinates (no remapping)",
+          "pre_parse / free_format (emitted ranges carry the 7-column drift)"
+        ]
+      ],
+      "emitted_kinds": [
+        "file",
+        "module",
+        "function",
+        "variable",
+        "field",
+        "constant",
+        "import"
+      ],
+      "specialized_behaviors": "flat column-oriented AST handled entirely through the visitNode hook; section/paragraph extents reconstructed from header positions; PERFORM THRU ranges, GO TO, CALL literal, EXEC CICS LINK/XCTL PROGRAM('X'), EXEC CICS RETURN/START TRANSID (cics-transid refs), EXEC SQL INCLUDE imports, COPY book imports; data-item write-sites become references; free-format files are left-prefixed with seven spaces per line plus a CGWIDE sentinel (line numbers preserved, columns carry the upstream 7-column drift \u2014 the frozen oracle\u2019s observable processed-source coordinate, never remapped; single-line EXEC SQL INCLUDE ... END-EXEC forms are terminated with a period.",
+      "fixture_groups": [
+        "cobol/Basic.cbl (match)",
+        "cobol/Broken.cbl (defer)",
+        "cobol/Broken2.cbl (defer)",
+        "cobol/Free.cbl (match)",
+        "cobol/Cics.cbl (match)",
+        "cobol/Copy.cpy (match)",
+        "cobol/Unicode.cbl (match)"
+      ],
+      "branch_fixtures": {
+        "cobol.program_module": "cobol/Basic.cbl",
+        "cobol.procedure_division_paragraphs": "cobol/Basic.cbl",
+        "cobol.sections": "cobol/Basic.cbl",
+        "cobol.perform_thru": "cobol/Basic.cbl",
+        "cobol.goto": "cobol/Basic.cbl",
+        "cobol.call_literal": "cobol/Basic.cbl",
+        "cobol.copy_statement": "cobol/Cics.cbl",
+        "cobol.exec_cics_program": "cobol/Cics.cbl",
+        "cobol.exec_cics_transid": "cobol/Cics.cbl",
+        "cobol.exec_sql_include": "cobol/Cics.cbl",
+        "cobol.cics_data_item_deref": "cobol/Cics.cbl",
+        "cobol.data_division_levels": "cobol/Basic.cbl",
+        "cobol.data_division_88_condition": "cobol/Basic.cbl",
+        "cobol.copybook_fragment_data": "cobol/Copy.cpy",
+        "cobol.free_format_preparse": "cobol/Free.cbl",
+        "cobol.write_refs_move_add": "cobol/Basic.cbl",
+        "cobol.free_format_processed_coordinates": "cobol/Free.cbl"
+      }
+    },
+    {
+      "language": "vbnet",
+      "rust_module": "crates/codegraph-extract/src/vbnet.rs",
+      "upstream_module": "src/extraction/languages/vbnet.ts",
+      "upstream_routing": "src/extraction/grammars.ts EXTENSION_MAP .vb -> vbnet",
+      "grammar": {
+        "package": "govindbanura/tree-sitter-vbnet (git) + docs/grammars/tree-sitter-vbnet.patch",
+        "revision": "538b7087bf80e86004531b392fe1186379c0a2b5",
+        "license": "MIT",
+        "abi": 15,
+        "oracle_wasm": "src/extraction/wasm/tree-sitter-vbnet.wasm (regenerated ABI 15)",
+        "vendor": "crates/codegraph-extract/grammars/vbnet (generated parser.c + patched scanner.c)",
+        "integrity_manifest": "tools/oracle/parity/extract/enterprise-grammars.json"
+      },
+      "symbol_ledger": [
+        [
+          "ensureTrailingNewline preParse",
+          "ensure_trailing_newline + PreprocessedSource"
+        ],
+        [
+          "extractFilePackage namespace_declaration",
+          "extract_file_package"
+        ],
+        [
+          "extractImport imports_statement hook",
+          "extract_import"
+        ],
+        [
+          "extractVbnetReturnType as_clause",
+          "vbnet_return_type"
+        ],
+        [
+          "getVisibility member_modifier scan",
+          "node_visibility"
+        ],
+        [
+          "isStatic shared / isAsync async",
+          "has_modifier(shared_re/async_re)"
+        ],
+        [
+          "extractCall vbnet branch (invocation/array_access/generic_invocation)",
+          "extract_call"
+        ],
+        [
+          "isVbnetConstructorShapedArrayCreation",
+          "is_vbnet_constructor_shaped"
+        ],
+        [
+          "extractInstantiation (object_creation_expression + array_creation_expression)",
+          "extract_instantiation"
+        ],
+        [
+          "visitNode event_declaration/custom_event_declaration",
+          "visit_node (field node)"
+        ],
+        [
+          "visitNode constructor_declaration (New)",
+          "visit_node (method New + body walk)"
+        ],
+        [
+          "extractClass class/module",
+          "extract_class"
+        ],
+        [
+          "extractInterface / extractStruct / extractEnum(+members)",
+          "extract_interface / extract_struct / extract_enum"
+        ],
+        [
+          "extractTypeAlias delegate_declaration",
+          "type_alias node"
+        ],
+        [
+          "extractField variable_declarator path",
+          "extract_field"
+        ],
+        [
+          "extractProperty",
+          "extract_property"
+        ],
+        [
+          "extractVariable generic fallback",
+          "extract_variable"
+        ],
+        [
+          "extractInheritance inherits_statement/implements_statement",
+          "extract_inheritance"
+        ]
+      ],
+      "emitted_kinds": [
+        "file",
+        "namespace",
+        "import",
+        "class",
+        "interface",
+        "struct",
+        "enum",
+        "enum_member",
+        "type_alias",
+        "method",
+        "function",
+        "property",
+        "field",
+        "variable"
+      ],
+      "specialized_behaviors": "a file without a trailing newline gets one appended pre-parse (grammar has no true EOF token); the appended byte lands past every emitted range, so all emitted coordinates are the original source coordinates; modules index as classes; constructors index as method `New`; events as fields; `Inherits`/`Implements` are class-body STATEMENTS (extends first, implements rest; generics unwrapped to the base identifier); `foo(args)` is ambiguous call-vs-index so all three expression shapes emit calls; `New T(args)` parses as an array_creation_expression but is emitted as an instantiates reference when the type is user-defined and there is no brace initializer; struct members are NOT extracted (upstream extractStruct reads only the first `body:` field child).",
+      "fixture_groups": [
+        "vbnet/Basic.vb (match)",
+        "vbnet/Broken.vb (defer)",
+        "vbnet/Empty.vb (match)",
+        "vbnet/Unicode.vb (match)",
+        "vbnet/Invocation.vb (match)",
+        "vbnet/NoTrailingNewline.vb (match)"
+      ],
+      "branch_fixtures": {
+        "vbnet.class_module": "vbnet/Basic.vb",
+        "vbnet.interface": "vbnet/Basic.vb",
+        "vbnet.structure": "vbnet/Basic.vb",
+        "vbnet.enum_members": "vbnet/Basic.vb",
+        "vbnet.delegate_type_alias": "vbnet/Basic.vb",
+        "vbnet.imports_statement": "vbnet/Basic.vb",
+        "vbnet.namespace_package": "vbnet/Basic.vb",
+        "vbnet.methods": "vbnet/Basic.vb",
+        "vbnet.constructor_new": "vbnet/Basic.vb",
+        "vbnet.property": "vbnet/Basic.vb",
+        "vbnet.field": "vbnet/Basic.vb",
+        "vbnet.event_declaration": "vbnet/Basic.vb",
+        "vbnet.inherits_implements_statements": "vbnet/Basic.vb",
+        "vbnet.call_invocation": "vbnet/Invocation.vb",
+        "vbnet.call_array_access": "vbnet/Invocation.vb",
+        "vbnet.call_generic_invocation": "vbnet/Invocation.vb",
+        "vbnet.instantiation_object_creation": "vbnet/Invocation.vb",
+        "vbnet.trailing_newline_preparse": "vbnet/NoTrailingNewline.vb",
+        "vbnet.visibility_modifiers": "vbnet/Basic.vb"
+      }
+    },
+    {
+      "language": "erlang",
+      "rust_module": "crates/codegraph-extract/src/erlang.rs",
+      "upstream_module": "src/extraction/languages/erlang.ts + erlang branch of TreeSitterExtractor.extractCall",
+      "upstream_routing": "src/extraction/grammars.ts EXTENSION_MAP .erl/.hrl/.escript -> erlang; isErlangAppFile (.app/.app.src) path special",
+      "grammar": {
+        "package": "WhatsApp/tree-sitter-erlang (git, the ELP grammar)",
+        "revision": "836aa2b6c3af2c7cef3f84049b0ed6d44485a870 (v0.19.0)",
+        "license": "Apache-2.0",
+        "abi": 15,
+        "oracle_wasm": "src/extraction/wasm/tree-sitter-erlang.wasm (regenerated ABI 15)",
+        "vendor": "crates/codegraph-extract/grammars/erlang (regenerated parser.c + checked-in scanner.c)",
+        "integrity_manifest": "tools/oracle/parity/extract/enterprise-grammars.json"
+      },
+      "symbol_ledger": [
+        [
+          "handleFunDecl clause merge",
+          "handle_fun_decl"
+        ],
+        [
+          "handleRecordDecl",
+          "handle_record_decl"
+        ],
+        [
+          "handleTypeAlias type_alias/opaque",
+          "handle_type_alias"
+        ],
+        [
+          "handlePpDefine",
+          "handle_pp_define"
+        ],
+        [
+          "handleBehaviour",
+          "handle_behaviour"
+        ],
+        [
+          "handleAppResourceTuple",
+          "handle_app_resource_tuple"
+        ],
+        [
+          "extractFilePackage module_attribute namespace",
+          "extract_file_package"
+        ],
+        [
+          "extractImport import_attribute/pp_include/pp_include_lib",
+          "extract_import"
+        ],
+        [
+          "extractCall erlang branch (call/internal_fun/external_fun/macro_call_expr/record_*)",
+          "extract_call"
+        ],
+        [
+          "resolveErlangGenServerTarget",
+          "resolve_gen_server_target"
+        ],
+        [
+          "ERLANG_MFA_CALLS spawn/apply family",
+          "extract_call (mfa_argument_dispatch)"
+        ],
+        [
+          "ERLANG_PREDEFINED_MACROS",
+          "ERLANG_PREDEFINED_MACROS const"
+        ],
+        [
+          "moduleExports / precedingSpec / clauseHeader",
+          "module_exports / preceding_spec / clause_header"
+        ],
+        [
+          "atomText / collapseWs",
+          "atom_text / collapse_ws"
+        ]
+      ],
+      "emitted_kinds": [
+        "file",
+        "namespace",
+        "import",
+        "function",
+        "struct",
+        "field",
+        "type_alias",
+        "constant"
+      ],
+      "specialized_behaviors": "form-based dispatch through the visitNode hook; consecutive same-name fun_decl clauses merge into one function node; -spec/-callback/-type bodies are consumed (their type expressions parse as `call` nodes); records carry fields as direct children; -define macros become constants whose replacement calls attribute to the macro; -module(m) wraps the file in a namespace so functions qualify as `m::f` and remote calls emit `mod::f`; -behaviour links the module via an implements ref; gen_server call/cast/send_request targets resolve through ?MODULE/self-macros/bare-atom macros; the spawn/apply family lifts a static MFA pair; .app/.app.src resource files emit entry-module references and dependency imports.",
+      "fixture_groups": [
+        "erlang/Basic.erl (match)",
+        "erlang/Broken.erl (defer)",
+        "erlang/Empty.erl (match)",
+        "erlang/Unicode.erl (match)",
+        "erlang/App.app.src (match)",
+        "erlang/Header.hrl (match)"
+      ],
+      "branch_fixtures": {
+        "erlang.fun_decl_clause_merge": "erlang/Basic.erl",
+        "erlang.record_decl_fields": "erlang/Basic.erl",
+        "erlang.type_alias_opaque": "erlang/Basic.erl",
+        "erlang.pp_define_macro": "erlang/Basic.erl",
+        "erlang.behaviour_attribute": "erlang/Basic.erl",
+        "erlang.spec_callback_consume": "erlang/Basic.erl",
+        "erlang.module_attribute_namespace": "erlang/Basic.erl",
+        "erlang.import_attribute": "erlang/Basic.erl",
+        "erlang.pp_include_include_lib": "erlang/Basic.erl",
+        "erlang.export_visibility": "erlang/Basic.erl",
+        "erlang.call_remote_qualified": "erlang/Basic.erl",
+        "erlang.call_internal_fun_ref": "erlang/Basic.erl",
+        "erlang.call_macro_use_site": "erlang/Basic.erl",
+        "erlang.gen_server_dispatch": "erlang/Header.hrl",
+        "erlang.mfa_argument_dispatch": "erlang/Basic.erl",
+        "erlang.app_resource_entry_module": "erlang/App.app.src",
+        "erlang.app_resource_dependencies": "erlang/App.app.src"
+      }
+    }
+  ],
+  "branch_inventory": {
+    "pascal": [
+      "pascal.declConst",
+      "pascal.declField",
+      "pascal.declProp",
+      "pascal.declSection_visibility",
+      "pascal.declType_class",
+      "pascal.declType_enum",
+      "pascal.declType_interface",
+      "pascal.declType_type_alias",
+      "pascal.declUses_imports",
+      "pascal.declVar",
+      "pascal.defProc_free_routine",
+      "pascal.defProc_implementation_reattach",
+      "pascal.dfm_components",
+      "pascal.dfm_event_references",
+      "pascal.dfm_malformed_recovery",
+      "pascal.exprCall_chained_factory",
+      "pascal.exprCall_qualified",
+      "pascal.fmx_components",
+      "pascal.fmx_malformed_recovery",
+      "pascal.fn_refs_assignment_rhs",
+      "pascal.inheritance_extends_implements",
+      "pascal.parenless_call",
+      "pascal.unit_program_library_module",
+      "pascal.value_refs_constant_targets"
+    ],
+    "cfscript": [
+      "cfscript.anonymous_component_rename",
+      "cfscript.component_class",
+      "cfscript.component_interface",
+      "cfscript.extends_implements_attributes",
+      "cfscript.function_method",
+      "cfscript.import_statement",
+      "cfscript.include_statement",
+      "cfscript.property_declaration",
+      "cfscript.scope_prefixed_member_call",
+      "cfscript.variable_declaration",
+      "cfscript.visibility_access_types"
+    ],
+    "cfquery": [
+      "cfquery.call_expression_hash",
+      "cfquery.member_call"
+    ],
+    "cobol": [
+      "cobol.call_literal",
+      "cobol.cics_data_item_deref",
+      "cobol.copy_statement",
+      "cobol.copybook_fragment_data",
+      "cobol.data_division_88_condition",
+      "cobol.data_division_levels",
+      "cobol.exec_cics_program",
+      "cobol.exec_cics_transid",
+      "cobol.exec_sql_include",
+      "cobol.free_format_preparse",
+      "cobol.free_format_processed_coordinates",
+      "cobol.goto",
+      "cobol.perform_thru",
+      "cobol.procedure_division_paragraphs",
+      "cobol.program_module",
+      "cobol.sections",
+      "cobol.write_refs_move_add"
+    ],
+    "vbnet": [
+      "vbnet.call_array_access",
+      "vbnet.call_generic_invocation",
+      "vbnet.call_invocation",
+      "vbnet.class_module",
+      "vbnet.constructor_new",
+      "vbnet.delegate_type_alias",
+      "vbnet.enum_members",
+      "vbnet.event_declaration",
+      "vbnet.field",
+      "vbnet.imports_statement",
+      "vbnet.inherits_implements_statements",
+      "vbnet.instantiation_object_creation",
+      "vbnet.interface",
+      "vbnet.methods",
+      "vbnet.namespace_package",
+      "vbnet.property",
+      "vbnet.structure",
+      "vbnet.trailing_newline_preparse",
+      "vbnet.visibility_modifiers"
+    ],
+    "erlang": [
+      "erlang.app_resource_dependencies",
+      "erlang.app_resource_entry_module",
+      "erlang.behaviour_attribute",
+      "erlang.call_internal_fun_ref",
+      "erlang.call_macro_use_site",
+      "erlang.call_remote_qualified",
+      "erlang.export_visibility",
+      "erlang.fun_decl_clause_merge",
+      "erlang.gen_server_dispatch",
+      "erlang.import_attribute",
+      "erlang.mfa_argument_dispatch",
+      "erlang.module_attribute_namespace",
+      "erlang.pp_define_macro",
+      "erlang.pp_include_include_lib",
+      "erlang.record_decl_fields",
+      "erlang.spec_callback_consume",
+      "erlang.type_alias_opaque"
+    ]
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:vbnet/NoTrailingNewline.vb",
+      "target": "class:c58f835e53ae813e81019a5d041d79b5"
+    },
+    {
+      "kind": "contains",
+      "source": "class:c58f835e53ae813e81019a5d041d79b5",
+      "target": "method:eb4f2dc860c01c5706411d49a842b88e"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 6,
+      "filePath": "vbnet/NoTrailingNewline.vb",
+      "id": "file:vbnet/NoTrailingNewline.vb",
+      "isExported": false,
+      "kind": "file",
+      "language": "vbnet",
+      "name": "NoTrailingNewline.vb",
+      "qualifiedName": "vbnet/NoTrailingNewline.vb",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 0,
+      "endLine": 6,
+      "filePath": "vbnet/NoTrailingNewline.vb",
+      "id": "class:c58f835e53ae813e81019a5d041d79b5",
+      "kind": "class",
+      "language": "vbnet",
+      "name": "NoNewline",
+      "qualifiedName": "NoNewline",
+      "startColumn": 0,
+      "startLine": 1,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 0,
+      "endLine": 5,
+      "filePath": "vbnet/NoTrailingNewline.vb",
+      "id": "method:eb4f2dc860c01c5706411d49a842b88e",
+      "isAsync": false,
+      "isStatic": false,
+      "kind": "method",
+      "language": "vbnet",
+      "name": "Go",
+      "qualifiedName": "NoNewline::Go",
+      "startColumn": 4,
+      "startLine": 2,
+      "visibility": "public"
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 8,
+      "fromNodeId": "method:eb4f2dc860c01c5706411d49a842b88e",
+      "line": 3,
+      "referenceKind": "calls",
+      "referenceName": "Work"
+    }
+  ]
+}

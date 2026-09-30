@@ -1,0 +1,84 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:solidity/Broken.sol",
+      "target": "class:905af46da28797c4e43af8e7f5028ed4"
+    },
+    {
+      "kind": "contains",
+      "source": "class:905af46da28797c4e43af8e7f5028ed4",
+      "target": "field:587b72e52eece870e68834356c4b7039"
+    },
+    {
+      "kind": "contains",
+      "source": "class:905af46da28797c4e43af8e7f5028ed4",
+      "target": "method:f746b92a3a7c7d4ebc88e259255c01cc"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 15,
+      "filePath": "solidity/Broken.sol",
+      "id": "file:solidity/Broken.sol",
+      "isExported": false,
+      "kind": "file",
+      "language": "solidity",
+      "name": "Broken.sol",
+      "qualifiedName": "solidity/Broken.sol",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 5,
+      "endLine": 11,
+      "filePath": "solidity/Broken.sol",
+      "id": "class:905af46da28797c4e43af8e7f5028ed4",
+      "kind": "class",
+      "language": "solidity",
+      "name": "Broken",
+      "qualifiedName": "Broken",
+      "startColumn": 0,
+      "startLine": 3
+    },
+    {
+      "endColumn": 30,
+      "endLine": 4,
+      "filePath": "solidity/Broken.sol",
+      "id": "field:587b72e52eece870e68834356c4b7039",
+      "isStatic": false,
+      "kind": "field",
+      "language": "solidity",
+      "name": "value",
+      "qualifiedName": "Broken::value",
+      "startColumn": 4,
+      "startLine": 4,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 9,
+      "endLine": 10,
+      "filePath": "solidity/Broken.sol",
+      "id": "method:f746b92a3a7c7d4ebc88e259255c01cc",
+      "kind": "method",
+      "language": "solidity",
+      "name": "set",
+      "qualifiedName": "Broken::set",
+      "signature": "(uint256 newValue) public",
+      "startColumn": 4,
+      "startLine": 6,
+      "visibility": "public"
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 12,
+      "fromNodeId": "method:f746b92a3a7c7d4ebc88e259255c01cc",
+      "line": 8,
+      "referenceKind": "calls",
+      "referenceName": "newValue > 100"
+    }
+  ]
+}

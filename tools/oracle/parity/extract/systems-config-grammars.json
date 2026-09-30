@@ -1,0 +1,222 @@
+{
+  "$comment": "Frozen grammar provenance manifest for the five systems/configuration native grammar ports. All hashes are sha256 of committed bytes unless noted. Every `source_artifact` is committed under tools/oracle/parity/extract/provenance/ with an INDEPENDENTLY verifiable external identity (npm registry SRI sha512 verified from tarball bytes, npm tarball sha256, or git commit + git blob identities); the network-free verifier extracts those artifacts and byte-compares the required parser/scanner/LICENSE/WASM inputs against the production vendored outputs, so coordinated metadata+vendored-output edits fail. `files` are the exact upstream source files the vendored copies under crates/codegraph-extract/grammars/ must byte-match. `oracle_wasm_sha256` pins the frozen oracle wasm bytes. `abi` is the parser.c LANGUAGE_VERSION. The nix parser.c is a GENERATED output: the parity lane executes the pinned tree-sitter-cli 0.25.10 recipe in a deterministic temporary directory from the committed inputs and byte-compares parser.c + grammar.json + node-types.json against the committed outputs.",
+  "upstream_revision": "572d22bfbe82602080e457bec655f72e3314f9ef",
+  "provenance_root": "tools/oracle/parity/extract/provenance",
+  "generation_tools": {
+    "tree-sitter-cli": {
+      "artifact": "tools/tree-sitter-cli-0.25.10.tgz",
+      "tarball_sha256": "351b439451769d7e883c24c852e9f2b6e219f429221ad42d7da0bf35145da261",
+      "npm_sha512": "sha512-KoebQguKMCIghisEOdA372TIbrUl0kdnfZ9YQIBRAeOvNSKe85XbU4LuFW7hduRUwJj0rAG7pX5wo9sZhbBF1g==",
+      "platform_binaries": {
+        "darwin-arm64": {
+          "artifact": "tools/tree-sitter-macos-arm64-0.25.10.gz",
+          "sha256": "a6295d469669f6e901b6029ae6c129bd094df582d278c237fada413505cb9c42",
+          "source_url": "https://github.com/tree-sitter/tree-sitter/releases/download/v0.25.10/tree-sitter-macos-arm64.gz",
+          "format": "mach-o arm64"
+        },
+        "linux-x64": {
+          "artifact": "tools/tree-sitter-linux-x64-0.25.10.gz",
+          "sha256": "8283ddba69253c698f6e987ba0e2f9285e079c8db4d36ebe1394b5bb3a0ebdfd",
+          "source_url": "https://github.com/tree-sitter/tree-sitter/releases/download/v0.25.10/tree-sitter-linux-x64.gz",
+          "format": "elf x86-64"
+        }
+      },
+      "version_commit": "da6fe9beb4f7f67beb75914ca8e0d48ae48d6406"
+    }
+  },
+  "grammars": {
+    "objc": {
+      "language": "objc",
+      "source_type": "npm",
+      "source_repo": "https://github.com/amaanq/tree-sitter-objc",
+      "source_revision": "dea2b2d6a1253c2f0f58b543c10d62edd2f860f2",
+      "upstream_package": "tree-sitter-objc@2.1.0 (npm)",
+      "source_artifact": {
+        "artifact": "src/tree-sitter-objc-2.1.0.tgz",
+        "license_member": "package/LICENSE",
+        "tarball_sha256": "0609c84fdb33f7d648c38cb6afb6a00b2b95c6baec203ac9f00bdaba89dae0d2",
+        "npm_sha512": "sha512-qAeeaZS5sYSB8JYoKpE8GbvtUQFZqDckegU4ntVtpdQPLffjF/6ANgzqbXPWl9YaK2WBZtBFeRF7OPvh7nIErA==",
+        "extract": {
+          "package/src/parser.c": "parser.c"
+        }
+      },
+      "oracle_wasm_source": "tree-sitter-wasms 0.1.13 out/tree-sitter-objc.wasm (committed copy at provenance/wasm/tree-sitter-objc.wasm)",
+      "oracle_wasm_sha256": "7c1b5bfdca7e64b6c63b6040bb7ba0afc347df116f9030ca32f8535d7377f6ff",
+      "license": "MIT",
+      "license_sha256": "099c44248f8cf353123211318680e93465587c005a4b3730ce8cb5334de043d6",
+      "abi": 14,
+      "patch": "none",
+      "files": {
+        "parser.c": "5e49451fb32c3b8668750762ce9a2b5ccc2c09115ebb0a1b1872ab3922a8dfb7"
+      }
+    },
+    "solidity": {
+      "language": "solidity",
+      "source_type": "git",
+      "source_repo": "https://github.com/JoranHonig/tree-sitter-solidity",
+      "source_revision": "b239a95f94cfcc6e7b3e961bc73a28d55e214f02",
+      "upstream_package": "tree-sitter-wasms devDependency github:JoranHonig/tree-sitter-solidity#b239a95f94cfcc6e7b3e961bc73a28d55e214f02",
+      "source_artifact": {
+        "artifact_dir": "src/tree-sitter-solidity-b239a95f",
+        "git_object_proof": {
+          "objects": "git-objects/solidity-b239a95f",
+          "commit": "b239a95f94cfcc6e7b3e961bc73a28d55e214f02",
+          "root_tree": "48ed6fb794da09a98f0561842e8d90d91b6cb70f",
+          "paths": {
+            "src/parser.c": "blob-parser.c",
+            "LICENSE": "blob-LICENSE",
+            "grammar.js": "blob-grammar.js",
+            "package.json": "blob-package.json"
+          }
+        },
+        "git_commit": "b239a95f94cfcc6e7b3e961bc73a28d55e214f02",
+        "files": {
+          "src/parser.c": { "sha256": "f247baf0dd98d45efe90220a6d49a0c6b2dcedbf2d642bb4169d44bf91e8ef03", "git_blob": "cce2fb4f2dc407b495facb271492eae31d4d6298", "target": "parser.c" },
+          "LICENSE": { "sha256": "8844f0cc9b76b9c8a9d0251904eb7536b6bb9976e0ec577e8f27ab96d42523ef", "git_blob": "9ced3c1a5b45875a29ec4a6a72efaa579d19bbed", "target": "LICENSE" },
+          "grammar.js": { "sha256": "3971adac94ae4238fdf09af0451a6ef80dde5e76abd0908d37c9b0f6c8e3039f", "git_blob": "f1f4b7996cbe5a1f35a94bd6b7a69dd24f706789", "target": null },
+          "package.json": { "sha256": "314c3619d74347a283cc28c2eb6b72c8d126718717ba2ce54a0042f1560e3961", "git_blob": "3e0aebfeea03c684f2061576e5507fffb0c633cf", "target": null }
+        }
+      },
+      "note": "npm tree-sitter-solidity@1.2.0 exists but its parser.c (sha256 e77d623cb98b128d1bb060971d47324f71e7d721ad793052a63d2f60e1353814) DIFFERS from the git revision the frozen wasm was built from; the git commit is the authoritative source.",
+      "oracle_wasm_source": "tree-sitter-wasms 0.1.13 out/tree-sitter-solidity.wasm (committed copy at provenance/wasm/tree-sitter-solidity.wasm)",
+      "oracle_wasm_sha256": "160745e470f234cae903a9ba445d19e758d0b02e1197401fc765976c6254d2b6",
+      "license": "MIT",
+      "license_sha256": "8844f0cc9b76b9c8a9d0251904eb7536b6bb9976e0ec577e8f27ab96d42523ef",
+      "abi": 14,
+      "patch": "none",
+      "files": {
+        "parser.c": "f247baf0dd98d45efe90220a6d49a0c6b2dcedbf2d642bb4169d44bf91e8ef03"
+      }
+    },
+    "terraform": {
+      "language": "terraform",
+      "source_type": "npm",
+      "source_repo": "https://github.com/tree-sitter-grammars/tree-sitter-hcl",
+      "source_revision": "fad991865fee927dd1de5e172fb3f08ac674d914",
+      "source_tag": "v1.2.0",
+      "upstream_package": "@tree-sitter-grammars/tree-sitter-hcl@1.2.0 (npm)",
+      "source_artifact": {
+        "artifact": "src/tree-sitter-hcl-1.2.0.tgz",
+        "license_member": "package/LICENSE",
+        "tarball_sha256": "6aa2c0b5e17788fdd238c00c7d18c755771c474c05b6073b17a3cac18881d417",
+        "npm_sha512": "sha512-2bVnOojkkdMLevp0G4v3ksbNoOQFc/Pt9GAdWX4i3aykVyI+CkktE1hsF/XAeUQFjwgGrVZnEyeCll5oD7Ibfg==",
+        "extract": {
+          "package/src/parser.c": "parser.c",
+          "package/src/scanner.c": "scanner.c",
+          "package/tree-sitter-terraform.wasm": "wasm"
+        }
+      },
+      "oracle_wasm_source": "src/extraction/wasm/tree-sitter-terraform.wasm (byte-identical to the npm package artifact)",
+      "oracle_wasm_sha256": "0d9ef3ae926acc0411bfecba9b34df4ea659061917b96455570a45a70824e890",
+      "license": "Apache-2.0",
+      "license_sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "abi": 15,
+      "patch": "none",
+      "files": {
+        "parser.c": "09ebb173def18078ed193fc933052f5942b39859eea27ff9301f721e96c7803a",
+        "scanner.c": "846b6e63d4b352c6cf9de1255ca100100e52b1a3f8a7b9805c501bbc83d41966"
+      }
+    },
+    "arkts": {
+      "language": "arkts",
+      "source_type": "npm",
+      "source_repo": "https://github.com/harmony-contrib/tree-sitter-arkts",
+      "source_revision": "56f7fc288715befe92c734d603f9e6bc3c65d2a8",
+      "upstream_package": "tree-sitter-arkts@0.2.0 (npm)",
+      "source_artifact": {
+        "artifact": "src/tree-sitter-arkts-0.2.0.tgz",
+        "license_member": "package/LICENSE",
+        "tarball_sha256": "d66bf449dcbc5a7f79a29da34e9101f0e3ba3ef2550bc292d818a2314715b785",
+        "npm_sha512": "sha512-j4KpZ21YdX5koXiuuslML24LoKLOzV6uZ1PMG//c/ynAoQfD7XY2LWnFxJiX0sOLqf2pOEYHdUmKFnXjm4QL4g==",
+        "extract": {
+          "package/src/parser.c": "parser.c",
+          "package/src/scanner.c": "scanner.c",
+          "package/common/scanner.h": "common/scanner.h",
+          "package/tree-sitter-arkts.wasm": "wasm"
+        }
+      },
+      "oracle_wasm_source": "src/extraction/wasm/tree-sitter-arkts.wasm (byte-identical to the npm package artifact)",
+      "oracle_wasm_sha256": "db0812971109457d22b3fe9dcdb1cd8e614fba2a338e220670bd254485753623",
+      "license": "MIT",
+      "license_sha256": "048e4dcb7a71fb725495ebb3e7052d0e76dcb6705b828af8b9b461df10bcd8ca",
+      "abi": 14,
+      "patch": "none",
+      "files": {
+        "parser.c": "bbee17f38c8cc0a953ccb0d7c9d98e92b3557296efbd45dfbf748024ce81b621",
+        "scanner.c": "07d8c0aba514af510ce21bfecafcf8d464af3f17d718beb37c82c01f02f823fa",
+        "common/scanner.h": "da66ef2bd14a3f7ea743e25ba068c6c9aae2c3509db200ff80c4a0e6116e564c"
+      }
+    },
+    "nix": {
+      "language": "nix",
+      "source_type": "git",
+      "source_repo": "https://github.com/nix-community/tree-sitter-nix",
+      "source_revision": "3d0173d903e630b6e14d17f1cf79488791379ded",
+      "upstream_package": "nix-community/tree-sitter-nix (git ref; wasm built with tree-sitter-cli 0.25.10)",
+      "source_artifact": {
+        "artifact_dir": "src/tree-sitter-nix-3d0173d",
+        "git_object_proof": {
+          "objects": "git-objects/nix-3d0173d",
+          "commit": "3d0173d903e630b6e14d17f1cf79488791379ded",
+          "root_tree": "8bc73adf471e101cebd57c64d342eba426345911",
+          "paths": {
+            "grammar.js": "blob-grammar.js",
+            "tree-sitter.json": "blob-tree-sitter.json",
+            "src/scanner.c": "blob-scanner.c",
+            "LICENSE": "blob-LICENSE"
+          }
+        },
+        "git_commit": "3d0173d903e630b6e14d17f1cf79488791379ded",
+        "files": {
+          "grammar.js": { "sha256": "5ba3bd14e5523a35cf2314770f27e26267a76fb1b05fc14aa04dc2da9649d52f", "git_blob": "b0c835bfe19849fe4019b566868d7a897db7234c", "target": null },
+          "tree-sitter.json": { "sha256": "e3f681b3dfe9cc4b74cc18de6f4acbd19d5e6e09c999d97f837c2b23e7cbc426", "git_blob": "33ea648633f852230af13df34af0103db447d24a", "target": null },
+          "src/scanner.c": { "sha256": "45e12521e8be62ea47525417c64d9372fa34e9e12bff643c430b8b3607be9d56", "git_blob": "f1ee05167422cca23094937746cdff05e3d25901", "target": "scanner.c" },
+          "LICENSE": { "sha256": "c1b72e50266464ec5118d26200e17bf1f472d142e62ab637e1ffc23986657a78", "git_blob": "cfa8a0f54529fd8761bfe49111becff3d30fdd09", "target": "LICENSE" }
+        }
+      },
+      "oracle_wasm_source": "src/extraction/wasm/tree-sitter-nix.wasm (regenerated ABI 15)",
+      "oracle_wasm_sha256": "4acffa1c013df751193a21ce429777ca214c7d3a7e3665085b6df00dad8869f0",
+      "license": "MIT",
+      "license_sha256": "c1b72e50266464ec5118d26200e17bf1f472d142e62ab637e1ffc23986657a78",
+      "abi": 15,
+      "patch": {
+        "kind": "regeneration",
+        "tool": "tree-sitter-cli 0.25.10",
+        "command": "tree-sitter generate (run from a directory containing grammar.js + tree-sitter.json + src/scanner.c; the committed platform binary tree-sitter-macos-arm64-0.25.10.gz is gunzipped and executed with the committed cli.js wrapper)",
+        "inputs": [
+          "src/tree-sitter-nix-3d0173d/grammar.js",
+          "src/tree-sitter-nix-3d0173d/tree-sitter.json",
+          "src/tree-sitter-nix-3d0173d/src/scanner.c"
+        ],
+        "outputs": {
+          "parser.c": "0f185844da0e8e033127ebaa625554994eab6ef5d1a9629dd41b579fb41a8792",
+          "grammar.json": "40f87f5117abbd9559270b7806b36ecaf28274e930e18522b1516c6847aad889",
+          "node-types.json": "d34e9bdf2acdf261681a78232990561c5955972182201f9752ff1937102a6fff",
+          "tree_sitter/parser.h": "180b893c8734778fd32f372dfbc27bd6ad1cd2221f26150b31256ff6716320d2"
+        },
+        "committed_outputs": {
+          "parser.c": "crates/codegraph-extract/grammars/nix/parser.c",
+          "scanner.c": "crates/codegraph-extract/grammars/nix/scanner.c",
+          "grammar.json": "src/tree-sitter-nix-3d0173d/generated-outputs/grammar.json",
+          "node-types.json": "src/tree-sitter-nix-3d0173d/generated-outputs/node-types.json",
+          "tree_sitter/parser.h": "src/tree-sitter-nix-3d0173d/generated-outputs/tree_sitter/parser.h"
+        }
+      },
+      "files": {
+        "parser.c": "0f185844da0e8e033127ebaa625554994eab6ef5d1a9629dd41b579fb41a8792",
+        "scanner.c": "45e12521e8be62ea47525417c64d9372fa34e9e12bff643c430b8b3607be9d56"
+      }
+    }
+  },
+  "wasm_packages": {
+    "tree-sitter-wasms-0.1.13": {
+      "artifact": "src/tree-sitter-wasms-0.1.13.tgz",
+      "tarball_sha256": "66a54a9bbb2685e8f61b458cef1474db54e72979ee2de168e8b602b562350dd0",
+      "npm_sha512": "sha512-wT+cR6DwaIz80/vho3AvSF0N4txuNx/5bcRKoXouOfClpxh/qqrF4URNLQXbbt8MaAxeksZcZd1j8gcGjc+QxQ==",
+      "extract": {
+        "package/out/tree-sitter-objc.wasm": "wasm/tree-sitter-objc.wasm",
+        "package/out/tree-sitter-solidity.wasm": "wasm/tree-sitter-solidity.wasm"
+      }
+    }
+  }
+}

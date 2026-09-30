@@ -1,0 +1,554 @@
+{
+  "entries": [
+    {
+      "path": "typescript/Basic.ts",
+      "language": "typescript",
+      "expected": "match"
+    },
+    {
+      "path": "javascript/Basic.js",
+      "language": "javascript",
+      "expected": "match"
+    },
+    {
+      "path": "tsx/Basic.tsx",
+      "language": "tsx",
+      "expected": "match"
+    },
+    {
+      "path": "jsx/Basic.jsx",
+      "language": "jsx",
+      "expected": "match"
+    },
+    {
+      "path": "java/Basic.java",
+      "language": "java",
+      "expected": "match"
+    },
+    {
+      "path": "python/Basic.py",
+      "language": "python",
+      "expected": "match"
+    },
+    {
+      "path": "go/Basic.go",
+      "language": "go",
+      "expected": "match"
+    },
+    {
+      "path": "c/Basic.c",
+      "language": "c",
+      "expected": "match"
+    },
+    {
+      "path": "cpp/Basic.cpp",
+      "language": "cpp",
+      "expected": "match"
+    },
+    {
+      "path": "rust/Basic.rs",
+      "language": "rust",
+      "expected": "match"
+    },
+    {
+      "path": "csharp/Basic.cs",
+      "language": "csharp",
+      "expected": "match"
+    },
+    {
+      "path": "ruby/Basic.rb",
+      "language": "ruby",
+      "expected": "match"
+    },
+    {
+      "path": "php/Basic.php",
+      "language": "php",
+      "expected": "match"
+    },
+    {
+      "path": "swift/Basic.swift",
+      "language": "swift",
+      "expected": "match"
+    },
+    {
+      "path": "kotlin/Basic.kt",
+      "language": "kotlin",
+      "expected": "match"
+    },
+    {
+      "path": "r/Basic.R",
+      "language": "r",
+      "expected": "match"
+    },
+    {
+      "path": "lua/Basic.lua",
+      "language": "lua",
+      "expected": "match"
+    },
+    {
+      "path": "luau/Basic.luau",
+      "language": "luau",
+      "expected": "match"
+    },
+    {
+      "path": "scala/Basic.scala",
+      "language": "scala",
+      "expected": "match"
+    },
+    {
+      "path": "dart/Basic.dart",
+      "language": "dart",
+      "expected": "match"
+    },
+    {
+      "path": "java/Broken.java",
+      "language": "java",
+      "expected": "recover"
+    },
+    {
+      "path": "typescript/Broken.ts",
+      "language": "typescript",
+      "expected": "recover"
+    },
+    {
+      "path": "objc/Basic.m",
+      "language": "objc",
+      "expected": "match"
+    },
+    {
+      "path": "objc/Broken.m",
+      "language": "objc",
+      "expected": "recover"
+    },
+    {
+      "path": "objc/Empty.m",
+      "language": "objc",
+      "expected": "match"
+    },
+    {
+      "path": "objc/Unicode.m",
+      "language": "objc",
+      "expected": "match"
+    },
+    {
+      "path": "objc/Header.h",
+      "language": "objc",
+      "expected": "match"
+    },
+    {
+      "path": "solidity/Basic.sol",
+      "language": "solidity",
+      "expected": "match"
+    },
+    {
+      "path": "solidity/Broken.sol",
+      "language": "solidity",
+      "expected": "recover"
+    },
+    {
+      "path": "solidity/Empty.sol",
+      "language": "solidity",
+      "expected": "match"
+    },
+    {
+      "path": "solidity/Unicode.sol",
+      "language": "solidity",
+      "expected": "match"
+    },
+    {
+      "path": "terraform/Basic.tf",
+      "language": "terraform",
+      "expected": "match"
+    },
+    {
+      "path": "terraform/Broken.tf",
+      "language": "terraform",
+      "expected": "recover"
+    },
+    {
+      "path": "terraform/Empty.tf",
+      "language": "terraform",
+      "expected": "match"
+    },
+    {
+      "path": "terraform/Unicode.tf",
+      "language": "terraform",
+      "expected": "match"
+    },
+    {
+      "path": "terraform/Tfvars.tfvars",
+      "language": "terraform",
+      "expected": "match"
+    },
+    {
+      "path": "terraform/Tofu.tofu",
+      "language": "terraform",
+      "expected": "match"
+    },
+    {
+      "path": "arkts/Basic.ets",
+      "language": "arkts",
+      "expected": "match"
+    },
+    {
+      "path": "arkts/Broken.ets",
+      "language": "arkts",
+      "expected": "recover"
+    },
+    {
+      "path": "arkts/Empty.ets",
+      "language": "arkts",
+      "expected": "match"
+    },
+    {
+      "path": "arkts/Unicode.ets",
+      "language": "arkts",
+      "expected": "match"
+    },
+    {
+      "path": "nix/Basic.nix",
+      "language": "nix",
+      "expected": "match"
+    },
+    {
+      "path": "nix/Broken.nix",
+      "language": "nix",
+      "expected": "recover"
+    },
+    {
+      "path": "nix/Empty.nix",
+      "language": "nix",
+      "expected": "match"
+    },
+    {
+      "path": "nix/Unicode.nix",
+      "language": "nix",
+      "expected": "match"
+    },
+    {
+      "path": "nix/Nested.nix",
+      "language": "nix",
+      "expected": "match"
+    },
+    {
+      "path": "objc/Broken2.m",
+      "language": "objc",
+      "expected": "recover"
+    },
+    {
+      "path": "solidity/Broken2.sol",
+      "language": "solidity",
+      "expected": "recover"
+    },
+    {
+      "path": "terraform/Broken2.tf",
+      "language": "terraform",
+      "expected": "recover"
+    },
+    {
+      "path": "arkts/Broken2.ets",
+      "language": "arkts",
+      "expected": "recover"
+    },
+    {
+      "path": "nix/Broken2.nix",
+      "language": "nix",
+      "expected": "recover"
+    },
+    {
+      "path": "pascal/Basic.pas",
+      "language": "pascal",
+      "expected": "match"
+    },
+    {
+      "path": "pascal/Broken.pas",
+      "language": "pascal",
+      "expected": "recover"
+    },
+    {
+      "path": "pascal/Broken2.pas",
+      "language": "pascal",
+      "expected": "recover"
+    },
+    {
+      "path": "pascal/Empty.pas",
+      "language": "pascal",
+      "expected": "match"
+    },
+    {
+      "path": "pascal/Unicode.pas",
+      "language": "pascal",
+      "expected": "match"
+    },
+    {
+      "path": "pascal/Form.dfm",
+      "language": "pascal",
+      "expected": "match"
+    },
+    {
+      "path": "cfscript/Basic.cfs",
+      "language": "cfscript",
+      "expected": "match"
+    },
+    {
+      "path": "cfscript/Broken.cfs",
+      "language": "cfscript",
+      "expected": "recover"
+    },
+    {
+      "path": "cfscript/Broken2.cfs",
+      "language": "cfscript",
+      "expected": "recover"
+    },
+    {
+      "path": "cfscript/Empty.cfs",
+      "language": "cfscript",
+      "expected": "match"
+    },
+    {
+      "path": "cfscript/Unicode.cfs",
+      "language": "cfscript",
+      "expected": "match"
+    },
+    {
+      "path": "cfscript/Interface.cfs",
+      "language": "cfscript",
+      "expected": "match"
+    },
+    {
+      "path": "cfquery/Query.sql",
+      "language": "cfquery",
+      "expected": "match"
+    },
+    {
+      "path": "cfquery/Broken.sql",
+      "language": "cfquery",
+      "expected": "recover"
+    },
+    {
+      "path": "cfquery/Empty.sql",
+      "language": "cfquery",
+      "expected": "match"
+    },
+    {
+      "path": "cfquery/Unicode.sql",
+      "language": "cfquery",
+      "expected": "match"
+    },
+    {
+      "path": "cobol/Basic.cbl",
+      "language": "cobol",
+      "expected": "match"
+    },
+    {
+      "path": "cobol/Broken.cbl",
+      "language": "cobol",
+      "expected": "recover"
+    },
+    {
+      "path": "cobol/Free.cbl",
+      "language": "cobol",
+      "expected": "match"
+    },
+    {
+      "path": "cobol/Cics.cbl",
+      "language": "cobol",
+      "expected": "match"
+    },
+    {
+      "path": "cobol/Copy.cpy",
+      "language": "cobol",
+      "expected": "match"
+    },
+    {
+      "path": "cobol/Unicode.cbl",
+      "language": "cobol",
+      "expected": "match"
+    },
+    {
+      "path": "vbnet/Basic.vb",
+      "language": "vbnet",
+      "expected": "match"
+    },
+    {
+      "path": "vbnet/Broken.vb",
+      "language": "vbnet",
+      "expected": "recover"
+    },
+    {
+      "path": "vbnet/Empty.vb",
+      "language": "vbnet",
+      "expected": "match"
+    },
+    {
+      "path": "vbnet/Unicode.vb",
+      "language": "vbnet",
+      "expected": "match"
+    },
+    {
+      "path": "vbnet/Invocation.vb",
+      "language": "vbnet",
+      "expected": "match"
+    },
+    {
+      "path": "vbnet/NoTrailingNewline.vb",
+      "language": "vbnet",
+      "expected": "match"
+    },
+    {
+      "path": "erlang/Basic.erl",
+      "language": "erlang",
+      "expected": "match"
+    },
+    {
+      "path": "erlang/Broken.erl",
+      "language": "erlang",
+      "expected": "recover"
+    },
+    {
+      "path": "erlang/Empty.erl",
+      "language": "erlang",
+      "expected": "match"
+    },
+    {
+      "path": "erlang/Unicode.erl",
+      "language": "erlang",
+      "expected": "match"
+    },
+    {
+      "path": "erlang/App.app.src",
+      "language": "erlang",
+      "expected": "match"
+    },
+    {
+      "path": "erlang/Header.hrl",
+      "language": "erlang",
+      "expected": "match"
+    },
+    {
+      "path": "cobol/Broken2.cbl",
+      "language": "cobol",
+      "expected": "recover"
+    },
+    {
+      "path": "pascal/Form.fmx",
+      "language": "pascal",
+      "expected": "match"
+    },
+    {
+      "path": "pascal/BrokenForm.dfm",
+      "language": "pascal",
+      "expected": "match"
+    },
+    {
+      "path": "pascal/BrokenForm.fmx",
+      "language": "pascal",
+      "expected": "match"
+    },
+    {
+      "path": "svelte/Basic.svelte",
+      "language": "svelte",
+      "expected": "match"
+    },
+    {
+      "path": "svelte/Empty.svelte",
+      "language": "svelte",
+      "expected": "match"
+    },
+    {
+      "path": "vue/Basic.vue",
+      "language": "vue",
+      "expected": "match"
+    },
+    {
+      "path": "astro/Basic.astro",
+      "language": "astro",
+      "expected": "match"
+    },
+    {
+      "path": "liquid/Product.liquid",
+      "language": "liquid",
+      "expected": "match"
+    },
+    {
+      "path": "liquid/Broken.liquid",
+      "language": "liquid",
+      "expected": "match"
+    },
+    {
+      "path": "liquid/Multibyte.liquid",
+      "language": "liquid",
+      "expected": "match"
+    },
+    {
+      "path": "liquid/Crlf.liquid",
+      "language": "liquid",
+      "expected": "match"
+    },
+    {
+      "path": "liquid/templates/product.json",
+      "language": "liquid",
+      "expected": "match"
+    },
+    {
+      "path": "razor/Index.cshtml",
+      "language": "razor",
+      "expected": "match"
+    },
+    {
+      "path": "razor/Counter.razor",
+      "language": "razor",
+      "expected": "match"
+    },
+    {
+      "path": "cfml/UserService.cfc",
+      "language": "cfml",
+      "expected": "match"
+    },
+    {
+      "path": "cfml/ModuleConfig.cfc",
+      "language": "cfml",
+      "expected": "match"
+    },
+    {
+      "path": "cfml/Template.cfm",
+      "language": "cfml",
+      "expected": "match"
+    },
+    {
+      "path": "xml/pom.xml",
+      "language": "xml",
+      "expected": "match"
+    },
+    {
+      "path": "xml/UserMapper.xml",
+      "language": "xml",
+      "expected": "match"
+    },
+    {
+      "path": "xml/Account.xml",
+      "language": "xml",
+      "expected": "match"
+    },
+    {
+      "path": "yaml/config.yml",
+      "language": "yaml",
+      "expected": "match"
+    },
+    {
+      "path": "twig/base.twig",
+      "language": "twig",
+      "expected": "match"
+    },
+    {
+      "path": "properties/application.properties",
+      "language": "properties",
+      "expected": "match"
+    },
+    {
+      "path": "play/conf/routes",
+      "language": "yaml",
+      "expected": "match"
+    }
+  ]
+}

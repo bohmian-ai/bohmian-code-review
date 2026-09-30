@@ -1,0 +1,4 @@
+interface:
+  display_name: "Code Review Implement"
+  short_description: "Implement and verify one review-helper task"
+  default_prompt: "Use $cr-implement to complete one approved bohmian-code-review task and verify its owning lane and public journey."

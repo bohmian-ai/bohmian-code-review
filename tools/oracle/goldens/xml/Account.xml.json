@@ -1,0 +1,58 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:f77a51164e2c9d1350751aa9d792f1a2",
+      "target": "method:63e8d376cdf0853a12cad3784acf1274"
+    },
+    {
+      "kind": "contains",
+      "source": "file:f77a51164e2c9d1350751aa9d792f1a2",
+      "target": "method:1b8d8df6eae29f4b030322f027453ef3"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 9,
+      "filePath": "xml/Account.xml",
+      "id": "file:f77a51164e2c9d1350751aa9d792f1a2",
+      "kind": "file",
+      "language": "xml",
+      "name": "Account.xml",
+      "qualifiedName": "xml/Account.xml",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "docstring": "SELECT * FROM accounts WHERE id = #value#",
+      "endColumn": 0,
+      "endLine": 4,
+      "filePath": "xml/Account.xml",
+      "id": "method:63e8d376cdf0853a12cad3784acf1274",
+      "kind": "method",
+      "language": "xml",
+      "name": "getById",
+      "qualifiedName": "Account::getById",
+      "signature": "SELECT",
+      "startColumn": 0,
+      "startLine": 2
+    },
+    {
+      "docstring": "INSERT INTO accounts (name) VALUES (#name#)",
+      "endColumn": 0,
+      "endLine": 7,
+      "filePath": "xml/Account.xml",
+      "id": "method:1b8d8df6eae29f4b030322f027453ef3",
+      "kind": "method",
+      "language": "xml",
+      "name": "Account.create",
+      "qualifiedName": "Account::Account.create",
+      "signature": "INSERT",
+      "startColumn": 0,
+      "startLine": 5
+    }
+  ],
+  "unresolvedReferences": []
+}

@@ -1,0 +1,180 @@
+{
+  "cases": [
+    {
+      "case": "repository",
+      "exchanges": [
+        {
+          "headers": {
+            "x-ratelimit-limit": "5000",
+            "x-ratelimit-remaining": "4064",
+            "x-ratelimit-reset": "1790525454",
+            "x-ratelimit-resource": "core",
+            "x-ratelimit-used": "936"
+          },
+          "status": 200,
+          "url": "https://api.github.com/repos/bohmian-ai/wyrd"
+        }
+      ],
+      "result": {
+        "default_branch": "main",
+        "full_name": "bohmian-ai/wyrd",
+        "private": false
+      }
+    },
+    {
+      "case": "commit",
+      "exchanges": [
+        {
+          "headers": {
+            "x-ratelimit-limit": "5000",
+            "x-ratelimit-remaining": "4063",
+            "x-ratelimit-reset": "1790525454",
+            "x-ratelimit-resource": "core",
+            "x-ratelimit-used": "937"
+          },
+          "status": 200,
+          "url": "https://api.github.com/repos/bohmian-ai/wyrd/git/commits/2855eac00a15581cede6e29ec5a0dde0b8bc4d48"
+        }
+      ],
+      "result": {
+        "commit": "2855eac00a15581cede6e29ec5a0dde0b8bc4d48",
+        "tree": "e52bce5c1a1c5188ed698d541f8128f90474f2bc"
+      }
+    },
+    {
+      "case": "recursive_tree",
+      "exchanges": [
+        {
+          "headers": {
+            "x-ratelimit-limit": "5000",
+            "x-ratelimit-remaining": "4062",
+            "x-ratelimit-reset": "1790525454",
+            "x-ratelimit-resource": "core",
+            "x-ratelimit-used": "938"
+          },
+          "status": 200,
+          "url": "https://api.github.com/repos/bohmian-ai/wyrd/git/trees/e52bce5c1a1c5188ed698d541f8128f90474f2bc?recursive=1"
+        }
+      ],
+      "result": {
+        "entries": 3210,
+        "invalid_paths": 0,
+        "truncated": false
+      }
+    },
+    {
+      "case": "blob",
+      "exchanges": [
+        {
+          "headers": {
+            "x-ratelimit-limit": "5000",
+            "x-ratelimit-remaining": "4061",
+            "x-ratelimit-reset": "1790525454",
+            "x-ratelimit-resource": "core",
+            "x-ratelimit-used": "939"
+          },
+          "status": 200,
+          "url": "https://api.github.com/repos/bohmian-ai/wyrd/git/blobs/e77359abcdf78cb7649d89ab6cab45be5cfec6c2"
+        }
+      ],
+      "result": {
+        "bytes": 9787,
+        "path": ".agents/skills/wyrd-advise/SKILL.md",
+        "sha": "e77359abcdf78cb7649d89ab6cab45be5cfec6c2",
+        "verified": true
+      }
+    },
+    {
+      "case": "archive",
+      "exchanges": [
+        {
+          "headers": {
+            "location": "https://codeload.github.com",
+            "x-ratelimit-limit": "5000",
+            "x-ratelimit-remaining": "5000",
+            "x-ratelimit-reset": "1790526528",
+            "x-ratelimit-resource": "core",
+            "x-ratelimit-used": "0"
+          },
+          "status": 302,
+          "url": "https://api.github.com/repos/bohmian-ai/wyrd/tarball/2855eac00a15581cede6e29ec5a0dde0b8bc4d48"
+        },
+        {
+          "headers": {},
+          "status": 200,
+          "url": "https://codeload.github.com/bohmian-ai/wyrd/legacy.tar.gz/2855eac00a15581cede6e29ec5a0dde0b8bc4d48"
+        }
+      ],
+      "result": {
+        "gzip_bytes": 8486574,
+        "gzip_magic": true
+      }
+    },
+    {
+      "case": "pull_request_files",
+      "exchanges": [
+        {
+          "headers": {
+            "x-ratelimit-limit": "5000",
+            "x-ratelimit-remaining": "4060",
+            "x-ratelimit-reset": "1790525454",
+            "x-ratelimit-resource": "core",
+            "x-ratelimit-used": "940"
+          },
+          "status": 200,
+          "url": "https://api.github.com/repos/bohmian-ai/wyrd/pulls/91/files?per_page=100&page=1"
+        },
+        {
+          "headers": {
+            "x-ratelimit-limit": "5000",
+            "x-ratelimit-remaining": "4059",
+            "x-ratelimit-reset": "1790525454",
+            "x-ratelimit-resource": "core",
+            "x-ratelimit-used": "941"
+          },
+          "status": 200,
+          "url": "https://api.github.com/repos/bohmian-ai/wyrd/pulls/91/files?per_page=100&page=2"
+        },
+        {
+          "headers": {
+            "x-ratelimit-limit": "5000",
+            "x-ratelimit-remaining": "4058",
+            "x-ratelimit-reset": "1790525454",
+            "x-ratelimit-resource": "core",
+            "x-ratelimit-used": "942"
+          },
+          "status": 200,
+          "url": "https://api.github.com/repos/bohmian-ai/wyrd/pulls/91/files?per_page=100&page=3"
+        }
+      ],
+      "result": {
+        "files": 277,
+        "pull_request": 91,
+        "without_patch": [
+          "crates/wyrd/wyrd-gateway/src/adapter/tests.rs"
+        ]
+      }
+    },
+    {
+      "case": "conditional_observation",
+      "exchanges": [
+        {
+          "headers": {
+            "x-ratelimit-limit": "5000",
+            "x-ratelimit-remaining": "4058",
+            "x-ratelimit-reset": "1790525454",
+            "x-ratelimit-resource": "core",
+            "x-ratelimit-used": "942"
+          },
+          "status": 304,
+          "url": "https://api.github.com/repos/bohmian-ai/wyrd"
+        }
+      ],
+      "result": {
+        "client_path": false,
+        "if_none_match": "\"ae8d736bdecfc6b3a7d3156ef37d2ce71e3df97aeb192c9d0602662c96b52d0c\"",
+        "status": 304
+      }
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+[package]
+name = "bohmian-code-review-index"
+description = "In-memory symbol-to-file postings over extracted facts"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+bohmian-code-review-core.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,65 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:cfml/ModuleConfig.cfc",
+      "target": "class:4dd519df13f43c913f6fb165c444f8a8"
+    },
+    {
+      "kind": "contains",
+      "source": "class:4dd519df13f43c913f6fb165c444f8a8",
+      "target": "method:908405cac2feb7a8a7228c6bdd0e2f1d"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 10,
+      "filePath": "cfml/ModuleConfig.cfc",
+      "id": "file:cfml/ModuleConfig.cfc",
+      "isExported": false,
+      "kind": "file",
+      "language": "cfml",
+      "name": "ModuleConfig.cfc",
+      "qualifiedName": "cfml/ModuleConfig.cfc",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 1,
+      "endLine": 9,
+      "filePath": "cfml/ModuleConfig.cfc",
+      "id": "class:4dd519df13f43c913f6fb165c444f8a8",
+      "kind": "class",
+      "language": "cfml",
+      "name": "ModuleConfig",
+      "qualifiedName": "cfml/ModuleConfig.cfc::ModuleConfig",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 2,
+      "endLine": 7,
+      "filePath": "cfml/ModuleConfig.cfc",
+      "id": "method:908405cac2feb7a8a7228c6bdd0e2f1d",
+      "kind": "method",
+      "language": "cfml",
+      "name": "configure",
+      "qualifiedName": "ModuleConfig::configure",
+      "signature": "()",
+      "startColumn": 1,
+      "startLine": 3
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 18,
+      "fromNodeId": "class:4dd519df13f43c913f6fb165c444f8a8",
+      "language": "cfml",
+      "line": 1,
+      "referenceKind": "extends",
+      "referenceName": "coldbox.system.Bootstrap"
+    }
+  ]
+}

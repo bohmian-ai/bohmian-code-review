@@ -1,0 +1,170 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:typescript/Basic.ts",
+      "target": "import:b568c0759717c819f50cf1941ea90895"
+    },
+    {
+      "kind": "contains",
+      "source": "file:typescript/Basic.ts",
+      "target": "interface:55256fcb36a4f2899b9a3f7ae177533f"
+    },
+    {
+      "kind": "contains",
+      "source": "file:typescript/Basic.ts",
+      "target": "class:b5b3e5222bd9636a6ef6297ea7da3aa7"
+    },
+    {
+      "kind": "contains",
+      "source": "class:b5b3e5222bd9636a6ef6297ea7da3aa7",
+      "target": "property:862e51787686cc72f97b01b4c3ddf678"
+    },
+    {
+      "kind": "contains",
+      "source": "class:b5b3e5222bd9636a6ef6297ea7da3aa7",
+      "target": "method:521e626dc6e07d0ac4ecf6164c0035d4"
+    },
+    {
+      "kind": "contains",
+      "source": "class:b5b3e5222bd9636a6ef6297ea7da3aa7",
+      "target": "method:7b11ee3675f1b8e5ab1f527bf4dce8cd"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 16,
+      "filePath": "typescript/Basic.ts",
+      "id": "file:typescript/Basic.ts",
+      "isExported": false,
+      "kind": "file",
+      "language": "typescript",
+      "name": "Basic.ts",
+      "qualifiedName": "typescript/Basic.ts",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 32,
+      "endLine": 1,
+      "filePath": "typescript/Basic.ts",
+      "id": "import:b568c0759717c819f50cf1941ea90895",
+      "kind": "import",
+      "language": "typescript",
+      "name": "./util",
+      "qualifiedName": "./util",
+      "signature": "import { helper } from './util';",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 1,
+      "endLine": 5,
+      "filePath": "typescript/Basic.ts",
+      "id": "interface:55256fcb36a4f2899b9a3f7ae177533f",
+      "isExported": true,
+      "kind": "interface",
+      "language": "typescript",
+      "name": "Shape",
+      "qualifiedName": "Shape",
+      "startColumn": 7,
+      "startLine": 3
+    },
+    {
+      "endColumn": 1,
+      "endLine": 15,
+      "filePath": "typescript/Basic.ts",
+      "id": "class:b5b3e5222bd9636a6ef6297ea7da3aa7",
+      "isExported": true,
+      "kind": "class",
+      "language": "typescript",
+      "name": "Circle",
+      "qualifiedName": "Circle",
+      "startColumn": 7,
+      "startLine": 7
+    },
+    {
+      "endColumn": 16,
+      "endLine": 8,
+      "filePath": "typescript/Basic.ts",
+      "id": "property:862e51787686cc72f97b01b4c3ddf678",
+      "isStatic": false,
+      "kind": "property",
+      "language": "typescript",
+      "name": "radius",
+      "qualifiedName": "Circle::radius",
+      "signature": "number radius",
+      "startColumn": 2,
+      "startLine": 8
+    },
+    {
+      "endColumn": 3,
+      "endLine": 11,
+      "filePath": "typescript/Basic.ts",
+      "id": "method:521e626dc6e07d0ac4ecf6164c0035d4",
+      "isAsync": false,
+      "isStatic": false,
+      "kind": "method",
+      "language": "typescript",
+      "name": "constructor",
+      "qualifiedName": "Circle::constructor",
+      "signature": "(radius: number)",
+      "startColumn": 2,
+      "startLine": 9
+    },
+    {
+      "endColumn": 3,
+      "endLine": 14,
+      "filePath": "typescript/Basic.ts",
+      "id": "method:7b11ee3675f1b8e5ab1f527bf4dce8cd",
+      "isAsync": false,
+      "isStatic": false,
+      "kind": "method",
+      "language": "typescript",
+      "name": "area",
+      "qualifiedName": "Circle::area",
+      "signature": "(): number",
+      "startColumn": 2,
+      "startLine": 12
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 0,
+      "fromNodeId": "file:typescript/Basic.ts",
+      "line": 1,
+      "referenceKind": "imports",
+      "referenceName": "./util"
+    },
+    {
+      "column": 9,
+      "fromNodeId": "file:typescript/Basic.ts",
+      "line": 1,
+      "referenceKind": "imports",
+      "referenceName": "helper"
+    },
+    {
+      "column": 31,
+      "fromNodeId": "class:b5b3e5222bd9636a6ef6297ea7da3aa7",
+      "line": 7,
+      "referenceKind": "implements",
+      "referenceName": "Shape"
+    },
+    {
+      "column": 11,
+      "fromNodeId": "method:7b11ee3675f1b8e5ab1f527bf4dce8cd",
+      "line": 13,
+      "referenceKind": "calls",
+      "referenceName": "helper"
+    },
+    {
+      "column": 23,
+      "fromNodeId": "method:7b11ee3675f1b8e5ab1f527bf4dce8cd",
+      "line": 13,
+      "referenceKind": "function_ref",
+      "referenceName": "this.radius"
+    }
+  ]
+}

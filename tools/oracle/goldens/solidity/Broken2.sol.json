@@ -1,0 +1,139 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:solidity/Broken2.sol",
+      "target": "class:7e7fdfc98351d02c58313c0322f05f4c"
+    },
+    {
+      "kind": "contains",
+      "source": "class:7e7fdfc98351d02c58313c0322f05f4c",
+      "target": "field:cc1def603b8b1d7c635b8325ca8f60dd"
+    },
+    {
+      "kind": "contains",
+      "source": "class:7e7fdfc98351d02c58313c0322f05f4c",
+      "target": "method:c45e1c1ea5442b6fb194f11b1fbed845"
+    },
+    {
+      "kind": "contains",
+      "source": "file:solidity/Broken2.sol",
+      "target": "class:8ab7270219bd615a039ca32ca7bd3a2a"
+    },
+    {
+      "kind": "contains",
+      "source": "class:8ab7270219bd615a039ca32ca7bd3a2a",
+      "target": "field:eaeae4c325959c457252603a2eedd338"
+    },
+    {
+      "kind": "contains",
+      "source": "class:8ab7270219bd615a039ca32ca7bd3a2a",
+      "target": "method:52a04fcaa0ceacbf8b7c6245957a3791"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 21,
+      "filePath": "solidity/Broken2.sol",
+      "id": "file:solidity/Broken2.sol",
+      "isExported": false,
+      "kind": "file",
+      "language": "solidity",
+      "name": "Broken2.sol",
+      "qualifiedName": "solidity/Broken2.sol",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 1,
+      "endLine": 10,
+      "filePath": "solidity/Broken2.sol",
+      "id": "class:7e7fdfc98351d02c58313c0322f05f4c",
+      "kind": "class",
+      "language": "solidity",
+      "name": "ValidContract",
+      "qualifiedName": "ValidContract",
+      "startColumn": 0,
+      "startLine": 4
+    },
+    {
+      "endColumn": 25,
+      "endLine": 5,
+      "filePath": "solidity/Broken2.sol",
+      "id": "field:cc1def603b8b1d7c635b8325ca8f60dd",
+      "isStatic": false,
+      "kind": "field",
+      "language": "solidity",
+      "name": "total",
+      "qualifiedName": "ValidContract::total",
+      "startColumn": 4,
+      "startLine": 5,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 5,
+      "endLine": 9,
+      "filePath": "solidity/Broken2.sol",
+      "id": "method:c45e1c1ea5442b6fb194f11b1fbed845",
+      "kind": "method",
+      "language": "solidity",
+      "name": "add",
+      "qualifiedName": "ValidContract::add",
+      "signature": "(uint256 amount) public",
+      "startColumn": 4,
+      "startLine": 7,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 1,
+      "endLine": 20,
+      "filePath": "solidity/Broken2.sol",
+      "id": "class:8ab7270219bd615a039ca32ca7bd3a2a",
+      "kind": "class",
+      "language": "solidity",
+      "name": "BrokenContract",
+      "qualifiedName": "BrokenContract",
+      "startColumn": 0,
+      "startLine": 12
+    },
+    {
+      "endColumn": 30,
+      "endLine": 13,
+      "filePath": "solidity/Broken2.sol",
+      "id": "field:eaeae4c325959c457252603a2eedd338",
+      "isStatic": false,
+      "kind": "field",
+      "language": "solidity",
+      "name": "value",
+      "qualifiedName": "BrokenContract::value",
+      "startColumn": 4,
+      "startLine": 13,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 1,
+      "endLine": 20,
+      "filePath": "solidity/Broken2.sol",
+      "id": "method:52a04fcaa0ceacbf8b7c6245957a3791",
+      "kind": "method",
+      "language": "solidity",
+      "name": "explode",
+      "qualifiedName": "BrokenContract::explode",
+      "signature": "(uint256 x) public",
+      "startColumn": 4,
+      "startLine": 15,
+      "visibility": "public"
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 12,
+      "fromNodeId": "method:52a04fcaa0ceacbf8b7c6245957a3791",
+      "line": 16,
+      "referenceKind": "calls",
+      "referenceName": "x > 5"
+    }
+  ]
+}

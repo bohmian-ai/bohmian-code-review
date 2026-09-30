@@ -1,0 +1,537 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:arkts/Basic.ets",
+      "target": "import:8bc8a95713fa0190a9b4314671fdc7f9"
+    },
+    {
+      "kind": "contains",
+      "source": "file:arkts/Basic.ets",
+      "target": "struct:93980081b7aa559021cfe1f138fcdb75"
+    },
+    {
+      "kind": "contains",
+      "source": "struct:93980081b7aa559021cfe1f138fcdb75",
+      "target": "property:eaff01dfaf39209cab473f4597cec50d"
+    },
+    {
+      "kind": "contains",
+      "source": "struct:93980081b7aa559021cfe1f138fcdb75",
+      "target": "property:ee07b76339d7171053cedd9abe539eff"
+    },
+    {
+      "kind": "contains",
+      "source": "struct:93980081b7aa559021cfe1f138fcdb75",
+      "target": "method:1be1cc3b6282ffe67363ed71feac149e"
+    },
+    {
+      "kind": "contains",
+      "source": "file:arkts/Basic.ets",
+      "target": "struct:d004822a3b3e9cb33a44fddc54e7cf1e"
+    },
+    {
+      "kind": "contains",
+      "source": "struct:d004822a3b3e9cb33a44fddc54e7cf1e",
+      "target": "property:d83a75342982ee42ae5cb325c511b586"
+    },
+    {
+      "kind": "contains",
+      "source": "struct:d004822a3b3e9cb33a44fddc54e7cf1e",
+      "target": "property:bab520143c56c266f19e830fa4ad7ceb"
+    },
+    {
+      "kind": "contains",
+      "source": "struct:d004822a3b3e9cb33a44fddc54e7cf1e",
+      "target": "method:71f00c775440e8fa5e26bbcf3a51dbf8"
+    },
+    {
+      "kind": "contains",
+      "source": "struct:d004822a3b3e9cb33a44fddc54e7cf1e",
+      "target": "method:5e95b2b4fe987f6f5830bae161cd21ad"
+    },
+    {
+      "kind": "contains",
+      "source": "file:arkts/Basic.ets",
+      "target": "function:f02f1cbb0a85f4be76f516eb031683f3"
+    },
+    {
+      "kind": "contains",
+      "source": "file:arkts/Basic.ets",
+      "target": "function:c5f4e0e6b932e40202514a8d41a5caf4"
+    },
+    {
+      "kind": "contains",
+      "source": "file:arkts/Basic.ets",
+      "target": "function:930d5dd4dcc88e97b55b364101c46e75"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 63,
+      "filePath": "arkts/Basic.ets",
+      "id": "file:arkts/Basic.ets",
+      "isExported": false,
+      "kind": "file",
+      "language": "arkts",
+      "name": "Basic.ets",
+      "qualifiedName": "arkts/Basic.ets",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 36,
+      "endLine": 1,
+      "filePath": "arkts/Basic.ets",
+      "id": "import:8bc8a95713fa0190a9b4314671fdc7f9",
+      "kind": "import",
+      "language": "arkts",
+      "name": "@kit.ArkUI",
+      "qualifiedName": "@kit.ArkUI",
+      "signature": "import { router } from '@kit.ArkUI';",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "decorators": [
+        "Component"
+      ],
+      "endColumn": 1,
+      "endLine": 21,
+      "filePath": "arkts/Basic.ets",
+      "id": "struct:93980081b7aa559021cfe1f138fcdb75",
+      "isExported": true,
+      "kind": "struct",
+      "language": "arkts",
+      "name": "TodoItem",
+      "qualifiedName": "TodoItem",
+      "startColumn": 7,
+      "startLine": 4
+    },
+    {
+      "decorators": [
+        "Prop"
+      ],
+      "endColumn": 21,
+      "endLine": 5,
+      "filePath": "arkts/Basic.ets",
+      "id": "property:eaff01dfaf39209cab473f4597cec50d",
+      "isStatic": false,
+      "kind": "property",
+      "language": "arkts",
+      "name": "title",
+      "qualifiedName": "TodoItem::title",
+      "signature": "string title",
+      "startColumn": 2,
+      "startLine": 5
+    },
+    {
+      "decorators": [
+        "State"
+      ],
+      "endColumn": 35,
+      "endLine": 6,
+      "filePath": "arkts/Basic.ets",
+      "id": "property:ee07b76339d7171053cedd9abe539eff",
+      "isStatic": false,
+      "kind": "property",
+      "language": "arkts",
+      "name": "completed",
+      "qualifiedName": "TodoItem::completed",
+      "signature": "boolean completed",
+      "startColumn": 2,
+      "startLine": 6
+    },
+    {
+      "endColumn": 3,
+      "endLine": 20,
+      "filePath": "arkts/Basic.ets",
+      "id": "method:1be1cc3b6282ffe67363ed71feac149e",
+      "isAsync": false,
+      "isStatic": false,
+      "kind": "method",
+      "language": "arkts",
+      "name": "build",
+      "qualifiedName": "TodoItem::build",
+      "signature": "()",
+      "startColumn": 2,
+      "startLine": 8
+    },
+    {
+      "decorators": [
+        "Entry",
+        "Component"
+      ],
+      "endColumn": 1,
+      "endLine": 46,
+      "filePath": "arkts/Basic.ets",
+      "id": "struct:d004822a3b3e9cb33a44fddc54e7cf1e",
+      "isExported": false,
+      "kind": "struct",
+      "language": "arkts",
+      "name": "TodoList",
+      "qualifiedName": "TodoList",
+      "startColumn": 0,
+      "startLine": 23
+    },
+    {
+      "decorators": [
+        "State"
+      ],
+      "endColumn": 31,
+      "endLine": 26,
+      "filePath": "arkts/Basic.ets",
+      "id": "property:d83a75342982ee42ae5cb325c511b586",
+      "isStatic": false,
+      "kind": "property",
+      "language": "arkts",
+      "name": "items",
+      "qualifiedName": "TodoList::items",
+      "signature": "TodoItem[] items",
+      "startColumn": 2,
+      "startLine": 26
+    },
+    {
+      "decorators": [
+        "State"
+      ],
+      "endColumn": 26,
+      "endLine": 27,
+      "filePath": "arkts/Basic.ets",
+      "id": "property:bab520143c56c266f19e830fa4ad7ceb",
+      "isStatic": false,
+      "kind": "property",
+      "language": "arkts",
+      "name": "count",
+      "qualifiedName": "TodoList::count",
+      "signature": "number count",
+      "startColumn": 2,
+      "startLine": 27
+    },
+    {
+      "decorators": [
+        "Builder"
+      ],
+      "endColumn": 3,
+      "endLine": 32,
+      "filePath": "arkts/Basic.ets",
+      "id": "method:71f00c775440e8fa5e26bbcf3a51dbf8",
+      "isAsync": false,
+      "isStatic": false,
+      "kind": "method",
+      "language": "arkts",
+      "name": "itemBuilder",
+      "qualifiedName": "TodoList::itemBuilder",
+      "signature": "(item: TodoItem)",
+      "startColumn": 2,
+      "startLine": 30
+    },
+    {
+      "endColumn": 3,
+      "endLine": 45,
+      "filePath": "arkts/Basic.ets",
+      "id": "method:5e95b2b4fe987f6f5830bae161cd21ad",
+      "isAsync": false,
+      "isStatic": false,
+      "kind": "method",
+      "language": "arkts",
+      "name": "build",
+      "qualifiedName": "TodoList::build",
+      "signature": "()",
+      "startColumn": 2,
+      "startLine": 34
+    },
+    {
+      "decorators": [
+        "Builder"
+      ],
+      "endColumn": 1,
+      "endLine": 51,
+      "filePath": "arkts/Basic.ets",
+      "id": "function:f02f1cbb0a85f4be76f516eb031683f3",
+      "isAsync": false,
+      "isExported": false,
+      "isStatic": false,
+      "kind": "function",
+      "language": "arkts",
+      "name": "globalBuilder",
+      "qualifiedName": "globalBuilder",
+      "signature": "()",
+      "startColumn": 0,
+      "startLine": 48
+    },
+    {
+      "decorators": [
+        "Extend"
+      ],
+      "endColumn": 1,
+      "endLine": 56,
+      "filePath": "arkts/Basic.ets",
+      "id": "function:c5f4e0e6b932e40202514a8d41a5caf4",
+      "isAsync": false,
+      "isExported": false,
+      "isStatic": false,
+      "kind": "function",
+      "language": "arkts",
+      "name": "bold",
+      "qualifiedName": "bold",
+      "signature": "(this: Text)",
+      "startColumn": 0,
+      "startLine": 53
+    },
+    {
+      "decorators": [
+        "Styles"
+      ],
+      "endColumn": 1,
+      "endLine": 62,
+      "filePath": "arkts/Basic.ets",
+      "id": "function:930d5dd4dcc88e97b55b364101c46e75",
+      "isAsync": false,
+      "isExported": false,
+      "isStatic": false,
+      "kind": "function",
+      "language": "arkts",
+      "name": "cardStyle",
+      "qualifiedName": "cardStyle",
+      "signature": "()",
+      "startColumn": 0,
+      "startLine": 58
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 0,
+      "fromNodeId": "file:arkts/Basic.ets",
+      "line": 1,
+      "referenceKind": "imports",
+      "referenceName": "@kit.ArkUI"
+    },
+    {
+      "column": 9,
+      "fromNodeId": "file:arkts/Basic.ets",
+      "line": 1,
+      "referenceKind": "imports",
+      "referenceName": "router"
+    },
+    {
+      "column": 2,
+      "fromNodeId": "property:eaff01dfaf39209cab473f4597cec50d",
+      "line": 5,
+      "referenceKind": "decorates",
+      "referenceName": "Prop"
+    },
+    {
+      "column": 2,
+      "fromNodeId": "property:ee07b76339d7171053cedd9abe539eff",
+      "line": 6,
+      "referenceKind": "decorates",
+      "referenceName": "State"
+    },
+    {
+      "column": 4,
+      "fromNodeId": "method:1be1cc3b6282ffe67363ed71feac149e",
+      "line": 9,
+      "referenceKind": "calls",
+      "referenceName": "Row"
+    },
+    {
+      "column": 5,
+      "fromNodeId": "method:1be1cc3b6282ffe67363ed71feac149e",
+      "line": 18,
+      "referenceKind": "calls",
+      "referenceName": ".width"
+    },
+    {
+      "column": 5,
+      "fromNodeId": "method:1be1cc3b6282ffe67363ed71feac149e",
+      "line": 19,
+      "referenceKind": "calls",
+      "referenceName": ".padding"
+    },
+    {
+      "column": 6,
+      "fromNodeId": "method:1be1cc3b6282ffe67363ed71feac149e",
+      "line": 10,
+      "referenceKind": "calls",
+      "referenceName": "Text"
+    },
+    {
+      "column": 9,
+      "fromNodeId": "method:1be1cc3b6282ffe67363ed71feac149e",
+      "line": 11,
+      "referenceKind": "calls",
+      "referenceName": ".fontSize"
+    },
+    {
+      "column": 9,
+      "fromNodeId": "method:1be1cc3b6282ffe67363ed71feac149e",
+      "line": 12,
+      "referenceKind": "calls",
+      "referenceName": ".opacity"
+    },
+    {
+      "column": 9,
+      "fromNodeId": "method:1be1cc3b6282ffe67363ed71feac149e",
+      "line": 14,
+      "referenceKind": "calls",
+      "referenceName": ".onClick"
+    },
+    {
+      "column": 6,
+      "fromNodeId": "method:1be1cc3b6282ffe67363ed71feac149e",
+      "line": 13,
+      "referenceKind": "calls",
+      "referenceName": "Button"
+    },
+    {
+      "column": 2,
+      "fromNodeId": "property:d83a75342982ee42ae5cb325c511b586",
+      "line": 26,
+      "referenceKind": "decorates",
+      "referenceName": "State"
+    },
+    {
+      "column": 16,
+      "fromNodeId": "property:d83a75342982ee42ae5cb325c511b586",
+      "line": 26,
+      "referenceKind": "references",
+      "referenceName": "TodoItem"
+    },
+    {
+      "column": 2,
+      "fromNodeId": "property:bab520143c56c266f19e830fa4ad7ceb",
+      "line": 27,
+      "referenceKind": "decorates",
+      "referenceName": "State"
+    },
+    {
+      "column": 20,
+      "fromNodeId": "method:71f00c775440e8fa5e26bbcf3a51dbf8",
+      "line": 30,
+      "referenceKind": "references",
+      "referenceName": "TodoItem"
+    },
+    {
+      "column": 2,
+      "fromNodeId": "method:71f00c775440e8fa5e26bbcf3a51dbf8",
+      "line": 29,
+      "referenceKind": "decorates",
+      "referenceName": "Builder"
+    },
+    {
+      "column": 4,
+      "fromNodeId": "method:71f00c775440e8fa5e26bbcf3a51dbf8",
+      "line": 31,
+      "referenceKind": "calls",
+      "referenceName": "Text"
+    },
+    {
+      "column": 21,
+      "fromNodeId": "method:71f00c775440e8fa5e26bbcf3a51dbf8",
+      "line": 31,
+      "referenceKind": "calls",
+      "referenceName": ".fontSize"
+    },
+    {
+      "column": 4,
+      "fromNodeId": "method:5e95b2b4fe987f6f5830bae161cd21ad",
+      "line": 35,
+      "referenceKind": "calls",
+      "referenceName": "Column"
+    },
+    {
+      "column": 5,
+      "fromNodeId": "method:5e95b2b4fe987f6f5830bae161cd21ad",
+      "line": 44,
+      "referenceKind": "calls",
+      "referenceName": ".width"
+    },
+    {
+      "column": 6,
+      "fromNodeId": "method:5e95b2b4fe987f6f5830bae161cd21ad",
+      "line": 36,
+      "referenceKind": "calls",
+      "referenceName": "ForEach"
+    },
+    {
+      "column": 9,
+      "fromNodeId": "method:5e95b2b4fe987f6f5830bae161cd21ad",
+      "line": 40,
+      "referenceKind": "calls",
+      "referenceName": ".onClick"
+    },
+    {
+      "column": 6,
+      "fromNodeId": "method:5e95b2b4fe987f6f5830bae161cd21ad",
+      "line": 39,
+      "referenceKind": "calls",
+      "referenceName": "Button"
+    },
+    {
+      "column": 0,
+      "fromNodeId": "function:f02f1cbb0a85f4be76f516eb031683f3",
+      "line": 48,
+      "referenceKind": "decorates",
+      "referenceName": "Builder"
+    },
+    {
+      "column": 2,
+      "fromNodeId": "function:f02f1cbb0a85f4be76f516eb031683f3",
+      "line": 50,
+      "referenceKind": "calls",
+      "referenceName": "Text"
+    },
+    {
+      "column": 17,
+      "fromNodeId": "function:f02f1cbb0a85f4be76f516eb031683f3",
+      "line": 50,
+      "referenceKind": "calls",
+      "referenceName": ".fontSize"
+    },
+    {
+      "column": 20,
+      "fromNodeId": "function:c5f4e0e6b932e40202514a8d41a5caf4",
+      "line": 54,
+      "referenceKind": "references",
+      "referenceName": "Text"
+    },
+    {
+      "column": 0,
+      "fromNodeId": "function:c5f4e0e6b932e40202514a8d41a5caf4",
+      "line": 53,
+      "referenceKind": "decorates",
+      "referenceName": "Extend"
+    },
+    {
+      "column": 3,
+      "fromNodeId": "function:c5f4e0e6b932e40202514a8d41a5caf4",
+      "line": 55,
+      "referenceKind": "calls",
+      "referenceName": ".fontWeight"
+    },
+    {
+      "column": 0,
+      "fromNodeId": "function:930d5dd4dcc88e97b55b364101c46e75",
+      "line": 58,
+      "referenceKind": "decorates",
+      "referenceName": "Styles"
+    },
+    {
+      "column": 3,
+      "fromNodeId": "function:930d5dd4dcc88e97b55b364101c46e75",
+      "line": 61,
+      "referenceKind": "calls",
+      "referenceName": ".borderRadius"
+    },
+    {
+      "column": 3,
+      "fromNodeId": "function:930d5dd4dcc88e97b55b364101c46e75",
+      "line": 60,
+      "referenceKind": "calls",
+      "referenceName": ".backgroundColor"
+    }
+  ]
+}

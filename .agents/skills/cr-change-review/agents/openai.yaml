@@ -1,0 +1,4 @@
+interface:
+  display_name: "Code Review Change Review"
+  short_description: "Audit an integrated review-helper change"
+  default_prompt: "Use $cr-change-review to audit this integrated bohmian-code-review change and route a PASS to $cr-complete."

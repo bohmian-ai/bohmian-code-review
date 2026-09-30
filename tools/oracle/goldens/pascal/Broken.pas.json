@@ -1,0 +1,20 @@
+{
+  "edges": [],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 11,
+      "filePath": "pascal/Broken.pas",
+      "id": "file:pascal/Broken.pas",
+      "isExported": false,
+      "kind": "file",
+      "language": "pascal",
+      "name": "Broken.pas",
+      "qualifiedName": "pascal/Broken.pas",
+      "startColumn": 0,
+      "startLine": 1
+    }
+  ],
+  "unresolvedReferences": []
+}

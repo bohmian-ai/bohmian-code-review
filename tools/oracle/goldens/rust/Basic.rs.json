@@ -1,0 +1,147 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:rust/Basic.rs",
+      "target": "struct:577b8399d01332b04006e05a46ec693d"
+    },
+    {
+      "kind": "contains",
+      "source": "file:rust/Basic.rs",
+      "target": "method:b1ddd310f1c6ad3c45c7f92ee1101313"
+    },
+    {
+      "kind": "contains",
+      "source": "struct:577b8399d01332b04006e05a46ec693d",
+      "target": "method:b1ddd310f1c6ad3c45c7f92ee1101313"
+    },
+    {
+      "kind": "contains",
+      "source": "file:rust/Basic.rs",
+      "target": "method:527f6cb442467ca8b42d402edd6411e1"
+    },
+    {
+      "kind": "contains",
+      "source": "struct:577b8399d01332b04006e05a46ec693d",
+      "target": "method:527f6cb442467ca8b42d402edd6411e1"
+    },
+    {
+      "kind": "contains",
+      "source": "file:rust/Basic.rs",
+      "target": "function:b0ca1a086066c440252fac92ff3f0410"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 20,
+      "filePath": "rust/Basic.rs",
+      "id": "file:rust/Basic.rs",
+      "isExported": false,
+      "kind": "file",
+      "language": "rust",
+      "name": "Basic.rs",
+      "qualifiedName": "rust/Basic.rs",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 1,
+      "endLine": 5,
+      "filePath": "rust/Basic.rs",
+      "id": "struct:577b8399d01332b04006e05a46ec693d",
+      "kind": "struct",
+      "language": "rust",
+      "name": "Circle",
+      "qualifiedName": "Circle",
+      "startColumn": 0,
+      "startLine": 3,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 5,
+      "endLine": 10,
+      "filePath": "rust/Basic.rs",
+      "id": "method:b1ddd310f1c6ad3c45c7f92ee1101313",
+      "isAsync": false,
+      "kind": "method",
+      "language": "rust",
+      "name": "new",
+      "qualifiedName": "Circle::new",
+      "returnType": "self",
+      "signature": "(radius: f64) -> Self",
+      "startColumn": 4,
+      "startLine": 8,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 5,
+      "endLine": 14,
+      "filePath": "rust/Basic.rs",
+      "id": "method:527f6cb442467ca8b42d402edd6411e1",
+      "isAsync": false,
+      "kind": "method",
+      "language": "rust",
+      "name": "area",
+      "qualifiedName": "Circle::area",
+      "signature": "(&self) -> f64",
+      "startColumn": 4,
+      "startLine": 12,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 1,
+      "endLine": 19,
+      "filePath": "rust/Basic.rs",
+      "id": "function:b0ca1a086066c440252fac92ff3f0410",
+      "isAsync": false,
+      "kind": "function",
+      "language": "rust",
+      "name": "make",
+      "qualifiedName": "make",
+      "returnType": "Circle",
+      "signature": "(radius: f64) -> Circle",
+      "startColumn": 0,
+      "startLine": 17,
+      "visibility": "public"
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 31,
+      "fromNodeId": "method:b1ddd310f1c6ad3c45c7f92ee1101313",
+      "line": 8,
+      "referenceKind": "references",
+      "referenceName": "Self"
+    },
+    {
+      "column": 8,
+      "fromNodeId": "method:b1ddd310f1c6ad3c45c7f92ee1101313",
+      "line": 9,
+      "referenceKind": "instantiates",
+      "referenceName": "Circle"
+    },
+    {
+      "column": 8,
+      "fromNodeId": "method:527f6cb442467ca8b42d402edd6411e1",
+      "line": 13,
+      "referenceKind": "calls",
+      "referenceName": "util::helper"
+    },
+    {
+      "column": 28,
+      "fromNodeId": "function:b0ca1a086066c440252fac92ff3f0410",
+      "line": 17,
+      "referenceKind": "references",
+      "referenceName": "Circle"
+    },
+    {
+      "column": 4,
+      "fromNodeId": "function:b0ca1a086066c440252fac92ff3f0410",
+      "line": 18,
+      "referenceKind": "calls",
+      "referenceName": "Circle::new"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+object BadForm
+  OnCreate = FormCreate
+  object : TPanel
+    Caption = 'nameless'
+  end
+end

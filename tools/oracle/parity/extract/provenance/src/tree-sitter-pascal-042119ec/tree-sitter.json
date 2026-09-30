@@ -1,0 +1,2 @@
+{ "grammars": [ { "name": "pascal", "camelcase": "Pascal", "scope": "source.pascal", "path": ".", "file-types": ["pas"] } ],
+  "metadata": { "version": "0.1.0", "license": "MIT", "description": "frozen vendored grammar for codegraph-rs", "links": { "repository": "https://github.com/Isopod/tree-sitter-pascal" } } }

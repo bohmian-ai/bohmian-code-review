@@ -1,0 +1,312 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:objc/Basic.m",
+      "target": "import:21efb301e11b1fdac2a2c4580e9028f1"
+    },
+    {
+      "kind": "contains",
+      "source": "file:objc/Basic.m",
+      "target": "import:0207a4d0680c12a8f68b9f8124b02af6"
+    },
+    {
+      "kind": "contains",
+      "source": "file:objc/Basic.m",
+      "target": "class:8b886d110db95e65e54f7eda771d6473"
+    },
+    {
+      "kind": "contains",
+      "source": "class:8b886d110db95e65e54f7eda771d6473",
+      "target": "property:d503abd730b5ffaa2ef0d871a264ae4c"
+    },
+    {
+      "kind": "contains",
+      "source": "file:objc/Basic.m",
+      "target": "enum:b9be189c1645a29b9cb9bfdb2e7e780d"
+    },
+    {
+      "kind": "contains",
+      "source": "enum:b9be189c1645a29b9cb9bfdb2e7e780d",
+      "target": "enum_member:97432ccfd531a762510b441b82188d45"
+    },
+    {
+      "kind": "contains",
+      "source": "enum:b9be189c1645a29b9cb9bfdb2e7e780d",
+      "target": "enum_member:9361380b6dbff62ec1ec2b566b72b529"
+    },
+    {
+      "kind": "contains",
+      "source": "file:objc/Basic.m",
+      "target": "struct:893b7ffead570933ba4db9e0dcb42bbf"
+    },
+    {
+      "kind": "contains",
+      "source": "class:8b886d110db95e65e54f7eda771d6473",
+      "target": "method:ce4a7228209199b6a9b067411c0090ab"
+    },
+    {
+      "kind": "contains",
+      "source": "class:8b886d110db95e65e54f7eda771d6473",
+      "target": "method:3e335a4c49caf73d1b9b0a44a3e3ed0f"
+    },
+    {
+      "kind": "contains",
+      "source": "class:8b886d110db95e65e54f7eda771d6473",
+      "target": "method:e1dd0e2158b4c56dc9ab88e4b7c0d81c"
+    },
+    {
+      "kind": "contains",
+      "source": "file:objc/Basic.m",
+      "target": "function:dc97b4701e3fb9d7e45d8f27d9ec8c67"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 43,
+      "filePath": "objc/Basic.m",
+      "id": "file:objc/Basic.m",
+      "isExported": false,
+      "kind": "file",
+      "language": "objc",
+      "name": "Basic.m",
+      "qualifiedName": "objc/Basic.m",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 0,
+      "endLine": 2,
+      "filePath": "objc/Basic.m",
+      "id": "import:21efb301e11b1fdac2a2c4580e9028f1",
+      "kind": "import",
+      "language": "objc",
+      "name": "Foundation/Foundation.h",
+      "qualifiedName": "Foundation/Foundation.h",
+      "signature": "#import <Foundation/Foundation.h>",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 0,
+      "endLine": 4,
+      "filePath": "objc/Basic.m",
+      "id": "import:0207a4d0680c12a8f68b9f8124b02af6",
+      "kind": "import",
+      "language": "objc",
+      "name": "LocalHelper.h",
+      "qualifiedName": "LocalHelper.h",
+      "signature": "#import \"LocalHelper.h\"",
+      "startColumn": 0,
+      "startLine": 2
+    },
+    {
+      "endColumn": 4,
+      "endLine": 9,
+      "filePath": "objc/Basic.m",
+      "id": "class:8b886d110db95e65e54f7eda771d6473",
+      "kind": "class",
+      "language": "objc",
+      "name": "Greeter",
+      "qualifiedName": "Greeter",
+      "startColumn": 0,
+      "startLine": 4
+    },
+    {
+      "endColumn": 47,
+      "endLine": 5,
+      "filePath": "objc/Basic.m",
+      "id": "property:d503abd730b5ffaa2ef0d871a264ae4c",
+      "isStatic": false,
+      "kind": "property",
+      "language": "objc",
+      "name": "prefix",
+      "qualifiedName": "Greeter::prefix",
+      "signature": "(nonatomic, strong) prefix",
+      "startColumn": 0,
+      "startLine": 5
+    },
+    {
+      "endColumn": 15,
+      "endLine": 13,
+      "filePath": "objc/Basic.m",
+      "id": "enum:b9be189c1645a29b9cb9bfdb2e7e780d",
+      "kind": "enum",
+      "language": "objc",
+      "name": "GreetingKind",
+      "qualifiedName": "GreetingKind",
+      "startColumn": 0,
+      "startLine": 10
+    },
+    {
+      "endColumn": 21,
+      "endLine": 11,
+      "filePath": "objc/Basic.m",
+      "id": "enum_member:97432ccfd531a762510b441b82188d45",
+      "kind": "enum_member",
+      "language": "objc",
+      "name": "GreetingKindHello",
+      "qualifiedName": "GreetingKind::GreetingKindHello",
+      "startColumn": 4,
+      "startLine": 11
+    },
+    {
+      "endColumn": 23,
+      "endLine": 12,
+      "filePath": "objc/Basic.m",
+      "id": "enum_member:9361380b6dbff62ec1ec2b566b72b529",
+      "kind": "enum_member",
+      "language": "objc",
+      "name": "GreetingKindGoodbye",
+      "qualifiedName": "GreetingKind::GreetingKindGoodbye",
+      "startColumn": 4,
+      "startLine": 12
+    },
+    {
+      "endColumn": 8,
+      "endLine": 18,
+      "filePath": "objc/Basic.m",
+      "id": "struct:893b7ffead570933ba4db9e0dcb42bbf",
+      "kind": "struct",
+      "language": "objc",
+      "name": "Point",
+      "qualifiedName": "Point",
+      "startColumn": 0,
+      "startLine": 15
+    },
+    {
+      "endColumn": 1,
+      "endLine": 28,
+      "filePath": "objc/Basic.m",
+      "id": "method:ce4a7228209199b6a9b067411c0090ab",
+      "isStatic": true,
+      "kind": "method",
+      "language": "objc",
+      "name": "sharedGreeter",
+      "qualifiedName": "Greeter::sharedGreeter",
+      "startColumn": 0,
+      "startLine": 21
+    },
+    {
+      "endColumn": 1,
+      "endLine": 32,
+      "filePath": "objc/Basic.m",
+      "id": "method:3e335a4c49caf73d1b9b0a44a3e3ed0f",
+      "isStatic": false,
+      "kind": "method",
+      "language": "objc",
+      "name": "greet:withSuffix:",
+      "qualifiedName": "Greeter::greet:withSuffix:",
+      "returnType": "NSString",
+      "startColumn": 0,
+      "startLine": 30
+    },
+    {
+      "endColumn": 1,
+      "endLine": 35,
+      "filePath": "objc/Basic.m",
+      "id": "method:e1dd0e2158b4c56dc9ab88e4b7c0d81c",
+      "isStatic": false,
+      "kind": "method",
+      "language": "objc",
+      "name": "reset",
+      "qualifiedName": "Greeter::reset",
+      "startColumn": 0,
+      "startLine": 33
+    },
+    {
+      "endColumn": 1,
+      "endLine": 42,
+      "filePath": "objc/Basic.m",
+      "id": "function:dc97b4701e3fb9d7e45d8f27d9ec8c67",
+      "isStatic": false,
+      "kind": "function",
+      "language": "objc",
+      "name": "helper_function",
+      "qualifiedName": "helper_function",
+      "startColumn": 0,
+      "startLine": 40
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 0,
+      "fromNodeId": "file:objc/Basic.m",
+      "line": 1,
+      "referenceKind": "imports",
+      "referenceName": "Foundation/Foundation.h"
+    },
+    {
+      "column": 0,
+      "fromNodeId": "file:objc/Basic.m",
+      "line": 2,
+      "referenceKind": "imports",
+      "referenceName": "LocalHelper.h"
+    },
+    {
+      "column": 21,
+      "fromNodeId": "class:8b886d110db95e65e54f7eda771d6473",
+      "line": 4,
+      "referenceKind": "extends",
+      "referenceName": "NSObject"
+    },
+    {
+      "column": 31,
+      "fromNodeId": "class:8b886d110db95e65e54f7eda771d6473",
+      "line": 4,
+      "referenceKind": "implements",
+      "referenceName": "GreetingProtocol"
+    },
+    {
+      "column": 49,
+      "fromNodeId": "class:8b886d110db95e65e54f7eda771d6473",
+      "line": 4,
+      "referenceKind": "implements",
+      "referenceName": "NSSecureCoding"
+    },
+    {
+      "column": 4,
+      "fromNodeId": "method:ce4a7228209199b6a9b067411c0090ab",
+      "line": 24,
+      "referenceKind": "calls",
+      "referenceName": "dispatch_once"
+    },
+    {
+      "column": 17,
+      "fromNodeId": "method:ce4a7228209199b6a9b067411c0090ab",
+      "line": 25,
+      "referenceKind": "calls",
+      "referenceName": "Greeter.alloc().init"
+    },
+    {
+      "column": 19,
+      "fromNodeId": "method:ce4a7228209199b6a9b067411c0090ab",
+      "line": 25,
+      "referenceKind": "references",
+      "referenceName": "Greeter"
+    },
+    {
+      "column": 18,
+      "fromNodeId": "method:ce4a7228209199b6a9b067411c0090ab",
+      "line": 25,
+      "referenceKind": "calls",
+      "referenceName": "Greeter.alloc"
+    },
+    {
+      "column": 12,
+      "fromNodeId": "method:3e335a4c49caf73d1b9b0a44a3e3ed0f",
+      "line": 31,
+      "referenceKind": "references",
+      "referenceName": "NSString"
+    },
+    {
+      "column": 11,
+      "fromNodeId": "method:3e335a4c49caf73d1b9b0a44a3e3ed0f",
+      "line": 31,
+      "referenceKind": "calls",
+      "referenceName": "NSString.stringWithFormat:"
+    }
+  ]
+}

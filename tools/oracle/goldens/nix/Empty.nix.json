@@ -1,0 +1,20 @@
+{
+  "edges": [],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 1,
+      "filePath": "nix/Empty.nix",
+      "id": "file:nix/Empty.nix",
+      "isExported": false,
+      "kind": "file",
+      "language": "nix",
+      "name": "Empty.nix",
+      "qualifiedName": "nix/Empty.nix",
+      "startColumn": 0,
+      "startLine": 1
+    }
+  ],
+  "unresolvedReferences": []
+}

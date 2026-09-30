@@ -1,0 +1,105 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:7eabe2626ca1517b556db269ac5ea6a7",
+      "target": "import:52e6c2aac3ce68e005121508918474c3"
+    },
+    {
+      "kind": "contains",
+      "source": "file:7eabe2626ca1517b556db269ac5ea6a7",
+      "target": "component:562468a01ab7c01c587ed11f402120f3"
+    },
+    {
+      "kind": "contains",
+      "source": "file:7eabe2626ca1517b556db269ac5ea6a7",
+      "target": "import:b02bddee7066c129a9f975062cc06803"
+    },
+    {
+      "kind": "contains",
+      "source": "file:7eabe2626ca1517b556db269ac5ea6a7",
+      "target": "component:e2509f9128365500dadcece7b69b906e"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 3,
+      "filePath": "liquid/Crlf.liquid",
+      "id": "file:7eabe2626ca1517b556db269ac5ea6a7",
+      "kind": "file",
+      "language": "liquid",
+      "name": "Crlf.liquid",
+      "qualifiedName": "liquid/Crlf.liquid",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 17,
+      "endLine": 1,
+      "filePath": "liquid/Crlf.liquid",
+      "id": "import:52e6c2aac3ce68e005121508918474c3",
+      "kind": "import",
+      "language": "liquid",
+      "name": "first",
+      "qualifiedName": "liquid/Crlf.liquid::import:first",
+      "signature": "{% render 'first'",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 17,
+      "endLine": 1,
+      "filePath": "liquid/Crlf.liquid",
+      "id": "component:562468a01ab7c01c587ed11f402120f3",
+      "kind": "component",
+      "language": "liquid",
+      "name": "first",
+      "qualifiedName": "liquid/Crlf.liquid::render:first",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 19,
+      "endLine": 2,
+      "filePath": "liquid/Crlf.liquid",
+      "id": "import:b02bddee7066c129a9f975062cc06803",
+      "kind": "import",
+      "language": "liquid",
+      "name": "second",
+      "qualifiedName": "liquid/Crlf.liquid::import:second",
+      "signature": "{% section 'second'",
+      "startColumn": 0,
+      "startLine": 2
+    },
+    {
+      "endColumn": 19,
+      "endLine": 2,
+      "filePath": "liquid/Crlf.liquid",
+      "id": "component:e2509f9128365500dadcece7b69b906e",
+      "kind": "component",
+      "language": "liquid",
+      "name": "second",
+      "qualifiedName": "liquid/Crlf.liquid::section:second",
+      "startColumn": 0,
+      "startLine": 2
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 0,
+      "fromNodeId": "file:7eabe2626ca1517b556db269ac5ea6a7",
+      "line": 1,
+      "referenceKind": "references",
+      "referenceName": "snippets/first.liquid"
+    },
+    {
+      "column": 0,
+      "fromNodeId": "file:7eabe2626ca1517b556db269ac5ea6a7",
+      "line": 2,
+      "referenceKind": "references",
+      "referenceName": "sections/second.liquid"
+    }
+  ]
+}

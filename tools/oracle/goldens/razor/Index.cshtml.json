@@ -1,0 +1,48 @@
+{
+  "edges": [],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 8,
+      "filePath": "razor/Index.cshtml",
+      "id": "component:a58a89d98e6ca828bb1f35ead3eb32aa",
+      "isExported": true,
+      "kind": "component",
+      "language": "razor",
+      "name": "Index",
+      "qualifiedName": "razor/Index.cshtml::Index",
+      "startColumn": 0,
+      "startLine": 1
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 0,
+      "filePath": "razor/Index.cshtml",
+      "fromNodeId": "component:a58a89d98e6ca828bb1f35ead3eb32aa",
+      "language": "razor",
+      "line": 1,
+      "referenceKind": "references",
+      "referenceName": "RegisterModel"
+    },
+    {
+      "column": 0,
+      "filePath": "razor/Index.cshtml",
+      "fromNodeId": "component:a58a89d98e6ca828bb1f35ead3eb32aa",
+      "language": "razor",
+      "line": 2,
+      "referenceKind": "references",
+      "referenceName": "IUserService"
+    },
+    {
+      "column": 0,
+      "filePath": "razor/Index.cshtml",
+      "fromNodeId": "component:a58a89d98e6ca828bb1f35ead3eb32aa",
+      "language": "razor",
+      "line": 7,
+      "referenceKind": "references",
+      "referenceName": "MainLayout"
+    }
+  ]
+}

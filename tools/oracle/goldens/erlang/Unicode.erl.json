@@ -1,0 +1,57 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:erlang/Unicode.erl",
+      "target": "namespace:bee618d407fbcdd5c856f96fe0e33a2a"
+    },
+    {
+      "kind": "contains",
+      "source": "namespace:bee618d407fbcdd5c856f96fe0e33a2a",
+      "target": "function:164fc9e92cf963eb68a73438a16dcc19"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 7,
+      "filePath": "erlang/Unicode.erl",
+      "id": "file:erlang/Unicode.erl",
+      "isExported": false,
+      "kind": "file",
+      "language": "erlang",
+      "name": "Unicode.erl",
+      "qualifiedName": "erlang/Unicode.erl",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 17,
+      "endLine": 1,
+      "filePath": "erlang/Unicode.erl",
+      "id": "namespace:bee618d407fbcdd5c856f96fe0e33a2a",
+      "kind": "namespace",
+      "language": "erlang",
+      "name": "unicode",
+      "qualifiedName": "unicode",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 24,
+      "endLine": 6,
+      "filePath": "erlang/Unicode.erl",
+      "id": "function:164fc9e92cf963eb68a73438a16dcc19",
+      "isExported": true,
+      "kind": "function",
+      "language": "erlang",
+      "name": "héllo",
+      "qualifiedName": "unicode::héllo",
+      "signature": "héllo(Wörld)",
+      "startColumn": 0,
+      "startLine": 5
+    }
+  ],
+  "unresolvedReferences": []
+}

@@ -1,0 +1,29 @@
+component extends="BaseService" implements="IStore,IAuditable" {
+
+    property name="maxItems" type="numeric";
+
+    variables.fallback = 'local-value';
+
+    function init() {
+        variables.svc = createObject('component', 'UserService');
+        return this;
+    }
+
+    function save(user) {
+        arguments.svc.persist(user);
+        this.notify(user);
+        return true;
+    }
+
+    private function notify(user) {
+        log.info('saved user #user.id#');
+    }
+
+    function getById(id) {
+        var result = queryExecute('select * from users where id = ?', [id]);
+        return result;
+    }
+
+    include "helpers.cfm";
+    import com.foo.Bar;
+}

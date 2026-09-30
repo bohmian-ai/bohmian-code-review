@@ -1,0 +1,65 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:vbnet/Broken.vb",
+      "target": "import:9694b6dd58507d9d86f27f17627bf302"
+    },
+    {
+      "kind": "contains",
+      "source": "file:vbnet/Broken.vb",
+      "target": "class:2d2f378d873a689d50e32d80420c88bf"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 7,
+      "filePath": "vbnet/Broken.vb",
+      "id": "file:vbnet/Broken.vb",
+      "isExported": false,
+      "kind": "file",
+      "language": "vbnet",
+      "name": "Broken.vb",
+      "qualifiedName": "vbnet/Broken.vb",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 0,
+      "endLine": 3,
+      "filePath": "vbnet/Broken.vb",
+      "id": "import:9694b6dd58507d9d86f27f17627bf302",
+      "kind": "import",
+      "language": "vbnet",
+      "name": "System",
+      "qualifiedName": "System",
+      "signature": "Imports System",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 0,
+      "endLine": 7,
+      "filePath": "vbnet/Broken.vb",
+      "id": "class:2d2f378d873a689d50e32d80420c88bf",
+      "kind": "class",
+      "language": "vbnet",
+      "name": "Broken",
+      "qualifiedName": "Broken",
+      "startColumn": 0,
+      "startLine": 3,
+      "visibility": "public"
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 0,
+      "fromNodeId": "file:vbnet/Broken.vb",
+      "line": 1,
+      "referenceKind": "imports",
+      "referenceName": "System"
+    }
+  ]
+}

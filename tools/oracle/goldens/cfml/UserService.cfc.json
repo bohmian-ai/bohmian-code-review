@@ -1,0 +1,131 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:7f382cd471008ce628c6f64230008d59",
+      "target": "class:6f79b80c29d0da17e4f50a9bb38a6cdd"
+    },
+    {
+      "kind": "contains",
+      "source": "class:6f79b80c29d0da17e4f50a9bb38a6cdd",
+      "target": "method:30afeecf9b0dd203babe5b533ad51de5"
+    },
+    {
+      "kind": "contains",
+      "source": "method:30afeecf9b0dd203babe5b533ad51de5",
+      "target": "variable:4284cf9d4576c71ee5ce752a81c0e2e0"
+    },
+    {
+      "kind": "contains",
+      "source": "class:6f79b80c29d0da17e4f50a9bb38a6cdd",
+      "target": "method:732b21b1362301e11b07543d02736464"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 16,
+      "filePath": "cfml/UserService.cfc",
+      "id": "file:7f382cd471008ce628c6f64230008d59",
+      "kind": "file",
+      "language": "cfml",
+      "name": "UserService.cfc",
+      "qualifiedName": "cfml/UserService.cfc",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 61,
+      "endLine": 15,
+      "filePath": "cfml/UserService.cfc",
+      "id": "class:6f79b80c29d0da17e4f50a9bb38a6cdd",
+      "isExported": true,
+      "kind": "class",
+      "language": "cfml",
+      "name": "UserService",
+      "qualifiedName": "cfml/UserService.cfc::UserService",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 15,
+      "endLine": 8,
+      "filePath": "cfml/UserService.cfc",
+      "id": "method:30afeecf9b0dd203babe5b533ad51de5",
+      "kind": "method",
+      "language": "cfml",
+      "name": "save",
+      "qualifiedName": "UserService::save",
+      "returnType": "User",
+      "startColumn": 2,
+      "startLine": 2,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 23,
+      "endLine": 5,
+      "filePath": "cfml/UserService.cfc",
+      "id": "variable:4284cf9d4576c71ee5ce752a81c0e2e0",
+      "isExported": false,
+      "kind": "variable",
+      "language": "cfml",
+      "name": "svc",
+      "qualifiedName": "svc",
+      "signature": "= new UserDao()",
+      "startColumn": 4,
+      "startLine": 5
+    },
+    {
+      "endColumn": 15,
+      "endLine": 14,
+      "filePath": "cfml/UserService.cfc",
+      "id": "method:732b21b1362301e11b07543d02736464",
+      "kind": "method",
+      "language": "cfml",
+      "name": "list",
+      "qualifiedName": "UserService::list",
+      "returnType": "array",
+      "startColumn": 2,
+      "startLine": 9
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 0,
+      "filePath": "cfml/UserService.cfc",
+      "fromNodeId": "class:6f79b80c29d0da17e4f50a9bb38a6cdd",
+      "language": "cfml",
+      "line": 1,
+      "referenceKind": "extends",
+      "referenceName": "BaseService"
+    },
+    {
+      "column": 0,
+      "filePath": "cfml/UserService.cfc",
+      "fromNodeId": "class:6f79b80c29d0da17e4f50a9bb38a6cdd",
+      "language": "cfml",
+      "line": 1,
+      "referenceKind": "implements",
+      "referenceName": "IUserService"
+    },
+    {
+      "column": 10,
+      "filePath": "cfml/UserService.cfc",
+      "fromNodeId": "method:30afeecf9b0dd203babe5b533ad51de5",
+      "language": "cfml",
+      "line": 5,
+      "referenceKind": "instantiates",
+      "referenceName": "UserDao"
+    },
+    {
+      "column": 13,
+      "filePath": "cfml/UserService.cfc",
+      "fromNodeId": "method:30afeecf9b0dd203babe5b533ad51de5",
+      "language": "cfml",
+      "line": 6,
+      "referenceKind": "calls",
+      "referenceName": "svc.save"
+    }
+  ]
+}

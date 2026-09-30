@@ -1,0 +1,20 @@
+{
+  "edges": [],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 4,
+      "filePath": "typescript/Broken.ts",
+      "id": "file:typescript/Broken.ts",
+      "isExported": false,
+      "kind": "file",
+      "language": "typescript",
+      "name": "Broken.ts",
+      "qualifiedName": "typescript/Broken.ts",
+      "startColumn": 0,
+      "startLine": 1
+    }
+  ],
+  "unresolvedReferences": []
+}

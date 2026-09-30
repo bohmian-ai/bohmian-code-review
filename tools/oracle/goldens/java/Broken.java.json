@@ -1,0 +1,84 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:java/Broken.java",
+      "target": "namespace:b4ba677a7bba5ec0ffff2f82f0abbd1e"
+    },
+    {
+      "kind": "contains",
+      "source": "namespace:b4ba677a7bba5ec0ffff2f82f0abbd1e",
+      "target": "class:a36396c7336880bc04920640e8ba4b60"
+    },
+    {
+      "kind": "contains",
+      "source": "class:a36396c7336880bc04920640e8ba4b60",
+      "target": "method:0c9720097b4a248aa84663b7caf3547d"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 7,
+      "filePath": "java/Broken.java",
+      "id": "file:java/Broken.java",
+      "isExported": false,
+      "kind": "file",
+      "language": "java",
+      "name": "Broken.java",
+      "qualifiedName": "java/Broken.java",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 13,
+      "endLine": 1,
+      "filePath": "java/Broken.java",
+      "id": "namespace:b4ba677a7bba5ec0ffff2f82f0abbd1e",
+      "kind": "namespace",
+      "language": "java",
+      "name": "demo",
+      "qualifiedName": "demo",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 1,
+      "endLine": 6,
+      "filePath": "java/Broken.java",
+      "id": "class:a36396c7336880bc04920640e8ba4b60",
+      "kind": "class",
+      "language": "java",
+      "name": "Broken",
+      "qualifiedName": "demo::Broken",
+      "startColumn": 0,
+      "startLine": 3,
+      "visibility": "public"
+    },
+    {
+      "endColumn": 1,
+      "endLine": 6,
+      "filePath": "java/Broken.java",
+      "id": "method:0c9720097b4a248aa84663b7caf3547d",
+      "isStatic": false,
+      "kind": "method",
+      "language": "java",
+      "name": "broken",
+      "qualifiedName": "demo::Broken::broken",
+      "signature": "void (",
+      "startColumn": 2,
+      "startLine": 4,
+      "visibility": "public"
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 4,
+      "fromNodeId": "method:0c9720097b4a248aa84663b7caf3547d",
+      "line": 5,
+      "referenceKind": "calls",
+      "referenceName": "System.out.println"
+    }
+  ]
+}

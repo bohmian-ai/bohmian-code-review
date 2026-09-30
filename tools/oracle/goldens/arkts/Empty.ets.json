@@ -1,0 +1,20 @@
+{
+  "edges": [],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 1,
+      "filePath": "arkts/Empty.ets",
+      "id": "file:arkts/Empty.ets",
+      "isExported": false,
+      "kind": "file",
+      "language": "arkts",
+      "name": "Empty.ets",
+      "qualifiedName": "arkts/Empty.ets",
+      "startColumn": 0,
+      "startLine": 1
+    }
+  ],
+  "unresolvedReferences": []
+}

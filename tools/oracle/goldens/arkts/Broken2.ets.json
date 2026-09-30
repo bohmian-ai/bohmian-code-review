@@ -1,0 +1,165 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:arkts/Broken2.ets",
+      "target": "struct:65c2e4622b8a040f03b1f4dadac0a4da"
+    },
+    {
+      "kind": "contains",
+      "source": "struct:65c2e4622b8a040f03b1f4dadac0a4da",
+      "target": "property:71cb2448d4dc6b96db04bfdba67db5d6"
+    },
+    {
+      "kind": "contains",
+      "source": "struct:65c2e4622b8a040f03b1f4dadac0a4da",
+      "target": "method:bef9ceb690c385726b614cfd5323e9a5"
+    },
+    {
+      "kind": "contains",
+      "source": "file:arkts/Broken2.ets",
+      "target": "function:5310ed405ed93ad86de86229f99133a4"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 19,
+      "filePath": "arkts/Broken2.ets",
+      "id": "file:arkts/Broken2.ets",
+      "isExported": false,
+      "kind": "file",
+      "language": "arkts",
+      "name": "Broken2.ets",
+      "qualifiedName": "arkts/Broken2.ets",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "decorators": [
+        "Component"
+      ],
+      "endColumn": 1,
+      "endLine": 12,
+      "filePath": "arkts/Broken2.ets",
+      "id": "struct:65c2e4622b8a040f03b1f4dadac0a4da",
+      "isExported": false,
+      "kind": "struct",
+      "language": "arkts",
+      "name": "GoodList",
+      "qualifiedName": "GoodList",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "decorators": [
+        "State"
+      ],
+      "endColumn": 37,
+      "endLine": 3,
+      "filePath": "arkts/Broken2.ets",
+      "id": "property:71cb2448d4dc6b96db04bfdba67db5d6",
+      "isStatic": false,
+      "kind": "property",
+      "language": "arkts",
+      "name": "items",
+      "qualifiedName": "GoodList::items",
+      "signature": "string[] items",
+      "startColumn": 2,
+      "startLine": 3
+    },
+    {
+      "endColumn": 3,
+      "endLine": 11,
+      "filePath": "arkts/Broken2.ets",
+      "id": "method:bef9ceb690c385726b614cfd5323e9a5",
+      "isAsync": false,
+      "isStatic": false,
+      "kind": "method",
+      "language": "arkts",
+      "name": "build",
+      "qualifiedName": "GoodList::build",
+      "signature": "()",
+      "startColumn": 2,
+      "startLine": 5
+    },
+    {
+      "decorators": [
+        "Extend"
+      ],
+      "endColumn": 1,
+      "endLine": 18,
+      "filePath": "arkts/Broken2.ets",
+      "id": "function:5310ed405ed93ad86de86229f99133a4",
+      "isAsync": false,
+      "isExported": false,
+      "isStatic": false,
+      "kind": "function",
+      "language": "arkts",
+      "name": "brokenExtend",
+      "qualifiedName": "brokenExtend",
+      "signature": "(this: Text)",
+      "startColumn": 0,
+      "startLine": 14
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 2,
+      "fromNodeId": "property:71cb2448d4dc6b96db04bfdba67db5d6",
+      "line": 3,
+      "referenceKind": "decorates",
+      "referenceName": "State"
+    },
+    {
+      "column": 4,
+      "fromNodeId": "method:bef9ceb690c385726b614cfd5323e9a5",
+      "line": 6,
+      "referenceKind": "calls",
+      "referenceName": "Column"
+    },
+    {
+      "column": 6,
+      "fromNodeId": "method:bef9ceb690c385726b614cfd5323e9a5",
+      "line": 7,
+      "referenceKind": "calls",
+      "referenceName": "ForEach"
+    },
+    {
+      "column": 8,
+      "fromNodeId": "method:bef9ceb690c385726b614cfd5323e9a5",
+      "line": 8,
+      "referenceKind": "calls",
+      "referenceName": "Text"
+    },
+    {
+      "column": 19,
+      "fromNodeId": "method:bef9ceb690c385726b614cfd5323e9a5",
+      "line": 8,
+      "referenceKind": "calls",
+      "referenceName": ".fontSize"
+    },
+    {
+      "column": 28,
+      "fromNodeId": "function:5310ed405ed93ad86de86229f99133a4",
+      "line": 15,
+      "referenceKind": "references",
+      "referenceName": "Text"
+    },
+    {
+      "column": 0,
+      "fromNodeId": "function:5310ed405ed93ad86de86229f99133a4",
+      "line": 14,
+      "referenceKind": "decorates",
+      "referenceName": "Extend"
+    },
+    {
+      "column": 3,
+      "fromNodeId": "function:5310ed405ed93ad86de86229f99133a4",
+      "line": 16,
+      "referenceKind": "calls",
+      "referenceName": ".fontSize"
+    }
+  ]
+}

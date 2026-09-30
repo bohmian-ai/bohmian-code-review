@@ -1,0 +1,395 @@
+{
+  "edges": [
+    {
+      "kind": "contains",
+      "source": "file:erlang/Basic.erl",
+      "target": "namespace:c1c4b993f61a337d624ae371727482a0"
+    },
+    {
+      "kind": "contains",
+      "source": "namespace:c1c4b993f61a337d624ae371727482a0",
+      "target": "import:52fdd9ded8241a8db5a6f06e116dc2a6"
+    },
+    {
+      "kind": "contains",
+      "source": "namespace:c1c4b993f61a337d624ae371727482a0",
+      "target": "import:79f715f6d968388a77f341794abf60b8"
+    },
+    {
+      "kind": "contains",
+      "source": "namespace:c1c4b993f61a337d624ae371727482a0",
+      "target": "constant:63706f5190e00d299a57ca463fbd6374"
+    },
+    {
+      "kind": "contains",
+      "source": "namespace:c1c4b993f61a337d624ae371727482a0",
+      "target": "constant:7cd25cd86428b0dd878c205967649929"
+    },
+    {
+      "kind": "contains",
+      "source": "namespace:c1c4b993f61a337d624ae371727482a0",
+      "target": "struct:1737bda42bf96bcf2ed4fb219ebb0502"
+    },
+    {
+      "kind": "contains",
+      "source": "struct:1737bda42bf96bcf2ed4fb219ebb0502",
+      "target": "field:193fd4cd7593e7624e8ff75fc386b6af"
+    },
+    {
+      "kind": "contains",
+      "source": "struct:1737bda42bf96bcf2ed4fb219ebb0502",
+      "target": "field:b2f3367b4358989d2c121b29d12194fb"
+    },
+    {
+      "kind": "contains",
+      "source": "struct:1737bda42bf96bcf2ed4fb219ebb0502",
+      "target": "field:ecd49ebbde64481612035415437585d4"
+    },
+    {
+      "kind": "contains",
+      "source": "namespace:c1c4b993f61a337d624ae371727482a0",
+      "target": "type_alias:1223f07e72bbfdc094d26108f4b075a3"
+    },
+    {
+      "kind": "contains",
+      "source": "namespace:c1c4b993f61a337d624ae371727482a0",
+      "target": "type_alias:fa18c9fa6346e80f3e887e50ecd957c6"
+    },
+    {
+      "kind": "contains",
+      "source": "namespace:c1c4b993f61a337d624ae371727482a0",
+      "target": "function:9b0feb2f972ae87ef19f46812abae826"
+    },
+    {
+      "kind": "contains",
+      "source": "namespace:c1c4b993f61a337d624ae371727482a0",
+      "target": "function:bdd44f74d87e04a967ab5fb2413cab11"
+    },
+    {
+      "kind": "contains",
+      "source": "namespace:c1c4b993f61a337d624ae371727482a0",
+      "target": "function:b8b86781d7c639a6a8065cb6cdb78eb4"
+    },
+    {
+      "kind": "contains",
+      "source": "namespace:c1c4b993f61a337d624ae371727482a0",
+      "target": "function:173aa31a74494b1307634f83b0c038cb"
+    },
+    {
+      "kind": "contains",
+      "source": "namespace:c1c4b993f61a337d624ae371727482a0",
+      "target": "function:f786c17b000bb4bab2a20b68175e218f"
+    }
+  ],
+  "errors": [],
+  "nodes": [
+    {
+      "endColumn": 0,
+      "endLine": 40,
+      "filePath": "erlang/Basic.erl",
+      "id": "file:erlang/Basic.erl",
+      "isExported": false,
+      "kind": "file",
+      "language": "erlang",
+      "name": "Basic.erl",
+      "qualifiedName": "erlang/Basic.erl",
+      "startColumn": 0,
+      "startLine": 1
+    },
+    {
+      "endColumn": 15,
+      "endLine": 2,
+      "filePath": "erlang/Basic.erl",
+      "id": "namespace:c1c4b993f61a337d624ae371727482a0",
+      "kind": "namespace",
+      "language": "erlang",
+      "name": "basic",
+      "qualifiedName": "basic",
+      "startColumn": 0,
+      "startLine": 2
+    },
+    {
+      "endColumn": 22,
+      "endLine": 6,
+      "filePath": "erlang/Basic.erl",
+      "id": "import:52fdd9ded8241a8db5a6f06e116dc2a6",
+      "kind": "import",
+      "language": "erlang",
+      "name": "basic.hrl",
+      "qualifiedName": "basic::basic.hrl",
+      "signature": "-include(\"basic.hrl\").",
+      "startColumn": 0,
+      "startLine": 6
+    },
+    {
+      "endColumn": 40,
+      "endLine": 7,
+      "filePath": "erlang/Basic.erl",
+      "id": "import:79f715f6d968388a77f341794abf60b8",
+      "kind": "import",
+      "language": "erlang",
+      "name": "kernel/include/file.hrl",
+      "qualifiedName": "basic::kernel/include/file.hrl",
+      "signature": "-include_lib(\"kernel/include/file.hrl\").",
+      "startColumn": 0,
+      "startLine": 7
+    },
+    {
+      "endColumn": 23,
+      "endLine": 9,
+      "filePath": "erlang/Basic.erl",
+      "id": "constant:63706f5190e00d299a57ca463fbd6374",
+      "kind": "constant",
+      "language": "erlang",
+      "name": "TIMEOUT",
+      "qualifiedName": "basic::TIMEOUT",
+      "signature": "-define(TIMEOUT, 5000).",
+      "startColumn": 0,
+      "startLine": 9
+    },
+    {
+      "endColumn": 32,
+      "endLine": 10,
+      "filePath": "erlang/Basic.erl",
+      "id": "constant:7cd25cd86428b0dd878c205967649929",
+      "kind": "constant",
+      "language": "erlang",
+      "name": "LOG",
+      "qualifiedName": "basic::LOG",
+      "signature": "-define(LOG(E), logger:info(E)).",
+      "startColumn": 0,
+      "startLine": 10
+    },
+    {
+      "endColumn": 31,
+      "endLine": 12,
+      "filePath": "erlang/Basic.erl",
+      "id": "struct:1737bda42bf96bcf2ed4fb219ebb0502",
+      "kind": "struct",
+      "language": "erlang",
+      "name": "user",
+      "qualifiedName": "basic::user",
+      "signature": "-record(user, {id, name, age}).",
+      "startColumn": 0,
+      "startLine": 12
+    },
+    {
+      "endColumn": 17,
+      "endLine": 12,
+      "filePath": "erlang/Basic.erl",
+      "id": "field:193fd4cd7593e7624e8ff75fc386b6af",
+      "kind": "field",
+      "language": "erlang",
+      "name": "id",
+      "qualifiedName": "basic::user::id",
+      "startColumn": 15,
+      "startLine": 12
+    },
+    {
+      "endColumn": 23,
+      "endLine": 12,
+      "filePath": "erlang/Basic.erl",
+      "id": "field:b2f3367b4358989d2c121b29d12194fb",
+      "kind": "field",
+      "language": "erlang",
+      "name": "name",
+      "qualifiedName": "basic::user::name",
+      "startColumn": 19,
+      "startLine": 12
+    },
+    {
+      "endColumn": 28,
+      "endLine": 12,
+      "filePath": "erlang/Basic.erl",
+      "id": "field:ecd49ebbde64481612035415437585d4",
+      "kind": "field",
+      "language": "erlang",
+      "name": "age",
+      "qualifiedName": "basic::user::age",
+      "startColumn": 25,
+      "startLine": 12
+    },
+    {
+      "endColumn": 24,
+      "endLine": 14,
+      "filePath": "erlang/Basic.erl",
+      "id": "type_alias:1223f07e72bbfdc094d26108f4b075a3",
+      "kind": "type_alias",
+      "language": "erlang",
+      "name": "user",
+      "qualifiedName": "basic::user",
+      "signature": "-type user() :: #user{}.",
+      "startColumn": 0,
+      "startLine": 14
+    },
+    {
+      "endColumn": 28,
+      "endLine": 15,
+      "filePath": "erlang/Basic.erl",
+      "id": "type_alias:fa18c9fa6346e80f3e887e50ecd957c6",
+      "kind": "type_alias",
+      "language": "erlang",
+      "name": "token",
+      "qualifiedName": "basic::token",
+      "signature": "-opaque token() :: binary().",
+      "startColumn": 0,
+      "startLine": 15
+    },
+    {
+      "endColumn": 7,
+      "endLine": 22,
+      "filePath": "erlang/Basic.erl",
+      "id": "function:9b0feb2f972ae87ef19f46812abae826",
+      "isExported": true,
+      "kind": "function",
+      "language": "erlang",
+      "name": "start",
+      "qualifiedName": "basic::start",
+      "signature": "-spec start() -> ok.",
+      "startColumn": 0,
+      "startLine": 18
+    },
+    {
+      "endColumn": 17,
+      "endLine": 26,
+      "filePath": "erlang/Basic.erl",
+      "id": "function:bdd44f74d87e04a967ab5fb2413cab11",
+      "isExported": true,
+      "kind": "function",
+      "language": "erlang",
+      "name": "ping",
+      "qualifiedName": "basic::ping",
+      "signature": "-spec ping(user()) -> ok.",
+      "startColumn": 0,
+      "startLine": 25
+    },
+    {
+      "endColumn": 7,
+      "endLine": 30,
+      "filePath": "erlang/Basic.erl",
+      "id": "function:b8b86781d7c639a6a8065cb6cdb78eb4",
+      "isExported": false,
+      "kind": "function",
+      "language": "erlang",
+      "name": "worker",
+      "qualifiedName": "basic::worker",
+      "signature": "worker()",
+      "startColumn": 0,
+      "startLine": 28
+    },
+    {
+      "endColumn": 8,
+      "endLine": 36,
+      "filePath": "erlang/Basic.erl",
+      "id": "function:173aa31a74494b1307634f83b0c038cb",
+      "isExported": false,
+      "kind": "function",
+      "language": "erlang",
+      "name": "dispatch",
+      "qualifiedName": "basic::dispatch",
+      "signature": "dispatch(Id)",
+      "startColumn": 0,
+      "startLine": 32
+    },
+    {
+      "endColumn": 25,
+      "endLine": 39,
+      "filePath": "erlang/Basic.erl",
+      "id": "function:f786c17b000bb4bab2a20b68175e218f",
+      "isExported": false,
+      "kind": "function",
+      "language": "erlang",
+      "name": "f",
+      "qualifiedName": "basic::f",
+      "signature": "f()",
+      "startColumn": 0,
+      "startLine": 38
+    }
+  ],
+  "unresolvedReferences": [
+    {
+      "column": 0,
+      "fromNodeId": "namespace:c1c4b993f61a337d624ae371727482a0",
+      "line": 6,
+      "referenceKind": "imports",
+      "referenceName": "basic.hrl"
+    },
+    {
+      "column": 0,
+      "fromNodeId": "namespace:c1c4b993f61a337d624ae371727482a0",
+      "line": 7,
+      "referenceKind": "imports",
+      "referenceName": "kernel/include/file.hrl"
+    },
+    {
+      "column": 23,
+      "fromNodeId": "constant:7cd25cd86428b0dd878c205967649929",
+      "line": 10,
+      "referenceKind": "calls",
+      "referenceName": "logger::info"
+    },
+    {
+      "column": 4,
+      "fromNodeId": "function:9b0feb2f972ae87ef19f46812abae826",
+      "line": 19,
+      "referenceKind": "calls",
+      "referenceName": "LOG"
+    },
+    {
+      "column": 4,
+      "fromNodeId": "function:9b0feb2f972ae87ef19f46812abae826",
+      "line": 20,
+      "referenceKind": "calls",
+      "referenceName": "spawn"
+    },
+    {
+      "column": 10,
+      "fromNodeId": "function:9b0feb2f972ae87ef19f46812abae826",
+      "line": 20,
+      "referenceKind": "references",
+      "referenceName": "worker"
+    },
+    {
+      "column": 15,
+      "fromNodeId": "function:9b0feb2f972ae87ef19f46812abae826",
+      "line": 21,
+      "referenceKind": "calls",
+      "referenceName": "gen_server::call"
+    },
+    {
+      "column": 20,
+      "fromNodeId": "function:9b0feb2f972ae87ef19f46812abae826",
+      "line": 21,
+      "referenceKind": "references",
+      "referenceName": "SERVER"
+    },
+    {
+      "column": 5,
+      "fromNodeId": "function:bdd44f74d87e04a967ab5fb2413cab11",
+      "line": 25,
+      "referenceKind": "references",
+      "referenceName": "user"
+    },
+    {
+      "column": 4,
+      "fromNodeId": "function:bdd44f74d87e04a967ab5fb2413cab11",
+      "line": 26,
+      "referenceKind": "calls",
+      "referenceName": "dispatch"
+    },
+    {
+      "column": 10,
+      "fromNodeId": "function:b8b86781d7c639a6a8065cb6cdb78eb4",
+      "line": 29,
+      "referenceKind": "calls",
+      "referenceName": "timer::sleep"
+    },
+    {
+      "column": 16,
+      "fromNodeId": "function:b8b86781d7c639a6a8065cb6cdb78eb4",
+      "line": 29,
+      "referenceKind": "references",
+      "referenceName": "TIMEOUT"
+    }
+  ]
+}
