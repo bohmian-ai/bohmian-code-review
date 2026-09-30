@@ -29,7 +29,7 @@ bohmian-code-review = { path = "crates/bohmian-code-review" }
 bohmian-code-review-pipeline = { path = "crates/bohmian-code-review-pipeline" }
 
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde_json = { version = "1", features = ["float_roundtrip"] }
 thiserror = "2"
 regex = "1"
 sha2 = "0.10"

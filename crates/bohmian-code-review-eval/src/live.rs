@@ -631,7 +631,7 @@ mod tests {
 
     /// PR file-listing page `page` of PR `number`.
     fn files_page(number: u64, page: u32) -> String {
-        format!("/repos/o/n/pulls/{number}/files?per_page=100&page={page}")
+        format!("/repositories/1/pulls/{number}/files?per_page=100&page={page}")
     }
 
     /// Listing entries changing `paths`, each with a one-line patch.
@@ -660,10 +660,12 @@ mod tests {
                 client: Arc::default(),
             };
             let tree = sha(0x7e5, 0);
-            fake.client.json(
-                "/repos/o/n",
-                r#"{"id":1,"full_name":"o/n","default_branch":"main","private":false}"#,
-            );
+            for resource in ["/repos/o/n", "/repositories/1"] {
+                fake.client.json(
+                    resource,
+                    r#"{"id":1,"full_name":"o/n","default_branch":"main","private":false}"#,
+                );
+            }
             let listed: Vec<_> = (1..=65)
                 .map(|n| {
                     json!({"number": n, "updated_at": at(n, 30), "merged_at": at(n, 30),
@@ -672,7 +674,7 @@ mod tests {
                 })
                 .collect();
             fake.client.json(
-                "/repos/o/n/pulls?state=all&sort=created&direction=asc&per_page=100&page=1",
+                "/repositories/1/pulls?state=all&sort=created&direction=asc&per_page=100&page=1",
                 &serde_json::Value::from(listed).to_string(),
             );
             let tree_entries: Vec<_> = [("src/a.py", A), ("src/b.py", B)]
@@ -704,7 +706,7 @@ mod tests {
             for n in 16..=65 {
                 let base = sha(0xba5e, n);
                 fake.client.json(
-                    &format!("/repos/o/n/git/commits/{base}"),
+                    &format!("/repositories/1/git/commits/{base}"),
                     &json!({"sha": base, "tree": {"sha": tree}, "committer": {"date": at(n, 0)}})
                         .to_string(),
                 );
@@ -1003,7 +1005,7 @@ mod tests {
         for (status, body) in [(404, String::new()), (200, other.to_string())] {
             let missing = Fake::new();
             missing.client.respond(
-                &format!("/repos/o/n/git/commits/{base}"),
+                &format!("/repositories/1/git/commits/{base}"),
                 vec![
                     (200, Vec::new(), pinned.to_string().into_bytes()),
                     (status, Vec::new(), body.into_bytes()),
@@ -1093,7 +1095,7 @@ mod tests {
 
         let impossible = Fake::new();
         impossible.client.json(
-            "/repos/o/n/pulls?state=all&sort=created&direction=asc&per_page=100&page=1",
+            "/repositories/1/pulls?state=all&sort=created&direction=asc&per_page=100&page=1",
             &json!([{"number": 1, "updated_at": at(1, 0), "merged_at": at(1, 30),
                 "base": {"ref": "main", "sha": sha(0xba5e, 1), "repo": {"id": 1}},
                 "head": {"ref": "topic", "sha": sha(0x4ead, 1)}}])

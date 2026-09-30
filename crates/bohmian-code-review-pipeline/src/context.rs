@@ -26,7 +26,7 @@ use std::time::Duration;
 use thiserror::Error;
 
 /// Layout version of the serialized [`ReviewContext`].
-pub const CONTEXT_FORMAT_VERSION: u32 = 2;
+pub const CONTEXT_FORMAT_VERSION: u32 = 3;
 
 /// How long a published context stays readable; a [`ContextStore`] stamps
 /// `expires_at` this long after `published_at`.
@@ -170,22 +170,17 @@ pub struct OmittedSpan {
     pub reason: OmittedReason,
 }
 
-/// How the review token allocation was divided. Every figure is an
-/// estimate; the downstream caller must count its complete model request.
+/// The context token ceiling and how much of it the selected spans use.
+///
+/// The ceiling bounds the selected context alone; the library assumes
+/// nothing about the caller's prompt or diff. Token figures are estimates,
+/// so the caller counts its complete model request itself.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Budget {
-    /// Configured review allocation.
-    pub review_tokens: usize,
-    /// Reserved for the downstream prompt.
-    pub prompt_reserve: usize,
-    /// Estimated tokens of every PR file patch, delivered separately.
-    pub diff_tokens: usize,
-    /// What remained for selected context.
-    pub context_allowance: usize,
-    /// Estimated tokens of the selected spans.
+    /// Configured ceiling for selected context.
+    pub context_tokens: usize,
+    /// Estimated tokens of the selected spans; never above `context_tokens`.
     pub selected_tokens: usize,
-    /// The diff and reserve left no context allowance, so nothing was packed.
-    pub exhausted: bool,
 }
 
 /// The immutable, source-bearing object a context id names.
@@ -462,7 +457,9 @@ mod tests {
         ObjectSha::new(&ch.to_string().repeat(40)).expect("sha")
     }
 
-    /// A one-span context for `identity`.
+    /// A one-span context for `identity`. Its score is a ranker-style sum
+    /// that JSON text only reproduces bit-for-bit under exact float
+    /// parsing, so read-back equality covers score fidelity.
     fn context(identity: &Identity) -> ReviewContext {
         ReviewContext {
             format_version: CONTEXT_FORMAT_VERSION,
@@ -477,7 +474,7 @@ mod tests {
                 blob: sha('d'),
                 start: 1,
                 end: 3,
-                score: 1.0,
+                score: f64::from_bits(4_597_005_093_385_086_214),
                 names: vec!["lookupUser".to_owned()],
                 text: "export function lookupUser() {}\n".to_owned(),
                 tokens: 8,
@@ -485,12 +482,8 @@ mod tests {
             omissions: Vec::new(),
             not_analyzed: Vec::new(),
             budget: Budget {
-                review_tokens: 100,
-                prompt_reserve: 10,
-                diff_tokens: 10,
-                context_allowance: 80,
+                context_tokens: 80,
                 selected_tokens: 8,
-                exhausted: false,
             },
             coverage: ContextCoverage {
                 scope: Scope::Repository,

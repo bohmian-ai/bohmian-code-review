@@ -6,7 +6,9 @@
 //! library would otherwise have to sanitize later.
 
 use serde::{Deserialize, Deserializer, Serialize};
+use std::cmp::Ordering;
 use std::fmt;
+use std::hash::{Hash, Hasher};
 use thiserror::Error;
 
 /// Longest accepted tenant identifier in bytes.
@@ -156,10 +158,13 @@ pub(crate) fn validate_name(raw: &str, what: &'static str) -> Result<String, Inv
 
 /// One GitHub repository named by its stable numeric id and its `owner/name`.
 ///
-/// The numeric id survives renames, so provider responses are verified
-/// against it before any tree, blob, or PR data is trusted. The names are
-/// only used to build request paths.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+/// The numeric id survives renames and transfers, so it alone is the
+/// repository's identity: requests address the repository by id, and
+/// equality, hashing, and ordering compare only the id, so snapshots,
+/// history, and contexts stored under an earlier `owner/name` stay
+/// reachable after a rename. The names are labels for logs and messages;
+/// a stale name is harmless.
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(try_from = "RawRepository")]
 pub struct RepositoryIdentity {
     id: u64,
@@ -227,6 +232,36 @@ impl RepositoryIdentity {
     /// `owner/name` as GitHub reports it in `full_name`.
     pub fn full_name(&self) -> String {
         format!("{}/{}", self.owner, self.name)
+    }
+}
+
+impl PartialEq for RepositoryIdentity {
+    /// Same repository when the stable ids match, whatever the names.
+    fn eq(&self, other: &RepositoryIdentity) -> bool {
+        self.id == other.id
+    }
+}
+
+impl Eq for RepositoryIdentity {}
+
+impl Hash for RepositoryIdentity {
+    /// Hashes the id only, consistent with [`PartialEq`].
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+    }
+}
+
+impl PartialOrd for RepositoryIdentity {
+    /// Total order by id; see [`Ord`].
+    fn partial_cmp(&self, other: &RepositoryIdentity) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for RepositoryIdentity {
+    /// Orders by id only, consistent with [`PartialEq`].
+    fn cmp(&self, other: &RepositoryIdentity) -> Ordering {
+        self.id.cmp(&other.id)
     }
 }
 
@@ -426,14 +461,35 @@ mod tests {
         let repo = RepositoryIdentity::new(7, "bohmian-ai", "wyrd").expect("valid repo");
         assert_eq!(repo.full_name(), "bohmian-ai/wyrd");
         let json = serde_json::to_string(&repo).expect("serialize");
-        assert_eq!(
-            serde_json::from_str::<RepositoryIdentity>(&json).expect("round trip"),
-            repo
-        );
+        let reloaded = serde_json::from_str::<RepositoryIdentity>(&json).expect("round trip");
+        assert_eq!(reloaded, repo);
+        assert_eq!(reloaded.full_name(), repo.full_name());
         assert!(
             serde_json::from_str::<RepositoryIdentity>(r#"{"id":0,"owner":"o","name":"r"}"#)
                 .is_err()
         );
+    }
+
+    /// A renamed or transferred repository keeps its identity, hash, and
+    /// order, so scope lookups keyed by `Identity` survive the rename; a
+    /// different id under the same name is a different repository.
+    #[test]
+    fn repository_identity_is_the_stable_id() {
+        use std::collections::hash_map::DefaultHasher;
+        let hash = |repo: &RepositoryIdentity| {
+            let mut state = DefaultHasher::new();
+            repo.hash(&mut state);
+            state.finish()
+        };
+        let before = RepositoryIdentity::new(7, "acme", "billing").expect("repo");
+        let after = RepositoryIdentity::new(7, "new-owner", "payments").expect("repo");
+        let other = RepositoryIdentity::new(8, "acme", "billing").expect("repo");
+        assert_eq!(before, after);
+        assert_eq!(hash(&before), hash(&after));
+        assert_eq!(before.cmp(&after), Ordering::Equal);
+        assert_ne!(before, other);
+        assert!(before < other);
+        assert_eq!(after.full_name(), "new-owner/payments");
     }
 
     /// Object ids accept only lowercase 40-hex, including through serde.

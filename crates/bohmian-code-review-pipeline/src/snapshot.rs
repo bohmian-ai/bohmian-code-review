@@ -1557,7 +1557,7 @@ pub(crate) mod tests {
             let transport = Arc::new(RoutedTransport::default());
             let (tree, commit) = (sha('7'), sha('c'));
             transport.json(
-                "/repos/octocat/Hello-World",
+                "/repositories/1296269",
                 r#"{"id":1296269,"full_name":"octocat/Hello-World","default_branch":"main","private":true}"#,
             );
             let repo = FakeRepo {
