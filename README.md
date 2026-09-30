@@ -568,6 +568,26 @@ The default ranker is `Fused(RaritySymbol, CoChange)`, using reciprocal-rank fus
 
 With no history, the fused ranking is identical to `RaritySymbol`, so a new repository loses nothing. The full scoring contract is in the [design doc](architecture/bohmian-code-review-design.md#public-behavior).
 
+## Benchmark
+
+The default ranker's hit@10, meaning how often a file the PR author actually changed ranks in the top 10:
+
+| Repository | Language | hit@10 | vs. symbols only (`RaritySymbol`) |
+|---|---|---|---|
+| pydantic/pydantic-ai | Python | 60.3% | +14.1 pts (95% CI +4.5 to +24.2) |
+| tokio-rs/tokio | Rust | 38.6% | +17.5 pts (95% CI +9.5 to +26.7) |
+| colinhacks/zod | TypeScript | 61.8% | +32.3 pts (95% CI +22.8 to +42.0) |
+
+**Setup.** For each PR, run 5 trials. Each trial hides one file the PR modified, picked at random, and ranks the repository from the PR's other changes. A trial is a hit if the hidden file ranks in the top 10. A PR with fewer than 5 modified files gets one trial per file. A PR's score is its mean over its trials, and a repository's score is the mean over its PRs.
+
+- **PRs:** the 50 most recent merged PRs per repository that change 2 to 15 source files, merged before 2026-08-23 (pydantic-ai), 2026-05-21 (tokio), and 2026-09-01 (zod). That gives 157, 143, and 165 trials.
+- **No leakage:** each trial ranks a snapshot of the PR's base commit and uses co-change history only from PRs merged before it.
+- **Comparison:** the last column is the default ranker minus `RaritySymbol` alone. The interval is a 95% paired bootstrap over PRs.
+
+**Limits.** 50 PRs per repository only detects large effects, and one repository per language can't separate language from codebase. "The author changed it" stands in for "the reviewer needed it", and that label favours the co-change half of the ranker. The benchmark measures ranking only, not packing.
+
+Reproduce with `GITHUB_TOKEN=<read-only token> mise run live:context-relevance`, which is read-only and slow. Full reports are in [`changes/completed/2026/cochange-eval-reports/`](changes/completed/2026/cochange-eval-reports/).
+
 ## Development
 
 Tasks run through [mise](https://mise.jdx.dev):
