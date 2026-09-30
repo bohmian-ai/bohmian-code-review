@@ -38,8 +38,3 @@ required-features = ["testing"]
 [[example]]
 name = "live_pr"
 required-features = ["testing"]
-
-[[example]]
-name = "context_relevance"
-required-features = ["testing"]
-test = true

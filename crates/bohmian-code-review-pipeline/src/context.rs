@@ -26,7 +26,7 @@ use std::time::Duration;
 use thiserror::Error;
 
 /// Layout version of the serialized [`ReviewContext`].
-pub const CONTEXT_FORMAT_VERSION: u32 = 1;
+pub const CONTEXT_FORMAT_VERSION: u32 = 2;
 
 /// How long a published context stays readable; a [`ContextStore`] stamps
 /// `expires_at` this long after `published_at`.
@@ -122,7 +122,7 @@ pub struct NotAnalyzed {
 }
 
 /// One selected candidate declaration with its exact source text.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SelectedSpan {
     /// Candidate path.
     pub path: RelativePath,
@@ -132,8 +132,9 @@ pub struct SelectedSpan {
     pub start: u32,
     /// Last one-based line, inclusive.
     pub end: u32,
-    /// The candidate file's score.
-    pub score: usize,
+    /// The candidate file's ranker score; only its order within one
+    /// context is meaningful.
+    pub score: f64,
     /// Changed-line names that matched this declaration.
     pub names: Vec<String>,
     /// Exact source lines.
@@ -188,7 +189,7 @@ pub struct Budget {
 }
 
 /// The immutable, source-bearing object a context id names.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ReviewContext {
     /// [`CONTEXT_FORMAT_VERSION`] this object was written under.
     pub format_version: u32,
@@ -476,7 +477,7 @@ mod tests {
                 blob: sha('d'),
                 start: 1,
                 end: 3,
-                score: 1,
+                score: 1.0,
                 names: vec!["lookupUser".to_owned()],
                 text: "export function lookupUser() {}\n".to_owned(),
                 tokens: 8,

@@ -1,0 +1,4 @@
+Command: mise run review:verify-citations changes/reviews/ranker-pipeline/r5 9efafd309207c6cf5dd96b306ce8d22325281e5d
+Exit: 0
+Output: [review:verify-citations] $ python3 scripts/verify_review_citations.py changes/…
+All six Wave 1 reports contain an empty citations array. No citations were rejected.

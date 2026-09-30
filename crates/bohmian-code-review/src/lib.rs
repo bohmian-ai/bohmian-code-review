@@ -5,15 +5,17 @@
 //! symbol index, or loads previously exported source-free facts stamped
 //! with [`EXTRACTION_VERSION`]; [`parse_unified_diff`] turns PR diff text
 //! into each changed file's head-side lines; pass two ranks other indexed
-//! files against one or many changed head-side blobs, and
-//! [`build_context`] or [`build_candidate_context`] packs spans under
-//! caller limits. Nothing here reads disk, fetches source, or retains
-//! blobs; the index covers only files the caller supplied.
+//! files against one or many changed head-side blobs and caller-supplied
+//! co-change history through a [`Ranker`], [`DEFAULT_RANKER`] unless the
+//! caller picks another, and [`build_context`] or
+//! [`SymbolicContext::build_candidate_context`]
+//! packs spans under caller limits. Nothing here reads disk, fetches
+//! source, or retains blobs; the index covers only files the caller
+//! supplied.
 
 use bohmian_code_review_extract::{ExtractionConfig, ExtractionResult, Extractor};
-use bohmian_code_review_index::SymbolIndex;
-use bohmian_code_review_select::ChangedFile;
-use std::collections::BTreeMap;
+use bohmian_code_review_resolve::reference_names;
+use std::collections::{BTreeMap, BTreeSet};
 use thiserror::Error;
 
 pub use bohmian_code_review_core::{
@@ -21,11 +23,12 @@ pub use bohmian_code_review_core::{
     Language, Node, RawReference, RelativePath,
 };
 pub use bohmian_code_review_extract::{EXTRACTION_VERSION, ExtractionError};
-pub use bohmian_code_review_index::SymbolHit;
+pub use bohmian_code_review_index::{SymbolHit, SymbolIndex};
 pub use bohmian_code_review_select::{
-    ChangedLines, Context, ContextLimits, ContextSpan, DiffError, FileDiff, LineRange, MatchReason,
-    Omission, OmissionReason, RankedFile, Ranking, SelectError, SpanKind, parse_hunks,
-    parse_unified_diff,
+    ChangedFile, ChangedHead, ChangedLines, CoChange, Context, ContextLimits, ContextSpan,
+    DEFAULT_RANKER, DF_CEILING, DiffError, FUSION_CONSTANT, FileDiff, Fused, LineRange,
+    MatchReason, Omission, OmissionReason, RankInput, RankedFile, Ranker, Ranking, RaritySymbol,
+    SelectError, SpanKind, SymbolOverlap, parse_hunks, parse_unified_diff,
 };
 
 /// One changed head-side blob of a pull request to rank against the index.
@@ -37,6 +40,32 @@ pub struct ChangedBlob<'a> {
     pub head: &'a [u8],
     /// Head-side changed line ranges, validated against `head`.
     pub changed: Vec<LineRange>,
+}
+
+/// One changed head blob's validated changed lines and full extracted
+/// facts, owned so a [`ChangedFile`] can borrow them for ranking.
+#[derive(Debug, Clone, PartialEq)]
+pub struct HeadFacts {
+    /// Canonical path of the changed file.
+    pub path: RelativePath,
+    /// Changed lines validated against the head blob.
+    pub changed_lines: ChangedLines,
+    /// The full head blob's extracted nodes.
+    pub nodes: Vec<Node>,
+    /// The full head blob's extracted references.
+    pub references: Vec<RawReference>,
+}
+
+impl HeadFacts {
+    /// The head view rankers read.
+    #[must_use]
+    pub fn head(&self) -> ChangedHead<'_> {
+        ChangedHead {
+            nodes: &self.nodes,
+            references: &self.references,
+            changed_lines: &self.changed_lines,
+        }
+    }
 }
 
 /// Facts extracted from one upserted file.
@@ -138,7 +167,8 @@ impl SymbolicContext {
     ///
     /// Extraction completes before the index is touched, so any failure
     /// leaves the previous facts for `path` and every other file intact.
-    /// Only nodes and the byte length are retained.
+    /// Only nodes, the distinct reference and candidate names, and the byte
+    /// length are retained.
     ///
     /// # Errors
     ///
@@ -148,7 +178,14 @@ impl SymbolicContext {
     pub fn upsert(&mut self, path: &str, source: &[u8]) -> Result<FileFacts<'_>, Error> {
         let path = relative_path(path)?;
         let result = self.extract(&path, source)?;
-        self.index.upsert(path.clone(), source.len(), result.nodes);
+        let names: BTreeSet<String> = result
+            .references
+            .iter()
+            .flat_map(reference_names)
+            .map(str::to_owned)
+            .collect();
+        self.index
+            .upsert(path.clone(), source.len(), result.nodes, names);
         Ok(FileFacts {
             byte_len: source.len(),
             nodes: self.index.nodes(&path).unwrap_or_default(),
@@ -166,8 +203,9 @@ impl SymbolicContext {
         Ok(self.index.remove(&relative_path(path)?))
     }
 
-    /// Exports every indexed file's source-free declaration facts in
-    /// canonical path order, stamped with [`EXTRACTION_VERSION`].
+    /// Exports every indexed file's source-free declaration facts and
+    /// referenced names in canonical path order, stamped with
+    /// [`EXTRACTION_VERSION`].
     ///
     /// The result contains no docstrings, signatures, or other source
     /// fragments; loading it into a fresh context with
@@ -188,7 +226,8 @@ impl SymbolicContext {
     ///
     /// Returns [`Error::ExtractionVersionMismatch`] when the facts were
     /// stamped by another extractor and [`Error::InvalidFacts`] for a
-    /// malformed declaration.
+    /// malformed declaration or reference names that are not nonempty and
+    /// strictly ascending.
     pub fn load(&mut self, facts: IndexedFileFacts) -> Result<(), Error> {
         if facts.extraction_version != EXTRACTION_VERSION {
             return Err(Error::ExtractionVersionMismatch {
@@ -265,30 +304,104 @@ impl SymbolicContext {
     }
 
     /// Parses every changed head blob of a pull request and ranks other
-    /// indexed files by the union of their distinct changed-line names.
+    /// indexed files with [`DEFAULT_RANKER`] over `history`, the changed
+    /// paths of each earlier merged change.
     ///
-    /// Every changed path is excluded from the candidates; files sort by
-    /// descending score then canonical path. No head blob is indexed. Pack
-    /// the result with [`build_candidate_context`].
+    /// The index is pass one's base, so a changed path it holds existed at
+    /// base and anchors co-change history. Empty history is valid and
+    /// orders files exactly as [`RaritySymbol`]. Every changed path is
+    /// excluded from the candidates; files sort by descending score then
+    /// canonical path. No head blob is indexed. Pack the result with
+    /// [`SymbolicContext::build_candidate_context`]; use
+    /// [`SymbolicContext::rank_with`] to choose the ranker, renames, and
+    /// removed names.
     ///
     /// # Errors
     ///
-    /// Returns the first per-file error as [`SymbolicContext::rank`] does.
-    pub fn rank_files(&self, changed: &[ChangedBlob<'_>]) -> Result<Vec<RankedFile>, Error> {
-        let prepared = changed
+    /// Returns the first per-file error as [`SymbolicContext::head_facts`]
+    /// does.
+    pub fn rank_files(
+        &self,
+        changed: &[ChangedBlob<'_>],
+        history: &[&[RelativePath]],
+    ) -> Result<Vec<RankedFile>, Error> {
+        let heads = changed
             .iter()
-            .map(|blob| self.prepare_changed(blob.path, blob.head, blob.changed.clone()))
+            .map(|blob| self.head_facts(blob))
             .collect::<Result<Vec<_>, Error>>()?;
-        let files: Vec<ChangedFile<'_>> = prepared
+        let files: Vec<ChangedFile<'_>> = heads
             .iter()
-            .map(|(path, changed_lines, result)| ChangedFile {
-                path,
-                nodes: &result.nodes,
-                references: &result.references,
-                changed_lines,
+            .map(|head| ChangedFile {
+                path: &head.path,
+                previous_path: None,
+                in_base: self.index.byte_len(&head.path).is_some(),
+                head: Some(head.head()),
+                removed: Vec::new(),
             })
             .collect();
-        Ok(bohmian_code_review_select::rank_files(&self.index, &files))
+        Ok(self.rank_with(&DEFAULT_RANKER, &files, history))
+    }
+
+    /// Ranks indexed candidates for `changed` with `ranker` over `history`,
+    /// the changed paths of each earlier merged change (empty for none).
+    #[must_use]
+    pub fn rank_with(
+        &self,
+        ranker: &dyn Ranker,
+        changed: &[ChangedFile<'_>],
+        history: &[&[RelativePath]],
+    ) -> Vec<RankedFile> {
+        ranker.rank(&RankInput {
+            index: &self.index,
+            changed,
+            history,
+        })
+    }
+
+    /// Validates one changed blob's path and lines against its head and
+    /// extracts its full facts without indexing it.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::InvalidPath`], [`Error::NotUtf8`], [`Error::Select`]
+    /// for invalid or deletion-only ranges, and [`Error::Extraction`].
+    pub fn head_facts(&self, blob: &ChangedBlob<'_>) -> Result<HeadFacts, Error> {
+        let (path, changed_lines, result) =
+            self.prepare_changed(blob.path, blob.head, blob.changed.clone())?;
+        Ok(HeadFacts {
+            path,
+            changed_lines,
+            nodes: result.nodes,
+            references: result.references,
+        })
+    }
+
+    /// Packs only ranked candidate spans from caller-supplied `blobs` under
+    /// `limits` counted by `count_tokens`; the diff is delivered separately.
+    ///
+    /// `max_files` and the returned file count cover selected candidate
+    /// files alone. A candidate ranked without a matched declaration packs
+    /// its indexed declarations in location order. Every omission is
+    /// reported.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::Select`] for a missing or unusable candidate blob
+    /// or a blob that does not match its indexed spans.
+    pub fn build_candidate_context(
+        &self,
+        files: &[RankedFile],
+        blobs: &BTreeMap<RelativePath, &[u8]>,
+        limits: ContextLimits,
+        count_tokens: impl Fn(&str) -> usize,
+    ) -> Result<Context, Error> {
+        Ok(bohmian_code_review_select::pack_candidates(
+            &self.index,
+            files,
+            blobs,
+            limits,
+            count_tokens,
+        )?)
     }
 
     /// Validates one changed blob's path and lines and extracts its facts.
@@ -323,30 +436,6 @@ impl SymbolicContext {
                 source,
             })
     }
-}
-
-/// Packs only ranked candidate spans from caller-supplied `blobs` under
-/// `limits` counted by `count_tokens`; the diff is delivered separately.
-///
-/// `max_files` and the returned file count cover selected candidate files
-/// alone. Every omission is reported.
-///
-/// # Errors
-///
-/// Returns [`Error::Select`] for a missing or unusable candidate blob or a
-/// blob that does not match its indexed spans.
-pub fn build_candidate_context(
-    files: &[RankedFile],
-    blobs: &BTreeMap<RelativePath, &[u8]>,
-    limits: ContextLimits,
-    count_tokens: impl Fn(&str) -> usize,
-) -> Result<Context, Error> {
-    Ok(bohmian_code_review_select::pack_candidates(
-        files,
-        blobs,
-        limits,
-        count_tokens,
-    )?)
 }
 
 /// Packs `ranking`'s changed hunks from `head`, then ranked candidate spans

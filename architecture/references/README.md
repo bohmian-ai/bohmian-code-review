@@ -9,5 +9,6 @@ References explain how to apply `AGENTS.md`, `architecture/agent-rules.md`, and 
 | [Rust core](languages/rust-core.md) | Crate APIs, ownership, parser execution, errors, and rustdoc |
 | [testing workflows](languages/testing-workflows.md) | Component lanes, the public journey, CI, and gates |
 | [symbolic context](domain/symbolic-context.md) | Extraction facts, index lookup, candidate resolution, ranking, and token packing |
+| [pipeline consumer ergonomics](domain/pipeline-consumer-ergonomics.md) | The pipeline crate's public API, its injected store traits, or how a consumer such as Wyrd calls it |
 
 The first four references adapt the relevant Wyrd repository guidance to this Rust-only library. The symbolic-context reference is repository-specific. Wyrd SQL, audit, server, PyO3, UI, and product doctrines do not apply here.

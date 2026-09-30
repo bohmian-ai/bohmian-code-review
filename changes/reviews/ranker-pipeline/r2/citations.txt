@@ -1,0 +1,31 @@
+HIST-1	OK
+HIST-1	OK
+HIST-1	OK
+HIST-1	OK
+HIST-1	REJECT	symbol 'ColdBuild::build' not in crates/bohmian-code-review-pipeline/src/update.rs
+HIST-1	REJECT	symbol 'ColdBuild::history' not in crates/bohmian-code-review-pipeline/src/update.rs
+HIST-1	REJECT	symbol 'ColdBuild::build' not in crates/bohmian-code-review-pipeline/src/snapshot.rs
+HIST-1	REJECT	symbol 'ColdBuild::complete' not in crates/bohmian-code-review-pipeline/src/snapshot.rs
+DOMAIN-PROVIDER-1	OK
+DOMAIN-PROVIDER-1	OK
+DOMAIN-PROVIDER-1	OK
+DOMAIN-PROVIDER-1	OK
+DOMAIN-PROVIDER-1	OK
+DOMAIN-PROVIDER-1	REJECT	symbol 'Api::select' not in crates/bohmian-code-review-eval/src/live.rs
+DOMAIN-RANK-1	OK
+DOMAIN-RANK-1	OK
+DOMAIN-RANK-1	OK
+DOMAIN-RANK-1	OK
+DOMAIN-RANK-1	OK
+STANDARD-1	REJECT	symbol 'Api::base_snapshot' not in crates/bohmian-code-review-eval/src/live.rs
+STANDARD-1	REJECT	symbol 'Api::qualify' not in crates/bohmian-code-review-eval/src/live.rs
+STANDARD-1	REJECT	symbol 'Api::trials' not in crates/bohmian-code-review-eval/src/live.rs
+STANDARD-1	REJECT	symbol 'Api::select' not in crates/bohmian-code-review-eval/src/live.rs
+STANDARD-1	REJECT	symbol 'Api::select' not in crates/bohmian-code-review-eval/src/live.rs
+STANDARD-1	OK
+STANDARD-1	OK
+STANDARD-1	OK
+TASK-B-1	OK
+TASK-B-1	OK
+TASK-B-1	OK
+TASK-B-1	OK

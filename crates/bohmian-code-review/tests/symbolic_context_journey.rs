@@ -8,8 +8,8 @@
 
 use bohmian_code_review::{
     ChangedBlob, ContextLimits, DiffError, EXTRACTION_VERSION, Error, ExtractionError, FileDiff,
-    IndexedFileFacts, Language, LineRange, OmissionReason, RelativePath, SelectError, SpanKind,
-    SymbolicContext, build_candidate_context, build_context, parse_unified_diff,
+    IndexedFileFacts, InvalidFact, Language, LineRange, OmissionReason, RelativePath, SelectError,
+    SpanKind, SymbolicContext, build_context, parse_unified_diff,
 };
 use std::collections::BTreeMap;
 
@@ -236,12 +236,12 @@ fn pr_diff_selects_user_context_deterministically() {
         .rank(changed_path, HANDLER.as_bytes(), changed_lines.clone())
         .expect("valid change");
 
-    let scores: Vec<(&str, usize)> = ranking
+    let scores: Vec<(&str, f64)> = ranking
         .files
         .iter()
         .map(|file| (file.path.as_str(), file.score))
         .collect();
-    assert_eq!(scores, [("src/user.ts", 2), ("src/format.ts", 1)]);
+    assert_eq!(scores, [("src/user.ts", 2.0), ("src/format.ts", 1.0)]);
     let reasons: Vec<(&str, u32, u32)> = ranking.files[0]
         .reasons
         .iter()
@@ -271,7 +271,7 @@ fn pr_diff_selects_user_context_deterministically() {
         })
         .collect();
     let user_reason = SpanKind::Candidate {
-        score: 2,
+        score: 2.0,
         names: vec!["lookupUser".to_owned()],
     };
     assert_eq!(
@@ -390,8 +390,8 @@ export const report = (id: string) => formatUser(lookupUser(id)) + unrelated();
 #[test]
 /// Exported facts are source-free and version-stamped; loading them into a
 /// fresh context reproduces lookup, ranking, and packed candidate spans,
-/// while malformed or foreign-version facts fail without touching other
-/// loaded files.
+/// while malformed or foreign-version facts, including empty, repeated, or
+/// unordered reference names, fail without touching any loaded file.
 fn exported_facts_reload_without_source_and_reject_invalid_records() {
     let context = indexed();
     let exported = context.export();
@@ -417,9 +417,10 @@ fn exported_facts_reload_without_source_and_reject_invalid_records() {
         declared,
         [("User", 1, 3), ("lookupUser", 5, 7), ("saveUser", 9, 11)]
     );
+    assert_eq!(user.references, ["User", "console.log"]);
     let json = serde_json::to_string(&exported).expect("facts serialize");
     for fragment in [
-        "console.log",
+        "console.log(user.id)",
         "return { id }",
         "(id: string)",
         "docstring",
@@ -477,6 +478,25 @@ fn exported_facts_reload_without_source_and_reject_invalid_records() {
         loaded.load(renamed),
         Err(Error::InvalidFacts { ref path, .. }) if path.as_str() == "src/other.ts"
     ));
+    for references in [
+        vec![String::new(), "User".to_owned()],
+        vec!["User".to_owned(), "User".to_owned()],
+        vec!["console.log".to_owned(), "User".to_owned()],
+    ] {
+        let mut malformed = user.clone();
+        malformed.references = references;
+        assert!(matches!(
+            loaded.load(malformed),
+            Err(Error::InvalidFacts {
+                ref path,
+                source: InvalidFact::InvalidReference { .. },
+            }) if path.as_str() == "src/user.ts"
+        ));
+    }
+    assert_eq!(
+        loaded.export_file(&path("src/user.ts")).as_ref(),
+        Some(user)
+    );
     assert_eq!(loaded.file_count(), 4);
     assert_eq!(loaded.lookup("lookupUser")[0].path.as_str(), "src/user.ts");
     assert!(
@@ -516,10 +536,11 @@ fn path_language_identifies_eligible_paths_before_download() {
 }
 
 #[test]
-/// Two changed files union their changed-line names, both changed paths are
-/// excluded, `lookupUser` scores once although both files reference it,
-/// ties break by path, and candidate-only packing counts only selected
-/// candidates while reporting file and token omissions.
+/// Two changed files rank through the default fused ranker with empty
+/// history, so scores are reciprocal ranks of the rarity order; both changed
+/// paths are excluded, the top file agrees with single-file overlap, and
+/// candidate-only packing counts only selected candidates while reporting
+/// file and token omissions.
 fn multi_file_pr_ranks_union_of_changed_names_and_packs_candidates_only() {
     let mut context = indexed();
     context
@@ -537,17 +558,17 @@ fn multi_file_pr_ranks_union_of_changed_names_and_packs_candidates_only() {
             changed: vec![LineRange { start: 3, end: 3 }],
         },
     ];
-    let ranked = context.rank_files(&changed).expect("valid changes");
-    let scores: Vec<(&str, usize)> = ranked
+    let ranked = context.rank_files(&changed, &[]).expect("valid changes");
+    let scores: Vec<(&str, f64)> = ranked
         .iter()
         .map(|file| (file.path.as_str(), file.score))
         .collect();
     assert_eq!(
         scores,
         [
-            ("src/user.ts", 2),
-            ("src/format.ts", 1),
-            ("src/unrelated.ts", 1)
+            ("src/user.ts", 1.0 / 61.0),
+            ("src/unrelated.ts", 1.0 / 62.0),
+            ("src/format.ts", 1.0 / 63.0),
         ]
     );
     assert!(
@@ -562,14 +583,16 @@ fn multi_file_pr_ranks_union_of_changed_names_and_packs_candidates_only() {
             vec![LineRange { start: 5, end: 8 }],
         )
         .expect("valid change");
-    assert_eq!(single.files[0], ranked[0]);
+    assert_eq!(single.files[0].path, ranked[0].path);
 
     let limits = ContextLimits {
         max_files: 1,
         max_tokens: 15,
     };
     let candidates = blobs(&["src/user.ts"]);
-    let packed = build_candidate_context(&ranked, &candidates, limits, words).expect("packs");
+    let packed = context
+        .build_candidate_context(&ranked, &candidates, limits, words)
+        .expect("packs");
     let spans: Vec<(&str, u32, u32, usize)> = packed
         .spans
         .iter()
@@ -605,12 +628,12 @@ fn multi_file_pr_ranks_union_of_changed_names_and_packs_candidates_only() {
         omissions,
         [
             ("src/user.ts", 9, OmissionReason::TokenLimit { tokens: 8 }),
-            ("src/format.ts", 3, OmissionReason::FileLimit),
             ("src/unrelated.ts", 1, OmissionReason::FileLimit),
+            ("src/format.ts", 3, OmissionReason::FileLimit),
         ]
     );
     assert_eq!(
-        build_candidate_context(&ranked, &candidates, limits, words),
+        context.build_candidate_context(&ranked, &candidates, limits, words),
         Ok(packed)
     );
 
@@ -618,9 +641,9 @@ fn multi_file_pr_ranks_union_of_changed_names_and_packs_candidates_only() {
         max_files: 3,
         max_tokens: 5,
     };
-    let starved =
-        build_candidate_context(&ranked, &blobs(&FILES.map(|(file, _)| file)), none, words)
-            .expect("packs");
+    let starved = context
+        .build_candidate_context(&ranked, &blobs(&FILES.map(|(file, _)| file)), none, words)
+        .expect("packs");
     assert!(starved.spans.is_empty());
     assert_eq!((starved.files, starved.tokens), (0, 0));
     assert_eq!(starved.omissions.len(), 4);
@@ -631,11 +654,74 @@ fn multi_file_pr_ranks_union_of_changed_names_and_packs_candidates_only() {
             .all(|omission| matches!(omission.reason, OmissionReason::TokenLimit { .. }))
     );
     assert!(matches!(
-        context.rank_files(&[ChangedBlob {
-            path: "src/report.ts",
-            head: REPORT.as_bytes(),
-            changed: Vec::new(),
-        }]),
+        context.rank_files(
+            &[ChangedBlob {
+                path: "src/report.ts",
+                head: REPORT.as_bytes(),
+                changed: Vec::new(),
+            }],
+            &[]
+        ),
         Err(Error::Select(SelectError::DeletionOnly))
     ));
+}
+
+#[test]
+/// Pass one indexes the base; pass two ranks the changed handler over
+/// co-change history that pairs it only with `src/unrelated.ts`, a file
+/// sharing no symbol with it. Without history that file is not a
+/// candidate; with it, the fused ranker scores it as the top symbol match
+/// and a two-file budget packs both.
+fn co_change_history_ranks_and_packs_a_file_sharing_no_symbol() {
+    let context = indexed();
+    let changed = [ChangedBlob {
+        path: "src/handler.ts",
+        head: HANDLER.as_bytes(),
+        changed: vec![LineRange { start: 5, end: 8 }],
+    }];
+    let scores = |history: &[&[RelativePath]]| -> Vec<(String, f64)> {
+        context
+            .rank_files(&changed, history)
+            .expect("valid changes")
+            .into_iter()
+            .map(|file| (file.path.as_str().to_owned(), file.score))
+            .collect()
+    };
+    let top = 1.0 / 61.0;
+    assert_eq!(
+        scores(&[]),
+        [
+            ("src/user.ts".to_owned(), top),
+            ("src/format.ts".to_owned(), 1.0 / 62.0),
+        ]
+    );
+
+    let merged = [path("src/handler.ts"), path("src/unrelated.ts")];
+    let history = [&merged[..], &merged[..]];
+    assert_eq!(
+        scores(&history),
+        [
+            ("src/unrelated.ts".to_owned(), top),
+            ("src/user.ts".to_owned(), top),
+            ("src/format.ts".to_owned(), 1.0 / 62.0),
+        ]
+    );
+
+    let ranked = context
+        .rank_files(&changed, &history)
+        .expect("valid changes");
+    let packed = context
+        .build_candidate_context(
+            &ranked,
+            &blobs(&["src/unrelated.ts", "src/user.ts", "src/format.ts"]),
+            ContextLimits {
+                max_files: 2,
+                max_tokens: 100,
+            },
+            words,
+        )
+        .expect("packs");
+    let mut files: Vec<&str> = packed.spans.iter().map(|span| span.path.as_str()).collect();
+    files.dedup();
+    assert_eq!(files, ["src/unrelated.ts", "src/user.ts"]);
 }

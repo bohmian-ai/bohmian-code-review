@@ -1,0 +1,39 @@
+[package]
+name = "bohmian-code-review-eval"
+description = "Leave-one-out context-relevance evaluation of the public rankers over real merged pull requests"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+bohmian-code-review = { workspace = true, optional = true }
+bohmian-code-review-pipeline = { workspace = true, optional = true, features = ["testing"] }
+serde = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
+thiserror = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true, features = ["macros", "rt-multi-thread"] }
+
+[features]
+# The evaluation harness and its live binary; off by default so ordinary
+# workspace builds never compile it.
+eval = [
+    "dep:bohmian-code-review",
+    "dep:bohmian-code-review-pipeline",
+    "dep:serde",
+    "dep:serde_json",
+    "dep:thiserror",
+    "dep:tokio",
+]
+
+[dev-dependencies]
+sha1.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "context_relevance"
+required-features = ["eval"]

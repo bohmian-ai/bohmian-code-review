@@ -3,7 +3,8 @@
 //! [`IndexedFileFacts`] is the projection an index exports and reloads
 //! without reparsing. It keeps only what exact lookup, ranking reasons, and
 //! candidate spans need: names, IDs, kinds, languages, and line/column
-//! coordinates. Docstrings, signatures, decorators, return types, and any
+//! coordinates, plus the distinct names the file references, without their
+//! positions. Docstrings, signatures, decorators, return types, and any
 //! other verbatim source fragment are deliberately absent, so a persisted
 //! record never carries source text.
 
@@ -113,10 +114,16 @@ pub struct IndexedFileFacts {
     pub byte_len: usize,
     /// Declarations in extractor order.
     pub declarations: Vec<DeclarationFact>,
+    /// Distinct reference and extractor-candidate names the file uses, in
+    /// ascending order; names only, never positions or source.
+    pub references: Vec<String>,
 }
 
 impl IndexedFileFacts {
-    /// Validates every declaration before any of them is trusted.
+    /// Validates every declaration, then that `references` are nonempty
+    /// names in strictly ascending order, before any of them is trusted.
+    /// An empty name can only sort first, so ascending order plus a
+    /// nonempty first name covers every entry.
     ///
     /// # Errors
     ///
@@ -124,7 +131,18 @@ impl IndexedFileFacts {
     pub fn validate(&self) -> Result<(), InvalidFact> {
         self.declarations
             .iter()
-            .try_for_each(DeclarationFact::validate)
+            .try_for_each(DeclarationFact::validate)?;
+        if self.references.first().is_some_and(String::is_empty) {
+            return Err(InvalidFact::InvalidReference {
+                name: String::new(),
+            });
+        }
+        match self.references.windows(2).find(|pair| pair[0] >= pair[1]) {
+            Some(pair) => Err(InvalidFact::InvalidReference {
+                name: pair[1].clone(),
+            }),
+            None => Ok(()),
+        }
     }
 }
 
@@ -146,6 +164,12 @@ pub enum InvalidFact {
         start_line: u32,
         /// Supplied end line.
         end_line: u32,
+    },
+    /// A reference name is empty, repeated, or out of ascending order.
+    #[error("reference name `{name}` is empty, repeated, or out of ascending order")]
+    InvalidReference {
+        /// The offending name.
+        name: String,
     },
 }
 
@@ -222,5 +246,33 @@ mod tests {
                 end_line: 2,
             })
         );
+    }
+
+    #[test]
+    /// Reference names must be nonempty and strictly ascending; empty,
+    /// repeated, and unordered names are rejected, sorted distinct ones
+    /// and none at all are accepted.
+    fn validation_rejects_empty_repeated_and_unordered_references() {
+        let facts = |references: &[&str]| IndexedFileFacts {
+            path: RelativePath::new("src/a.ts").expect("valid path"),
+            extraction_version: "v".to_owned(),
+            byte_len: 1,
+            declarations: vec![DeclarationFact::from_node(&node())],
+            references: references.iter().map(|name| (*name).to_owned()).collect(),
+        };
+        assert_eq!(facts(&[]).validate(), Ok(()));
+        assert_eq!(facts(&["a", "b"]).validate(), Ok(()));
+        for (references, name) in [
+            (&["", "a"][..], ""),
+            (&["a", "a"][..], "a"),
+            (&["b", "a"][..], "a"),
+        ] {
+            assert_eq!(
+                facts(references).validate(),
+                Err(InvalidFact::InvalidReference {
+                    name: name.to_owned()
+                })
+            );
+        }
     }
 }

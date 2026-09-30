@@ -90,6 +90,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "bohmian-code-review-eval"
+version = "0.1.0"
+dependencies = [
+ "bohmian-code-review",
+ "bohmian-code-review-pipeline",
+ "serde",
+ "serde_json",
+ "sha1",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
 name = "bohmian-code-review-extract"
 version = "0.1.0"
 dependencies = [

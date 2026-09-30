@@ -1,21 +1,25 @@
-//! Public outer-crate journey: the cold-build, update, PR-context, and
-//! context-read facades called separately and then composed over one fake
-//! GitHub and one set of injected in-memory capabilities.
+//! Public outer-crate journey. The main flow drives [`ReviewPipeline`] alone
+//! over one fake GitHub, one in-memory storage, and one in-memory store
+//! serving snapshots and contexts, as a consumer does. The stage facades
+//! are then exercised separately for the advanced paths: cancellation,
+//! scoped fallback, and incremental update accounting.
 //!
 //! Only public items of `bohmian-code-review-pipeline` and the
 //! `bohmian-code-review` facade are used, so this proves a consumer can drive
 //! the whole pipeline with its own stores and cancellation, and that nothing
-//! keeps running once a facade future completes or is dropped.
+//! keeps running once a future completes or is dropped.
 
-use bohmian_code_review::{ChangedBlob, LineRange, SymbolicContext};
+use bohmian_code_review::{ChangedBlob, EXTRACTION_VERSION, LineRange, SymbolicContext};
 use bohmian_code_review_pipeline::testing::{
-    MemoryContextStore, MemorySnapshotStore, MemoryStorage, RoutedTransport,
+    MemoryContextStore, MemorySnapshotStore, MemoryStorage, MemoryStore, RoutedTransport,
 };
 use bohmian_code_review_pipeline::{
     BoxFuture, ColdBuild, ColdBuildLimits, ColdBuildOutcome, ContextError, Contexts, Freshness,
     GitHubClient, GitHubHost, HttpRequest, HttpResponse, HttpTransport, Identity, InstallationId,
-    InstallationToken, ObjectSha, Operation, PrContext, PrContextLimits, PrContextResult,
-    RepositoryIdentity, RequestLimits, Scope, TenantId, TransportError, Update,
+    InstallationToken, ObjectSha, Operation, PipelineLimits, PrContext, PrContextLimits,
+    PrContextResult, RepositoryIdentity, RequestLimits, ReviewPipeline, SNAPSHOT_FORMAT_VERSION,
+    Scope, SnapshotPointer, SnapshotScope, SnapshotStore, Snapshots, TenantId, TransportError,
+    Update,
 };
 use flate2::Compression;
 use flate2::write::GzEncoder;
@@ -34,6 +38,8 @@ const FORMAT: &[u8] = b"import { User } from \"./user\";\n\nexport function form
 const FORMAT_V2: &[u8] = b"import { User } from \"./user\";\n\nexport function formatUser(user: User): string {\n  return \"user:\" + user.id;\n}\n";
 /// Declares `handleRequest`.
 const HANDLER: &[u8] = b"import { lookupUser } from \"./user\";\n\nexport function handleRequest(id: string): string {\n  return lookupUser(id).id;\n}\n";
+/// Declares nothing the PR's handler uses; related to it only by co-change.
+const NOTES: &[u8] = b"export function unrelated(): number {\n  return 1;\n}\n";
 /// The PR's handler: formats the looked-up user.
 const PR_HANDLER: &[u8] = b"import { lookupUser } from \"./user\";\n\nexport function handleRequest(id: string): string {\n  return formatUser(lookupUser(id));\n}\n";
 /// Patch of [`PR_HANDLER`]: head line 4 added.
@@ -45,6 +51,11 @@ const PR: u64 = 7;
 const REVIEW_ALLOWANCE: Duration = Duration::from_secs(30 * 60);
 /// The caller's cold-build allowance.
 const BUILD_ALLOWANCE: Duration = Duration::from_secs(15 * 60);
+
+/// Committer time of default-branch commit `c`.
+const C_AT: &str = "2026-02-01T12:00:00Z";
+/// Committer time of default-branch commit `d`.
+const D_AT: &str = "2026-02-02T12:00:00Z";
 
 /// Forty copies of `ch` as an object id.
 fn sha(ch: char) -> ObjectSha {
@@ -110,22 +121,65 @@ impl HttpTransport for FakeGitHub {
 }
 
 impl FakeGitHub {
-    /// A repository whose default branch is at commit `c`, tree `7`.
+    /// A repository whose default branch is at commit `c`, tree `7`, with
+    /// no merged pull requests.
     fn new(files: &[(&str, &[u8])]) -> FakeGitHub {
         let github = FakeGitHub(Arc::new(RoutedTransport::default()));
         github.0.json(
             "/repos/octocat/Hello-World",
             r#"{"id":1296269,"full_name":"octocat/Hello-World","default_branch":"main","private":true}"#,
         );
-        github.push(&sha('c'), &sha('7'), files);
+        github.merged(&[]);
+        github.push((&sha('c'), C_AT), &sha('7'), files);
         github
     }
 
-    /// Move the default branch to `commit`/`tree` holding `files`.
-    fn push(&self, commit: &ObjectSha, tree: &ObjectSha, files: &[(&str, &[u8])]) {
+    /// Route the closed-PR listing of `prs` merged into `main`, each
+    /// `(number, merged_at, changed paths)` last updated when it merged,
+    /// and each PR's one-page file listing.
+    fn merged(&self, prs: &[(u64, &str, &[&str])]) {
+        let mut listed = prs.to_vec();
+        listed.sort_by(|a, b| b.1.cmp(a.1));
+        let listed: Vec<_> = listed
+            .iter()
+            .map(|(number, at, _)| {
+                json!({"number": number, "updated_at": at, "merged_at": at,
+                       "base": {"ref": "main", "sha": sha('c').as_str(), "repo": {"id": 1296269}},
+                       "head": {"ref": "topic", "sha": sha('b').as_str()}})
+            })
+            .collect();
+        self.0.json(
+            "/pulls?state=closed&base=main&sort=updated&direction=desc&per_page=100&page=1",
+            &serde_json::Value::from(listed).to_string(),
+        );
+        for (number, _, paths) in prs {
+            let files: Vec<_> = paths
+                .iter()
+                .map(|path| {
+                    json!({"filename": path, "status": "modified", "sha": sha('e').as_str(),
+                                   "patch": "@@ -1 +1 @@\n-a\n+b"})
+                })
+                .collect();
+            self.0.json(
+                &format!("/pulls/{number}/files?per_page=100&page=1"),
+                &serde_json::Value::from(files).to_string(),
+            );
+        }
+    }
+
+    /// Move the default branch to `commit`, committed at `at`, and `tree`
+    /// holding `files`.
+    fn push(&self, (commit, at): (&ObjectSha, &str), tree: &ObjectSha, files: &[(&str, &[u8])]) {
         self.0.json(
             "/branches/main",
-            &json!({"name": "main", "commit": {"sha": commit.as_str(), "commit": {"tree": {"sha": tree.as_str()}}}}).to_string(),
+            &json!({"name": "main", "commit": {"sha": commit.as_str(), "commit": {
+                "tree": {"sha": tree.as_str()}, "committer": {"date": at}}}})
+            .to_string(),
+        );
+        self.0.json(
+            &format!("/git/commits/{commit}"),
+            &json!({"sha": commit.as_str(), "tree": {"sha": tree.as_str()}, "committer": {"date": at}})
+                .to_string(),
         );
         self.tree(tree, files);
         self.0
@@ -229,7 +283,9 @@ impl FakeGitHub {
         );
         self.0.json(
             &format!("/git/commits/{head}"),
-            &json!({"sha": head.as_str(), "tree": {"sha": tree.as_str()}}).to_string(),
+            &json!({"sha": head.as_str(), "tree": {"sha": tree.as_str()},
+                    "committer": {"date": "2026-03-01T00:00:00Z"}})
+            .to_string(),
         );
         self.tree(&tree, files);
     }
@@ -349,11 +405,14 @@ fn oracle_paths(files: &[(&str, &[u8])]) -> Vec<String> {
         index.upsert(path, bytes).expect("upsert");
     }
     index
-        .rank_files(&[ChangedBlob {
-            path: "src/handler.ts",
-            head: PR_HANDLER,
-            changed: vec![LineRange { start: 4, end: 4 }],
-        }])
+        .rank_files(
+            &[ChangedBlob {
+                path: "src/handler.ts",
+                head: PR_HANDLER,
+                changed: vec![LineRange { start: 4, end: 4 }],
+            }],
+            &[],
+        )
         .expect("rank")
         .into_iter()
         .map(|ranked| ranked.path.to_string())
@@ -461,7 +520,7 @@ async fn cold_update_warm_review_and_read_compose() {
     };
     assert_eq!(first.tree, sha('7'));
 
-    github.push(&sha('d'), &sha('9'), &main_v2());
+    github.push((&sha('d'), D_AT), &sha('9'), &main_v2());
     github.compare((&sha('c'), &main_v1()), (&sha('d'), &sha('9'), &main_v2()));
     let before = client.calls().snapshot();
     let updated = caps.update(&client).run(&caller).await.expect("update");
@@ -520,4 +579,133 @@ fn main_v1_with_pr() -> Vec<(&'static str, &'static [u8])> {
         ("src/format.ts", FORMAT),
         ("src/handler.ts", PR_HANDLER),
     ]
+}
+
+/// PR numbers in the history of the snapshot `pointer` names for
+/// [`identity`] under default limits.
+async fn snapshot_history<S: SnapshotStore>(
+    storage: &MemoryStorage,
+    store: &S,
+    pointer: &SnapshotPointer,
+) -> Vec<u64> {
+    let scope = SnapshotScope {
+        identity: identity(),
+        extraction_version: EXTRACTION_VERSION.to_owned(),
+        format_version: SNAPSHOT_FORMAT_VERSION,
+        max_file_bytes: ColdBuildLimits::default().max_file_bytes,
+    };
+    Snapshots::new(storage, store)
+        .read(&scope, pointer)
+        .await
+        .expect("snapshot")
+        .history
+        .prs
+        .iter()
+        .map(|pr| pr.number)
+        .collect()
+}
+
+/// The consumer path through [`ReviewPipeline`] only. The first `context`
+/// on a repository with no snapshot cold-builds, persisting the PRs merged
+/// before commit `c`, then publishes. After PR 5 merges and the branch
+/// moves to `d`, `refresh` extends the history incrementally, reading one
+/// more listing page and one PR file listing. The second `context` never
+/// reads the branch or refreshes, reviews on the refreshed snapshot with
+/// full coverage, and packs `src/notes.ts`, which shares no symbol with
+/// the change and only co-changed with the handler. `read` returns the
+/// published context with no provider calls.
+#[tokio::test]
+async fn review_pipeline_cold_builds_refreshes_and_ranks_co_change() {
+    let mut files = main_v1();
+    files.push(("src/notes.ts", NOTES));
+    let github = FakeGitHub::new(&files);
+    let pair: &[&str] = &["src/handler.ts", "src/notes.ts"];
+    github.merged(&[
+        (3, "2026-01-20T00:00:00Z", pair),
+        (4, "2026-01-21T00:00:00Z", pair),
+    ]);
+    let mut head = files.clone();
+    head[2] = ("src/handler.ts", PR_HANDLER);
+    github.pull_request(&sha('c'), &head);
+    let client = github.client();
+    let storage = MemoryStorage::default();
+    let store = MemoryStore::default();
+    let pipeline = ReviewPipeline::new(&storage, &store, PipelineLimits::default());
+    let caller = identity();
+
+    let first = pipeline
+        .context(&client, &caller, PR)
+        .await
+        .expect("first context");
+    assert_eq!(client.calls().get(Operation::Archive), 1);
+    assert!(
+        first.context.coverage.is_full(),
+        "{:?}",
+        first.context.coverage
+    );
+    assert_eq!(first.context.coverage.snapshot_tree, Some(sha('7')));
+
+    github.merged(&[
+        (3, "2026-01-20T00:00:00Z", pair),
+        (4, "2026-01-21T00:00:00Z", pair),
+        (5, "2026-02-02T00:00:00Z", &["src/user.ts"]),
+    ]);
+    let mut next = files.clone();
+    next[0] = ("src/user.ts", FORMAT_V2);
+    github.push((&sha('d'), D_AT), &sha('9'), &next);
+    github.compare((&sha('c'), &files), (&sha('d'), &sha('9'), &next));
+    let before = client.calls().snapshot();
+    let refreshed = pipeline.refresh(&client, &caller).await.expect("refresh");
+    let ColdBuildOutcome::Published(pointer) = refreshed.outcome else {
+        panic!("refresh did not publish: {:?}", refreshed.outcome);
+    };
+    assert_eq!(pointer.tree, sha('9'));
+    assert_eq!(
+        snapshot_history(&storage, &store, &pointer).await,
+        [5, 4, 3]
+    );
+    let calls = client.calls();
+    assert_eq!(calls.get(Operation::Archive), before[&Operation::Archive]);
+    for operation in [Operation::PullRequests, Operation::PullRequestFiles] {
+        assert_eq!(
+            calls.get(operation) - before[&operation],
+            1,
+            "{operation:?}"
+        );
+    }
+
+    let mut head = next.clone();
+    head[2] = ("src/handler.ts", PR_HANDLER);
+    github.pull_request(&sha('d'), &head);
+    let before = client.calls().snapshot();
+    let second = pipeline
+        .context(&client, &caller, PR)
+        .await
+        .expect("second context");
+    let calls = client.calls();
+    for operation in [
+        Operation::BranchHead,
+        Operation::Archive,
+        Operation::Compare,
+    ] {
+        assert_eq!(calls.get(operation), before[&operation], "{operation:?}");
+    }
+    let context = &second.context;
+    assert!(context.coverage.is_full(), "{:?}", context.coverage);
+    assert_eq!(context.coverage.snapshot_tree, Some(sha('9')));
+    assert_eq!((&context.base, &context.head), (&sha('d'), &sha('a')));
+    assert!(!oracle_paths(&head).contains(&"src/notes.ts".to_owned()));
+    assert!(
+        context
+            .spans
+            .iter()
+            .any(|span| span.path.as_str() == "src/notes.ts")
+    );
+
+    let calls = client.calls().snapshot();
+    assert_eq!(
+        pipeline.read(&caller, &second.record.id).await,
+        Ok(second.context.clone())
+    );
+    assert_eq!(client.calls().snapshot(), calls);
 }

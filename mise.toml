@@ -59,8 +59,12 @@ run = [
 ]
 
 [tasks."test:pipeline:journey"]
-description = "Run the outer pipeline's public four-facade journey over fake GitHub and injected in-memory stores"
+description = "Run the outer pipeline's public ReviewPipeline and stage-facade journeys over fake GitHub and injected in-memory stores"
 run = "cargo test --locked -p bohmian-code-review-pipeline --test pipeline_journey --all-features"
+
+[tasks."test:eval"]
+description = "Run the feature-gated context-relevance evaluation crate: trials over the public rankers, seeded inference, and the no-network fake-provider run"
+run = "cargo test --locked -p bohmian-code-review-eval --all-targets --all-features"
 
 [tasks."live:pr"]
 description = "S20, explicitly invoked and never in gate: build and read back context for a real PR (GITHUB_TOKEN, BCR_REPO_ID; BCR_REPO, BCR_PR optional); macOS /usr/bin/time -l reports peak memory"
@@ -74,8 +78,8 @@ description = "AC-006 controlled-provider contract, explicitly invoked and never
 run = "cargo run --locked --release -p bohmian-code-review-pipeline --example provider_contract --all-features"
 
 [tasks."live:context-relevance"]
-description = "Context-relevance evaluation, explicitly invoked and never in gate: select each evaluated repository's merged-PR sample and run its leave-one-out relevance trials, read-only; prints one JSON report per repository (GITHUB_TOKEN, BCR_EVAL_CUTOFF)"
-run = "cargo run --locked --release -p bohmian-code-review-pipeline --example context_relevance --all-features"
+description = "Co-change experiment, explicitly invoked and never in gate: select each fixed repository's merged-PR sample at its fixed cutoff, read its time-eligible co-change history, and run its leave-one-out relevance trials, read-only; prints one JSON report per repository only after all succeed (GITHUB_TOKEN)"
+run = "cargo run --locked --release -p bohmian-code-review-eval --bin context_relevance --features eval"
 
 [tasks."test:rust"]
 description = "Run every component lane and the public journey"
@@ -86,6 +90,7 @@ depends = [
   "test:select",
   "test:symbolic-context:journey",
   "test:pipeline",
+  "test:eval",
 ]
 
 [tasks."review:verify-citations"]

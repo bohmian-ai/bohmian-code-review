@@ -534,3 +534,157 @@ impl ContextStore for MemoryContextStore {
         Ok(keys)
     }
 }
+
+/// One in-memory store serving snapshots and contexts, as a consumer's
+/// single database-backed type does for [`crate::ReviewPipeline`]; each
+/// half keeps its own clock and switches.
+#[derive(Default)]
+pub struct MemoryStore {
+    /// Snapshot pointers and records.
+    pub snapshots: MemorySnapshotStore,
+    /// Context records.
+    pub contexts: MemoryContextStore,
+}
+
+impl SnapshotStore for MemoryStore {
+    /// As [`MemorySnapshotStore`].
+    ///
+    /// # Errors
+    ///
+    /// Never.
+    async fn snapshot_pointer(
+        &self,
+        scope: &SnapshotScope,
+    ) -> Result<Option<SnapshotPointer>, PersistenceError> {
+        self.snapshots.snapshot_pointer(scope).await
+    }
+
+    /// As [`MemorySnapshotStore`].
+    ///
+    /// # Errors
+    ///
+    /// Never.
+    async fn publish_snapshot_pointer(
+        &self,
+        scope: &SnapshotScope,
+        expected: Option<&ObjectSha>,
+        pointer: &SnapshotPointer,
+    ) -> Result<bool, PersistenceError> {
+        self.snapshots
+            .publish_snapshot_pointer(scope, expected, pointer)
+            .await
+    }
+
+    /// As [`MemorySnapshotStore`].
+    ///
+    /// # Errors
+    ///
+    /// `Collecting` for a claimed record.
+    async fn upsert_record(
+        &self,
+        identity: &Identity,
+        key: &ObjectKey,
+    ) -> Result<(), PersistenceError> {
+        self.snapshots.upsert_record(identity, key).await
+    }
+
+    /// As [`MemorySnapshotStore`].
+    ///
+    /// # Errors
+    ///
+    /// Never.
+    async fn unreferenced(
+        &self,
+        identity: &Identity,
+        grace: Duration,
+    ) -> Result<Vec<ObjectKey>, PersistenceError> {
+        self.snapshots.unreferenced(identity, grace).await
+    }
+
+    /// As [`MemorySnapshotStore`].
+    ///
+    /// # Errors
+    ///
+    /// Never.
+    async fn delete_record(
+        &self,
+        identity: &Identity,
+        key: &ObjectKey,
+    ) -> Result<(), PersistenceError> {
+        self.snapshots.delete_record(identity, key).await
+    }
+
+    /// As [`MemorySnapshotStore`].
+    ///
+    /// # Errors
+    ///
+    /// Never.
+    async fn remove_pointers(&self, identity: &Identity) -> Result<(), PersistenceError> {
+        self.snapshots.remove_pointers(identity).await
+    }
+}
+
+impl ContextStore for MemoryStore {
+    /// As [`MemoryContextStore`].
+    ///
+    /// # Errors
+    ///
+    /// Never.
+    async fn upsert_context(
+        &self,
+        identity: &Identity,
+        record: &ContextRecord,
+    ) -> Result<ContextLifetime, PersistenceError> {
+        self.contexts.upsert_context(identity, record).await
+    }
+
+    /// As [`MemoryContextStore`].
+    ///
+    /// # Errors
+    ///
+    /// Never.
+    async fn context(
+        &self,
+        identity: &Identity,
+        id: &ContextId,
+    ) -> Result<ContextLookup, PersistenceError> {
+        self.contexts.context(identity, id).await
+    }
+
+    /// As [`MemoryContextStore`].
+    ///
+    /// # Errors
+    ///
+    /// Never.
+    async fn expired_contexts(
+        &self,
+        limit: usize,
+    ) -> Result<Vec<(Identity, ContextRecord)>, PersistenceError> {
+        self.contexts.expired_contexts(limit).await
+    }
+
+    /// As [`MemoryContextStore`].
+    ///
+    /// # Errors
+    ///
+    /// Never.
+    async fn delete_context(
+        &self,
+        identity: &Identity,
+        id: &ContextId,
+    ) -> Result<(), PersistenceError> {
+        self.contexts.delete_context(identity, id).await
+    }
+
+    /// As [`MemoryContextStore`].
+    ///
+    /// # Errors
+    ///
+    /// Never.
+    async fn remove_repository(
+        &self,
+        identity: &Identity,
+    ) -> Result<Vec<ObjectKey>, PersistenceError> {
+        self.contexts.remove_repository(identity).await
+    }
+}

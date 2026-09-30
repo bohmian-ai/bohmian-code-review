@@ -111,7 +111,12 @@ mod tests {
     ///
     /// Panics if `file` is not a valid repository-relative path.
     fn add(index: &mut SymbolIndex, file: &str, nodes: Vec<Node>) {
-        index.upsert(RelativePath::new(file).expect("valid path"), 1, nodes);
+        index.upsert(
+            RelativePath::new(file).expect("valid path"),
+            1,
+            nodes,
+            BTreeSet::new(),
+        );
     }
 
     /// Renders results as `(name, [path:line])`.

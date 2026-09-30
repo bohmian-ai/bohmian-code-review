@@ -12,6 +12,11 @@
 //! [`ColdBuildLimits::max_changed_blobs`] allows rebuilds from the archive.
 //! An incomplete attempt writes nothing, so the prior pointer and the
 //! immutable prior object stay valid for reviews already using them.
+//!
+//! Every update, incremental or rebuilt, extends the prior snapshot's
+//! co-change history with the PRs merged since its commit, reading one
+//! listing per merged PR; at the same tree the pointer and its history are
+//! reused unchanged.
 
 use crate::github::{BranchHead, GitHubClient, GitHubError, TreeEntry, TreeEntryMode, TreeListing};
 use crate::identity::{Identity, ObjectSha};
@@ -63,18 +68,19 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> Update<'a, O, S> {
     /// Without a pointer under the current versions (first build, or an
     /// extraction or format version change) or with its object missing,
     /// this is a cold build; at the same tree the pointer is validated and
-    /// reused. Otherwise only the paths compare reports changed are listed
-    /// and fetched, unless a REQ-007 trigger rebuilds from the archive. The
-    /// caller bounds
-    /// the call by dropping its future; a drop at any `.await` leaves the
+    /// reused with its history unchanged. Otherwise the pointer's
+    /// co-change history is extended with PRs merged since its commit, and
+    /// only the paths compare reports changed are listed and fetched,
+    /// unless a REQ-007 trigger rebuilds from the archive. The caller
+    /// bounds the call by dropping its future; a drop at any `.await` leaves the
     /// pointer on a complete snapshot and every written object recorded,
     /// and a retry converges. No persistence transaction spans provider or
     /// storage IO.
     ///
     /// # Errors
     ///
-    /// As [`ColdBuild::run`], plus the compare and directory provider
-    /// errors, and `MalformedResponse` when a changed path is missing from
+    /// As [`ColdBuild::run`], including [`ColdBuildError::History`] from
+    /// the history read, plus the compare and directory provider errors, and `MalformedResponse` when a changed path is missing from
     /// the tree compare says holds it. `PointerConflict` or
     /// `Persistence(Collecting)` is a retry state; a changed blob that
     /// cannot be fetched is not an error but an `Incomplete` outcome
@@ -85,7 +91,7 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> Update<'a, O, S> {
         let current = cold.store.snapshot_pointer(&scope).await?;
         let head = cold.pin(identity).await?;
         let Some(pointer) = current.as_ref().filter(|pointer| pointer.tree != head.tree) else {
-            return cold.build(&scope, current.as_ref(), &head).await;
+            return cold.build(&scope, current.as_ref(), &head, None).await;
         };
         let prior = match Snapshots::new(cold.storage, cold.store)
             .read(&scope, pointer)
@@ -93,7 +99,7 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> Update<'a, O, S> {
         {
             Ok(prior) => prior,
             Err(ColdBuildError::Storage(StorageError::NotFound { .. })) => {
-                return cold.build(&scope, current.as_ref(), &head).await;
+                return cold.build(&scope, current.as_ref(), &head, None).await;
             }
             Err(error) => return Err(error),
         };
@@ -111,8 +117,11 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> Update<'a, O, S> {
             || changes.files > cold.limits.max_changed_blobs
             || attributes_changed
         {
-            return cold.build(&scope, current.as_ref(), &head).await;
+            return cold
+                .build(&scope, current.as_ref(), &head, Some(&prior.history))
+                .await;
         }
+        let history = cold.history(identity, &head, Some(&prior.history)).await?;
 
         let mut head_tree = Directories::new(cold.client, identity, &head.tree);
         let added = head_tree.entries(&changes.added).await?;
@@ -136,7 +145,7 @@ impl<'a, O: ObjectStorage, S: SnapshotStore> Update<'a, O, S> {
         ingest
             .fallback(cold.client, identity, cold.limits.max_changed_blobs)
             .await;
-        cold.complete(&scope, current.as_ref(), &head, ingest, false)
+        cold.complete(&scope, current.as_ref(), &head, ingest, false, history)
             .await
     }
 
@@ -260,6 +269,7 @@ mod tests {
     use super::*;
     use crate::eligibility::ExclusionReason;
     use crate::github::{GitHubError, Operation};
+    use crate::history::HistoryError;
     use crate::persistence::SnapshotScope;
     use crate::snapshot::tests::{
         FakeRepo, File, HANDLER, LFS, OMITTED, bad_sha, blob_sha, file, identity, scope, sha,
@@ -348,14 +358,14 @@ mod tests {
         pointer
     }
 
-    /// The snapshot object key of `tree`.
-    fn key(tree: &crate::identity::ObjectSha) -> ObjectKey {
+    /// The snapshot object key of `commit`.
+    fn key(commit: &crate::identity::ObjectSha) -> ObjectKey {
         ObjectKey::snapshot(
             &identity(),
             EXTRACTION_VERSION,
             crate::snapshot::SNAPSHOT_FORMAT_VERSION,
             crate::eligibility::MAX_ELIGIBLE_FILE_BYTES,
-            tree,
+            commit,
         )
     }
 
@@ -385,7 +395,7 @@ mod tests {
         };
         assert_eq!(
             (&new.tree, &new.commit, &new.key),
-            (&tree, &commit, &key(&tree))
+            (&tree, &commit, &key(&commit))
         );
         assert_eq!(pointer(&store, &identity).await.as_ref(), Some(new));
         assert_eq!(
@@ -497,6 +507,47 @@ mod tests {
         assert_eq!(pointer(&store, &identity).await.map(|p| p.tree), Some(tree));
     }
 
+    /// Update history is complete or fails before publication: a listing
+    /// still advertising pages at the page bound without reaching the prior
+    /// history's time, even after proving ten new merged PRs, or one whose
+    /// page 1 gained an entry below its first while page 2 was read, fails
+    /// the update and keeps the prior pointer.
+    #[tokio::test]
+    async fn update_history_is_complete_or_unpublished() {
+        type Route = fn(&FakeRepo);
+        let cases: [(Route, HistoryError); 3] = [
+            (
+                FakeRepo::unproved_history,
+                HistoryError::UnprovedHistory { found: 0 },
+            ),
+            (
+                FakeRepo::capped_history,
+                HistoryError::UnprovedHistory { found: 10 },
+            ),
+            (FakeRepo::moving_history, HistoryError::ListingMoved),
+        ];
+        for (route, expected) in cases {
+            let repo = FakeRepo::new(&standard_files(), &standard_archive());
+            let storage = MemoryStorage::default();
+            let store = MemorySnapshotStore::default();
+            let identity = identity();
+            let old = cold(&repo, &storage, &store).await;
+            repo.push(&sha('d'), &sha('8'), &pushed_files(), &pushed_archive());
+            route(&repo);
+            let client = repo.client();
+            let error = Update::new(&client, &storage, &store, ColdBuildLimits::default())
+                .run(&identity)
+                .await
+                .expect_err("history is unproved");
+            assert!(
+                matches!(&error, ColdBuildError::History(found) if *found == expected),
+                "{error:?}"
+            );
+            assert_eq!(pointer(&store, &identity).await, Some(old.clone()));
+            assert_eq!(storage.keys(), std::slice::from_ref(&old.key));
+        }
+    }
+
     /// A push whose changed path's directory listing has a malformed entry
     /// fails the update with a provider error and keeps the prior pointer.
     #[tokio::test]
@@ -549,13 +600,13 @@ mod tests {
             assert_eq!(pointer(&store, &identity).await, Some(old.clone()));
             let mut recorded = vec![
                 (identity.clone(), old.key.clone()),
-                (identity.clone(), key(&tree)),
+                (identity.clone(), key(&sha('d'))),
             ];
             recorded.sort();
             assert_eq!(store.records(), recorded);
             let mut objects = vec![old.key.clone()];
             if object_written {
-                objects.push(key(&tree));
+                objects.push(key(&sha('d')));
             }
             objects.sort();
             assert_eq!(storage.keys(), objects);
@@ -564,7 +615,7 @@ mod tests {
             let ColdBuildOutcome::Published(published) = retry.outcome else {
                 panic!("retry must publish, got {:?}", retry.outcome);
             };
-            assert_eq!(published.key, key(&tree));
+            assert_eq!(published.key, key(&sha('d')));
             assert_eq!(pointer(&store, &identity).await, Some(published.clone()));
             assert!(
                 Snapshots::new(&storage, &store)
@@ -618,7 +669,7 @@ mod tests {
         moved.push(file("src/extra.ts", EXTRA));
         store.hold_swaps.store(true, Ordering::SeqCst);
         let (first, ()) = tokio::join!(update.run(&identity), async {
-            while !storage.keys().contains(&key(&tree_b)) {
+            while !storage.keys().contains(&key(&sha('d'))) {
                 tokio::task::yield_now().await;
             }
             repo.push(&sha('e'), &tree_c, &moved, &[]);
@@ -636,7 +687,7 @@ mod tests {
         let tree_d = sha('a');
         store.hold_swaps.store(true, Ordering::SeqCst);
         let (lost, won) = tokio::join!(update.run(&identity), async {
-            while !storage.keys().contains(&key(&tree_c)) {
+            while !storage.keys().contains(&key(&sha('e'))) {
                 tokio::task::yield_now().await;
             }
             repo.push(&sha('f'), &tree_d, &pushed_files(), &[]);
@@ -695,7 +746,7 @@ mod tests {
         let ColdBuildOutcome::Published(new) = result.outcome else {
             panic!("expected publication, got {:?}", result.outcome);
         };
-        assert_eq!(new.key, key(&repo.tree));
+        assert_eq!(new.key, key(&repo.commit));
         assert_ne!(new.key, old.key);
         assert_eq!(client.calls().get(Operation::Archive), 1);
         assert_eq!(result.ingest.reused_files, 0);
