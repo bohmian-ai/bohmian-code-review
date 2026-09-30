@@ -126,7 +126,7 @@ impl FakeGitHub {
     fn new(files: &[(&str, &[u8])]) -> FakeGitHub {
         let github = FakeGitHub(Arc::new(RoutedTransport::default()));
         github.0.json(
-            "/repos/octocat/Hello-World",
+            "/repositories/1296269",
             r#"{"id":1296269,"full_name":"octocat/Hello-World","default_branch":"main","private":true}"#,
         );
         github.merged(&[]);
@@ -708,4 +708,48 @@ async fn review_pipeline_cold_builds_refreshes_and_ranks_co_change() {
         Ok(second.context.clone())
     );
     assert_eq!(client.calls().snapshot(), calls);
+}
+
+/// A repository keeps its snapshot and contexts whatever `owner/name` the
+/// caller passes: requests address it by stable id and the id alone is its
+/// identity, so after a rename (here, a name the fake provider has never
+/// served) the next `context` reuses the snapshot without another archive
+/// download and `read` returns the context published under the old name.
+#[tokio::test]
+async fn review_pipeline_survives_a_repository_rename() {
+    let files = main_v1();
+    let github = FakeGitHub::new(&files);
+    let mut head = files.clone();
+    head[2] = ("src/handler.ts", PR_HANDLER);
+    github.pull_request(&sha('c'), &head);
+    let client = github.client();
+    let storage = MemoryStorage::default();
+    let store = MemoryStore::default();
+    let pipeline = ReviewPipeline::new(&storage, &store, PipelineLimits::default());
+
+    let first = pipeline
+        .context(&client, &identity(), PR)
+        .await
+        .expect("context before rename");
+    assert_eq!(client.calls().get(Operation::Archive), 1);
+
+    let renamed = Identity {
+        repository: RepositoryIdentity::new(1296269, "new-owner", "Renamed").expect("repo"),
+        ..identity()
+    };
+    let second = pipeline
+        .context(&client, &renamed, PR)
+        .await
+        .expect("context after rename");
+    assert_eq!(client.calls().get(Operation::Archive), 1);
+    assert!(
+        second.context.coverage.is_full(),
+        "{:?}",
+        second.context.coverage
+    );
+    assert_eq!(second.context.coverage.snapshot_tree, Some(sha('7')));
+    assert_eq!(
+        pipeline.read(&renamed, &first.record.id).await,
+        Ok(first.context.clone())
+    );
 }

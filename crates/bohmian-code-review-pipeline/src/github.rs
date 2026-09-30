@@ -236,25 +236,26 @@ impl Default for RequestLimits {
 /// Provider operations, for call accounting.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Operation {
-    /// `GET /repos/{owner}/{repo}`.
+    /// `GET /repositories/{id}`, or `GET /repos/{owner}/{repo}` for a
+    /// lookup by name.
     Repository,
-    /// `GET /repos/{owner}/{repo}/branches/{branch}`.
+    /// `GET /repositories/{id}/branches/{branch}`.
     BranchHead,
-    /// `GET /repos/{owner}/{repo}/git/commits/{sha}`.
+    /// `GET /repositories/{id}/git/commits/{sha}`.
     Commit,
-    /// `GET /repos/{owner}/{repo}/git/trees/{sha}`, recursive or not.
+    /// `GET /repositories/{id}/git/trees/{sha}`, recursive or not.
     Tree,
-    /// `GET /repos/{owner}/{repo}/git/blobs/{sha}` as raw bytes.
+    /// `GET /repositories/{id}/git/blobs/{sha}` as raw bytes.
     Blob,
-    /// `GET /repos/{owner}/{repo}/tarball/{sha}` and its redirect hop.
+    /// `GET /repositories/{id}/tarball/{sha}` and its redirect hop.
     Archive,
-    /// `GET /repos/{owner}/{repo}/pulls/{number}`.
+    /// `GET /repositories/{id}/pulls/{number}`.
     PullRequest,
-    /// `GET /repos/{owner}/{repo}/pulls/{number}/files`.
+    /// `GET /repositories/{id}/pulls/{number}/files`.
     PullRequestFiles,
-    /// `GET /repos/{owner}/{repo}/compare/{base}...{head}`.
+    /// `GET /repositories/{id}/compare/{base}...{head}`.
     Compare,
-    /// `GET /repos/{owner}/{repo}/pulls`, one page.
+    /// `GET /repositories/{id}/pulls`, one page.
     PullRequests,
 }
 
@@ -690,7 +691,7 @@ impl Archive {
     }
 }
 
-/// Wire shape of `GET /repos/{owner}/{repo}`.
+/// Wire shape of `GET /repositories/{id}`.
 #[derive(Deserialize)]
 struct RepositoryWire {
     id: u64,
@@ -699,7 +700,7 @@ struct RepositoryWire {
     private: bool,
 }
 
-/// Wire shape of `GET /repos/{owner}/{repo}/branches/{branch}`.
+/// Wire shape of `GET /repositories/{id}/branches/{branch}`.
 #[derive(Deserialize)]
 struct BranchWire {
     name: String,
@@ -720,7 +721,7 @@ struct CommitBodyWire {
     committer: CommitterWire,
 }
 
-/// Wire shape of `GET /repos/{owner}/{repo}/git/commits/{sha}`.
+/// Wire shape of `GET /repositories/{id}/git/commits/{sha}`.
 #[derive(Deserialize)]
 struct CommitWire {
     sha: ObjectSha,
@@ -734,7 +735,7 @@ struct CommitterWire {
     date: String,
 }
 
-/// One entry of `GET /repos/{owner}/{repo}/pulls`.
+/// One entry of `GET /repositories/{id}/pulls`.
 #[derive(Deserialize)]
 struct ListedPullRequestWire {
     number: u64,
@@ -777,7 +778,7 @@ struct TreeEntryWire {
     size: Option<u64>,
 }
 
-/// Wire shape of `GET /repos/{owner}/{repo}/pulls/{number}`.
+/// Wire shape of `GET /repositories/{id}/pulls/{number}`.
 #[derive(Deserialize)]
 struct PullRequestWire {
     number: u64,
@@ -913,7 +914,7 @@ fn listed_pull_request(
     })
 }
 
-/// Wire shape of `GET /repos/{owner}/{repo}/compare/{base}...{head}`.
+/// Wire shape of `GET /repositories/{id}/compare/{base}...{head}`.
 #[derive(Deserialize)]
 struct CompareWire {
     status: String,
@@ -1101,23 +1102,25 @@ impl GitHubClient {
         &self.calls
     }
 
-    /// Fetch and verify the repository named by `repository`.
+    /// Fetch and verify the repository whose stable id `repository` names.
+    ///
+    /// Requests address the repository by id, so a rename or transfer
+    /// since the caller learned its `owner/name` changes nothing;
+    /// [`Repository::full_name`] reports the current name.
     ///
     /// # Errors
     ///
-    /// [`GitHubError::IdentityMismatch`] when the provider's numeric id or
-    /// `full_name` differs, plus any policy or transport error.
+    /// [`GitHubError::IdentityMismatch`] when the provider's numeric id
+    /// differs, plus any policy or transport error.
     pub async fn repository(
         &self,
         repository: &RepositoryIdentity,
     ) -> Result<Repository, GitHubError> {
-        let resource = format!("/repos/{}", repository.full_name());
+        let resource = format!("/repositories/{}", repository.id());
         let wire: RepositoryWire = self
             .get_json(Operation::Repository, &resource, ACCEPT_JSON)
             .await?;
-        if wire.id != repository.id()
-            || !wire.full_name.eq_ignore_ascii_case(&repository.full_name())
-        {
+        if wire.id != repository.id() {
             return Err(GitHubError::IdentityMismatch {
                 expected: format!("{} (id {})", repository.full_name(), repository.id()),
                 actual: format!("{} (id {})", wire.full_name, wire.id),
@@ -1143,8 +1146,8 @@ impl GitHubClient {
         branch: &str,
     ) -> Result<BranchHead, GitHubError> {
         let resource = format!(
-            "/repos/{}/branches/{}",
-            repository.full_name(),
+            "/repositories/{}/branches/{}",
+            repository.id(),
             encode_segment(branch)
         );
         let wire: BranchWire = self
@@ -1178,7 +1181,7 @@ impl GitHubClient {
         repository: &RepositoryIdentity,
         sha: &ObjectSha,
     ) -> Result<Commit, GitHubError> {
-        let resource = format!("/repos/{}/git/commits/{sha}", repository.full_name());
+        let resource = format!("/repositories/{}/git/commits/{sha}", repository.id());
         let wire: CommitWire = self
             .get_json(Operation::Commit, &resource, ACCEPT_JSON)
             .await?;
@@ -1315,7 +1318,7 @@ impl GitHubClient {
         base: &ObjectSha,
         head: &ObjectSha,
     ) -> Result<Comparison, GitHubError> {
-        let resource = format!("/repos/{}/compare/{base}...{head}", repository.full_name());
+        let resource = format!("/repositories/{}/compare/{base}...{head}", repository.id());
         let wire: CompareWire = self
             .get_json(Operation::Compare, &resource, ACCEPT_JSON)
             .await?;
@@ -1380,7 +1383,7 @@ impl GitHubClient {
         recursive: bool,
     ) -> Result<(String, TreeWire), GitHubError> {
         let query = if recursive { "?recursive=1" } else { "" };
-        let resource = format!("/repos/{}/git/trees/{tree}{query}", repository.full_name());
+        let resource = format!("/repositories/{}/git/trees/{tree}{query}", repository.id());
         let wire: TreeWire = self
             .get_json(Operation::Tree, &resource, ACCEPT_JSON)
             .await?;
@@ -1409,7 +1412,7 @@ impl GitHubClient {
         sha: &ObjectSha,
         max_bytes: u64,
     ) -> Result<Vec<u8>, GitHubError> {
-        let resource = format!("/repos/{}/git/blobs/{sha}", repository.full_name());
+        let resource = format!("/repositories/{}/git/blobs/{sha}", repository.id());
         let mut response = self
             .request(Operation::Blob, &resource, ACCEPT_RAW, true)
             .await?;
@@ -1444,7 +1447,7 @@ impl GitHubClient {
         repository: &RepositoryIdentity,
         commit: &ObjectSha,
     ) -> Result<Archive, GitHubError> {
-        let resource = format!("/repos/{}/tarball/{commit}", repository.full_name());
+        let resource = format!("/repositories/{}/tarball/{commit}", repository.id());
         let first = self
             .request(Operation::Archive, &resource, ACCEPT_JSON, true)
             .await?;
@@ -1483,7 +1486,7 @@ impl GitHubClient {
         repository: &RepositoryIdentity,
         number: u64,
     ) -> Result<PullRequest, GitHubError> {
-        let resource = format!("/repos/{}/pulls/{number}", repository.full_name());
+        let resource = format!("/repositories/{}/pulls/{number}", repository.id());
         let wire: PullRequestWire = self
             .get_json(Operation::PullRequest, &resource, ACCEPT_JSON)
             .await?;
@@ -1530,8 +1533,8 @@ impl GitHubClient {
         page: u32,
     ) -> Result<PullRequestFilesPage, GitHubError> {
         let resource = format!(
-            "/repos/{}/pulls/{number}/files?per_page={PR_FILES_PER_PAGE}&page={page}",
-            repository.full_name()
+            "/repositories/{}/pulls/{number}/files?per_page={PR_FILES_PER_PAGE}&page={page}",
+            repository.id()
         );
         let mut response = self
             .request(Operation::PullRequestFiles, &resource, ACCEPT_JSON, true)
@@ -1583,8 +1586,8 @@ impl GitHubClient {
         page: u32,
     ) -> Result<ClosedPullRequestsPage, GitHubError> {
         let resource = format!(
-            "/repos/{}/pulls?state=closed&base={}&sort=updated&direction=desc&per_page={PULL_REQUESTS_PER_PAGE}&page={page}",
-            repository.full_name(),
+            "/repositories/{}/pulls?state=closed&base={}&sort=updated&direction=desc&per_page={PULL_REQUESTS_PER_PAGE}&page={page}",
+            repository.id(),
             encode_segment(base)
         );
         let mut response = self
@@ -1684,8 +1687,8 @@ impl GitHubClient {
         page: u32,
     ) -> Result<PullRequestsPage, GitHubError> {
         let resource = format!(
-            "/repos/{}/pulls?state=all&sort=created&direction=asc&per_page={PULL_REQUESTS_PER_PAGE}&page={page}",
-            repository.full_name()
+            "/repositories/{}/pulls?state=all&sort=created&direction=asc&per_page={PULL_REQUESTS_PER_PAGE}&page={page}",
+            repository.id()
         );
         let mut response = self
             .request(Operation::PullRequests, &resource, ACCEPT_JSON, true)
@@ -2130,9 +2133,11 @@ mod tests {
             ["a.rs", "c.rs", "new.rs", "copy.rs"]
         );
         assert_eq!(comparison.invalid_added, 1);
-        assert!(fake.seen()[0].0.ends_with(&format!(
-            "/repos/octocat/Hello-World/compare/{base}...{head}"
-        )));
+        assert!(
+            fake.seen()[0]
+                .0
+                .ends_with(&format!("/repositories/1296269/compare/{base}...{head}"))
+        );
 
         let files: Vec<String> = (0..COMPARE_MAX_FILES)
             .map(|i| format!(r#"{{"filename":"f{i}.rs","status":"added"}}"#))
@@ -2161,6 +2166,27 @@ mod tests {
         assert!(matches!(
             client.compare(&repo, &base, &head).await,
             Err(GitHubError::MalformedResponse { .. })
+        ));
+    }
+
+    /// Repository reads address the stable id, so a stale `owner/name`
+    /// still verifies; a provider answering with another id is refused.
+    #[tokio::test]
+    async fn repository_is_read_and_verified_by_id() {
+        let (client, fake) = client();
+        let stale = RepositoryIdentity::new(1296269, "old-owner", "old-name").expect("repo");
+        fake.push_json(
+            r#"{"id":1296269,"full_name":"octocat/Hello-World","default_branch":"main","private":false}"#,
+        );
+        let repository = client.repository(&stale).await.expect("repository");
+        assert_eq!(repository.full_name, "octocat/Hello-World");
+        assert!(fake.seen()[0].0.ends_with("/repositories/1296269"));
+        fake.push_json(
+            r#"{"id":7,"full_name":"octocat/Hello-World","default_branch":"main","private":false}"#,
+        );
+        assert!(matches!(
+            client.repository(&stale).await,
+            Err(GitHubError::IdentityMismatch { .. })
         ));
     }
 
@@ -2237,7 +2263,7 @@ mod tests {
             ]
         );
         assert!(fake.seen().last().expect("seen").0.ends_with(
-            "/repos/octocat/Hello-World/pulls?state=all&sort=created&direction=asc&per_page=100&page=1"
+            "/repositories/1296269/pulls?state=all&sort=created&direction=asc&per_page=100&page=1"
         ));
         for bad in [
             entry(0, "null", "main"),
@@ -2411,7 +2437,7 @@ mod tests {
 
         // Every request so far went to the API host with credentials.
         assert!(fake.seen().iter().all(|(url, authorized, _)| {
-            url.starts_with("https://api.github.com/repos/octocat/Hello-World") && *authorized
+            url.starts_with("https://api.github.com/repositories/1296269") && *authorized
         }));
 
         // Mismatched identities are rejected before any data is returned.
@@ -2489,7 +2515,7 @@ mod tests {
         let seen = fake.seen();
         assert_eq!(
             seen[0].0,
-            "https://api.github.com/repos/octocat/Hello-World/tarball/cccccccccccccccccccccccccccccccccccccccc"
+            "https://api.github.com/repositories/1296269/tarball/cccccccccccccccccccccccccccccccccccccccc"
         );
         assert!(seen[0].1, "API hop carries credentials");
         assert!(seen[1].0.starts_with("https://codeload.github.com/"));
@@ -2533,7 +2559,7 @@ mod tests {
         assert!(client.archive(&repo, &commit).await.is_ok());
         assert_eq!(
             fake.seen()[0].0,
-            "https://ghe.example.com/api/v3/repos/octocat/Hello-World/tarball/cccccccccccccccccccccccccccccccccccccccc"
+            "https://ghe.example.com/api/v3/repositories/1296269/tarball/cccccccccccccccccccccccccccccccccccccccc"
         );
         fake.push(
             302,

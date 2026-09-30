@@ -221,7 +221,7 @@ async fn run() -> Result<(), Box<dyn Error>> {
     };
     let conditional = recorder
         .get(HttpRequest {
-            url: format!("https://api.github.com/repos/{repo}"),
+            url: format!("https://api.github.com/repositories/{repo_id}"),
             headers: vec![
                 ("authorization", format!("Bearer {token}")),
                 ("accept", "application/vnd.github+json".to_owned()),
