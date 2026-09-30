@@ -58,10 +58,9 @@ pub struct PrContextLimits {
     pub max_scoped_files: usize,
     /// Selected candidate files.
     pub max_candidate_files: usize,
-    /// Review token allocation shared by the diff, prompt, and context.
-    pub review_tokens: usize,
-    /// Tokens reserved for the downstream prompt.
-    pub prompt_reserve: usize,
+    /// Ceiling on the estimated tokens of selected context, independent of
+    /// the diff and of whatever prompt the caller builds around it.
+    pub context_tokens: usize,
     /// Times the PR files are listed before a moving PR is reported.
     pub max_pagination_attempts: usize,
     /// Largest eligible file.
@@ -70,7 +69,7 @@ pub struct PrContextLimits {
 
 impl Default for PrContextLimits {
     /// 3,000 PR files, 300 overlay changes, 300 scoped files, 15 candidate
-    /// files, 64,000 review tokens with a 4,096 prompt reserve, three
+    /// files, 64,000 context tokens, three
     /// pagination attempts, and 1 MiB files.
     fn default() -> PrContextLimits {
         PrContextLimits {
@@ -78,8 +77,7 @@ impl Default for PrContextLimits {
             max_overlay_changes: 300,
             max_scoped_files: 300,
             max_candidate_files: 15,
-            review_tokens: 64_000,
-            prompt_reserve: 4096,
+            context_tokens: 64_000,
             max_pagination_attempts: 3,
             max_file_bytes: MAX_ELIGIBLE_FILE_BYTES,
         }
@@ -321,30 +319,9 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
         let mut ranked = rank(&index, &pinned.files, &heads, &history, &mut not_analyzed);
         ranked.retain(|file| !changed.contains(&file.path));
         drop(heads);
-        let diff_tokens = pinned
-            .files
-            .iter()
-            .filter_map(|file| file.patch.as_deref())
-            .map(estimate_tokens)
-            .sum();
-        let context_allowance = limits
-            .review_tokens
-            .saturating_sub(limits.prompt_reserve)
-            .saturating_sub(diff_tokens);
-        let packed = match context_allowance {
-            0 => Context::default(),
-            _ => {
-                self.pack(
-                    identity,
-                    &index,
-                    ranked,
-                    &eligible,
-                    context_allowance,
-                    &mut not_analyzed,
-                )
-                .await?
-            }
-        };
+        let packed = self
+            .pack(identity, &index, ranked, &eligible, &mut not_analyzed)
+            .await?;
         let review = ReviewContext {
             format_version: CONTEXT_FORMAT_VERSION,
             extraction_version: EXTRACTION_VERSION.to_owned(),
@@ -357,12 +334,8 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
             omissions: packed.omissions.into_iter().map(omitted_span).collect(),
             not_analyzed,
             budget: Budget {
-                review_tokens: limits.review_tokens,
-                prompt_reserve: limits.prompt_reserve,
-                diff_tokens,
-                context_allowance,
+                context_tokens: limits.context_tokens,
                 selected_tokens: packed.tokens,
-                exhausted: context_allowance == 0,
             },
             coverage,
         };
@@ -540,7 +513,7 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
         })
     }
 
-    /// Pack `ranked` under the candidate file ceiling and `allowance`,
+    /// Pack `ranked` under the candidate file and context token ceilings,
     /// fetching each candidate blob at its head identity only when packing
     /// reaches it. Every candidate was indexed under this invocation's file
     /// ceiling, so a failed fetch is a provider failure: the candidate is
@@ -556,12 +529,11 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
         index: &SymbolicContext,
         mut ranked: Vec<RankedFile>,
         eligible: &[SnapshotFile],
-        allowance: usize,
         not_analyzed: &mut Vec<NotAnalyzed>,
     ) -> Result<Context, ContextError> {
         let limits = ContextLimits {
             max_files: self.limits.max_candidate_files,
-            max_tokens: allowance,
+            max_tokens: self.limits.context_tokens,
         };
         let mut blobs: BTreeMap<RelativePath, Vec<u8>> = BTreeMap::new();
         loop {
@@ -1029,7 +1001,7 @@ mod tests {
                 "{:?}",
                 context.not_analyzed
             );
-            assert!(!context.budget.exhausted);
+            assert!(context.budget.selected_tokens <= context.budget.context_tokens);
         }
         assert_eq!(
             (one.context.head.clone(), two.context.head.clone()),
@@ -1772,11 +1744,12 @@ mod tests {
         assert_eq!(stores.context_store.ids().len(), published);
     }
 
-    /// Scenario 19: a diff and prompt reserve filling the allocation leave
-    /// an explicit exhausted budget, an empty candidate context, and no
-    /// candidate blob fetches.
+    /// Scenario 19: `context_tokens` bounds the selected context alone. A
+    /// ceiling equal to an unconstrained run's selected tokens packs the
+    /// same spans, with nothing deducted for the diff or a prompt; one
+    /// token less omits a span rather than cutting it.
     #[tokio::test]
-    async fn exhausted_budget_packs_nothing_and_says_so() {
+    async fn context_tokens_bound_only_the_selected_context() {
         let repo = FakeRepo::new(&standard_files(), &standard_archive());
         let stores = Stores::default();
         cold(&repo, &stores.snapshot_storage, &stores.snapshot_store).await;
@@ -1789,32 +1762,33 @@ mod tests {
             &[("src/handler.ts", "modified", PR1_HANDLER, Some(PR1_PATCH))],
         );
         let client = repo.client();
-        let limits = PrContextLimits {
-            review_tokens: 100,
-            prompt_reserve: 100 - estimate_tokens(PR1_PATCH),
-            ..PrContextLimits::default()
+        let run = |context_tokens: usize| {
+            let limits = PrContextLimits {
+                context_tokens,
+                ..PrContextLimits::default()
+            };
+            let facade = stores.facade(&client, limits);
+            async move { facade.run(&identity(), 1).await.expect("pr").context }
         };
-        let result = stores
-            .facade(&client, limits)
-            .run(&identity(), 1)
-            .await
-            .expect("pr");
-        let budget = &result.context.budget;
-        assert!(budget.exhausted);
+
+        let open = run(PrContextLimits::default().context_tokens).await;
+        let used = open.budget.selected_tokens;
+        assert!(used > 0 && !open.spans.is_empty());
+
+        let exact = run(used).await;
+        assert_eq!(exact.spans, open.spans);
         assert_eq!(
-            (
-                budget.diff_tokens,
-                budget.context_allowance,
-                budget.selected_tokens
-            ),
-            (estimate_tokens(PR1_PATCH), 0, 0)
+            exact.budget,
+            Budget {
+                context_tokens: used,
+                selected_tokens: used,
+            }
         );
-        assert!(result.context.spans.is_empty() && result.context.omissions.is_empty());
-        assert_eq!(
-            client.calls().get(Operation::Blob),
-            2,
-            "attributes and the changed head only"
-        );
+
+        let short = run(used - 1).await;
+        assert!(short.budget.selected_tokens < used);
+        assert!(short.spans.len() < open.spans.len());
+        assert!(!short.omissions.is_empty());
     }
 
     /// Dropping the PR future after the record upsert leaves a record with
