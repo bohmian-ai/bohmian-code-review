@@ -14,6 +14,10 @@ use bohmian_code_review_pipeline::testing::{
     MemoryContextStore, MemorySnapshotStore, MemoryStorage, MemoryStore, RoutedTransport,
 };
 use bohmian_code_review_pipeline::{
+    BaselineProblem, ChangeKind, ComparisonError, ExclusionReason, PinnedReview, PipelineError,
+    PullRequestPins, Source, UnavailableReason,
+};
+use bohmian_code_review_pipeline::{
     BoxFuture, ColdBuild, ColdBuildLimits, ColdBuildOutcome, ContextError, Contexts, Freshness,
     GitHubClient, GitHubHost, HttpRequest, HttpResponse, HttpTransport, Identity, InstallationId,
     InstallationToken, ObjectSha, Operation, PipelineLimits, PrContext, PrContextLimits,
@@ -752,4 +756,443 @@ async fn review_pipeline_survives_a_repository_rename() {
         pipeline.read(&renamed, &first.record.id).await,
         Ok(first.context.clone())
     );
+}
+
+/// The fork repository a pinned PR's head commits come from.
+const FORK: u64 = 999;
+/// File ceiling of the pinned journeys, so [`BIG`] is oversize.
+const PINNED_FILE_BYTES: u64 = 4096;
+/// Declares nothing; deleted by the pinned PR.
+const OLD: &[u8] = b"export function old(): number {\n  return 0;\n}\n";
+/// Not UTF-8 and holding NULs.
+const LOGO: &[u8] = b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR";
+/// Vendored source.
+const VENDORED: &[u8] = b"export function vendored(): number {\n  return 2;\n}\n";
+
+/// Default branch files at commit `c` for the pinned journeys.
+fn pinned_base() -> Vec<(&'static str, &'static [u8])> {
+    let mut files = main_v1();
+    files.push(("src/old.ts", OLD));
+    files
+}
+
+/// Larger than [`PINNED_FILE_BYTES`].
+fn big() -> &'static [u8] {
+    Box::leak("// big\n".repeat(700).into_bytes().into_boxed_slice())
+}
+
+/// Pinned head `a` files: the PR's handler, `src/format.ts` renamed to
+/// `src/fmt.ts`, `src/old.ts` deleted, and added binary, vendored, and
+/// oversize files.
+fn pinned_head() -> Vec<(&'static str, &'static [u8])> {
+    vec![
+        ("src/user.ts", USER),
+        ("src/fmt.ts", FORMAT),
+        ("src/handler.ts", PR_HANDLER),
+        ("assets/logo.png", LOGO),
+        ("vendor/lib.ts", VENDORED),
+        ("src/big.ts", big()),
+    ]
+}
+
+/// Commit `b`, the earlier reviewed head: [`pinned_head`] with the
+/// original handler.
+fn reviewed_head() -> Vec<(&'static str, &'static [u8])> {
+    pinned_head()
+        .into_iter()
+        .map(|(path, bytes)| match path {
+            "src/handler.ts" => (path, HANDLER),
+            _ => (path, bytes),
+        })
+        .collect()
+}
+
+/// One compare file entry.
+fn change(path: &str, status: &str, bytes: &[u8], patch: Option<&str>) -> serde_json::Value {
+    json!({"filename": path, "status": status, "sha": blob_sha(bytes).as_str(), "patch": patch})
+}
+
+/// The merge-base→`a` change list of [`pinned_head`] against [`pinned_base`].
+fn full_changes() -> Vec<serde_json::Value> {
+    let mut renamed = change("src/fmt.ts", "renamed", FORMAT, None);
+    renamed["previous_filename"] = json!("src/format.ts");
+    vec![
+        change("src/handler.ts", "modified", PR_HANDLER, Some(PR_PATCH)),
+        renamed,
+        change(
+            "src/old.ts",
+            "removed",
+            OLD,
+            Some("@@ -1,3 +0,0 @@\n-export function old(): number {\n-  return 0;\n-}"),
+        ),
+        change("assets/logo.png", "added", LOGO, None),
+        change(
+            "vendor/lib.ts",
+            "added",
+            VENDORED,
+            Some("@@ -0,0 +1,3 @@\n+export function vendored(): number {\n+  return 2;\n+}"),
+        ),
+        change(
+            "src/big.ts",
+            "added",
+            big(),
+            Some("@@ -0,0 +1,700 @@\n+// big"),
+        ),
+    ]
+}
+
+impl FakeGitHub {
+    /// Route commit `commit` with root `tree` holding `files`.
+    fn commit(&self, commit: &ObjectSha, tree: &ObjectSha, files: &[(&str, &[u8])]) {
+        self.0.json(
+            &format!("/git/commits/{commit}"),
+            &json!({"sha": commit.as_str(), "tree": {"sha": tree.as_str()},
+                    "committer": {"date": "2026-03-01T00:00:00Z"}})
+            .to_string(),
+        );
+        self.tree(tree, files);
+    }
+
+    /// Route the three-dot compare of `base` with `head`.
+    fn compare_files(
+        &self,
+        (base, head): (&ObjectSha, &ObjectSha),
+        (status, merge_base): (&str, &ObjectSha),
+        files: Vec<serde_json::Value>,
+    ) {
+        let commits: Vec<_> = match status {
+            "identical" => Vec::new(),
+            _ => vec![json!({"sha": head.as_str()})],
+        };
+        self.0.json(
+            &format!("/compare/{base}...{head}"),
+            &json!({"status": status, "base_commit": {"sha": base.as_str()},
+                    "merge_base_commit": {"sha": merge_base.as_str()},
+                    "commits": commits, "files": files})
+            .to_string(),
+        );
+    }
+
+    /// A repository at [`pinned_base`] whose PR [`PR`] from fork [`FORK`]
+    /// has moved its live head to `f`, while the caller pinned head `a`
+    /// (tree `8`), with the merge-base comparison routed and commit `b`
+    /// (tree `9`) as an earlier reviewed head.
+    fn pinned() -> FakeGitHub {
+        let github = FakeGitHub::new(&pinned_base());
+        github.0.json(
+            &format!("/pulls/{PR}"),
+            &json!({
+                "number": PR, "state": "open", "draft": true, "merged": false,
+                "html_url": "https://github.com/octocat/Hello-World/pull/7",
+                "title": "Format users", "body": null,
+                "base": {"ref": "main", "sha": sha('c').as_str(), "repo": {"id": 1296269}},
+                "head": {"ref": "feature", "sha": sha('f').as_str(), "repo": {"id": FORK}},
+            })
+            .to_string(),
+        );
+        github.commit(&sha('a'), &sha('8'), &pinned_head());
+        github.commit(&sha('b'), &sha('9'), &reviewed_head());
+        github.compare_files((&sha('c'), &sha('a')), ("ahead", &sha('c')), full_changes());
+        github
+    }
+}
+
+/// The caller's frozen pins for PR [`PR`] at head `a`.
+fn pins() -> PullRequestPins {
+    PullRequestPins {
+        number: PR,
+        base: sha('c'),
+        head: sha('a'),
+        head_repository_id: FORK,
+    }
+}
+
+/// Pipeline ceilings of the pinned journeys.
+fn pinned_limits() -> PipelineLimits {
+    PipelineLimits {
+        max_file_bytes: PINNED_FILE_BYTES,
+        ..PipelineLimits::default()
+    }
+}
+
+/// Text source of `bytes`.
+fn text(bytes: &[u8]) -> Source {
+    Source::Text {
+        blob: blob_sha(bytes),
+        text: String::from_utf8(bytes.to_vec()).expect("utf8"),
+    }
+}
+
+/// Every span is the exact text of the pinned head file it names.
+fn assert_pinned_spans(review: &PinnedReview) {
+    let head = pinned_head();
+    assert!(!review.context.context.spans.is_empty());
+    for span in &review.context.context.spans {
+        let (_, bytes) = head
+            .iter()
+            .find(|(path, _)| *path == span.path.as_str())
+            .expect("span path in pinned head");
+        let lines: Vec<&str> = std::str::from_utf8(bytes).expect("utf8").lines().collect();
+        let expected = lines[span.start as usize - 1..span.end as usize].join("\n");
+        assert_eq!(span.text.trim_end_matches('\n'), expected);
+        assert_eq!(span.blob, blob_sha(bytes));
+    }
+}
+
+/// AC-004: a first review of a fork PR whose live head moved past the
+/// pins compares exactly merge base → pinned head, cold then warm. Every
+/// change carries verified source or names why it has none, the context
+/// is selected at the pins with exact span text, and the warm review
+/// reuses the snapshot without another archive or a PR file listing.
+#[tokio::test]
+async fn pinned_first_review_obeys_the_pins_cold_and_warm() {
+    let github = FakeGitHub::pinned();
+    let client = github.client();
+    let (storage, store) = (MemoryStorage::default(), MemoryStore::default());
+    let pipeline = ReviewPipeline::new(&storage, &store, pinned_limits());
+
+    let cold = pipeline
+        .pinned(&client, &identity(), &pins(), None)
+        .await
+        .expect("cold pinned review");
+    assert_eq!(client.calls().get(Operation::Archive), 1);
+    let source = &cold.pull_request;
+    assert_eq!(
+        (source.number, source.head.clone(), source.base.clone()),
+        (PR, sha('a'), sha('c'))
+    );
+    assert_eq!(
+        (source.head_repository_id, source.merge_base.clone()),
+        (FORK, sha('c'))
+    );
+    assert_eq!(
+        (source.title.as_str(), source.body.as_str(), source.draft),
+        ("Format users", "", true)
+    );
+    assert_eq!(source.url, "https://github.com/octocat/Hello-World/pull/7");
+    assert_eq!(
+        (cold.full.base.clone(), cold.full.head.clone()),
+        (sha('c'), sha('a'))
+    );
+    assert_eq!(cold.active, cold.full);
+
+    let files = &cold.full.files;
+    let kinds: Vec<(&str, ChangeKind)> =
+        files.iter().map(|f| (f.path.as_str(), f.status)).collect();
+    assert_eq!(
+        kinds,
+        vec![
+            ("src/handler.ts", ChangeKind::Modified),
+            ("src/fmt.ts", ChangeKind::Renamed),
+            ("src/old.ts", ChangeKind::Deleted),
+            ("assets/logo.png", ChangeKind::Added),
+            ("vendor/lib.ts", ChangeKind::Added),
+            ("src/big.ts", ChangeKind::Added),
+        ]
+    );
+    let handler = &files[0];
+    assert_eq!(
+        (handler.before.clone(), handler.after.clone()),
+        (Some(text(HANDLER)), Some(text(PR_HANDLER)))
+    );
+    assert_eq!(handler.hunks.len(), 1);
+    assert_eq!(
+        (handler.hunks[0].old_start, handler.hunks[0].new_lines),
+        (1, 5)
+    );
+    assert_eq!(handler.hunks[0].patch, PR_PATCH);
+    let renamed = &files[1];
+    assert_eq!(
+        renamed.previous_path.as_ref().map(|p| p.as_str()),
+        Some("src/format.ts")
+    );
+    assert_eq!(
+        (renamed.before.clone(), renamed.after.clone()),
+        (Some(text(FORMAT)), Some(text(FORMAT)))
+    );
+    assert!(renamed.hunks.is_empty());
+    assert_eq!(
+        (files[2].before.clone(), files[2].after.clone()),
+        (Some(text(OLD)), None)
+    );
+    assert_eq!(
+        (files[3].before.clone(), files[3].after.clone()),
+        (
+            None,
+            Some(Source::Binary {
+                blob: blob_sha(LOGO)
+            })
+        )
+    );
+    assert_eq!(
+        files[4].after,
+        Some(Source::Excluded {
+            blob: blob_sha(VENDORED),
+            reason: ExclusionReason::VendoredSegment
+        })
+    );
+    assert_eq!(
+        files[5].after,
+        Some(Source::Unavailable {
+            blob: blob_sha(big()),
+            reason: UnavailableReason::Oversize {
+                limit: PINNED_FILE_BYTES
+            }
+        })
+    );
+
+    let context = &cold.context.context;
+    assert_eq!(
+        (context.head.clone(), context.base.clone()),
+        (sha('a'), sha('c'))
+    );
+    assert_eq!(context.pull_request, PR);
+    assert_pinned_spans(&cold);
+    assert_eq!(
+        pipeline
+            .read(&identity(), &cold.context.record.id)
+            .await
+            .expect("read back"),
+        *context
+    );
+
+    let warm = pipeline
+        .pinned(&client, &identity(), &pins(), None)
+        .await
+        .expect("warm pinned review");
+    assert_eq!(client.calls().get(Operation::Archive), 1);
+    assert_eq!(client.calls().get(Operation::PullRequestFiles), 0);
+    assert_eq!(
+        (&warm.full, &warm.pull_request),
+        (&cold.full, &cold.pull_request)
+    );
+    assert_eq!(warm.context.context.spans, cold.context.context.spans);
+    assert!(
+        github
+            .0
+            .seen()
+            .iter()
+            .all(|url| !url.contains(&sha('f').to_string()))
+    );
+}
+
+/// AC-004: an incremental review compares the earlier reviewed head with
+/// the pinned head and selects context for those changes only, keeping the
+/// full merge-base comparison beside it; an identical baseline is a valid
+/// empty active comparison.
+#[tokio::test]
+async fn pinned_incremental_review_compares_from_the_baseline() {
+    let github = FakeGitHub::pinned();
+    github.compare_files(
+        (&sha('b'), &sha('a')),
+        ("ahead", &sha('b')),
+        vec![change(
+            "src/handler.ts",
+            "modified",
+            PR_HANDLER,
+            Some(PR_PATCH),
+        )],
+    );
+    github.compare_files((&sha('a'), &sha('a')), ("identical", &sha('a')), Vec::new());
+    let client = github.client();
+    let (storage, store) = (MemoryStorage::default(), MemoryStore::default());
+    let pipeline = ReviewPipeline::new(&storage, &store, pinned_limits());
+
+    let review = pipeline
+        .pinned(&client, &identity(), &pins(), Some(&sha('b')))
+        .await
+        .expect("incremental review");
+    assert_eq!(
+        (review.active.base.clone(), review.active.head.clone()),
+        (sha('b'), sha('a'))
+    );
+    assert_eq!(review.active.files.len(), 1);
+    assert_eq!(review.active.files[0].after, Some(text(PR_HANDLER)));
+    assert_eq!(review.full.base, sha('c'));
+    assert_eq!(review.full.files.len(), 6);
+    assert_eq!(review.pull_request.merge_base, sha('c'));
+    assert_pinned_spans(&review);
+
+    let empty = pipeline
+        .pinned(&client, &identity(), &pins(), Some(&sha('a')))
+        .await
+        .expect("empty active comparison");
+    assert!(empty.active.files.is_empty());
+    assert_eq!(empty.full.files.len(), 6);
+    assert!(empty.context.context.spans.is_empty());
+}
+
+/// AC-004: a baseline the head no longer descends from, or one the
+/// provider cannot find, is reported unusable and never replaced; a
+/// mismatched fork, a truncated comparison, and a text change without a
+/// patch fail explicitly; and context-budget omissions stay coverage data.
+#[tokio::test]
+async fn pinned_reviews_keep_limits_and_failures_explicit() {
+    let github = FakeGitHub::pinned();
+    github.compare_files((&sha('e'), &sha('a')), ("diverged", &sha('c')), Vec::new());
+    let client = github.client();
+    let (storage, store) = (MemoryStorage::default(), MemoryStore::default());
+    let pipeline = ReviewPipeline::new(&storage, &store, pinned_limits());
+    let comparison = |result: Result<PinnedReview, PipelineError>| match result {
+        Err(PipelineError::Comparison(error)) => error,
+        other => panic!("expected a comparison error, got {other:?}"),
+    };
+
+    for (baseline, problem) in [
+        (sha('e'), BaselineProblem::Rewritten),
+        (sha('d'), BaselineProblem::Unavailable),
+    ] {
+        assert_eq!(
+            comparison(
+                pipeline
+                    .pinned(&client, &identity(), &pins(), Some(&baseline))
+                    .await
+            ),
+            ComparisonError::BaselineUnusable { baseline, problem }
+        );
+    }
+
+    let foreign = PullRequestPins {
+        head_repository_id: 5,
+        ..pins()
+    };
+    assert_eq!(
+        comparison(pipeline.pinned(&client, &identity(), &foreign, None).await),
+        ComparisonError::HeadRepositoryMismatch {
+            pinned: 5,
+            actual: FORK
+        }
+    );
+
+    let mut unpatched = full_changes();
+    unpatched[0]["patch"] = serde_json::Value::Null;
+    github.compare_files((&sha('c'), &sha('a')), ("ahead", &sha('c')), unpatched);
+    assert!(matches!(
+        comparison(pipeline.pinned(&client, &identity(), &pins(), None).await),
+        ComparisonError::PatchUnavailable { path } if path.as_str() == "src/handler.ts"
+    ));
+
+    let many: Vec<_> = (0..300)
+        .map(|i| change(&format!("src/f{i}.ts"), "added", OLD, None))
+        .collect();
+    github.compare_files((&sha('c'), &sha('a')), ("ahead", &sha('c')), many);
+    assert_eq!(
+        comparison(pipeline.pinned(&client, &identity(), &pins(), None).await),
+        ComparisonError::Truncated {
+            base: sha('c'),
+            head: sha('a')
+        }
+    );
+
+    github.compare_files((&sha('c'), &sha('a')), ("ahead", &sha('c')), full_changes());
+    let mut tight = pinned_limits();
+    tight.pr.context_tokens = 1;
+    let review = ReviewPipeline::new(&storage, &store, tight)
+        .pinned(&client, &identity(), &pins(), None)
+        .await
+        .expect("omissions are coverage, not failure");
+    let context = &review.context.context;
+    assert!(context.spans.is_empty());
+    assert!(!context.omissions.is_empty());
+    assert_eq!(review.full.files.len(), 6);
 }

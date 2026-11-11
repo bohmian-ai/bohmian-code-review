@@ -176,7 +176,12 @@ impl<'a, O: ObjectStorage, S: SnapshotStore + ContextStore> ReviewPipeline<'a, O
         };
         let context = self
             .pr_context(client)
-            .run_files(identity, pull_request, active_files, (head.tree, head.listing))
+            .run_files(
+                identity,
+                pull_request,
+                active_files,
+                (head.tree, head.listing),
+            )
             .await?;
         Ok(PinnedReview {
             pull_request: source,

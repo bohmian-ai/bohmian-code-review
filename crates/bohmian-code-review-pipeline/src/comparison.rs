@@ -290,7 +290,9 @@ pub(crate) struct PinnedTree {
 impl PinnedTree {
     /// The entry at `path`.
     fn entry(&self, path: &RelativePath) -> Option<&TreeEntry> {
-        self.paths.get(path).map(|&index| &self.listing.entries[index])
+        self.paths
+            .get(path)
+            .map(|&index| &self.listing.entries[index])
     }
 }
 
@@ -425,9 +427,13 @@ impl<'a> Comparisons<'a> {
                 head: commit.clone(),
             });
         }
-        let attributes =
-            root_attributes(self.client, self.identity, &listing.entries, self.max_file_bytes)
-                .await?;
+        let attributes = root_attributes(
+            self.client,
+            self.identity,
+            &listing.entries,
+            self.max_file_bytes,
+        )
+        .await?;
         let paths = listing
             .entries
             .iter()
@@ -640,8 +646,10 @@ fn hunks(patch: &str) -> Result<Vec<Hunk>, String> {
             let (new, _) = rest
                 .split_once(" @@")
                 .ok_or_else(|| format!("hunk header `{line}`"))?;
-            let (old_start, old_lines) = range(old).ok_or_else(|| format!("hunk header `{line}`"))?;
-            let (new_start, new_lines) = range(new).ok_or_else(|| format!("hunk header `{line}`"))?;
+            let (old_start, old_lines) =
+                range(old).ok_or_else(|| format!("hunk header `{line}`"))?;
+            let (new_start, new_lines) =
+                range(new).ok_or_else(|| format!("hunk header `{line}`"))?;
             hunks.push(Hunk {
                 old_start,
                 old_lines,
@@ -685,12 +693,22 @@ mod tests {
         let parsed = hunks(patch).expect("hunks");
         assert_eq!(parsed.len(), 2);
         assert_eq!(
-            (parsed[0].old_start, parsed[0].old_lines, parsed[0].new_start, parsed[0].new_lines),
+            (
+                parsed[0].old_start,
+                parsed[0].old_lines,
+                parsed[0].new_start,
+                parsed[0].new_lines
+            ),
             (1, 2, 1, 3)
         );
         assert_eq!(parsed[0].patch, "@@ -1,2 +1,3 @@ fn a\n a\n+b\n c");
         assert_eq!(
-            (parsed[1].old_start, parsed[1].old_lines, parsed[1].new_start, parsed[1].new_lines),
+            (
+                parsed[1].old_start,
+                parsed[1].old_lines,
+                parsed[1].new_start,
+                parsed[1].new_lines
+            ),
             (9, 1, 10, 0)
         );
         assert!(hunks("+orphan").is_err());
