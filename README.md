@@ -70,11 +70,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 `RepositoryIdentity::new` takes GitHub's numeric repository id (`gh api repos/<owner>/<name> --jq .id`). That id is the repository's identity. Every GitHub request addresses the repository as `/repositories/{id}`, and only the id is checked against GitHub's answer. Owner and name are labels, so a rename or transfer needs no action: a stale name still works, and the existing snapshot, history, and contexts carry over. For GitHub Enterprise Server, use `GitHubHost::enterprise("https://ghe.example.com/api/v3")`.
 
-## The three calls
+## The four calls
 
 | Call | When | GitHub access | What it does |
 |---|---|---|---|
 | `context(&client, &identity, pr)` | PR opened or synchronized | yes | Cold-builds a snapshot if none exists, then overlays the PR head, ranks, packs, and publishes a `ReviewContext`. Returns `PrContextResult { record, lifetime, context }`. |
+| `pinned(&client, &identity, &pins, baseline)` | A caller froze the PR's base and head, and may name the head it last reviewed | yes | Compares exactly the pinned commits: `full` runs merge base → head, `active` runs `baseline` → head (or equals `full` without one). Every changed side carries verified `Source::Text`, or `Binary`, `Unavailable` or `Excluded`, with the provider's hunks. Context is selected and published for the active changes. Returns `PinnedReview { pull_request, full, active, context }`. The live PR supplies metadata only, so a PR that moved is still reviewed at the pins. |
 | `refresh(&client, &identity)` | Push to the default branch | yes | Advances the snapshot to the branch head incrementally and extends co-change history. `context` never refreshes on its own. |
 | `read(&identity, &id)` | Downstream consumer (e.g. a review agent) | no | Reads a published context back by `ContextId`. Fails after `CONTEXT_LIFETIME` (24 h). |
 
@@ -537,7 +538,7 @@ Nothing in the library runs in the background. Schedule these yourself, for exam
 
 ## Errors and retries
 
-`PipelineError` wraps the failing stage's error as either `Snapshot(ColdBuildError)` or `Context(ContextError)`, so you can match on it. Some variants mean "a concurrent change won, retry the call":
+`PipelineError` wraps the failing stage's error as `Snapshot(ColdBuildError)`, `Context(ContextError)` or `Comparison(ComparisonError)`, so you can match on it. `ComparisonError::BaselineUnusable { problem }` means the supplied baseline was rewritten out of the head's history or can't be found; the pipeline never substitutes another baseline, so call again without one for a full review. Some variants mean "a concurrent change won, retry the call":
 
 | Error | Meaning |
 |---|---|
@@ -555,6 +556,7 @@ Nothing in the library runs in the background. Schedule these yourself, for exam
 - **Ambiguous matches stay ambiguous.** Resolution is by exact, case-sensitive name, with no type inference. A span's `score` only orders spans within one context. Don't compare it across contexts.
 - **Eligible files:** supported language by path; not a symlink, submodule, vendored or build directory, `.min.js`/`.min.css`, or `linguist-generated`/`linguist-vendored`; at most `PipelineLimits::max_file_bytes` (1 MiB by default). Supported languages are listed in [`language.rs`](crates/bohmian-code-review-core/src/language.rs).
 - **Deletion-only changes don't drive ranking.** A changed file whose patch adds no head-side lines is listed in `context.not_analyzed` with `NotAnalyzedReason::DeletionOnly`. Removed files are listed there too.
+- **Pinned comparisons fail rather than guess.** A comparison listing 300 or more files (the compare API's ceiling), a truncated tree, a rejected path, or a text change without a patch fails `pinned` with a `ComparisonError`. Context-budget omissions are not failures; they stay in `context.omissions`.
 - **Source never leaves in a snapshot.** Snapshots hold declarations and reference names only. The only object carrying source is the `ReviewContext`, and it expires after 24 hours.
 
 ## How ranking works

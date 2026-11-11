@@ -8,6 +8,10 @@
 //! [`ReviewContext`], cold-building first only when no snapshot exists;
 //! [`ReviewPipeline::refresh`] advances the snapshot and its co-change
 //! history on a push; [`ReviewPipeline::read`] reads a context back by id.
+//! [`ReviewPipeline::pinned`] reviews exactly the base and head commits a
+//! caller froze, against an optional earlier reviewed head, and returns the
+//! complete and active change sets with their source beside the context
+//! selected for the active changes.
 //! The [`GitHubClient`] is passed per call.
 //!
 //! The stage facades stay public for advanced callers. Every call is an
@@ -27,6 +31,7 @@
 //! `bohmian-code-review` facade alone and imports no consumer type.
 
 mod archive;
+pub mod comparison;
 pub mod context;
 pub mod eligibility;
 pub mod github;
@@ -41,6 +46,10 @@ pub mod storage;
 pub mod testing;
 pub mod update;
 
+pub use comparison::{
+    BaselineProblem, ChangeKind, ChangeSet, ChangedFile, ComparisonError, Hunk, PinnedReview,
+    PullRequestPins, PullRequestSource, Source, UnavailableReason,
+};
 pub use context::{
     Budget, CONTEXT_FORMAT_VERSION, CONTEXT_LIFETIME, ContextCleanup, ContextCoverage,
     ContextError, Contexts, NotAnalyzed, NotAnalyzedReason, OmittedReason, OmittedSpan,
@@ -49,10 +58,11 @@ pub use context::{
 pub use eligibility::ExclusionReason;
 pub use github::{
     Archive, BoxFuture, BranchHead, CallCounts, ClosedPullRequestsPage, Commit, Comparison,
-    Disposition, FileStatus, GitHubClient, GitHubError, HttpBody, HttpRequest, HttpResponse,
-    HttpTransport, ListedPullRequest, Operation, PullRequest, PullRequestFile,
-    PullRequestFilesPage, PullRequestState, PullRequestsPage, RejectedPath, Repository,
-    RequestLimits, ReqwestTransport, TransportError, TreeEntry, TreeEntryMode, TreeListing,
+    ComparisonStatus, Disposition, FileComparison, FileStatus, GitHubClient, GitHubError, HttpBody,
+    HttpRequest, HttpResponse, HttpTransport, ListedPullRequest, Operation, PullRequest,
+    PullRequestFile, PullRequestFilesPage, PullRequestState, PullRequestsPage, RejectedPath,
+    Repository, RequestLimits, ReqwestTransport, TransportError, TreeEntry, TreeEntryMode,
+    TreeListing,
 };
 pub use history::{
     COLD_DEPTH, CoChangeHistory, History, HistoryError, HistoryPr, Listing, ListingReads,

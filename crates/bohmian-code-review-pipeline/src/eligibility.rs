@@ -291,6 +291,17 @@ fn path_exclusion(
     if context.path_language(path).ok().flatten().is_none() {
         return Some(ExclusionReason::Unsupported);
     }
+    generated_exclusion(path, attributes)
+}
+
+/// The language-independent exclusion of a regular file at `path`, if any:
+/// linguist attributes, vendored segments, and minified output. Review
+/// evidence withholds such a file's source; an unsupported language alone
+/// does not.
+pub(crate) fn generated_exclusion(
+    path: &str,
+    attributes: &RootAttributes,
+) -> Option<ExclusionReason> {
     let (generated, vendored) = attributes.resolve(path);
     if generated == Some(true) {
         return Some(ExclusionReason::GeneratedAttribute);

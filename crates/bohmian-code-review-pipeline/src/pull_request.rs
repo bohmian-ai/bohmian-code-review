@@ -162,7 +162,8 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
         number: u64,
     ) -> Result<PrContextResult, ContextError> {
         let pinned = self.pin(identity, number).await?;
-        self.publish(identity, pinned).await
+        let (tree, listing) = self.head_tree(identity, &pinned.pull_request.head).await?;
+        self.publish(identity, pinned, tree, listing).await
     }
 
     /// Build and publish the review context of `pull_request` at exactly
@@ -188,11 +189,55 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
             .list(identity, pull_request.clone())
             .await?
             .ok_or(ContextError::PullRequestMoved { attempts: 1 })?;
-        self.publish(identity, pinned).await
+        let (tree, listing) = self.head_tree(identity, &pinned.pull_request.head).await?;
+        self.publish(identity, pinned, tree, listing).await
+    }
+
+    /// Build and publish the review context of `files`, the changes a
+    /// caller verified against `pull_request`'s head, whose root tree
+    /// `tree` it already listed as `listing`.
+    ///
+    /// The PR is not read or listed again, so a caller reviewing pinned
+    /// commits of a PR that has since moved selects context for exactly
+    /// those changes. Otherwise as [`PrContext::run`].
+    ///
+    /// # Errors
+    ///
+    /// The errors of [`PrContext::run`] after pinning.
+    pub(crate) async fn run_files(
+        &self,
+        identity: &Identity,
+        pull_request: PullRequest,
+        files: Vec<PullRequestFile>,
+        (tree, listing): (ObjectSha, TreeListing),
+    ) -> Result<PrContextResult, ContextError> {
+        let pinned = Pinned {
+            pull_request,
+            files,
+            rejected: Vec::new(),
+            truncated: false,
+        };
+        self.publish(identity, pinned, tree, listing).await
+    }
+
+    /// The root tree of commit `head` and its complete listing.
+    ///
+    /// # Errors
+    ///
+    /// Returns the commit and tree provider errors.
+    async fn head_tree(
+        &self,
+        identity: &Identity,
+        head: &ObjectSha,
+    ) -> Result<(ObjectSha, TreeListing), ContextError> {
+        let repository = &identity.repository;
+        let tree = self.client.commit(repository, head).await?.tree;
+        let listing = self.client.tree(repository, &tree).await?;
+        Ok((tree, listing))
     }
 
     /// Build and publish the context of files listed under one pinned
-    /// base/head pair.
+    /// base/head pair, over the head's root `tree` and its `listing`.
     ///
     /// # Errors
     ///
@@ -201,15 +246,10 @@ impl<'a, O: ObjectStorage, S: SnapshotStore, C: ContextStore> PrContext<'a, O, S
         &self,
         identity: &Identity,
         pinned: Pinned,
+        tree: ObjectSha,
+        listing: TreeListing,
     ) -> Result<PrContextResult, ContextError> {
-        let repository = &identity.repository;
         let pull_request = &pinned.pull_request;
-        let tree = self
-            .client
-            .commit(repository, &pull_request.head)
-            .await?
-            .tree;
-        let listing = self.client.tree(repository, &tree).await?;
         let attributes = root_attributes(
             self.client,
             identity,
