@@ -305,7 +305,8 @@ pub(crate) struct Comparisons<'a> {
     client: &'a GitHubClient,
     /// Repository identity the pins and blobs are verified against.
     identity: &'a Identity,
-    /// Invocation file ceiling; a larger blob is recorded as excluded.
+    /// Invocation file ceiling; a larger blob is recorded as unavailable for
+    /// being oversize.
     max_file_bytes: u64,
     /// Verified sources fetched so far, by blob id, for this stage only.
     sources: BTreeMap<ObjectSha, Source>,

@@ -958,8 +958,10 @@ fn assert_pinned_spans(review: &PinnedReview) {
 /// # Panics
 ///
 /// Panics if either review fails or differs from the pins, a change lacks
-/// verified source or its reason, a span is not exact pinned text, or the
-/// warm review fetches another archive or PR file listing.
+/// verified source or its reason, a span is not exact pinned text, the
+/// stored context does not read back, the warm review differs from the cold
+/// one or fetches another archive or PR file listing, or any request names
+/// the live head.
 #[tokio::test]
 async fn pinned_first_review_obeys_the_pins_cold_and_warm() {
     let github = FakeGitHub::pinned();

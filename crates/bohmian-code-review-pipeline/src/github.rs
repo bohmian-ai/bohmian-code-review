@@ -982,8 +982,9 @@ struct FileCompareWire {
     /// One page of commits from base to head, oldest first; a full page
     /// may stop short of the head.
     commits: Vec<ShaWire>,
-    /// Changed files with patches; the provider caps the list, so a full
-    /// list marks the comparison truncated.
+    /// Changed files, each with its patch when the provider includes one;
+    /// the provider caps the list, so a full list marks the comparison
+    /// truncated.
     files: Vec<PullRequestFileWire>,
 }
 
