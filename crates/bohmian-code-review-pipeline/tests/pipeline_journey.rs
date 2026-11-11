@@ -15,7 +15,7 @@ use bohmian_code_review_pipeline::testing::{
 };
 use bohmian_code_review_pipeline::{
     BaselineProblem, ChangeKind, ComparisonError, ExclusionReason, PinnedReview, PipelineError,
-    PullRequestPins, Source, UnavailableReason,
+    PullRequestPins, PullRequestState, Source, UnavailableReason,
 };
 use bohmian_code_review_pipeline::{
     BoxFuture, ColdBuild, ColdBuildLimits, ColdBuildOutcome, ContextError, Contexts, Freshness,
@@ -970,6 +970,7 @@ async fn pinned_first_review_obeys_the_pins_cold_and_warm() {
         ("Format users", "", true)
     );
     assert_eq!(source.url, "https://github.com/octocat/Hello-World/pull/7");
+    assert_eq!(source.state, PullRequestState::Open);
     assert_eq!(
         (cold.full.base.clone(), cold.full.head.clone()),
         (sha('c'), sha('a'))
@@ -1112,6 +1113,29 @@ async fn pinned_incremental_review_compares_from_the_baseline() {
     assert_eq!(review.full.files.len(), 6);
     assert_eq!(review.pull_request.merge_base, sha('c'));
     assert_pinned_spans(&review);
+    let full = pipeline
+        .pinned(&client, &identity(), &pins(), None)
+        .await
+        .expect("full review");
+    assert!(
+        full.context
+            .context
+            .not_analyzed
+            .iter()
+            .any(|skipped| skipped.path != "src/handler.ts"),
+        "{:?}",
+        full.context.context.not_analyzed
+    );
+    assert!(
+        review
+            .context
+            .context
+            .not_analyzed
+            .iter()
+            .all(|skipped| skipped.path == "src/handler.ts"),
+        "context is selected for the active changes only: {:?}",
+        review.context.context.not_analyzed
+    );
 
     let empty = pipeline
         .pinned(&client, &identity(), &pins(), Some(&sha('a')))
@@ -1195,4 +1219,121 @@ async fn pinned_reviews_keep_limits_and_failures_explicit() {
     assert!(context.spans.is_empty());
     assert!(!context.omissions.is_empty());
     assert_eq!(review.full.files.len(), 6);
+
+    let mut misreported = full_changes();
+    misreported[0]["sha"] = json!(sha('9').as_str());
+    github.compare_files((&sha('c'), &sha('a')), ("ahead", &sha('c')), misreported);
+    assert!(matches!(
+        comparison(pipeline.pinned(&client, &identity(), &pins(), None).await),
+        ComparisonError::Unverified { path, .. } if path.as_str() == "src/handler.ts"
+    ));
+
+    github.compare_files((&sha('c'), &sha('a')), ("ahead", &sha('c')), full_changes());
+    github.0.json(
+        &format!("/git/trees/{}?recursive=1", sha('8')),
+        &json!({"sha": sha('8').as_str(), "truncated": true, "tree": []}).to_string(),
+    );
+    github.0.json(
+        &format!("/git/trees/{}", sha('8')),
+        &json!({"sha": sha('8').as_str(), "truncated": true, "tree": []}).to_string(),
+    );
+    assert_eq!(
+        comparison(pipeline.pinned(&client, &identity(), &pins(), None).await),
+        ComparisonError::Truncated {
+            base: sha('a'),
+            head: sha('a')
+        }
+    );
+}
+
+/// AC-004: when the base branch has moved past the merge base, the full
+/// comparison and its sources run from the merge base GitHub reports, never
+/// from the pinned base commit itself.
+#[tokio::test]
+async fn pinned_full_review_compares_from_the_merge_base() {
+    let github = FakeGitHub::pinned();
+    github.compare_files(
+        (&sha('5'), &sha('a')),
+        ("diverged", &sha('c')),
+        full_changes(),
+    );
+    let client = github.client();
+    let (storage, store) = (MemoryStorage::default(), MemoryStore::default());
+    let pipeline = ReviewPipeline::new(&storage, &store, pinned_limits());
+    let moved = PullRequestPins {
+        base: sha('5'),
+        ..pins()
+    };
+
+    let review = pipeline
+        .pinned(&client, &identity(), &moved, None)
+        .await
+        .expect("review from the merge base");
+    let source = &review.pull_request;
+    assert_eq!(
+        (source.base.clone(), source.merge_base.clone()),
+        (sha('5'), sha('c'))
+    );
+    assert_eq!(
+        (review.full.base.clone(), review.full.head.clone()),
+        (sha('c'), sha('a'))
+    );
+    let from_base = pipeline
+        .pinned(&client, &identity(), &pins(), None)
+        .await
+        .expect("review with the base at the merge base");
+    assert_eq!(review.full.files, from_base.full.files);
+    assert_eq!(review.active, review.full);
+}
+
+/// AC-004: a pinned head whose recursive tree listing GitHub truncated is
+/// rebuilt from its subtrees' listings, so the review matches the one over
+/// the untruncated listing instead of failing or guessing.
+#[tokio::test]
+async fn pinned_review_rebuilds_a_truncated_head_listing() {
+    let github = FakeGitHub::pinned();
+    let client = github.client();
+    let (storage, store) = (MemoryStorage::default(), MemoryStore::default());
+    let pipeline = ReviewPipeline::new(&storage, &store, pinned_limits());
+    let expected = pipeline
+        .pinned(&client, &identity(), &pins(), None)
+        .await
+        .expect("review over the untruncated listing");
+
+    let mut root = Vec::new();
+    for (dir, subtree) in [
+        ("assets", sha('1')),
+        ("src", sha('2')),
+        ("vendor", sha('3')),
+    ] {
+        let entries: Vec<_> = pinned_head()
+            .into_iter()
+            .filter_map(|(path, bytes)| {
+                let name = path.strip_prefix(dir)?.strip_prefix('/')?;
+                Some(json!({"path": name, "mode": "100644", "type": "blob",
+                            "sha": blob_sha(bytes).as_str(), "size": bytes.len()}))
+            })
+            .collect();
+        github.0.json(
+            &format!("/git/trees/{subtree}?recursive=1"),
+            &json!({"sha": subtree.as_str(), "truncated": false, "tree": entries}).to_string(),
+        );
+        root.push(json!({"path": dir, "mode": "040000", "type": "tree", "sha": subtree.as_str()}));
+    }
+    github.0.json(
+        &format!("/git/trees/{}?recursive=1", sha('8')),
+        &json!({"sha": sha('8').as_str(), "truncated": true, "tree": []}).to_string(),
+    );
+    github.0.json(
+        &format!("/git/trees/{}", sha('8')),
+        &json!({"sha": sha('8').as_str(), "truncated": false, "tree": root}).to_string(),
+    );
+
+    let rebuilt = pipeline
+        .pinned(&client, &identity(), &pins(), None)
+        .await
+        .expect("review over the rebuilt listing");
+    assert_eq!(rebuilt.full, expected.full);
+    assert_eq!(rebuilt.active, expected.active);
+    assert_pinned_spans(&rebuilt);
 }
