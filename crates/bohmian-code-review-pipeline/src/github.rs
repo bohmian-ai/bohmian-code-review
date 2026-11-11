@@ -14,7 +14,7 @@ use crate::history::{MergedPr, is_timestamp};
 use crate::identity::{GitHubHost, InstallationToken, ObjectSha, RepositoryIdentity};
 use crate::storage::hex;
 use bohmian_code_review::RelativePath;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Error as JsonError;
 use sha1::{Digest, Sha1};
 use std::collections::BTreeMap;
@@ -529,7 +529,8 @@ impl TreeListing {
 }
 
 /// Provider pull-request state.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum PullRequestState {
     /// Open.
     Open,
@@ -558,6 +559,12 @@ pub struct PullRequest {
     pub head: ObjectSha,
     /// Numeric id of the head repository, absent when the fork was deleted.
     pub head_repository_id: Option<u64>,
+    /// Browser URL of the pull request.
+    pub url: String,
+    /// Title.
+    pub title: String,
+    /// Description; empty when the author left none.
+    pub body: String,
 }
 
 /// Provider change status for one PR file.
@@ -658,6 +665,37 @@ impl Comparison {
             Err(_) => self.invalid_added += 1,
         }
     }
+}
+
+/// How a comparison's head relates to its base, as the compare API reports it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ComparisonStatus {
+    /// The head descends from the base with new commits.
+    Ahead,
+    /// Base and head are the same commit.
+    Identical,
+    /// The base descends from the head.
+    Behind,
+    /// Neither descends from the other.
+    Diverged,
+}
+
+/// The changed files between a base and a head, with patches, as one
+/// three-dot compare read lists them: the changes from their merge base to
+/// the head.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FileComparison {
+    /// How the head relates to the requested base.
+    pub status: ComparisonStatus,
+    /// Merge base of the requested base and head.
+    pub merge_base: ObjectSha,
+    /// Files with valid paths, statuses, and ids.
+    pub files: Vec<PullRequestFile>,
+    /// Files dropped for an invalid path, status, or id.
+    pub rejected: Vec<RejectedPath>,
+    /// The provider's file list reached [`COMPARE_MAX_FILES`] and may omit
+    /// changes.
+    pub truncated: bool,
 }
 
 /// A streaming, byte-bounded compressed archive body.
@@ -787,6 +825,11 @@ struct PullRequestWire {
     draft: bool,
     #[serde(default)]
     merged: bool,
+    #[serde(default)]
+    html_url: String,
+    #[serde(default)]
+    title: String,
+    body: Option<String>,
     base: PullRefWire,
     head: PullRefWire,
 }
@@ -923,6 +966,16 @@ struct CompareWire {
     files: Vec<CompareFileWire>,
 }
 
+/// Wire shape of a three-dot comparison read for its files and patches.
+#[derive(Deserialize)]
+struct FileCompareWire {
+    status: String,
+    base_commit: ShaWire,
+    merge_base_commit: ShaWire,
+    commits: Vec<ShaWire>,
+    files: Vec<PullRequestFileWire>,
+}
+
 /// One changed file of a comparison.
 #[derive(Deserialize)]
 struct CompareFileWire {
@@ -948,6 +1001,9 @@ fn timestamp(text: String, resource: &str) -> Result<String, GitHubError> {
 
 /// Most files the compare API lists for one comparison.
 pub(crate) const COMPARE_MAX_FILES: usize = 300;
+
+/// Most commits the compare API lists on its first page.
+const COMPARE_COMMITS_PER_PAGE: usize = 250;
 
 /// Percent-encode a path segment, keeping `/` so branch names route unchanged.
 fn encode_segment(raw: &str) -> String {
@@ -1369,6 +1425,73 @@ impl GitHubClient {
         Ok(comparison)
     }
 
+    /// Compare `base` with `head` three-dot and keep every changed file with
+    /// its patch and head-side blob id.
+    ///
+    /// The files are the merge base's changes to the head. The provider's
+    /// base must be `base`; when the head is ahead and the commit list is
+    /// below the provider's page of 250, its last commit must be `head`.
+    ///
+    /// # Errors
+    ///
+    /// [`GitHubError::IdentityMismatch`] when the provider compares another
+    /// base or ends at another head, [`GitHubError::MalformedResponse`] for
+    /// an unknown comparison status, plus any policy or transport error.
+    /// Individual bad files are reported in [`FileComparison::rejected`].
+    pub async fn compare_files(
+        &self,
+        repository: &RepositoryIdentity,
+        base: &ObjectSha,
+        head: &ObjectSha,
+    ) -> Result<FileComparison, GitHubError> {
+        let resource = format!("/repositories/{}/compare/{base}...{head}", repository.id());
+        let wire: FileCompareWire = self
+            .get_json(Operation::Compare, &resource, ACCEPT_JSON)
+            .await?;
+        let status = match wire.status.as_str() {
+            "ahead" => ComparisonStatus::Ahead,
+            "identical" => ComparisonStatus::Identical,
+            "behind" => ComparisonStatus::Behind,
+            "diverged" => ComparisonStatus::Diverged,
+            other => {
+                return Err(GitHubError::MalformedResponse {
+                    resource,
+                    detail: format!("unknown comparison status `{other}`"),
+                });
+            }
+        };
+        let last = wire.commits.last().map(|commit| &commit.sha);
+        let paged = wire.commits.len() >= COMPARE_COMMITS_PER_PAGE;
+        let ends_elsewhere = status == ComparisonStatus::Ahead && !paged && last != Some(head);
+        if wire.base_commit.sha != *base || ends_elsewhere {
+            return Err(GitHubError::IdentityMismatch {
+                expected: format!("{base}...{head}"),
+                actual: format!(
+                    "{}...{}",
+                    wire.base_commit.sha,
+                    last.map_or_else(String::new, ToString::to_string)
+                ),
+            });
+        }
+        let mut comparison = FileComparison {
+            status,
+            merge_base: wire.merge_base_commit.sha,
+            truncated: wire.files.len() >= COMPARE_MAX_FILES,
+            files: Vec::with_capacity(wire.files.len()),
+            rejected: Vec::new(),
+        };
+        for file in wire.files {
+            match validate_pull_request_file(&file) {
+                Ok(valid) => comparison.files.push(valid),
+                Err(reason) => comparison.rejected.push(RejectedPath {
+                    path: file.filename,
+                    reason,
+                }),
+            }
+        }
+        Ok(comparison)
+    }
+
     /// Fetch one listing of `tree`, recursive or not, and check its id.
     /// Returns the request path with the wire listing.
     ///
@@ -1517,6 +1640,9 @@ impl GitHubClient {
             head_ref: wire.head.name,
             head: wire.head.sha,
             head_repository_id: wire.head.repo.map(|repo| repo.id),
+            url: wire.html_url,
+            title: wire.title,
+            body: wire.body.unwrap_or_default(),
         })
     }
 
