@@ -693,8 +693,8 @@ pub struct FileComparison {
     pub files: Vec<PullRequestFile>,
     /// Files dropped for an invalid path, status, or id.
     pub rejected: Vec<RejectedPath>,
-    /// The provider's file list reached [`COMPARE_MAX_FILES`] and may omit
-    /// changes.
+    /// The provider's file list reached its per-comparison cap and may
+    /// omit changes.
     pub truncated: bool,
 }
 
@@ -825,10 +825,13 @@ struct PullRequestWire {
     draft: bool,
     #[serde(default)]
     merged: bool,
+    /// Browser URL of the pull request; empty when the provider omits it.
     #[serde(default)]
     html_url: String,
+    /// Pull request title; empty when the provider omits it.
     #[serde(default)]
     title: String,
+    /// Description; absent or `null` means the PR has none, read as empty.
     body: Option<String>,
     base: PullRefWire,
     head: PullRefWire,
@@ -969,10 +972,18 @@ struct CompareWire {
 /// Wire shape of a three-dot comparison read for its files and patches.
 #[derive(Deserialize)]
 struct FileCompareWire {
+    /// Provider relation of head to base: `ahead`, `behind`, `identical`,
+    /// or `diverged`.
     status: String,
+    /// The comparison's base commit, checked against the requested base.
     base_commit: ShaWire,
+    /// Merge base of the base and head commits.
     merge_base_commit: ShaWire,
+    /// One page of commits from base to head, oldest first; a full page
+    /// may stop short of the head.
     commits: Vec<ShaWire>,
+    /// Changed files with patches; the provider caps the list, so a full
+    /// list marks the comparison truncated.
     files: Vec<PullRequestFileWire>,
 }
 

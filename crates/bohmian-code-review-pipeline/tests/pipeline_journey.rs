@@ -760,7 +760,7 @@ async fn review_pipeline_survives_a_repository_rename() {
 
 /// The fork repository a pinned PR's head commits come from.
 const FORK: u64 = 999;
-/// File ceiling of the pinned journeys, so [`BIG`] is oversize.
+/// File ceiling of the pinned journeys, so [`big`] is oversize.
 const PINNED_FILE_BYTES: u64 = 4096;
 /// Declares nothing; deleted by the pinned PR.
 const OLD: &[u8] = b"export function old(): number {\n  return 0;\n}\n";
@@ -916,6 +916,10 @@ fn pinned_limits() -> PipelineLimits {
 }
 
 /// Text source of `bytes`.
+///
+/// # Panics
+///
+/// Panics if `bytes` is not UTF-8.
 fn text(bytes: &[u8]) -> Source {
     Source::Text {
         blob: blob_sha(bytes),
@@ -924,6 +928,12 @@ fn text(bytes: &[u8]) -> Source {
 }
 
 /// Every span is the exact text of the pinned head file it names.
+///
+/// # Panics
+///
+/// Panics if the context has no spans, a span names a path outside the
+/// pinned head, the file is not UTF-8, the span's lines are out of range, or
+/// a span's text or blob differs from the pinned file.
 fn assert_pinned_spans(review: &PinnedReview) {
     let head = pinned_head();
     assert!(!review.context.context.spans.is_empty());
@@ -944,6 +954,12 @@ fn assert_pinned_spans(review: &PinnedReview) {
 /// change carries verified source or names why it has none, the context
 /// is selected at the pins with exact span text, and the warm review
 /// reuses the snapshot without another archive or a PR file listing.
+///
+/// # Panics
+///
+/// Panics if either review fails or differs from the pins, a change lacks
+/// verified source or its reason, a span is not exact pinned text, or the
+/// warm review fetches another archive or PR file listing.
 #[tokio::test]
 async fn pinned_first_review_obeys_the_pins_cold_and_warm() {
     let github = FakeGitHub::pinned();
@@ -1081,6 +1097,13 @@ async fn pinned_first_review_obeys_the_pins_cold_and_warm() {
 /// the pinned head and selects context for those changes only, keeping the
 /// full merge-base comparison beside it; an identical baseline is a valid
 /// empty active comparison.
+///
+/// # Panics
+///
+/// Panics if a review fails, the active comparison is not baseline → head,
+/// the full comparison does not start at the merge base, a span is not exact
+/// pinned text, context covers files outside the active changes, or an empty
+/// active comparison selects context.
 #[tokio::test]
 async fn pinned_incremental_review_compares_from_the_baseline() {
     let github = FakeGitHub::pinned();
@@ -1150,6 +1173,12 @@ async fn pinned_incremental_review_compares_from_the_baseline() {
 /// provider cannot find, is reported unusable and never replaced; a
 /// mismatched fork, a truncated comparison, and a text change without a
 /// patch fail explicitly; and context-budget omissions stay coverage data.
+///
+/// # Panics
+///
+/// Panics if a refused comparison returns another error than the expected
+/// comparison error, or a review whose omissions are coverage fails or
+/// selects spans for them.
 #[tokio::test]
 async fn pinned_reviews_keep_limits_and_failures_explicit() {
     let github = FakeGitHub::pinned();
@@ -1249,6 +1278,11 @@ async fn pinned_reviews_keep_limits_and_failures_explicit() {
 /// AC-004: when the base branch has moved past the merge base, the full
 /// comparison and its sources run from the merge base GitHub reports, never
 /// from the pinned base commit itself.
+///
+/// # Panics
+///
+/// Panics if either review fails, or a review whose PR base moved past the
+/// merge base compares differently from one based at the merge base.
 #[tokio::test]
 async fn pinned_full_review_compares_from_the_merge_base() {
     let github = FakeGitHub::pinned();
@@ -1289,6 +1323,11 @@ async fn pinned_full_review_compares_from_the_merge_base() {
 /// AC-004: a pinned head whose recursive tree listing GitHub truncated is
 /// rebuilt from its subtrees' listings, so the review matches the one over
 /// the untruncated listing instead of failing or guessing.
+///
+/// # Panics
+///
+/// Panics if either review fails, or the rebuilt listing yields different
+/// comparisons or spans that are not exact pinned text.
 #[tokio::test]
 async fn pinned_review_rebuilds_a_truncated_head_listing() {
     let github = FakeGitHub::pinned();
@@ -1342,6 +1381,12 @@ async fn pinned_review_rebuilds_a_truncated_head_listing() {
 /// is accepted on its verified files, since its last listed commit need not
 /// be the head; a shorter list that ends anywhere but the pinned head is
 /// refused instead of compared.
+///
+/// # Panics
+///
+/// Panics if either review fails, a full commit page yields a different
+/// comparison, or a short page ending elsewhere is not refused as an
+/// identity mismatch.
 #[tokio::test]
 async fn pinned_reviews_verify_a_paged_comparison() {
     let github = FakeGitHub::pinned();
