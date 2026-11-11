@@ -2,7 +2,7 @@
 //! and the active baseline→head change set of exactly the commits a caller
 //! froze, with verified before/after source for every changed file.
 //!
-//! [`Comparisons`] never chooses a baseline or reads the live PR's head as
+//! The comparison stage never chooses a baseline or reads the live PR's head as
 //! a source of truth. The live PR is read once, for its metadata and to
 //! confirm the pinned PR and head repository. Every changed file is checked
 //! against the complete tree listings of its comparison's base and head, and
@@ -301,9 +301,14 @@ impl PinnedTree {
 /// Fetched sources are cached by blob id for the stage's lifetime, so a
 /// file in both the full and the active change set is fetched once.
 pub(crate) struct Comparisons<'a> {
+    /// Provider client every comparison and blob read goes through.
     client: &'a GitHubClient,
+    /// Repository identity the pins and blobs are verified against.
     identity: &'a Identity,
+    /// Invocation file ceiling; a larger blob is recorded as unavailable for
+    /// being oversize.
     max_file_bytes: u64,
+    /// Verified sources fetched so far, by blob id, for this stage only.
     sources: BTreeMap<ObjectSha, Source>,
 }
 
@@ -621,6 +626,8 @@ fn text_source(blob: ObjectSha, bytes: Vec<u8>) -> Source {
 /// present side is text, an absent side counts as empty text, and the
 /// texts differ. A binary, unavailable, or excluded side has no text diff.
 fn needs_patch(before: Option<&Source>, after: Option<&Source>) -> bool {
+    /// Comparable text of `side`: an absent side is empty text, and a
+    /// binary, unavailable, or excluded side has none.
     fn text(side: Option<&Source>) -> Option<&str> {
         side.map_or(Some(""), Source::text)
     }
@@ -682,11 +689,20 @@ mod tests {
     use super::*;
 
     /// Forty copies of `ch` as an object id.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `ch` is not a lowercase hex digit.
     fn sha(ch: char) -> ObjectSha {
         ObjectSha::new(&ch.to_string().repeat(40)).expect("sha")
     }
 
     /// Headers split hunks and keep their text; a missing count is one.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a well-formed patch fails to parse, splits or counts
+    /// differently, or a malformed patch parses.
     #[test]
     fn hunks_split_at_headers() {
         let patch = "@@ -1,2 +1,3 @@ fn a\n a\n+b\n c\n@@ -9 +10,0 @@\n-z";
@@ -717,6 +733,10 @@ mod tests {
     }
 
     /// A NUL or invalid UTF-8 is binary; other bytes are exact text.
+    ///
+    /// # Panics
+    ///
+    /// Panics if any blob classifies differently.
     #[test]
     fn blobs_classify_as_text_or_binary() {
         assert_eq!(
@@ -737,6 +757,10 @@ mod tests {
     }
 
     /// Only a differing text change needs a patch.
+    ///
+    /// # Panics
+    ///
+    /// Panics if any pair's patch need differs from the expectation.
     #[test]
     fn only_text_changes_need_patches() {
         let text = |t: &str| Source::Text {
