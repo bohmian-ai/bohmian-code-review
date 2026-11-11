@@ -19,11 +19,11 @@ use bohmian_code_review_pipeline::{
 };
 use bohmian_code_review_pipeline::{
     BoxFuture, ColdBuild, ColdBuildLimits, ColdBuildOutcome, ContextError, Contexts, Freshness,
-    GitHubClient, GitHubHost, HttpRequest, HttpResponse, HttpTransport, Identity, InstallationId,
-    InstallationToken, ObjectSha, Operation, PipelineLimits, PrContext, PrContextLimits,
-    PrContextResult, RepositoryIdentity, RequestLimits, ReviewPipeline, SNAPSHOT_FORMAT_VERSION,
-    Scope, SnapshotPointer, SnapshotScope, SnapshotStore, Snapshots, TenantId, TransportError,
-    Update,
+    GitHubClient, GitHubError, GitHubHost, HttpRequest, HttpResponse, HttpTransport, Identity,
+    InstallationId, InstallationToken, ObjectSha, Operation, PipelineLimits, PrContext,
+    PrContextLimits, PrContextResult, RepositoryIdentity, RequestLimits, ReviewPipeline,
+    SNAPSHOT_FORMAT_VERSION, Scope, SnapshotPointer, SnapshotScope, SnapshotStore, Snapshots,
+    TenantId, TransportError, Update,
 };
 use flate2::Compression;
 use flate2::write::GzEncoder;
@@ -1336,4 +1336,44 @@ async fn pinned_review_rebuilds_a_truncated_head_listing() {
     assert_eq!(rebuilt.full, expected.full);
     assert_eq!(rebuilt.active, expected.active);
     assert_pinned_spans(&rebuilt);
+}
+
+/// AC-004: a comparison whose commit list fills the provider's first page
+/// is accepted on its verified files, since its last listed commit need not
+/// be the head; a shorter list that ends anywhere but the pinned head is
+/// refused instead of compared.
+#[tokio::test]
+async fn pinned_reviews_verify_a_paged_comparison() {
+    let github = FakeGitHub::pinned();
+    let client = github.client();
+    let (storage, store) = (MemoryStorage::default(), MemoryStore::default());
+    let pipeline = ReviewPipeline::new(&storage, &store, pinned_limits());
+    let expected = pipeline
+        .pinned(&client, &identity(), &pins(), None)
+        .await
+        .expect("review over a one-page comparison");
+    let route = |commits: Vec<serde_json::Value>| {
+        github.0.json(
+            &format!("/compare/{}...{}", sha('c'), sha('a')),
+            &json!({"status": "ahead", "base_commit": {"sha": sha('c').as_str()},
+                    "merge_base_commit": {"sha": sha('c').as_str()},
+                    "commits": commits, "files": full_changes()})
+            .to_string(),
+        );
+    };
+
+    route(vec![json!({"sha": sha('b').as_str()}); 250]);
+    let paged = pipeline
+        .pinned(&client, &identity(), &pins(), None)
+        .await
+        .expect("a paged commit list is verified by its trees");
+    assert_eq!(paged.full, expected.full);
+
+    route(vec![json!({"sha": sha('b').as_str()})]);
+    assert!(matches!(
+        pipeline.pinned(&client, &identity(), &pins(), None).await,
+        Err(PipelineError::Comparison(ComparisonError::Provider(
+            GitHubError::IdentityMismatch { .. }
+        )))
+    ));
 }
